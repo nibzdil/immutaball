@@ -8,4 +8,18 @@
 
 module Immutaball.ImmutaballIO
 	(
+		ImmutaballIO,
+		ImmutaballIOF(..),
+		runImmutaballIO
 	) where
+
+import Immutaball.Utils
+
+type ImmutaballIO = Fixed ImmutaballIOF
+data ImmutaballIOF a =
+	  PutStrLn String
+	| GetContents (String -> a)
+
+runImmutaballIO :: ImmutaballIO -> IO ()
+runImmutaballIO (Fixed (PutStrLn    str))          = putStrLn str
+runImmutaballIO (Fixed (GetContents withContents)) = getContents >>= runImmutaballIO . withContents

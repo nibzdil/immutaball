@@ -14,10 +14,10 @@ module Test.Immutaball.Test
 	) where
 
 import Test.Tasty
-import Test.Tasty.HUnit hiding ((@?=), assertBool)
-import Test.Tasty.QuickCheck
+--import Test.Tasty.HUnit hiding ((@?=), assertBool)
+--import Test.Tasty.QuickCheck
 
-import Test.HUnit
+--import Test.HUnit
 
 --import Test.QuickCheck
 

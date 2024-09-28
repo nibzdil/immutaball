@@ -3,8 +3,15 @@
 Immutaball is licensed under the terms of the GNU General Public License
 version 3 or later (at your option), since it is a derivative work of Neverball
 1.7.0-alpha.3, which is released under the terms of the GNU General Public
-License version 2 or a later version (at your option).  The full texts of GPLv3
-and GPLv2 are included in `doc/legal/`.
+License version 2 or a later version (at your option), and links with its data
+files.  The full texts of GPLv3 and GPLv2 are included in `doc/legal/`.
+
+Immutaball core, under `src/`, is a port of Neverball core to Haskell.  The
+separable components of Immutaball core independent from Neverball core are
+licensed under the terms of 0BSD, the text of which is included in
+`doc/legal/`.  Consent here is thus also provided under the terms of 0BSD as
+well.  (The combined project, as stated, is licensed under GPL-3.0-or-later to
+be compliant with the usage terms of the dependencies it uses.)
 
 Immutaball uses a number of external libraries.  Certain features that can be
 enabled at compile time require additional libraries.  Binary versions of these

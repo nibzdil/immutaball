@@ -65,8 +65,10 @@ common executable-components
 
 	other-modules:
 		Immutaball.Ball.CLI
+		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Main
 		Immutaball.Putt.CLI
+		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main
 		Immutaball.Share.Config
 		Immutaball.Share.Context

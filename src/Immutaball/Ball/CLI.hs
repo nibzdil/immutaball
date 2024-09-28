@@ -13,8 +13,8 @@ module Immutaball.Ball.CLI
 		immutaballCLIMain
 	) where
 
-import Immutaball.ImmutaballIO
---import Immutaball.Utils
+import Immutaball.Share.ImmutaballIO
+--import Immutaball.Share.Utils
 
 main :: IO ()
 main = immutaballMain

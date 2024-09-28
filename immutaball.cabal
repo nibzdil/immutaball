@@ -65,10 +65,10 @@ common executable-components
 	other-modules:
 		Immutaball.Ball.CLI
 		Immutaball.Ball.Main
-		Immutaball.ImmutaballIO
 		Immutaball.Putt.CLI
 		Immutaball.Putt.Main
-		Immutaball.Utils
+		Immutaball.Share.ImmutaballIO
+		Immutaball.Share.Utils
 
 executable immutaball
 	import: all-components
@@ -88,10 +88,10 @@ library
 	exposed-modules:
 		Immutaball.Ball.CLI
 		Immutaball.Ball.Main
-		Immutaball.ImmutaballIO
 		Immutaball.Putt.CLI
 		Immutaball.Putt.Main
-		Immutaball.Utils
+		Immutaball.Share.ImmutaballIO
+		Immutaball.Share.Utils
 
 test-suite test-immutaball
 	import: all-components

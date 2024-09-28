@@ -7,7 +7,7 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Immutaball.Utils
+module Immutaball.Share.Utils
 	(
 		Fixed(..), fixed
 	) where

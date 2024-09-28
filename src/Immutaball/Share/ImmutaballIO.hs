@@ -7,7 +7,7 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-module Immutaball.ImmutaballIO
+module Immutaball.Share.ImmutaballIO
 	(
 		ImmutaballIO,
 		ImmutaballIOF(..),
@@ -29,7 +29,7 @@ import System.Exit
 import Control.Concurrent.Async
 import Control.Parallel
 
-import Immutaball.Utils
+import Immutaball.Share.Utils
 
 type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF a =

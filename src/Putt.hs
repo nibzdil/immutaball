@@ -12,7 +12,7 @@
 
 module Main where
 
-import qualified Immutaball.Ball.Main
+import qualified Immutaball.Putt.Main
 
 main :: IO ()
-main = Immutaball.Ball.Main.main
+main = Immutaball.Putt.Main.main

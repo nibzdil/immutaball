@@ -59,9 +59,11 @@ common executable-components
 	build-depends: immutaball
 
 	other-modules:
-		Immutaball.CLI
+		Immutaball.Ball.CLI
+		Immutaball.Ball.Main
 		Immutaball.ImmutaballIO
-		Immutaball.Main
+		Immutaball.Putt.CLI
+		Immutaball.Putt.Main
 		Immutaball.Utils
 
 executable immutaball
@@ -70,13 +72,21 @@ executable immutaball
 
 	main-is: Main.hs
 
+executable immutaputt
+	import: all-components
+	import: executable-components
+
+	main-is: Putt.hs
+
 library
 	import: all-components
 
 	exposed-modules:
-		Immutaball.CLI
+		Immutaball.Ball.CLI
+		Immutaball.Ball.Main
 		Immutaball.ImmutaballIO
-		Immutaball.Main
+		Immutaball.Putt.CLI
+		Immutaball.Putt.Main
 		Immutaball.Utils
 
 test-suite test-immutaball

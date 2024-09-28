@@ -2,23 +2,13 @@
 -- Enable warnings:
 {-# OPTIONS_GHC -Wall -fno-warn-tabs #-}
 
--- CLI.hs.
+-- Main.hs: Immutaball.
 
 {-# LANGUAGE Haskell2010 #-}
 
-module Immutaball.CLI
-	(
-		main,
-		immutaballMain,
-		immutaballCLIMain
-	) where
+module Immutaball.Ball.Main where
+
+import qualified Immutaball.Ball.CLI
 
 main :: IO ()
-main = immutaballMain
-
-immutaballMain :: IO ()
-immutaballMain = immutaballCLIMain
-
-immutaballCLIMain :: IO ()
-immutaballCLIMain = do
-	return ()
+main = Immutaball.Ball.CLI.main

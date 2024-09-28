@@ -2,7 +2,7 @@
 -- Enable warnings:
 {-# OPTIONS_GHC -Wall -fno-warn-tabs #-}
 
--- CLI.hs.
+-- ImmutaballIO.hs.
 
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}

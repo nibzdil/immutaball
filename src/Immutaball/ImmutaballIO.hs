@@ -22,16 +22,14 @@ import Immutaball.Utils
 type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF a =
 	  DoneImmutaballIOF
-	| ThenImmutaballIOF a a
-	| ConcurrentlyImmutaballIOF a a
+	| AndImmutaballIOF a a
 	| ExitFailureImmutaballIOF
 	| PutStrLn String
 	| GetContents (String -> a)
 
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO (Fixed (DoneImmutaballIOF))        = return ()
-runImmutaballIO (Fixed (ThenImmutaballIOF a b))    = runImmutaballIO a >> runImmutaballIO b
-runImmutaballIO (Fixed (ConcurrentlyImmutaballIOF a b)) = concurrently_ (runImmutaballIO a) (runImmutaballIO b)
+runImmutaballIO (Fixed (AndImmutaballIOF a b))     = a `par` b `par` concurrently_ (runImmutaballIO a) (runImmutaballIO b)
 runImmutaballIO (Fixed (ExitFailureImmutaballIOF)) = exitFailure
 runImmutaballIO (Fixed (PutStrLn str))             = putStrLn str
 runImmutaballIO (Fixed (GetContents withContents)) = getContents >>= runImmutaballIO . withContents

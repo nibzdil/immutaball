@@ -10,7 +10,8 @@
 module Immutaball.Share.Config
 	(
 		StaticConfig(..), minClockPeriod, maxEventPeriod, maxStepFrameSize,
-			maxResponseFrameSize,
+			maxResponseFrameSize, defaultStaticDataDir, defaultUserDataDir,
+			defaultUserConfigDir,
 		defaultStaticConfig,
 		Config(..), fullscreen, display, width, height, stereo, camera,
 			textures, reflection, multisample, mipmap, aniso, background,
@@ -36,6 +37,9 @@ module Immutaball.Share.Config
 
 import Control.Lens
 
+import Immutaball.Share.ImmutaballIO.DirectoryIO
+import Immutaball.Share.Utils
+
 data StaticConfig = StaticConfig {
 	_minClockPeriod :: Maybe Float,
 		-- ^ Maximum FPS, except for non-clock SDL events.
@@ -46,13 +50,17 @@ data StaticConfig = StaticConfig {
 	_maxStepFrameSize :: Maybe Int,
 		-- ^ Drop step requests after this many requests if they are all given
 		-- at once.  Also do not send more than this many requests in one step.
-	_maxResponseFrameSize :: Maybe Int
+	_maxResponseFrameSize :: Maybe Int,
 		-- ^ Drop step responses after this many responses if they are all
 		-- at once.  Also do not send more than this many responses in one
 		-- step.  The wire may opt to priority queue responses exceeding the
 		-- capacity if there's a response it doesn't want to drop.
+
+	_defaultStaticDataDir :: [Either DirectoryIO FilePath],
+	_defaultUserDataDir   :: [Either DirectoryIO FilePath],
+	_defaultUserConfigDir :: [Either DirectoryIO FilePath]
 }
-	deriving (Eq, Ord)
+	deriving (Eq, Ord, Show)
 makeLenses ''StaticConfig
 
 defaultStaticConfig :: StaticConfig
@@ -60,7 +68,11 @@ defaultStaticConfig = StaticConfig {
 	_minClockPeriod       = Just 0.001,  -- ^ Max FPS: 1000.
 	_maxEventPeriod       = Just 0.5,    -- ^ Don't let external events block the clock for more than 500ms.
 	_maxStepFrameSize     = Just 8,      -- ^ Don't request more than 8 at a time.
-	_maxResponseFrameSize = Nothing      -- ^ Don't request more than 8 at a time.
+	_maxResponseFrameSize = Nothing,     -- ^ Don't request more than 8 at a time.
+
+	_defaultStaticDataDir = [Right "./data"],
+	_defaultUserDataDir   = [Left . Fixed $ GetXdgDirectoryData "immutaball"],
+	_defaultUserConfigDir = [Left . Fixed $ GetXdgDirectoryConfig "immutaball"]
 }
 
 data Config = Config {
@@ -160,7 +172,7 @@ data Config = Config {
 
 	_cameraTouchRotate :: Int  -- "touch_rotate" 16
 }
-	deriving (Eq, Ord)
+	deriving (Eq, Ord, Show)
 makeLenses ''Config
 
 defaultConfig :: Config

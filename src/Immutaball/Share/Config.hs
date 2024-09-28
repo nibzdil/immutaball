@@ -9,7 +9,8 @@
 
 module Immutaball.Share.Config
 	(
-		StaticConfig(..),
+		StaticConfig(..), minClockPeriod, maxEventPeriod, maxStepFrameSize,
+			maxResponseFrameSize,
 		defaultStaticConfig,
 		Config(..), fullscreen, display, width, height, stereo, camera,
 			textures, reflection, multisample, mipmap, aniso, background,
@@ -36,12 +37,30 @@ module Immutaball.Share.Config
 import Control.Lens
 
 data StaticConfig = StaticConfig {
+	_minClockPeriod :: Maybe Float,
+		-- ^ Maximum FPS, except for non-clock SDL events.
+	_maxEventPeriod :: Maybe Float,
+		-- ^ If at least one non-clock event has been stepped, if more SDL
+		-- events are available, delay processing those events if at least this
+		-- much time has passed.
+	_maxStepFrameSize :: Maybe Int,
+		-- ^ Drop step requests after this many requests if they are all given
+		-- at once.  Also do not send more than this many requests in one step.
+	_maxResponseFrameSize :: Maybe Int
+		-- ^ Drop step responses after this many responses if they are all
+		-- at once.  Also do not send more than this many responses in one
+		-- step.  The wire may opt to priority queue responses exceeding the
+		-- capacity if there's a response it doesn't want to drop.
 }
 	deriving (Eq, Ord)
 makeLenses ''StaticConfig
 
 defaultStaticConfig :: StaticConfig
 defaultStaticConfig = StaticConfig {
+	_minClockPeriod       = Just 0.001,  -- ^ Max FPS: 1000.
+	_maxEventPeriod       = Just 0.5,    -- ^ Don't let external events block the clock for more than 500ms.
+	_maxStepFrameSize     = Just 8,      -- ^ Don't request more than 8 at a time.
+	_maxResponseFrameSize = Nothing      -- ^ Don't request more than 8 at a time.
 }
 
 data Config = Config {

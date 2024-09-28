@@ -8,11 +8,13 @@
 
 module Immutaball.Share.State
 	(
+		RequestFrame,
 		Request(..),
-		Responses,
+		ResponseFrame,
 		Response(..)
 	) where
 
+type RequestFrame = [Request]
 data Request =
 	  Clock Float            -- ^ timer dt
 	| Paint Float            -- ^ paint t
@@ -25,7 +27,7 @@ data Request =
 	| Touch Int Int Float Float Float Float Float  -- ^ finger-touch device finger x y dx dy pressure
 	deriving (Eq, Ord, Show)
 
-type Responses = [Response]
+type ResponseFrame = [Response]
 data Response =
 	TODO
 	deriving (Eq, Ord, Show)

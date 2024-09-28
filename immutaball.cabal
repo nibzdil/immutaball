@@ -1,0 +1,88 @@
+cabal-version: 3.0
+
+name: immutaball
+version: 0.1.0.1-dev
+
+synopsis: Immutaball platformer game
+description:
+	The Immutaball platformer game is a rewrite of Neverball in Haskell.
+category:     Games
+homepage:     https://nibzdil.org/
+bug-reports:  https://nibzdil.org/
+
+license:      GPL-3.0-or-later
+license-file: LICENSE.md
+author:       Byron Johnson
+maintainer:   bjohnson@nibzdil.org
+build-type:   Simple
+copyright:    2024, Byron Johnson
+
+extra-source-files:
+	README.md
+
+flag add-default-compiler-flags
+	description:
+		Add default set of compiler flags.
+	default: True
+	manual: True
+
+common all-components
+	default-language: Haskell2010
+	other-extensions:
+		-- GADTs
+		-- TemplateHaskell
+
+	hs-source-dirs: src
+
+	if flag(add-default-compiler-flags)
+		-- Disable tab warner.
+		-- It's a better style: https://dmitryfrank.com/articles/indent_with_tabs_align_with_spaces
+		ghc-options: -Wall -Wno-tabs
+
+	build-depends:
+		base         >= 4.9      && < 9.5,
+		bytestring   >= 0.11.0.0 && < 0.13,
+		containers   >= 0.6.0.1  && < 0.8,
+		transformers >= 0.5.0.0  && < 0.7,
+		pipes        >= 4.3.16   && < 4.4,
+		wires        >  0.2.1    && < 0.3
+
+common executable-components
+	build-depends: immutaball
+
+	other-modules:
+		Immutaball.CLI
+		Immutaball.Main
+
+executable immutaball
+	import: all-components
+	import: executable-components
+
+	main-is: Main.hs
+
+library
+	import: all-components
+
+	exposed-modules:
+		Immutaball.CLI
+		Immutaball.Main
+
+test-suite test-immutaball
+	import: all-components
+	import: executable-components
+
+	type: exitcode-stdio-1.0
+
+	main-is: Test.hs
+
+	build-depends:
+		-- tasty: avoid deprecated 1.5.1 version.
+		--tasty            >= 1.5      && < 1.6,
+		tasty            (>= 1.5     && < 1.5.1) || (> 1.5.1 && < 1.6),
+		tasty-hunit      >= 0.10.2   && < 0.11,
+		tasty-quickcheck >= 0.11     && < 0.12,
+		HUnit            >= 1.6.2.0  && < 1.7,
+		QuickCheck       >= 2.15.0.1 && < 2.16
+
+	other-modules:
+		Test.Immutaball.Test

@@ -13,13 +13,16 @@ module Immutaball.Share.ImmutaballIO
 		ImmutaballIO,
 		ImmutaballIOF(..),
 		runImmutaballIO,
+		(<>>),
 
 		-- * Runners
 		runDirectoryImmutaballIO,
 
 		-- * ImutaballIO aliases that apply the Fixed wrapper
-		mkDoneImmutaballIO,
+		mkEmptyImmutaballIO,
 		mkAndImmutaballIO,
+		mkThenImmutaballIO,
+		mkExitSuccessImmutaballIO,
 		mkExitFailureImmutaballIO,
 		mkGetDirectory,
 		mkGetArgs,
@@ -41,8 +44,10 @@ import Immutaball.Share.Utils
 
 type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF a =
-	  DoneImmutaballIOF
+	  EmptyImmutaballIOF
 	| AndImmutaballIOF a a
+	| ThenImmutaballIOF a a
+	| ExitSuccessImmutaballIOF
 	| ExitFailureImmutaballIOF
 
 	| GetDirectory (DirectoryIOF a) (FilePath -> a)
@@ -53,8 +58,10 @@ data ImmutaballIOF a =
 	| GetContents (String -> a)
 
 runImmutaballIO :: ImmutaballIO -> IO ()
-runImmutaballIO (Fixed (DoneImmutaballIOF))        = return ()
+runImmutaballIO (Fixed (EmptyImmutaballIOF))       = return ()
 runImmutaballIO (Fixed (AndImmutaballIOF a b))     = a `par` b `par` concurrently_ (runImmutaballIO a) (runImmutaballIO b)
+runImmutaballIO (Fixed (ThenImmutaballIOF a b))    = runImmutaballIO a >> runImmutaballIO b
+runImmutaballIO (Fixed (ExitSuccessImmutaballIOF)) = exitSuccess
 runImmutaballIO (Fixed (ExitFailureImmutaballIOF)) = exitFailure
 runImmutaballIO (Fixed (GetDirectory getDirectory withDirectory)) = runDirectoryIO (runDirectoryAnyIO getDirectory) >>= runImmutaballIO . withDirectory
 runImmutaballIO (Fixed (GetArgs withArgs_))        = getArgs >>= runImmutaballIO . withArgs_
@@ -65,7 +72,7 @@ runImmutaballIO (Fixed (GetContents withContents)) = getContents >>= runImmutaba
 instance Semigroup (ImmutaballIOF ImmutaballIO) where
 	a <> b = Fixed a `AndImmutaballIOF` Fixed b
 instance Monoid (ImmutaballIOF ImmutaballIO) where
-	mempty = DoneImmutaballIOF
+	mempty = EmptyImmutaballIOF
 
 instance Semigroup ImmutaballIO where
 	(Fixed a) <> (Fixed b) = Fixed (a <> b)
@@ -74,9 +81,11 @@ instance Monoid ImmutaballIO where
 
 instance Functor (ImmutaballIOF) where
 	fmap :: (a -> b) -> (ImmutaballIOF a -> ImmutaballIOF b)
-	fmap _f (DoneImmutaballIOF)        = DoneImmutaballIOF
+	fmap _f (EmptyImmutaballIOF)       = EmptyImmutaballIOF
 	fmap  f (AndImmutaballIOF a b)     = AndImmutaballIOF (f a) (f b)
+	fmap  f (ThenImmutaballIOF a b)    = ThenImmutaballIOF (f a) (f b)
 	fmap _f (ExitFailureImmutaballIOF) = ExitFailureImmutaballIOF
+	fmap _f (ExitSuccessImmutaballIOF) = ExitSuccessImmutaballIOF
 
 	fmap  f (GetDirectory getDirectory withDirectory) = GetDirectory (fmap f getDirectory) (f . withDirectory)
 
@@ -84,6 +93,11 @@ instance Functor (ImmutaballIOF) where
 	fmap  f (GetEnvironment withEnvironment) = GetEnvironment (f . withEnvironment)
 	fmap _f (PutStrLn str)                   = PutStrLn str
 	fmap  f (GetContents withContents)       = GetContents (f . withContents)
+
+-- | Add an ordering constraint.
+infixr 6 <>>
+(<>>) :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
+(<>>) = mkThenImmutaballIO
 
 -- * Runners
 
@@ -95,11 +109,17 @@ runDirectoryImmutaballIO (Fixed (GetXdgDirectoryState  path)) withDirectory = Fi
 
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
-mkDoneImmutaballIO :: ImmutaballIO
-mkDoneImmutaballIO = Fixed $ DoneImmutaballIOF
+mkEmptyImmutaballIO :: ImmutaballIO
+mkEmptyImmutaballIO = Fixed $ EmptyImmutaballIOF
 
 mkAndImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
 mkAndImmutaballIO a b = Fixed $ AndImmutaballIOF a b
+
+mkThenImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
+mkThenImmutaballIO a b = Fixed $ ThenImmutaballIOF a b
+
+mkExitSuccessImmutaballIO :: ImmutaballIO
+mkExitSuccessImmutaballIO = Fixed $ ExitFailureImmutaballIOF
 
 mkExitFailureImmutaballIO :: ImmutaballIO
 mkExitFailureImmutaballIO = Fixed $ ExitFailureImmutaballIOF

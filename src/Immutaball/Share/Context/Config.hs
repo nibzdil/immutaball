@@ -9,17 +9,24 @@
 
 module Immutaball.Share.Context.Config
 	(
-		ContextConfig(..),
+		ContextConfig(..), ctxCfgStaticDataDir, ctxCfgUserDataDir,
+			ctxCfgConfigDataDir,
 		defaultContextConfig
 	) where
 
 import Control.Lens
 
 data ContextConfig = ContextConfig {
+	_ctxCfgStaticDataDir :: Maybe FilePath,
+	_ctxCfgUserDataDir   :: Maybe FilePath,
+	_ctxCfgConfigDataDir :: Maybe FilePath
 }
 	deriving (Eq, Ord)
 makeLenses ''ContextConfig
 
 defaultContextConfig :: ContextConfig
 defaultContextConfig = ContextConfig {
+	_ctxCfgStaticDataDir = Nothing,
+	_ctxCfgUserDataDir   = Nothing,
+	_ctxCfgConfigDataDir = Nothing
 }

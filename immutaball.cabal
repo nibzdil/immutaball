@@ -69,6 +69,7 @@ common executable-components
 		Immutaball.Putt.CLI
 		Immutaball.Putt.Main
 		Immutaball.Share.Config
+		Immutaball.Share.Context
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.State
 		Immutaball.Share.Utils
@@ -94,6 +95,7 @@ library
 		Immutaball.Putt.CLI
 		Immutaball.Putt.Main
 		Immutaball.Share.Config
+		Immutaball.Share.Context
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.State
 		Immutaball.Share.Utils

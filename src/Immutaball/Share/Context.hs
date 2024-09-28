@@ -9,13 +9,13 @@
 
 module Immutaball.Share.Context
 	(
-		Context(..)
+		IBContext(..)
 	) where
 
 import Control.Lens
 
 -- | An Immutaball context instance.
-data Context = Context {
+data IBContext = IBContext {
 }
 
 makeLenses ''Context

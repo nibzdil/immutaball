@@ -50,6 +50,7 @@ common all-components
 		parallel     >= 3.2.2.0  && < 3.3,
 		async        >= 2.2.5    && < 2.3,
 		wires        >  0.2.1    && < 0.3,
+		mtl          >= 2.2      && < 2.4,
 
 		sdl2         >= 2.5.5.0  && < 2.6,
 		sdl2-ttf     >= 2.1.3    && < 2.2,

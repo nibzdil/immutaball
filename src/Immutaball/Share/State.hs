@@ -8,6 +8,24 @@
 
 module Immutaball.Share.State
 	(
+		Request(..),
+		Responses,
+		Response(..)
 	) where
 
+data Request =
+	  Clock Float            -- ^ timer dt
+	| Paint Float            -- ^ paint t
+	| Point Int Int Int Int  -- ^ mouse movement x y dx dy
+	| Stick Int Float        -- ^ stick axis value
+	| Angle Float Float      -- ^ angle x z
+	| Click Int Bool         -- ^ click button down
+	| Keybd Int Bool         -- ^ keyboard char down
+	| Buttn Int Bool         -- ^ button button down
+	| Touch Int Int Float Float Float Float Float  -- ^ finger-touch device finger x y dx dy pressure
+	deriving (Eq, Ord, Show)
 
+type Responses = [Response]
+data Response =
+	TODO
+	deriving (Eq, Ord, Show)

@@ -13,6 +13,9 @@ module Immutaball.Ball.CLI
 		immutaballCLIMain
 	) where
 
+import Immutaball.ImmutaballIO
+--import Immutaball.Utils
+
 main :: IO ()
 main = immutaballMain
 
@@ -21,4 +24,8 @@ immutaballMain = immutaballCLIMain
 
 immutaballCLIMain :: IO ()
 immutaballCLIMain = do
-	return ()
+	runImmutaballIO mainImmutaballIO
+
+mainImmutaballIO :: ImmutaballIO
+mainImmutaballIO =
+	mkPutStrLn "Internal error: unimplemented."

@@ -30,6 +30,7 @@ common all-components
 	default-language: Haskell2010
 	other-extensions:
 		TemplateHaskell
+		TypeSynonymInstances
 
 	hs-source-dirs: src
 

@@ -60,6 +60,7 @@ common executable-components
 
 	other-modules:
 		Immutaball.CLI
+		Immutaball.ImmutaballIO
 		Immutaball.Main
 
 executable immutaball
@@ -73,6 +74,7 @@ library
 
 	exposed-modules:
 		Immutaball.CLI
+		Immutaball.ImmutaballIO
 		Immutaball.Main
 
 test-suite test-immutaball

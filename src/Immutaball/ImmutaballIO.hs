@@ -6,19 +6,6 @@
 
 {-# LANGUAGE Haskell2010 #-}
 
-module Immutaball.CLI
+module Immutaball.ImmutaballIO
 	(
-		main,
-		immutaballMain,
-		immutaballCLIMain
 	) where
-
-main :: IO ()
-main = immutaballMain
-
-immutaballMain :: IO ()
-immutaballMain = immutaballCLIMain
-
-immutaballCLIMain :: IO ()
-immutaballCLIMain = do
-	return ()

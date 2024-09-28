@@ -13,13 +13,21 @@ module Immutaball.ImmutaballIO
 		runImmutaballIO
 	) where
 
+import System.Exit
+
 import Immutaball.Utils
 
 type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF a =
-	  PutStrLn String
+	  DoneImmutaballIOF
+	| ThenImmutaballIOF a a
+	| ExitFailureImmutaballIOF
+	| PutStrLn String
 	| GetContents (String -> a)
 
 runImmutaballIO :: ImmutaballIO -> IO ()
-runImmutaballIO (Fixed (PutStrLn    str))          = putStrLn str
+runImmutaballIO (Fixed (DoneImmutaballIOF))        = return ()
+runImmutaballIO (Fixed (ThenImmutaballIOF a b))    = runImmutaballIO a >> runImmutaballIO b
+runImmutaballIO (Fixed (ExitFailureImmutaballIOF)) = exitFailure
+runImmutaballIO (Fixed (PutStrLn str))             = putStrLn str
 runImmutaballIO (Fixed (GetContents withContents)) = getContents >>= runImmutaballIO . withContents

@@ -7,22 +7,19 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Immutaball.Share.Context
+module Immutaball.Share.Context.Config
 	(
-		IBContext(..),
-		withSDL
+		ContextConfig(..),
+		defaultContextConfig
 	) where
 
 import Control.Lens
 
-import Immutaball.Share.Context.Config
-import Immutaball.Share.ImmutaballIO
-
--- | An Immutaball context instance.
-data IBContext = IBContext {
+data ContextConfig = ContextConfig {
 }
+	deriving (Eq, Ord)
+makeLenses ''ContextConfig
 
-makeLenses ''IBContext
-
-withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
-withSDL _cxtCfg = error "Internal error: not yet implemented."
+defaultContextConfig :: ContextConfig
+defaultContextConfig = ContextConfig {
+}

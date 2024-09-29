@@ -35,6 +35,7 @@ common all-components
 		InstanceSigs
 		ScopedTypeVariables
 		UndecidableInstances
+		RankNTypes
 
 	hs-source-dirs: src
 
@@ -79,6 +80,8 @@ common executable-components
 		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main
 		Immutaball.Share.Config
+		Immutaball.Share.Config.Parser
+		Immutaball.Share.Config.Printer
 		Immutaball.Share.Context
 		Immutaball.Share.Context.Config
 		Immutaball.Share.ImmutaballIO
@@ -109,6 +112,8 @@ library
 		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main
 		Immutaball.Share.Config
+		Immutaball.Share.Config.Parser
+		Immutaball.Share.Config.Printer
 		Immutaball.Share.Context
 		Immutaball.Share.Context.Config
 		Immutaball.Share.ImmutaballIO

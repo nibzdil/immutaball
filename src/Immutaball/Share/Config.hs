@@ -11,8 +11,9 @@ module Immutaball.Share.Config
 	(
 		StaticConfig(..), minClockPeriod, maxEventPeriod, maxStepFrameSize,
 			maxResponseFrameSize, defaultStaticDataDir, defaultUserDataDir,
-			defaultUserConfigDir,
+			defaultUserConfigDir, configFilename,
 		defaultStaticConfig,
+		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
 			textures, reflection, multisample, mipmap, aniso, background,
 			shadow, audioBuff, mouseSense, mouseResp, mouseInvert, mouseVsync,
@@ -32,6 +33,7 @@ module Immutaball.Share.Config
 			keyScoreNext, keyRotateFast, viewFov, viewDp, viewDc, viewDz,
 			rotateFast, rotateSlow, cheat, stats, screenshot, lockGoals,
 			camera1Speed, camera2Speed, camera3Speed, cameraTouchRotate,
+			player, ballFile, wiimoteAddr, replayName, language, theme,
 		defaultConfig
 	) where
 
@@ -58,7 +60,9 @@ data StaticConfig = StaticConfig {
 
 	_defaultStaticDataDir :: [Either DirectoryIO FilePath],
 	_defaultUserDataDir   :: [Either DirectoryIO FilePath],
-	_defaultUserConfigDir :: [Either DirectoryIO FilePath]
+	_defaultUserConfigDir :: [Either DirectoryIO FilePath],
+
+	_configFilename :: FilePath
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''StaticConfig
@@ -72,9 +76,12 @@ defaultStaticConfig = StaticConfig {
 
 	_defaultStaticDataDir = [Right "./data"],
 	_defaultUserDataDir   = [Left . Fixed $ GetXdgDirectoryData "immutaball"],
-	_defaultUserConfigDir = [Left . Fixed $ GetXdgDirectoryConfig "immutaball"]
+	_defaultUserConfigDir = [Left . Fixed $ GetXdgDirectoryConfig "immutaball"],
+
+	_configFilename = "neverballrc"
 }
 
+type Neverballrc = Config
 data Config = Config {
 	_fullscreen  :: Bool,  -- "fullscreen"     False
 	_display     :: Int,   -- "display"        0
@@ -170,7 +177,14 @@ data Config = Config {
 	_camera2Speed :: Int,  -- "camera_2_speed" 0
 	_camera3Speed :: Int,  -- "camera_3_speed" -1
 
-	_cameraTouchRotate :: Int  -- "touch_rotate" 16
+	_cameraTouchRotate :: Int,  -- "touch_rotate" 16
+
+	_player      :: String,  -- "player"       ""
+	_ballFile    :: String,  -- "ball_file"    "ball/basic-ball/basic-ball"
+	_wiimoteAddr :: String,  -- "wiimote_addr" ""
+	_replayName  :: String,  -- "replay_name"  "%s-%l"
+	_language    :: String,  -- "language"     ""
+	_theme       :: String   -- "theme"        "classic"
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Config
@@ -271,7 +285,14 @@ defaultConfig = Config {
 	_camera2Speed = 0,
 	_camera3Speed = -1,
 
-	_cameraTouchRotate = 16
+	_cameraTouchRotate = 16,
+
+	_player      = "",
+	_ballFile    = "ball/basic-ball/basic-ball",
+	_wiimoteAddr = "",
+	_replayName  = "%s-%l",
+	_language    = "",
+	_theme       = "classic"
 }
 
 -- TODO: print and parse.

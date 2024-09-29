@@ -28,14 +28,24 @@ module Immutaball.Share.ImmutaballIO
 		mkGetArgs,
 		mkGetEnvironment,
 		mkPutStrLn,
-		mkGetContents
+		mkGetContents,
+		mkDoesPathExist,
+		mkWriteBytes,
+		mkWriteText,
+		mkReadBytes,
+		mkReadText
 	) where
 
+import Control.Exception (catch, throwIO)
 import System.Environment
 import System.Exit
 
 import Control.Concurrent.Async
 import Control.Parallel
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.Text as T
+import qualified Data.Text.IO.Utf8 as TIO
+import System.Directory
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.Utils
@@ -57,6 +67,14 @@ data ImmutaballIOF a =
 	| PutStrLn String
 	| GetContents (String -> a)
 
+	| DoesPathExist FilePath (Bool -> a)
+	| WriteBytes FilePath BL.ByteString
+	| WriteText FilePath T.Text
+	| ReadBytes FilePath (Maybe (String -> a)) (BL.ByteString -> a)
+		-- ^ Optional error handler.
+	| ReadText FilePath (Maybe (String -> a)) (T.Text -> a)
+		-- ^ Optional error handler.
+
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO (Fixed (EmptyImmutaballIOF))       = return ()
 runImmutaballIO (Fixed (AndImmutaballIOF a b))     = a `par` b `par` concurrently_ (runImmutaballIO a) (runImmutaballIO b)
@@ -68,6 +86,13 @@ runImmutaballIO (Fixed (GetArgs withArgs_))        = getArgs >>= runImmutaballIO
 runImmutaballIO (Fixed (GetEnvironment withEnvironment)) = getEnvironment >>= runImmutaballIO . withEnvironment
 runImmutaballIO (Fixed (PutStrLn str))             = putStrLn str
 runImmutaballIO (Fixed (GetContents withContents)) = getContents >>= runImmutaballIO . withContents
+runImmutaballIO (Fixed (DoesPathExist path withExists)) = doesPathExist path >>= runImmutaballIO . withExists
+runImmutaballIO (Fixed (WriteBytes path contents)) = BL.writeFile path contents
+runImmutaballIO (Fixed (WriteText path contents))  = TIO.writeFile path contents
+runImmutaballIO (Fixed (ReadBytes path mwithErr withContents)) =
+	((Just <$> BL.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . runImmutaballIO . withErr . show) mwithErr e)) >>= maybe (return ()) (id . runImmutaballIO . withContents)
+runImmutaballIO (Fixed (ReadText path mwithErr withContents)) =
+	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . runImmutaballIO . withErr . show) mwithErr e)) >>= maybe (return ()) (id . runImmutaballIO . withContents)
 
 instance Semigroup (ImmutaballIOF ImmutaballIO) where
 	a <> b = Fixed a `AndImmutaballIOF` Fixed b
@@ -93,6 +118,12 @@ instance Functor (ImmutaballIOF) where
 	fmap  f (GetEnvironment withEnvironment) = GetEnvironment (f . withEnvironment)
 	fmap _f (PutStrLn str)                   = PutStrLn str
 	fmap  f (GetContents withContents)       = GetContents (f . withContents)
+
+	fmap  f (DoesPathExist path withExists)        = DoesPathExist path (f .  withExists)
+	fmap _f (WriteBytes path contents)             = WriteBytes path contents
+	fmap _f (WriteText path contents)              = WriteText path contents
+	fmap  f (ReadBytes path mwithErr withContents) = ReadBytes path ((f .) <$> mwithErr) (f . withContents)
+	fmap  f (ReadText path mwithErr withContents)  = ReadText path ((f .) <$> mwithErr) (f . withContents)
 
 -- | Add an ordering constraint.
 infixr 6 <>>
@@ -138,3 +169,18 @@ mkPutStrLn str = Fixed $ PutStrLn str
 
 mkGetContents :: (String -> ImmutaballIO) -> ImmutaballIO
 mkGetContents withContents = Fixed $ GetContents withContents
+
+mkDoesPathExist :: FilePath -> (Bool -> ImmutaballIO) -> ImmutaballIO
+mkDoesPathExist path withExists = Fixed $ DoesPathExist path withExists
+
+mkWriteBytes :: FilePath -> BL.ByteString -> ImmutaballIO
+mkWriteBytes path contents = Fixed $ WriteBytes path contents
+
+mkWriteText :: FilePath -> T.Text -> ImmutaballIO
+mkWriteText path contents = Fixed $ WriteText path contents
+
+mkReadBytes :: FilePath -> Maybe (String -> ImmutaballIO) -> (BL.ByteString -> ImmutaballIO) -> ImmutaballIO
+mkReadBytes path mwithErr withContents = Fixed $ ReadBytes path mwithErr withContents
+
+mkReadText :: FilePath -> Maybe (String -> ImmutaballIO) -> (T.Text -> ImmutaballIO) -> ImmutaballIO
+mkReadText path mwithErr withContents = Fixed $ ReadText path mwithErr withContents

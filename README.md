@@ -17,6 +17,11 @@ looking for the package-db path inside ./package-env.txt afterwards, and then
 building immutaball with e.g.
 ‘cabal build --package-db=~/.local/state/cabal/store/ghc-9.4.2/package.db’
 
+(You may also consider manually installing all deps with ‘cabal install --lib
+dep’ before building old deps like wires, to help it pick recent versions of
+dependencies, without later failing to choose newer dependencies because wires
+was earlier built with older dependencies and must be re-built.)
+
 #### Semialign change
 
 In Control/Wires/Internal.hs, replace

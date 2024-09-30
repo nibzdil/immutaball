@@ -33,7 +33,8 @@ module Immutaball.Share.ImmutaballIO
 		mkWriteBytes,
 		mkWriteText,
 		mkReadBytes,
-		mkReadText
+		mkReadText,
+		mkCreateDirectoryIfMissing
 	) where
 
 import Control.Exception (catch, throwIO)
@@ -70,10 +71,11 @@ data ImmutaballIOF a =
 	| DoesPathExist FilePath (Bool -> a)
 	| WriteBytes FilePath BL.ByteString
 	| WriteText FilePath T.Text
+	-- | Optional error handler.
 	| ReadBytes FilePath (Maybe (String -> a)) (BL.ByteString -> a)
-		-- ^ Optional error handler.
+	-- | Optional error handler.
 	| ReadText FilePath (Maybe (String -> a)) (T.Text -> a)
-		-- ^ Optional error handler.
+	| CreateDirectoryIfMissing FilePath
 
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO (Fixed (EmptyImmutaballIOF))       = return ()
@@ -93,6 +95,7 @@ runImmutaballIO (Fixed (ReadBytes path mwithErr withContents)) =
 	((Just <$> BL.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . runImmutaballIO . withErr . show) mwithErr e)) >>= maybe (return ()) (id . runImmutaballIO . withContents)
 runImmutaballIO (Fixed (ReadText path mwithErr withContents)) =
 	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . runImmutaballIO . withErr . show) mwithErr e)) >>= maybe (return ()) (id . runImmutaballIO . withContents)
+runImmutaballIO (Fixed (CreateDirectoryIfMissing path)) = createDirectoryIfMissing True path
 
 instance Semigroup (ImmutaballIOF ImmutaballIO) where
 	a <> b = Fixed a `AndImmutaballIOF` Fixed b
@@ -124,6 +127,7 @@ instance Functor (ImmutaballIOF) where
 	fmap _f (WriteText path contents)              = WriteText path contents
 	fmap  f (ReadBytes path mwithErr withContents) = ReadBytes path ((f .) <$> mwithErr) (f . withContents)
 	fmap  f (ReadText path mwithErr withContents)  = ReadText path ((f .) <$> mwithErr) (f . withContents)
+	fmap _f (CreateDirectoryIfMissing path)        = CreateDirectoryIfMissing path
 
 -- | Add an ordering constraint.
 infixr 6 <>>
@@ -184,3 +188,6 @@ mkReadBytes path mwithErr withContents = Fixed $ ReadBytes path mwithErr withCon
 
 mkReadText :: FilePath -> Maybe (String -> ImmutaballIO) -> (T.Text -> ImmutaballIO) -> ImmutaballIO
 mkReadText path mwithErr withContents = Fixed $ ReadText path mwithErr withContents
+
+mkCreateDirectoryIfMissing :: FilePath -> ImmutaballIO
+mkCreateDirectoryIfMissing path = Fixed $ CreateDirectoryIfMissing path

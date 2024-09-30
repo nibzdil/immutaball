@@ -9,7 +9,8 @@
 
 module Immutaball.Share.Context
 	(
-		IBContext(..), ibStaticDataDir, ibUserDataDir, ibConfigDataDir,
+		IBDirs(..), ibStaticDataDir, ibUserDataDir, ibUserConfigDir,
+		IBContext(..), ibDirs,
 		withSDL
 	) where
 
@@ -18,13 +19,18 @@ import Control.Lens
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 
--- | An Immutaball context instance.
-data IBContext = IBContext {
+data IBDirs = IBDirs {
 	_ibStaticDataDir :: FilePath,
 	_ibUserDataDir   :: FilePath,
-	_ibConfigDataDir :: FilePath
+	_ibUserConfigDir :: FilePath
 }
+	deriving (Eq, Ord, Show)
+makeLenses ''IBDirs
 
+-- | An Immutaball context instance.
+data IBContext = IBContext {
+	_ibDirs :: IBDirs
+}
 makeLenses ''IBContext
 
 withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO

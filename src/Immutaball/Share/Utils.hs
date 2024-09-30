@@ -9,7 +9,8 @@
 
 module Immutaball.Share.Utils
 	(
-		Fixed(..), fixed
+		Fixed(..), fixed,
+		getFixed
 	) where
 
 import Control.Lens
@@ -24,3 +25,6 @@ instance (Ord (f (Fixed f))) => Ord (Fixed f) where
 	(Fixed a) <= (Fixed b) = a <= b
 instance (Show (f (Fixed f))) => Show (Fixed f) where
 	show (Fixed a) = show a
+
+getFixed :: Fixed f -> f (Fixed f)
+getFixed = (^.fixed)

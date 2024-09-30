@@ -58,9 +58,9 @@ data StaticConfig = StaticConfig {
 		-- step.  The wire may opt to priority queue responses exceeding the
 		-- capacity if there's a response it doesn't want to drop.
 
-	_defaultStaticDataDir :: [Either DirectoryIO FilePath],
-	_defaultUserDataDir   :: [Either DirectoryIO FilePath],
-	_defaultUserConfigDir :: [Either DirectoryIO FilePath],
+	_defaultStaticDataDir :: Either DirectoryIO FilePath,
+	_defaultUserDataDir   :: Either DirectoryIO FilePath,
+	_defaultUserConfigDir :: Either DirectoryIO FilePath,
 
 	_configFilename :: FilePath
 }
@@ -74,9 +74,9 @@ defaultStaticConfig = StaticConfig {
 	_maxStepFrameSize     = Just 8,      -- ^ Don't request more than 8 at a time.
 	_maxResponseFrameSize = Nothing,     -- ^ Don't request more than 8 at a time.
 
-	_defaultStaticDataDir = [Right "./data"],
-	_defaultUserDataDir   = [Left . Fixed $ GetXdgDirectoryData "immutaball"],
-	_defaultUserConfigDir = [Left . Fixed $ GetXdgDirectoryConfig "immutaball"],
+	_defaultStaticDataDir = Right "./data",
+	_defaultUserDataDir   = Left . Fixed $ GetXdgDirectoryData "immutaball",
+	_defaultUserConfigDir = Left . Fixed $ GetXdgDirectoryConfig "immutaball",
 
 	_configFilename = "neverballrc"
 }

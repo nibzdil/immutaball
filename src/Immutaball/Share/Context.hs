@@ -7,25 +7,34 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- | Just set up SDL.
 module Immutaball.Share.Context
 	(
-		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc,
+		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc0,
 		withSDL
 	) where
 
 import Control.Lens
+import qualified SDL.Init
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.SDLIO
 
 -- | An Immutaball context instance.
 data IBContext = IBContext {
 	_ibStaticConfig :: StaticConfig,
 	_ibDirs         :: IBDirs,
-	_ibNeverballrc  :: Neverballrc
+	_ibNeverballrc0 :: Neverballrc
 }
 makeLenses ''IBContext
 
 withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
-withSDL _cxtCfg = error "Internal error: not yet implemented."
+withSDL cxtCfg withCxt =
+	mkSDLIO . SDLInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] $
+	withCxt $ IBContext {
+		_ibStaticConfig = cxtCfg^.ctxCfgStaticConfig,
+		_ibDirs         = cxtCfg^.ctxCfgDirs,
+		_ibNeverballrc0 = cxtCfg^.ctxCfgNeverballrc
+	}

@@ -9,24 +9,22 @@
 
 module Immutaball.Share.Context.Config
 	(
-		ContextConfig(..), ctxCfgStaticDataDir, ctxCfgUserDataDir,
-			ctxCfgConfigDataDir,
-		defaultContextConfig
+		IBDirs(..), ibStaticDataDir, ibUserDataDir, ibUserConfigDir,
+		ContextConfig(..), ctxIBDirs
 	) where
 
 import Control.Lens
 
+data IBDirs = IBDirs {
+	_ibStaticDataDir :: FilePath,
+	_ibUserDataDir   :: FilePath,
+	_ibUserConfigDir :: FilePath
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''IBDirs
+
 data ContextConfig = ContextConfig {
-	_ctxCfgStaticDataDir :: Maybe FilePath,
-	_ctxCfgUserDataDir   :: Maybe FilePath,
-	_ctxCfgConfigDataDir :: Maybe FilePath
+	_ctxIBDirs :: IBDirs
 }
 	deriving (Eq, Ord)
 makeLenses ''ContextConfig
-
-defaultContextConfig :: ContextConfig
-defaultContextConfig = ContextConfig {
-	_ctxCfgStaticDataDir = Nothing,
-	_ctxCfgUserDataDir   = Nothing,
-	_ctxCfgConfigDataDir = Nothing
-}

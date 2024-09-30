@@ -38,7 +38,8 @@ import Immutaball.Ball.CLI.Config
 import Immutaball.Share.Config
 import Immutaball.Share.Config.Parser
 import Immutaball.Share.Config.Printer
-import Immutaball.Share.Context
+--import Immutaball.Share.Context
+import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 
 main :: IO ()

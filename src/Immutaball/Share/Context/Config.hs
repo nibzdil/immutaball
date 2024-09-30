@@ -10,10 +10,12 @@
 module Immutaball.Share.Context.Config
 	(
 		IBDirs(..), ibStaticDataDir, ibUserDataDir, ibUserConfigDir,
-		ContextConfig(..), ctxIBDirs
+		ContextConfig(..), ctxCfgStaticConfig, ctxCfgDirs, ctxCfgNeverballrc
 	) where
 
 import Control.Lens
+
+import Immutaball.Share.Config
 
 data IBDirs = IBDirs {
 	_ibStaticDataDir :: FilePath,
@@ -24,7 +26,9 @@ data IBDirs = IBDirs {
 makeLenses ''IBDirs
 
 data ContextConfig = ContextConfig {
-	_ctxIBDirs :: IBDirs
+	_ctxCfgStaticConfig :: StaticConfig,
+	_ctxCfgDirs         :: IBDirs,
+	_ctxCfgNeverballrc  :: Neverballrc
 }
 	deriving (Eq, Ord)
 makeLenses ''ContextConfig

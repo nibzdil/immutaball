@@ -9,18 +9,21 @@
 
 module Immutaball.Share.Context
 	(
-		IBContext(..), ibDirs,
+		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc,
 		withSDL
 	) where
 
 import Control.Lens
 
+import Immutaball.Share.Config
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 
 -- | An Immutaball context instance.
 data IBContext = IBContext {
-	_ibDirs :: IBDirs
+	_ibStaticConfig :: StaticConfig,
+	_ibDirs         :: IBDirs,
+	_ibNeverballrc  :: Neverballrc
 }
 makeLenses ''IBContext
 

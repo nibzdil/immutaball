@@ -20,7 +20,8 @@ module Immutaball.Ball.CLI
 		cliIBDirs,
 		getDefaultIBDirs,
 		immutaballWithCLIConfig',
-		immutaballWithNeverballrc
+		immutaballWithNeverballrc,
+		immutaballWithContext
 	) where
 
 -- base imports
@@ -38,7 +39,7 @@ import Immutaball.Ball.CLI.Config
 import Immutaball.Share.Config
 import Immutaball.Share.Config.Parser
 import Immutaball.Share.Config.Printer
---import Immutaball.Share.Context
+import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 
@@ -190,7 +191,21 @@ immutaballWithCLIConfig' x'cfg cliCfg =
 
 --- | Run immutaball after getting neverballrc and dirs.
 immutaballWithNeverballrc :: StaticConfig -> CLIConfig -> IBDirs -> Neverballrc -> ImmutaballIO
-immutaballWithNeverballrc _x'cfg _cliCfg _ibDirs _nrcCfg =
+immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
+	result
+	where
+		result :: ImmutaballIO
+		result = withSDL ctxCfg immutaballWithContext
+		ctxCfg :: ContextConfig
+		ctxCfg = ContextConfig {
+			_ctxCfgStaticConfig = x'cfg,
+			_ctxCfgDirs         = ibDirs_,
+			_ctxCfgNeverballrc  = nrcCfg
+		}
+
+--- | Run immutaball after setting up an immutaball context.
+immutaballWithContext :: IBContext -> ImmutaballIO
+immutaballWithContext _cxt =
 	result
 	where
 		result :: ImmutaballIO

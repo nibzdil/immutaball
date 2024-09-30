@@ -5,26 +5,27 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Immutaball.Share.State
 	(
 		Immutaball,
-		ImmutaballF(..), immutaballF,
-		getImmutaballF,
 		RequestFrame,
 		Request(..),
 		ResponseFrame,
 		Response(..)
 	) where
 
-import Control.Lens
-import Control.Monad.Trans.Except
 import Control.Wire
 import Data.Functor.Identity
 
 import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.Utils
+
+-- | An immutaball wire.
+--
+-- Wire is perhaps like Fixed StateT.
+--
+-- > data Wire m a b = Wire { _stepWire :: a -> m (b, Wire m a b) }
+type Immutaball = Wire Maybe RequestFrame ResponseFrame
 
 type RequestFrame = [Request]
 data Request =
@@ -37,29 +38,8 @@ data Request =
 	| Keybd Int Bool         -- ^ keyboard char down
 	| Buttn Int Bool         -- ^ button button down
 	| Touch Int Int Float Float Float Float Float  -- ^ finger-touch device finger x y dx dy pressure
-
-	| IOResponse Int 
 	deriving (Eq, Ord, Show)
 
 type ResponseFrame = [Response]
 data Response =
-	ImmutaballIO
-
--- | An immutaball wire.
---
--- Wire is perhaps like Fixed StateT.
---
--- > data Wire m a b = Wire { _stepWire :: a -> m (b, Wire m a b) }
---
--- We start with:
--- > type Immutaball = Wire Identity RequestFrame ResponseFrame
---
--- But to allow wires when stepped to return an ImmutaballIO instead, we add an
--- ExceptionT to get ‘Either’, and this requires Fixed for self-reference.
-type Immutaball = Fixed ImmutaballF
-newtype ImmutaballF a = ImmutaballF { _immutaballF :: Wire (Except (ImmutaballIOF (ResponseFrame, a))) RequestFrame ResponseFrame }
-	--deriving (Arrow, ArrowChoice, ArrowLoop, Choice, Category, Functor, Applicative)
-makeLenses ''ImmutaballF
-
-getImmutaballF :: ImmutaballF a -> Wire (Except (ImmutaballIOF (ResponseFrame, a))) RequestFrame ResponseFrame
-getImmutaballF = (^.immutaballF)
+	ImmutaballIO Immutaball

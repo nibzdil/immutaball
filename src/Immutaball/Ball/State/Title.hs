@@ -13,7 +13,6 @@ module Immutaball.Ball.State.Title
 	) where
 
 import Control.Arrow
-import Data.Functor.Identity
 
 import Control.Wire
 
@@ -21,6 +20,6 @@ import Immutaball.Share.Context
 import Immutaball.Share.State
 
 -- TODO
-mkTitleState :: IBContext -> Wire Identity RequestFrame ResponseFrame
+mkTitleState :: IBContext -> Immutaball
 mkTitleState _cxt0 = proc _requestFrame -> do
 	returnA -< []

@@ -8,13 +8,24 @@
 
 module Immutaball.Share.State
 	(
+		Immutaball,
 		RequestFrame,
 		Request(..),
 		ResponseFrame,
 		Response(..)
 	) where
 
+import Control.Wire
+import Data.Functor.Identity
+
 import Immutaball.Share.ImmutaballIO
+
+-- | An immutaball wire.
+--
+-- Wire is perhaps like Fixed StateT.
+--
+-- > data Wire m a b = Wire { _stepWire :: a -> m (b, Wire m a b) }
+type Immutaball = Wire Identity RequestFrame ResponseFrame
 
 type RequestFrame = [Request]
 data Request =
@@ -31,4 +42,4 @@ data Request =
 
 type ResponseFrame = [Response]
 data Response =
-	ImmutaballIO ImmutaballIO
+	ImmutaballIO

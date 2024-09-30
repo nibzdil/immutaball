@@ -12,8 +12,11 @@ module Immutaball.Share.State
 		RequestFrame,
 		Request(..),
 		ResponseFrame,
-		Response(..)
+		Response(..),
+		closeFork
 	) where
+
+import Control.Arrow
 
 import Control.Wire
 import Data.Functor.Identity
@@ -42,4 +45,11 @@ data Request =
 
 type ResponseFrame = [Response]
 data Response =
-	ImmutaballIO Immutaball
+	  PureFork         Immutaball
+	| ImmutaballIOFork (ImmutaballIOF Immutaball)
+
+-- | End a wire.
+--
+-- This can be combined with 'ImmutaballIOFork' to keep a single wire running.
+closeFork :: Immutaball
+closeFork = withM returnA (const Nothing)

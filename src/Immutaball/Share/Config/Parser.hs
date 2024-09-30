@@ -11,13 +11,15 @@ module Immutaball.Share.Config.Parser
 		nat,
 		boolInt,
 		strVal,
-		natConf,
+		intConf,
 		boolConf,
 		stringConf,
 		neverballrc,
 		parseNeverballrc,
 		parseNeverballrc',
 	) where
+
+import Control.Monad
 
 import Text.Parsec
 import Text.Read
@@ -30,6 +32,15 @@ nat = do
 	let val = readMaybe digits  :: Maybe Integer
 	maybe (unexpected "failed to parse nat") return (fromIntegral <$> val)
 
+int :: (Integral i) => Parsec String () i
+int = do
+	sign0 <- optionMaybe (char '-')
+	sign1 <- optionMaybe (char '+')
+	let sign0f = maybe id (const negate) sign0
+	let sign1f = maybe id (const id)     sign1
+	let next | (Nothing, Nothing) <- (sign0, sign1) = nat | otherwise = int
+	sign0f . sign1f <$> next
+
 boolInt :: Parsec String () Bool
 boolInt = do
 	val <- nat
@@ -37,117 +48,121 @@ boolInt = do
 
 strVal :: Parsec String () String
 strVal = do
-	manyTill anyChar endOfLine
+	manyTill anyChar (lookAhead . try $ endOfLine)
 
-natConf :: (Integral i) => String -> Parsec String () i
-natConf key = do
-	string key *> space *> spaces *> nat <* endOfLine
+intConf :: (Integral i) => String -> Parsec String () i
+intConf key = do
+	string key *> space *> spaces *> int <* endOfLine
 boolConf :: String -> Parsec String () Bool
 boolConf key = do
 	string key *> space *> spaces *> boolInt <* endOfLine
+stringConf' :: Bool -> String -> Parsec String () String
+stringConf' allowNospaceEol key = do
+	--string key *> space' *> spaces *> strVal <* endOfLine
+	string key *> space' *> manyTill space (lookAhead . try $ void endOfLine <|> void strVal) *> strVal <* endOfLine
+	where space' | not allowNospaceEol = void (notFollowedBy endOfLine *> space) | otherwise = pure ()
 stringConf :: String -> Parsec String () String
-stringConf key = do
-	string key *> space *> spaces *> strVal <* endOfLine
+stringConf = stringConf' True
 
 -- | This simple parser requires the same order.
 -- TODO: support out of order.
 neverballrc :: Parsec String () Config
 neverballrc = Config <$>
 	boolConf "fullscreen" <*>
-	natConf  "display" <*>
-	natConf  "width" <*>
-	natConf  "height" <*>
+	intConf  "display" <*>
+	intConf  "width" <*>
+	intConf  "height" <*>
 	boolConf "stereo" <*>
-	natConf  "camera" <*>
+	intConf  "camera" <*>
 	boolConf "textures" <*>
 	boolConf "reflection" <*>
 	boolConf "multisample" <*>
 	boolConf "mipmap" <*>
-	natConf  "aniso" <*>
+	intConf  "aniso" <*>
 	boolConf "background" <*>
 	boolConf "shadow" <*>
-	natConf  "audio_buff" <*>
-	natConf  "mouse_sense" <*>
-	natConf  "mouse_response" <*>
+	intConf  "audio_buff" <*>
+	intConf  "mouse_sense" <*>
+	intConf  "mouse_response" <*>
 	boolConf "mouse_invert" <*>
 	boolConf "vsync" <*>
 	boolConf "hmd" <*>
 	boolConf "highdpi" <*>
 
-	natConf  "mouse_camera_1" <*>
-	natConf  "mouse_camera_1" <*>
-	natConf  "mouse_camera_toggle" <*>
-	natConf  "mouse_camera_l" <*>
-	natConf  "mouse_camera_r" <*>
+	intConf  "mouse_camera_1" <*>
+	intConf  "mouse_camera_1" <*>
+	intConf  "mouse_camera_toggle" <*>
+	intConf  "mouse_camera_l" <*>
+	intConf  "mouse_camera_r" <*>
 
-	natConf  "nice" <*>
-	natConf  "fps" <*>
-	natConf  "sound_volume" <*>
-	natConf  "music_volume" <*>
+	intConf  "nice" <*>
+	intConf  "fps" <*>
+	intConf  "sound_volume" <*>
+	intConf  "music_volume" <*>
 
 	boolConf "joystick" <*>
-	natConf  "joystick_response" <*>
-	natConf  "joystick_axis_x0" <*>
-	natConf  "joystick_axis_x1" <*>
-	natConf  "joystick_axis_y0" <*>
-	natConf  "joystick_axis_y1" <*>
+	intConf  "joystick_response" <*>
+	intConf  "joystick_axis_x0" <*>
+	intConf  "joystick_axis_x1" <*>
+	intConf  "joystick_axis_y0" <*>
+	intConf  "joystick_axis_y1" <*>
 	boolConf "joystick_axis_x0" <*>
 	boolConf "joystick_axis_x1" <*>
 	boolConf "joystick_axis_y0" <*>
 	boolConf "joystick_axis_y1" <*>
 
-	natConf  "joystick_button_a" <*>
-	natConf  "joystick_button_b" <*>
-	natConf  "joystick_button_x" <*>
-	natConf  "joystick_button_y" <*>
-	natConf  "joystick_button_l1" <*>
-	natConf  "joystick_button_r1" <*>
-	natConf  "joystick_button_l2" <*>
-	natConf  "joystick_button_r2" <*>
-	natConf  "joystick_button_select" <*>
-	natConf  "joystick_button_start" <*>
-	natConf  "joystick_dpad_l" <*>
-	natConf  "joystick_dpad_r" <*>
-	natConf  "joystick_dpad_u" <*>
-	natConf  "joystick_dpad_d" <*>
+	intConf  "joystick_button_a" <*>
+	intConf  "joystick_button_b" <*>
+	intConf  "joystick_button_x" <*>
+	intConf  "joystick_button_y" <*>
+	intConf  "joystick_button_l1" <*>
+	intConf  "joystick_button_r1" <*>
+	intConf  "joystick_button_l2" <*>
+	intConf  "joystick_button_r2" <*>
+	intConf  "joystick_button_select" <*>
+	intConf  "joystick_button_start" <*>
+	intConf  "joystick_dpad_l" <*>
+	intConf  "joystick_dpad_r" <*>
+	intConf  "joystick_dpad_u" <*>
+	intConf  "joystick_dpad_d" <*>
 
 	boolConf "wiimote_invert_pitch" <*>
 	boolConf "wiimote_invert_roll" <*>
-	natConf  "wiimote_pitch_sensitivity" <*>
-	natConf  "wiimote_roll_sensitivity" <*>
-	natConf  "wiimote_smooth_alpha" <*>
+	intConf  "wiimote_pitch_sensitivity" <*>
+	intConf  "wiimote_roll_sensitivity" <*>
+	intConf  "wiimote_smooth_alpha" <*>
 	boolConf "wiimote_hold_sideways" <*>
 
-	natConf  "key_camera_1" <*>
-	natConf  "key_camera_2" <*>
-	natConf  "key_camera_3" <*>
-	natConf  "key_camera_toggle" <*>
-	natConf  "key_camera_r" <*>
-	natConf  "key_camera_l" <*>
-	natConf  "key_forward" <*>
-	natConf  "key_backward" <*>
-	natConf  "key_left" <*>
-	natConf  "key_right" <*>
-	natConf  "key_restart" <*>
-	natConf  "key_score_next" <*>
-	natConf  "key_rotate_fast" <*>
+	intConf  "key_camera_1" <*>
+	intConf  "key_camera_2" <*>
+	intConf  "key_camera_3" <*>
+	intConf  "key_camera_toggle" <*>
+	intConf  "key_camera_r" <*>
+	intConf  "key_camera_l" <*>
+	intConf  "key_forward" <*>
+	intConf  "key_backward" <*>
+	intConf  "key_left" <*>
+	intConf  "key_right" <*>
+	intConf  "key_restart" <*>
+	intConf  "key_score_next" <*>
+	intConf  "key_rotate_fast" <*>
 
-	natConf  "view_fov" <*>
-	natConf  "view_dp" <*>
-	natConf  "view_dc" <*>
-	natConf  "view_dz" <*>
-	natConf  "rotate_fast" <*>
-	natConf  "rotate_slow" <*>
+	intConf  "view_fov" <*>
+	intConf  "view_dp" <*>
+	intConf  "view_dc" <*>
+	intConf  "view_dz" <*>
+	intConf  "rotate_fast" <*>
+	intConf  "rotate_slow" <*>
 	boolConf "cheat" <*>
 	boolConf "stats" <*>
 	boolConf "screenshot" <*>
 	boolConf "lock_goals" <*>
 
-	natConf  "camera_1_speed" <*>
-	natConf  "camera_2_speed" <*>
-	natConf  "camera_3_speed" <*>
+	intConf  "camera_1_speed" <*>
+	intConf  "camera_2_speed" <*>
+	intConf  "camera_3_speed" <*>
 
-	natConf  "touch_rotate" <*>
+	intConf  "touch_rotate" <*>
 
 	stringConf "player" <*>
 	stringConf "ball_file" <*>

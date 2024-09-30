@@ -36,12 +36,14 @@ import System.FilePath
 
 -- internal imports
 import Immutaball.Ball.CLI.Config
+import Immutaball.Ball.State.Title
 import Immutaball.Share.Config
 import Immutaball.Share.Config.Parser
 import Immutaball.Share.Config.Printer
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.State
 
 main :: IO ()
 main = immutaballMain
@@ -203,9 +205,9 @@ immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
 			_ctxCfgNeverballrc  = nrcCfg
 		}
 
---- | Run immutaball after setting up an immutaball context.
+--- | Run immutaball after setting up an initial immutaball context.
 immutaballWithContext :: IBContext -> ImmutaballIO
-immutaballWithContext _cxt =
+immutaballWithContext _cxt0 =
 	result
 	where
 		result :: ImmutaballIO

@@ -36,6 +36,7 @@ common all-components
 		ScopedTypeVariables
 		UndecidableInstances
 		RankNTypes
+		Arrows
 
 	hs-source-dirs: src
 
@@ -76,6 +77,7 @@ common executable-components
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Main
+		Immutaball.Ball.State.Title
 		Immutaball.Putt.CLI
 		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main
@@ -109,6 +111,7 @@ library
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Main
+		Immutaball.Ball.State.Title
 		Immutaball.Putt.CLI
 		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main

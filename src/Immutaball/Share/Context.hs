@@ -7,7 +7,6 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Just set up SDL.
 module Immutaball.Share.Context
 	(
 		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc0,
@@ -28,9 +27,14 @@ data IBContext = IBContext {
 	_ibDirs         :: IBDirs,
 	-- | The _initial_ neverballrc.
 	_ibNeverballrc0 :: Neverballrc
+
+	-- TODO: maybe window and gl context.
 }
 makeLenses ''IBContext
 
+-- | Just set up SDL.
+--
+-- Does not create a window or set up OpenGL.
 withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
 	mkSDLIO . SDLInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] $

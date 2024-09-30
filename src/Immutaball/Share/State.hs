@@ -14,6 +14,8 @@ module Immutaball.Share.State
 		Response(..)
 	) where
 
+import Immutaball.Share.ImmutaballIO
+
 type RequestFrame = [Request]
 data Request =
 	  Clock Float            -- ^ timer dt
@@ -29,5 +31,4 @@ data Request =
 
 type ResponseFrame = [Response]
 data Response =
-	TODO
-	deriving (Eq, Ord, Show)
+	ImmutaballIO ImmutaballIO

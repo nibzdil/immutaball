@@ -17,6 +17,7 @@ module Immutaball.Share.ImmutaballIO
 
 		-- * Runners
 		runDirectoryImmutaballIO,
+		runSDLImmutaballIO,
 
 		-- * ImutaballIO aliases that apply the Fixed wrapper
 		mkEmptyImmutaballIO,
@@ -34,7 +35,8 @@ module Immutaball.Share.ImmutaballIO
 		mkWriteText,
 		mkReadBytes,
 		mkReadText,
-		mkCreateDirectoryIfMissing
+		mkCreateDirectoryIfMissing,
+		mkSDLIO
 	) where
 
 import Control.Exception (catch, throwIO)
@@ -49,6 +51,7 @@ import qualified Data.Text.IO.Utf8 as TIO
 import System.Directory
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
+import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils
 
 -- * ImmutaballIO
@@ -77,6 +80,8 @@ data ImmutaballIOF a =
 	| ReadText FilePath (Maybe (String -> a)) (T.Text -> a)
 	| CreateDirectoryIfMissing FilePath
 
+	| SDLIO (SDLIOF a)
+
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO (Fixed (EmptyImmutaballIOF))       = return ()
 runImmutaballIO (Fixed (AndImmutaballIOF a b))     = a `par` b `par` concurrently_ (runImmutaballIO a) (runImmutaballIO b)
@@ -96,6 +101,7 @@ runImmutaballIO (Fixed (ReadBytes path mwithErr withContents)) =
 runImmutaballIO (Fixed (ReadText path mwithErr withContents)) =
 	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . runImmutaballIO . withErr . show) mwithErr e)) >>= maybe (return ()) (id . runImmutaballIO . withContents)
 runImmutaballIO (Fixed (CreateDirectoryIfMissing path)) = createDirectoryIfMissing True path
+runImmutaballIO (Fixed (SDLIO sdlio))              = runSDLIOIO $ runImmutaballIO <$> sdlio
 
 instance Semigroup (ImmutaballIOF ImmutaballIO) where
 	a <> b = Fixed a `AndImmutaballIOF` Fixed b
@@ -129,6 +135,8 @@ instance Functor (ImmutaballIOF) where
 	fmap  f (ReadText path mwithErr withContents)  = ReadText path ((f .) <$> mwithErr) (f . withContents)
 	fmap _f (CreateDirectoryIfMissing path)        = CreateDirectoryIfMissing path
 
+	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
+
 -- | Add an ordering constraint.
 infixr 6 <>>
 (<>>) :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
@@ -141,6 +149,10 @@ runDirectoryImmutaballIO (Fixed (GetXdgDirectoryData   path)) withDirectory = Fi
 runDirectoryImmutaballIO (Fixed (GetXdgDirectoryConfig path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryConfig path) withDirectory
 runDirectoryImmutaballIO (Fixed (GetXdgDirectoryCache  path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryCache  path) withDirectory
 runDirectoryImmutaballIO (Fixed (GetXdgDirectoryState  path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryState  path) withDirectory
+
+runSDLImmutaballIO :: SDLIO -> ImmutaballIO
+runSDLImmutaballIO sdlio = Fixed . SDLIO $ runSDLImmutaballIO <$> getFixed sdlio
+--runSDLImmutaballIO (Fixed (SDLInit subsystems sdlio)) = Fixed . SDLIO $ SDLInit subsystems (runSDLImmutaballIO sdlio)
 
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
@@ -191,3 +203,6 @@ mkReadText path mwithErr withContents = Fixed $ ReadText path mwithErr withConte
 
 mkCreateDirectoryIfMissing :: FilePath -> ImmutaballIO
 mkCreateDirectoryIfMissing path = Fixed $ CreateDirectoryIfMissing path
+
+mkSDLIO :: SDLIOF ImmutaballIO -> ImmutaballIO
+mkSDLIO sdlio = Fixed $ SDLIO sdlio

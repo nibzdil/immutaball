@@ -86,6 +86,7 @@ common executable-components
 		Immutaball.Share.Context.Config
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.ImmutaballIO.DirectoryIO
+		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.State
 		Immutaball.Share.Utils
 
@@ -118,6 +119,7 @@ library
 		Immutaball.Share.Context.Config
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.ImmutaballIO.DirectoryIO
+		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.State
 		Immutaball.Share.Utils
 

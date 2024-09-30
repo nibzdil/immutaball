@@ -26,6 +26,7 @@ import Immutaball.Share.ImmutaballIO.SDLIO
 data IBContext = IBContext {
 	_ibStaticConfig :: StaticConfig,
 	_ibDirs         :: IBDirs,
+	-- | The _initial_ neverballrc.
 	_ibNeverballrc0 :: Neverballrc
 }
 makeLenses ''IBContext

@@ -53,6 +53,7 @@ common all-components
 		pipes         >= 4.3.16   && < 4.4,
 		lens          >= 5.3.2    && < 5.4,
 		parallel      >= 3.2.2.0  && < 3.3,
+		stm           >= 2.5.3.1  && < 2.6,
 		async         >= 2.2.5    && < 2.3,
 		wires         >  0.2.1    && < 0.3,
 		mtl           >= 2.2      && < 2.4,

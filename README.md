@@ -23,7 +23,9 @@ building immutaball with e.g.
 (You may also consider manually installing all deps with ‘cabal install --lib
 dep’ before building old deps like wires, to help it pick recent versions of
 dependencies, without later failing to choose newer dependencies because wires
-was earlier built with older dependencies and must be re-built.)
+was earlier built with older dependencies and must be re-built.  Alternatively,
+comment out ‘wires’ from the .cabal file, run cabal build so it builds the
+dependencies except for ‘wires’, and then uncomment ‘wires’.)
 
 #### Semialign change
 

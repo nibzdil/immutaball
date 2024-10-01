@@ -16,7 +16,7 @@ module Immutaball.Share.Wire
 	) where
 
 import Prelude ()
-import Immutaball.Prelude
+--import Immutaball.Prelude
 
 import Control.Wire.Internal
 

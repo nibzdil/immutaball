@@ -13,11 +13,11 @@ module Immutaball.Ball.State.Title
 	) where
 
 import Prelude ()
-import Immutaball.Prelude
+--import Immutaball.Prelude
 
 import Control.Arrow
 
-import Control.Wire
+--import Control.Wire
 
 import Immutaball.Share.Context
 import Immutaball.Share.State

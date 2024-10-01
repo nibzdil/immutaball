@@ -25,7 +25,6 @@ import Immutaball.Prelude
 import Control.Arrow
 
 import Control.Wire
-import Control.Wire.Internal
 import Data.Functor.Identity
 
 import Immutaball.Share.ImmutaballIO

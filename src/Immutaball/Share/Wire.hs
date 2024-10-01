@@ -7,13 +7,12 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Expose primitives that IMO should be already non-internal, or at the very
--- least accessible through a non-internal interface.  Weirdly, I found no way
--- to represent a function equivalent to ‘Wire’ using only the non-internal
--- ‘wires’ API.
 module Immutaball.Share.Wire
 	(
+		-- * Primitives
 		wire
+
+		-- * Utilities
 	) where
 
 import Prelude ()
@@ -21,5 +20,13 @@ import Immutaball.Prelude
 
 import Control.Wire.Internal
 
+-- * Primitives
+
+-- | Expose primitives that IMO should be already non-internal, or at the very
+-- least accessible through a non-internal interface.  Weirdly, I found no way
+-- to represent a function equivalent to ‘Wire’ using only the non-internal
+-- ‘wires’ API.
 wire :: (a -> m (b, Wire m a b)) -> Wire m a b
 wire = Wire
+
+-- * Utilities

@@ -36,6 +36,7 @@ module Immutaball.Share.ImmutaballIO
 		mkReadBytes,
 		mkReadText,
 		mkCreateDirectoryIfMissing,
+		mkForkOS,
 		mkSDLIO
 	) where
 
@@ -82,6 +83,7 @@ data ImmutaballIOF a =
 	-- | Optional error handler.
 	| ReadText FilePath (Maybe (String -> a)) (T.Text -> a)
 	| CreateDirectoryIfMissing FilePath
+	| ForkOS a
 
 	| SDLIO (SDLIOF a)
 
@@ -104,6 +106,7 @@ runImmutaballIO (Fixed (ReadBytes path mwithErr withContents)) =
 runImmutaballIO (Fixed (ReadText path mwithErr withContents)) =
 	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . runImmutaballIO . withErr . show) mwithErr e)) >>= maybe (return ()) (id . runImmutaballIO . withContents)
 runImmutaballIO (Fixed (CreateDirectoryIfMissing path)) = createDirectoryIfMissing True path
+runImmutaballIO (Fixed (ForkOS ibio))              = forkOS $ runImmutaballIO ibio
 runImmutaballIO (Fixed (SDLIO sdlio))              = runSDLIOIO $ runImmutaballIO <$> sdlio
 
 instance Semigroup (ImmutaballIOF ImmutaballIO) where
@@ -137,6 +140,7 @@ instance Functor (ImmutaballIOF) where
 	fmap  f (ReadBytes path mwithErr withContents) = ReadBytes path ((f .) <$> mwithErr) (f . withContents)
 	fmap  f (ReadText path mwithErr withContents)  = ReadText path ((f .) <$> mwithErr) (f . withContents)
 	fmap _f (CreateDirectoryIfMissing path)        = CreateDirectoryIfMissing path
+	fmap  f (ForkOS ibio)                          = ForkOS (f ibio)
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
 
@@ -206,6 +210,9 @@ mkReadText path mwithErr withContents = Fixed $ ReadText path mwithErr withConte
 
 mkCreateDirectoryIfMissing :: FilePath -> ImmutaballIO
 mkCreateDirectoryIfMissing path = Fixed $ CreateDirectoryIfMissing path
+
+mkForkOS :: ImmutaballIO -> ImmutaballIO
+mkForkOS ibio = Fixed $ ForkOS ibio
 
 mkSDLIO :: SDLIOF ImmutaballIO -> ImmutaballIO
 mkSDLIO sdlio = Fixed $ SDLIO sdlio

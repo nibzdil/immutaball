@@ -19,6 +19,9 @@ module Immutaball.Share.State
 		immutaballIOLinear
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Arrow
 
 import Control.Wire

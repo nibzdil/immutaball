@@ -19,6 +19,9 @@ module Immutaball.Share.Config.Parser
 		parseNeverballrc',
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Monad
 
 import Text.Parsec

@@ -37,6 +37,9 @@ module Immutaball.Share.Config
 		defaultConfig
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Lens
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO

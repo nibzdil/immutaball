@@ -21,6 +21,9 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		mkSDLInit,
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import qualified SDL.Init
 
 import Immutaball.Share.Utils

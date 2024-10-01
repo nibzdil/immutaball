@@ -16,6 +16,9 @@ module Immutaball.Putt.CLI.Config
 		buildCLIConfig
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Lens
 
 data CLIConfig = CLIConfig {

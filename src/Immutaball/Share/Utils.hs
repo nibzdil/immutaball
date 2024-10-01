@@ -13,6 +13,9 @@ module Immutaball.Share.Utils
 		getFixed
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Lens
 
 -- | See F-algebras and catamorphisms for the idiom.

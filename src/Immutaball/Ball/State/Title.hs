@@ -12,6 +12,9 @@ module Immutaball.Ball.State.Title
 		mkTitleState
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Arrow
 
 import Control.Wire

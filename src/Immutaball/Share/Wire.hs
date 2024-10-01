@@ -16,6 +16,9 @@ module Immutaball.Share.Wire
 		wire
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Wire.Internal
 
 wire :: (a -> m (b, Wire m a b)) -> Wire m a b

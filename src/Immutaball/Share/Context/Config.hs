@@ -13,6 +13,9 @@ module Immutaball.Share.Context.Config
 		ContextConfig(..), ctxCfgStaticConfig, ctxCfgDirs, ctxCfgNeverballrc
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Lens
 
 import Immutaball.Share.Config

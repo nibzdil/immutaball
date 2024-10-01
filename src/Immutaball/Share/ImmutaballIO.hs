@@ -39,6 +39,9 @@ module Immutaball.Share.ImmutaballIO
 		mkSDLIO
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Exception (catch, throwIO)
 import System.Environment
 import System.Exit

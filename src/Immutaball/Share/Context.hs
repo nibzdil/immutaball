@@ -13,6 +13,9 @@ module Immutaball.Share.Context
 		withSDL
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Control.Lens
 import qualified SDL.Init
 

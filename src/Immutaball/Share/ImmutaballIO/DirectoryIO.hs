@@ -24,6 +24,9 @@ module Immutaball.Share.ImmutaballIO.DirectoryIO
 		mkGetXdgDirectoryState
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Data.Functor.Contravariant
 
 import System.Directory

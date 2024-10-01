@@ -15,6 +15,9 @@ module Immutaball.Share.Config.Printer
 		showNeverballrc
 	) where
 
+import Prelude ()
+import Immutaball.Prelude
+
 import Data.List
 import Text.Printf
 

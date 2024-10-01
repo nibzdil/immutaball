@@ -24,6 +24,10 @@ module Immutaball.Ball.CLI
 		immutaballWithContext
 	) where
 
+-- Prelude imports
+import Prelude ()
+import Immutaball.Prelude
+
 -- base imports
 import Data.List
 import System.Console.GetOpt

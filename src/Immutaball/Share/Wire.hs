@@ -18,7 +18,8 @@ module Immutaball.Share.Wire
 import Prelude ()
 --import Immutaball.Prelude
 
-import Control.Wire.Internal
+import Control.Wire
+import qualified Control.Wire.Internal (Wire(Wire))
 
 -- * Primitives
 
@@ -27,6 +28,6 @@ import Control.Wire.Internal
 -- to represent a function equivalent to ‘Wire’ using only the non-internal
 -- ‘wires’ API.
 wire :: (a -> m (b, Wire m a b)) -> Wire m a b
-wire = Wire
+wire = Control.Wire.Internal.Wire
 
 -- * Utilities

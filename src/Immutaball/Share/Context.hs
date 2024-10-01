@@ -31,7 +31,7 @@ data IBContext = IBContext {
 	-- | The _initial_ neverballrc.
 	_ibNeverballrc0 :: Neverballrc
 
-	-- TODO: maybe window and gl context.
+	-- TODO: Maybe Window and gl context.
 }
 makeLenses ''IBContext
 

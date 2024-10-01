@@ -5,16 +5,20 @@
 -- CLI.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, UndecidableInstances #-}
+{-# LANGUAGE TemplateHaskell, UndecidableInstances, DerivingVia #-}
 
 module Immutaball.Share.Utils
 	(
 		Fixed(..), fixed,
-		getFixed
+		getFixed,
+		RCompose(..), rcompose,
+		getRCompose
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
+
+import Data.Functor.Compose
 
 import Control.Lens
 
@@ -31,3 +35,13 @@ instance (Show (f (Fixed f))) => Show (Fixed f) where
 
 getFixed :: Fixed f -> f (Fixed f)
 getFixed = (^.fixed)
+
+newtype RCompose f g a = RCompose {_rcompose :: g (f a) }
+	deriving (Eq, Ord, Show, Semigroup, Monoid, Enum, Read, Num, Fractional, Real, RealFrac, Bounded)
+		via (g (f a))
+	deriving (Functor, Applicative, Foldable, {-Traversable, -}Contravariant)
+		via (Compose g f)
+makeLenses ''RCompose
+
+getRCompose :: RCompose f g a -> g (f a)
+getRCompose = (^.rcompose)

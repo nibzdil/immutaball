@@ -5,6 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE Arrows #-}
 
 module Immutaball.Share.State
 	(
@@ -13,15 +14,19 @@ module Immutaball.Share.State
 		Request(..),
 		ResponseFrame,
 		Response(..),
-		closeFork
+		closeFork,
+		closeFork',
+		immutaballIOLinear
 	) where
 
 import Control.Arrow
 
 import Control.Wire
+import Control.Wire.Internal
 import Data.Functor.Identity
 
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.Wire
 
 -- | An immutaball wire.
 --
@@ -51,5 +56,12 @@ data Response =
 -- | End a wire.
 --
 -- This can be combined with 'ImmutaballIOFork' to keep a single wire running.
-closeFork :: Immutaball
+{- --closeFork :: Immutaball -}
+closeFork :: Wire Maybe () ()
 closeFork = withM returnA (const Nothing)
+
+closeFork' :: Wire Maybe () a
+closeFork' = withM returnA (const Nothing)
+
+immutaballIOLinear :: ImmutaballIOF Immutaball -> Wire Maybe () ResponseFrame
+immutaballIOLinear ibIO = wire (\() -> Just ([ImmutaballIOFork ibIO], closeFork'))

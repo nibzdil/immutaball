@@ -91,6 +91,7 @@ common executable-components
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.State
 		Immutaball.Share.Utils
+		Immutaball.Share.Wire
 
 executable immutaball
 	import: all-components
@@ -125,6 +126,7 @@ library
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.State
 		Immutaball.Share.Utils
+		Immutaball.Share.Wire
 
 test-suite test-immutaball
 	import: all-components

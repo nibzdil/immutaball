@@ -21,7 +21,8 @@ module Immutaball.Ball.CLI
 		getDefaultIBDirs,
 		immutaballWithCLIConfig',
 		immutaballWithNeverballrc,
-		immutaballWithContext
+		immutaballWithContext,
+		initialImmutaball
 	) where
 
 -- Prelude imports
@@ -40,14 +41,15 @@ import System.FilePath
 
 -- internal imports
 import Immutaball.Ball.CLI.Config
---import Immutaball.Ball.State.Title
+import Immutaball.Ball.State.Title
 import Immutaball.Share.Config
 import Immutaball.Share.Config.Parser
 import Immutaball.Share.Config.Printer
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
+import Immutaball.Share.Controller
 import Immutaball.Share.ImmutaballIO
---import Immutaball.Share.State
+import Immutaball.Share.State
 
 main :: IO ()
 main = immutaballMain
@@ -211,8 +213,11 @@ immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
 
 --- | Run immutaball after setting up an initial immutaball context.
 immutaballWithContext :: IBContext -> ImmutaballIO
-immutaballWithContext _cxt0 =
+immutaballWithContext cxt0 =
 	result
 	where
 		result :: ImmutaballIO
-		result = mkPutStrLn "Internal error: unimplemented." <>> mkExitFailureImmutaballIO
+		result = controlImmutaball cxt0 (initialImmutaball cxt0)
+
+initialImmutaball :: IBContext -> Immutaball
+initialImmutaball cxt0 = mkTitleState cxt0

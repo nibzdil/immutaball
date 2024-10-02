@@ -69,13 +69,6 @@ data ImmutaballIOF in_ out me =
 
 runImmutaballIO :: ImmutaballIO () () -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
-{-
-runImmutaballIO (Fixed (EmptyImmutaballIOF))     = return ()
-runImmutaballIO (Fixed (AndImmutaballIOF a b))   = a `par` b `par` concurrently_ (runImmutaballIO a) (runImmutaballIO b)
-runImmutaballIO (Fixed (ThenImmutaballIOF a b))  = runImmutaballIO a >> runImmutaballIO b
-runImmutaballIO (Fixed (ArrImmutaballIOF f))     = runImmutaballIO $ f ()
-runImmutaballIO (Fixed (BasicImmutaballIOF bio)) = runBasicIOIO (runImmutaballIO <$> bio)
--}
 
 composeImmutaballIO :: ImmutaballIO in_ mid -> ImmutaballIO mid out -> ImmutaballIO in_ out
 
@@ -102,12 +95,6 @@ fmapImmutaballIO :: (a -> b) -> (ImmutaballIO in_ a -> ImmutaballIO in_ b)
 fmapImmutaballIO f = Fixed . fmapImmutaballIOF (fmapImmutaballIO f) f . getFixed
 
 fmapImmutaballIOFFixed :: (a -> b) -> (ImmutaballIOF in_ a me -> ImmutaballIOF in_ b me)
-{-
-fmapImmutaballIOFFixed f (AndImmutaballIOF a b)     = AndImmutaballIOF (fmapImmutaballIOF f a) (fmapImmutaballIOF f b)
-fmapImmutaballIOFFixed f (ThenImmutaballIOF a b)    = ThenImmutaballIOF (fmapImmutaballIOF f a) (fmapImmutaballIOF f b)
-fmapImmutaballIOFFixed f (ArrImmutaballIOF g)       = ArrImmutaballIOF (fmapImmutaballIOF f . g)
-fmapImmutaballIOFFixed f (BasicImmutaballIOF a bio) = BasicImmutaballIOF (f a) bio
--}
 fmapImmutaballIOFFixed = fmapImmutaballIOF id
 
 fmapImmutaballIOF :: (me0 -> me1) -> (a -> b) -> (ImmutaballIOF in_ a me0 -> ImmutaballIOF in_ b me1)
@@ -119,42 +106,6 @@ fmapImmutaballIOF  mef  f (BasicImmutaballIOF a bio) = BasicImmutaballIOF (f a) 
 
 bindImmutaballIO :: ImmutaballIO in_ mid -> (mid -> ImmutaballIO in_ out) -> ImmutaballIO in_ out
 bindImmutaballIO x fy = joinImmutaballIO $ fmapImmutaballIO fy x
-
-{-
--- (If we had dependent types, that could help us have language to talk about
--- properties, and to actually verify them.)
-andImmutaballIO :: (Semigroup out) => ImmutaballIO in_ out -> ImmutaballIO in_ out -> ImmutaballIO in_ out
-
-andImmutaballIO _x@(Fixed (PureImmutaballIOF outl)) _y@(Fixed (PureImmutaballIOF outr))      = Fixed (PureImmutaballIOF (outl <> outr))  -- (Simplify.)
-andImmutaballIO  x@(Fixed (PureImmutaballIOF outl)) _y@(Fixed (AndImmutaballIOF outr a b))   = Fixed (AndImmutaballIOF (outl <> outr) a b)  -- (Simplify.)
-andImmutaballIO  x@(Fixed (PureImmutaballIOF outl)) _y@(Fixed (ThenImmutaballIOF outr a b))  = Fixed (ThenImmutaballIOF (outl <> outr) a b)  -- (Simplify.)
-andImmutaballIO _x@(Fixed (PureImmutaballIOF outl)) _y@(Fixed (ArrImmutaballIOF f))          = Fixed (ArrImmutaballIOF (\in_ -> outl <> f in_))  -- (Apply.)
-andImmutaballIO  x@(Fixed (PureImmutaballIOF outl)) _y@(Fixed (BasicImmutaballIOF outr bio)) = Fixed (BasicImmutaballIOF (outl <> outr) bio)  -- (Simplify.)
-
-andImmutaballIO _x@(Fixed (AndImmutaballIOF outl  al  bl)) _y@(Fixed (PureImmutaballIOF outr))         = Fixed (AndImmutaballIOF (outl <> outr) al bl)  -- (Simplify.)
-andImmutaballIO  x@(Fixed (AndImmutaballIOF outl _al _bl))  y@(Fixed (AndImmutaballIOF outr _ar _br))  = Fixed (AndImmutaballIOF (outl <> outr) x y)
-andImmutaballIO  x@(Fixed (AndImmutaballIOF outl _al _bl))  y@(Fixed (ThenImmutaballIOF outr _ar _br)) = Fixed (ThenImmutaballIOF (outl <> outr) x y)
-andImmutaballIO  x@(Fixed (AndImmutaballIOF outl _al _bl))  y@(Fixed (ArrImmutaballIOF f))             = Fixed (AndImmutaballIOF outl x y)  -- (Drop f from out; we can't represent it.)
-andImmutaballIO  x@(Fixed (AndImmutaballIOF outl _al _bl))  y@(Fixed (BasicImmutaballIOF outr bio))    = Fixed (AndImmutaballIOF (outl <> outr) x y)
-
-andImmutaballIO _x@(Fixed (ThenImmutaballIOF outl  al  bl)) _y@(Fixed (PureImmutaballIOF outr))       = Fixed (ThenImmutaballIOF (outl <> outr) al bl)  -- (Simplify.)
-andImmutaballIO  x@(Fixed (ThenImmutaballIOF outl  al  bl)) _y@(Fixed (AndImmutaballIOF outr ar br))  = Fixed (ThenImmutaballIOF (outl <> outr) (al <> ar) (bl <> br))
-andImmutaballIO  x@(Fixed (ThenImmutaballIOF outl _al _bl))  y@(Fixed (ThenImmutaballIOF outr ar br)) = Fixed (ThenImmutaballIOF (outl <> outr) x y)
-andImmutaballIO  x@(Fixed (ThenImmutaballIOF outl _al _bl))  y@(Fixed (ArrImmutaballIOF f))           = Fixed (ThenImmutaballIOF outl x y)  -- (Drop f from out; we can't represent it.)
-andImmutaballIO  x@(Fixed (ThenImmutaballIOF outl _al _bl))  y@(Fixed (BasicImmutaballIOF outr bio))  = Fixed (ThenImmutaballIOF (outl <> outr) x y)
-
-andImmutaballIO _x@(Fixed (ArrImmutaballIOF _fl))  y@(Fixed (PureImmutaballIOF _outr))       = y  -- (Drop f from out; we can't represent it.)
-andImmutaballIO  x@(Fixed (ArrImmutaballIOF _fl))  y@(Fixed (AndImmutaballIOF outr a b))     = y  -- (Drop f from out; consistent style except for application.)
-andImmutaballIO  x@(Fixed (ArrImmutaballIOF _fl))  y@(Fixed (ThenImmutaballIOF outr a b))    = y  -- (Drop f from out; consistent style except for application.)
-andImmutaballIO _x@(Fixed (ArrImmutaballIOF  fl)) _y@(Fixed (ArrImmutaballIOF fr))           = Fixed (ArrImmutaballIOF (\in_ -> fl in_ <> fr in_))
-andImmutaballIO  x@(Fixed (ArrImmutaballIOF _fl))  y@(Fixed (BasicImmutaballIOF _outr _bio)) = y  -- (Drop f from out; we can't represent it.)
-
-andImmutaballIO _x@(Fixed (BasicImmutaballIOF outl biol)) _y@(Fixed (PureImmutaballIOF outr))         = Fixed (BasicImmutaballIOF (outl <> outr) biol)  -- (Simplify.)
-andImmutaballIO  x@(Fixed (BasicImmutaballIOF outl biol))  y@(Fixed (AndImmutaballIOF outr _a _b))    = Fixed (AndImmutaballIOF (outl <> outr) x y)
-andImmutaballIO  x@(Fixed (BasicImmutaballIOF outl biol))  y@(Fixed (ThenImmutaballIOF outr _a _b))   = Fixed (ThenImmutaballIOF (outl <> outr) x y)
-andImmutaballIO _x@(Fixed (BasicImmutaballIOF outl biol)) _y@(Fixed (ArrImmutaballIOF f))             = Fixed (ArrImmutaballIOF (\in_ -> outl <> f in_))  -- (Apply.)
-andImmutaballIO  x@(Fixed (BasicImmutaballIOF outl biol)) _y@(Fixed (BasicImmutaballIOF outr bior))   = Fixed (BasicImmutaballIOF (outl <> outr) (biol <> bior))
--}
 
 andImmutaballIO :: ImmutaballIO in_ out -> ImmutaballIO in_ out -> ImmutaballIO in_ out
 andImmutaballIO x y = Fixed $ AndImmutaballIOF x y

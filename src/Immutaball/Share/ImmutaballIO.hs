@@ -17,6 +17,7 @@ module Immutaball.Share.ImmutaballIO
 		fmapImmutaballIO,
 		fmapImmutaballIOFFixed,
 		fmapImmutaballIOF,
+		dimapInvImmutaballIOF,
 		bindImmutaballIO,
 		andImmutaballIO,
 		thenImmutaballIO,
@@ -36,13 +37,17 @@ module Immutaball.Share.ImmutaballIO
 		mkAndImmutaballIO,
 		mkThenImmutaballIO,
 		mkArrImmutaballIO,
-		mkBasicImmutaballIO
+		mkBasicImmutaballIO,
+		mkWait,
+		mkWithAsync,
+		mkAtomically
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
 import Control.Concurrent.Async
+import Control.Monad.STM
 import Control.Parallel
 
 import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
@@ -52,6 +57,11 @@ import Immutaball.Share.Utils
 
 -- * ImmutaballIO
 
+-- TODO: Probably just revert the in_ out params - you could keep the new hierarchy I
+-- suppose, where ImmutaballIO uses ExistentialTypes - and then just use ExistentialTYpes with forall
+-- out and such.  Then effectively for the ‘forall out.’, it's a field in the
+-- constructor that represents a type, but is hidden.
+TODO
 type ImmutaballIO in_ out = Fixed (ImmutaballIOF in_ out)
 data ImmutaballIOF in_ out me =
 	  PureImmutaballIOF out
@@ -61,11 +71,9 @@ data ImmutaballIOF in_ out me =
 	| BasicImmutaballIOF out (BasicIOF me)
 
 	-- TODO:
-	{-
-	| Wait (Async ())
-	| WithAsync (Async () -> me)
-	| Atomically (STM ())
-	-}
+	| Wait (Async in_)  -- TODO: (in_ -> me)?
+	| WithAsync me (Async in_ -> me)
+	| Atomically (STM out)  -- TODO: (out -> me)?
 
 runImmutaballIO :: ImmutaballIO () () -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
@@ -77,6 +85,8 @@ composeImmutaballIO  x@(Fixed (PureImmutaballIOF _mid)) _y@(Fixed (AndImmutaball
 composeImmutaballIO  x@(Fixed (PureImmutaballIOF _mid)) _y@(Fixed (ThenImmutaballIOF a b))      = Fixed (ThenImmutaballIOF (composeImmutaballIO x a) (composeImmutaballIO x b))
 composeImmutaballIO  x@(Fixed (PureImmutaballIOF  mid)) _y@(Fixed (ArrImmutaballIOF f))         = composeImmutaballIO x $ f mid
 composeImmutaballIO  x@(Fixed (PureImmutaballIOF _mid)) _y@(Fixed (BasicImmutaballIOF out bio)) = Fixed (BasicImmutaballIOF out (composeImmutaballIO x <$> bio))
+composeImmutaballIO _x@(Fixed (PureImmutaballIOF _mid)) _y@(Fixed (Wait async_))                = Fixed (ArrImmutaballIOF $ \in_ -> Fixed (Wait ((const in_) <$> async_)))
+-- TODO: withasync, atomically
 
 composeImmutaballIO _x@(Fixed (AndImmutaballIOF a b)) y = Fixed (AndImmutaballIOF (composeImmutaballIO a y) (composeImmutaballIO b y))
 
@@ -89,6 +99,10 @@ composeImmutaballIO  x@(Fixed (BasicImmutaballIOF _mid _bio)) _y@(Fixed (AndImmu
 composeImmutaballIO  x@(Fixed (BasicImmutaballIOF _mid _bio)) _y@(Fixed (ThenImmutaballIOF a b))       = Fixed (ThenImmutaballIOF (composeImmutaballIO x a) (composeImmutaballIO x b))
 composeImmutaballIO  x@(Fixed (BasicImmutaballIOF  mid _bio)) _y@(Fixed (ArrImmutaballIOF f))          = x `composeImmutaballIO` f mid
 composeImmutaballIO  x@(Fixed (BasicImmutaballIOF _mid  bio))  y@(Fixed (BasicImmutaballIOF out bio2)) = Fixed (BasicImmutaballIOF out (AndBasicIOF (Fixed . BasicImmutaballIOF out $ (`composeImmutaballIO` y) <$> bio) (Fixed . BasicImmutaballIOF out $ (x `composeImmutaballIO`) <$> bio2)))
+-- TODO: wait, withasync, atomically
+
+-- TODO:
+composeImmutaballIO  x@(Fixed (Wait async_)) y = Fixed (AndImmutaballIOF () ())
 
 fmapImmutaballIO :: (a -> b) -> (ImmutaballIO in_ a -> ImmutaballIO in_ b)
 --fmapImmutaballIO f = (`composeImmutaballIO` (Fixed (ArrImmutaballIOF (Fixed . PureImmutaballIOF . f))))
@@ -103,6 +117,16 @@ fmapImmutaballIOF  mef _f (AndImmutaballIOF a b)     = AndImmutaballIOF (mef a) 
 fmapImmutaballIOF  mef _f (ThenImmutaballIOF a b)    = ThenImmutaballIOF (mef a) (mef b)
 fmapImmutaballIOF  mef _f (ArrImmutaballIOF g)       = ArrImmutaballIOF (mef . g)
 fmapImmutaballIOF  mef  f (BasicImmutaballIOF a bio) = BasicImmutaballIOF (f a) (mef <$> bio)
+
+-- | Profunctor plus input map.
+dimapInvImmutaballIOF :: (me0 -> me1) -> (in0 -> in1) -> (in1 -> in0) -> (a -> b) -> (ImmutaballIOF in0 a me0 -> ImmutaballIOF in1 b me1)
+dimapInvImmutaballIOF _mef _fInv _f  g (PureImmutaballIOF a)       = PureImmutaballIOF (g a)
+dimapInvImmutaballIOF  mef _fInv _f _g (AndImmutaballIOF a b)      = AndImmutaballIOF (mef a) (mef b)
+dimapInvImmutaballIOF  mef _fInv _f _g (ThenImmutaballIOF a b)     = ThenImmutaballIOF (mef a) (mef b)
+dimapInvImmutaballIOF  mef _fInv  f _g (ArrImmutaballIOF g)        = ArrImmutaballIOF (mef . g . f)
+dimapInvImmutaballIOF  mef _fInv _f  g (BasicImmutaballIOF a bio)  = BasicImmutaballIOF (g a) (mef <$> bio)
+dimapInvImmutaballIOF _mef  fInv _f _g (Wait async_)               = Wait (fInv <$> async_)
+dimapInvImmutaballIOF  mef _fInv  f  g (WithAsync ibio withAsync_) = WithAsync (mef ibio) (mef . withAsync_ . (f <$>))
 
 bindImmutaballIO :: ImmutaballIO in_ mid -> (mid -> ImmutaballIO in_ out) -> ImmutaballIO in_ out
 bindImmutaballIO x fy = joinImmutaballIO $ fmapImmutaballIO fy x
@@ -125,6 +149,11 @@ joinImmutaballIO (Fixed (AndImmutaballIOF a b))       = Fixed $ AndImmutaballIOF
 joinImmutaballIO (Fixed (ThenImmutaballIOF a b))      = Fixed $ ThenImmutaballIOF (joinImmutaballIO a) (joinImmutaballIO b)
 joinImmutaballIO (Fixed (ArrImmutaballIOF f))         = Fixed $ ArrImmutaballIOF (\in_ -> joinImmutaballIO (f in_))
 joinImmutaballIO (Fixed (BasicImmutaballIOF out bio)) = Fixed $ ArrImmutaballIOF (\in_ -> out `composeImmutaballIO` (Fixed (ArrImmutaballIOF (\out_ -> Fixed $ BasicImmutaballIOF out_ ((((Fixed $ PureImmutaballIOF in_) `composeImmutaballIO`) . joinImmutaballIO) <$> bio)))))
+joinImmutaballIO (Fixed (Wait async_))                = Fixed $ Wait async_
+joinImmutaballIO (Fixed (WithAsync ibio withAsync_))  = Fixed $ WithAsync (joinImmutaballIO ibio) (joinImmutaballIO . withAsync_)
+-- TODO:
+--joinImmutaballIO (Fixed (Atomically stm))             = Fixed $ ArrImmutaballIOF (\in_ -> Fixed . Atomically $ pure _ <*> stm)
+--joinImmutaballIO (Fixed (Atomically stm))             = Fixed $ _  -- in_ -> `compose` stm?
 
 instance Semigroup (ImmutaballIOF in_ out (ImmutaballIO in_ out)) where
 	(<>) :: ImmutaballIOF in_ out (ImmutaballIO in_ out) -> ImmutaballIOF in_ out (ImmutaballIO in_ out) -> ImmutaballIOF in_ out (ImmutaballIO in_ out)
@@ -140,11 +169,15 @@ instance (Monoid out) => Monoid (ImmutaballIO in_ out) where
 
 instance Functor (ImmutaballIOF in_ out) where
 	fmap :: (a -> b) -> (ImmutaballIOF in_ out a -> ImmutaballIOF in_ out b)
-	fmap _f (PureImmutaballIOF a)      = PureImmutaballIOF a
-	fmap  f (AndImmutaballIOF a b)     = AndImmutaballIOF (f a) (f b)
-	fmap  f (ThenImmutaballIOF a b)    = ThenImmutaballIOF (f a) (f b)
-	fmap  f (ArrImmutaballIOF g)       = ArrImmutaballIOF (f . g)
+	fmap _f (PureImmutaballIOF a)        = PureImmutaballIOF a
+	fmap  f (AndImmutaballIOF a b)       = AndImmutaballIOF (f a) (f b)
+	fmap  f (ThenImmutaballIOF a b)      = ThenImmutaballIOF (f a) (f b)
+	fmap  f (ArrImmutaballIOF g)         = ArrImmutaballIOF (f . g)
 	fmap  f (BasicImmutaballIOF out bio) = BasicImmutaballIOF out $ f <$> bio
+
+	fmap _f (Wait async_)               = Wait async_
+	fmap  f (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
+	fmap _f (Atomically stm)            = Atomically stm
 
 -- | Add an ordering constraint.
 infixr 6 <>>
@@ -154,11 +187,14 @@ infixr 6 <>>
 -- * Runners
 
 runImmutaballIOIO :: ImmutaballIOF () () (IO ()) -> IO ()
-runImmutaballIOIO (PureImmutaballIOF ())      = return ()
-runImmutaballIOIO (AndImmutaballIOF a b)      = a `par` b `par` concurrently_ a b
-runImmutaballIOIO (ThenImmutaballIOF a b)     = a >> b
-runImmutaballIOIO (ArrImmutaballIOF f)        = f ()
-runImmutaballIOIO (BasicImmutaballIOF () bio) = runBasicIOIO bio
+runImmutaballIOIO (PureImmutaballIOF ())       = return ()
+runImmutaballIOIO (AndImmutaballIOF a b)       = a `par` b `par` concurrently_ a b
+runImmutaballIOIO (ThenImmutaballIOF a b)      = a >> b
+runImmutaballIOIO (ArrImmutaballIOF f)         = f ()
+runImmutaballIOIO (BasicImmutaballIOF () bio)  = runBasicIOIO bio
+runImmutaballIOIO (Wait async_)                = wait async_
+runImmutaballIOIO (WithAsync ibio withAsync_)  = withAsync ibio withAsync_
+runImmutaballIOIO (Atomically stm)             = atomically $ stm
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO () ()
 runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF () (runBasicImmutaballIO <$> getFixed bio)
@@ -189,3 +225,12 @@ mkArrImmutaballIO f = Fixed $ ArrImmutaballIOF f
 
 mkBasicImmutaballIO :: out -> BasicIOF (ImmutaballIO in_ out) -> ImmutaballIO in_ out
 mkBasicImmutaballIO out bio = Fixed $ BasicImmutaballIOF out bio
+
+mkWait :: Async in_ -> ImmutaballIO in_ out
+mkWait async_ = Fixed $ Wait async_
+
+mkWithAsync :: ImmutaballIO in_ out -> (Async in_ -> ImmutaballIO in_ out) -> ImmutaballIO in_ out
+mkWithAsync ibio withAsync_ = Fixed $ WithAsync ibio withAsync_
+
+mkAtomically :: STM out -> ImmutaballIO in_ out
+mkAtomically stm = Fixed $ Atomically stm

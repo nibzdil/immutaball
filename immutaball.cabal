@@ -39,6 +39,7 @@ common all-components
 		Arrows
 		DerivingVia
 		FlexibleContexts
+		ExistentialQuantification
 
 	hs-source-dirs: src
 

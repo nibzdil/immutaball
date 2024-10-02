@@ -5,7 +5,7 @@
 -- ImmutaballIO.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables, FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables, FlexibleContexts, UndecidableInstances, ExistentialQuantification #-}
 
 module Immutaball.Share.ImmutaballIO
 	(
@@ -27,14 +27,17 @@ module Immutaball.Share.ImmutaballIO
 		mkEmptyImmutaballIO,
 		mkAndImmutaballIO,
 		mkThenImmutaballIO,
-		mkBasicImmutaballIO
+		mkBasicImmutaballIO,
+		mkWait,
+		mkWithAsync,
+		mkAtomically
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
 import Control.Concurrent.Async
---import Control.Monad.STM
+import Control.Monad.STM
 import Control.Parallel
 
 import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
@@ -51,12 +54,9 @@ data ImmutaballIOF me =
 	| ThenImmutaballIOF me me
 	| BasicImmutaballIOF (BasicIOF me)
 
-	-- TODO:
-	{-
-	| Wait (Async in_)
-	| WithAsync me (Async in_ -> me)
-	| Atomically (STM out)
-	-}
+	| forall hiddenTypeField. Wait (Async hiddenTypeField) (hiddenTypeField -> me)
+	| WithAsync me (Async () -> me)
+	| forall hiddenTypeField. Atomically (STM hiddenTypeField) (hiddenTypeField -> me)
 
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
@@ -85,6 +85,10 @@ instance Functor ImmutaballIOF where
 	fmap  f (ThenImmutaballIOF a b)  = ThenImmutaballIOF (f a) (f b)
 	fmap  f (BasicImmutaballIOF bio) = BasicImmutaballIOF $ f <$> bio
 
+	fmap  f (Wait async_ withAsync_)    = Wait async_ (f . withAsync_)
+	fmap  f (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
+	fmap  f (Atomically stm withStm)    = Atomically stm (f . withStm)
+
 -- | Add an ordering constraint.
 infixr 6 <>>
 (<>>) :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
@@ -93,10 +97,15 @@ infixr 6 <>>
 -- * Runners
 
 runImmutaballIOIO :: ImmutaballIOF (IO ()) -> IO ()
+
 runImmutaballIOIO (EmptyImmutaballIOF)     = return ()
 runImmutaballIOIO (AndImmutaballIOF a b)   = a `par` b `par` concurrently_ a b
 runImmutaballIOIO (ThenImmutaballIOF a b)  = a >> b
 runImmutaballIOIO (BasicImmutaballIOF bio) = runBasicIOIO bio
+
+runImmutaballIOIO (Wait async_ withAsync_)    = wait async_ >>= withAsync_
+runImmutaballIOIO (WithAsync ibio withAsync_) = withAsync ibio withAsync_
+runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF (runBasicImmutaballIO <$> getFixed bio)
@@ -124,3 +133,12 @@ mkThenImmutaballIO a b = Fixed $ ThenImmutaballIOF a b
 
 mkBasicImmutaballIO :: BasicIOF ImmutaballIO -> ImmutaballIO
 mkBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF bio
+
+mkWait :: Async a -> (a -> ImmutaballIO) -> ImmutaballIO
+mkWait async_ withAsync_ = Fixed $ Wait async_ withAsync_
+
+mkWithAsync :: ImmutaballIO -> (Async () -> ImmutaballIO) -> ImmutaballIO
+mkWithAsync ibio withAsync_ = Fixed $ WithAsync ibio withAsync_
+
+mkAtomically :: STM a -> (a -> ImmutaballIO) -> ImmutaballIO
+mkAtomically stm withStm = Fixed $ Atomically stm withStm

@@ -52,7 +52,7 @@ data Request =
 type ResponseFrame = [Response]
 data Response =
 	  PureFork         Immutaball
-	| ImmutaballIOFork (ImmutaballIOF () () Immutaball)
+	| ImmutaballIOFork (ImmutaballIOF Immutaball)
 
 -- | End a wire.
 --
@@ -64,5 +64,5 @@ closeFork = withM returnA (const Nothing)
 closeFork' :: Wire Maybe () a
 closeFork' = withM returnA (const Nothing)
 
-immutaballIOLinear :: ImmutaballIOF () () Immutaball -> Wire Maybe () ResponseFrame
+immutaballIOLinear :: ImmutaballIOF Immutaball -> Wire Maybe () ResponseFrame
 immutaballIOLinear ibIO = wire (\() -> Just ([ImmutaballIOFork ibIO], closeFork'))

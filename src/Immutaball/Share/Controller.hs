@@ -21,9 +21,9 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
 import Immutaball.Share.State
 
-controlImmutaball :: IBContext -> Immutaball -> ImmutaballIO () ()
+controlImmutaball :: IBContext -> Immutaball -> ImmutaballIO
 controlImmutaball _cxt0 _immutaball =
 	result
 	where
-		result :: ImmutaballIO () ()
+		result :: ImmutaballIO
 		result = runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO

@@ -17,7 +17,7 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		-- * Runners
 		runSDLIOIO,
 
-		-- * DirectoryIO aliases that apply the Fixed wrapper
+		-- * SDLIO aliases that apply the Fixed wrapper
 		mkSDLInit,
 	) where
 

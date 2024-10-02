@@ -25,7 +25,6 @@ import Immutaball.Prelude
 import Control.Arrow
 
 import Control.Wire
-import Data.Functor.Identity
 
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.Wire
@@ -53,7 +52,7 @@ data Request =
 type ResponseFrame = [Response]
 data Response =
 	  PureFork         Immutaball
-	| ImmutaballIOFork (ImmutaballIOF Immutaball)
+	| ImmutaballIOFork (ImmutaballIOF () () Immutaball)
 
 -- | End a wire.
 --
@@ -65,5 +64,5 @@ closeFork = withM returnA (const Nothing)
 closeFork' :: Wire Maybe () a
 closeFork' = withM returnA (const Nothing)
 
-immutaballIOLinear :: ImmutaballIOF Immutaball -> Wire Maybe () ResponseFrame
+immutaballIOLinear :: ImmutaballIOF () () Immutaball -> Wire Maybe () ResponseFrame
 immutaballIOLinear ibIO = wire (\() -> Just ([ImmutaballIOFork ibIO], closeFork'))

@@ -11,6 +11,7 @@ module Immutaball.Share.Utils
 	(
 		Fixed(..), fixed,
 		getFixed,
+		cata,
 		RCompose(..), rcompose,
 		getRCompose
 	) where
@@ -35,6 +36,9 @@ instance (Show (f (Fixed f))) => Show (Fixed f) where
 
 getFixed :: Fixed f -> f (Fixed f)
 getFixed = (^.fixed)
+
+cata :: (Functor f) => (f a -> a) -> (Fixed f -> a)
+cata fAlgebra = fAlgebra . fmap (cata fAlgebra) . getFixed
 
 newtype RCompose f g a = RCompose {_rcompose :: g (f a) }
 	deriving (Eq, Ord, Show, Semigroup, Monoid, Enum, Read, Num, Fractional, Real, RealFrac, Bounded)

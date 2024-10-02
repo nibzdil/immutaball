@@ -22,6 +22,7 @@ import qualified SDL.Init
 import Immutaball.Share.Config
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 
 -- | An Immutaball context instance.
@@ -38,9 +39,9 @@ makeLenses ''IBContext
 -- | Just set up SDL.
 --
 -- Does not create a window or set up OpenGL.
-withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
+withSDL :: ContextConfig -> (IBContext -> ImmutaballIO () ()) -> ImmutaballIO () ()
 withSDL cxtCfg withCxt =
-	mkSDLIO . SDLInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] $
+	mkBasicImmutaballIO () . SDLIO . SDLInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] .
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.ctxCfgStaticConfig,
 		_ibDirs         = cxtCfg^.ctxCfgDirs,

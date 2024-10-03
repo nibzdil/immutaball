@@ -15,6 +15,7 @@ module Immutaball.Share.Controller
 		stepEvent,
 		stepEventNoMaxClockPeriod,
 		stepClock,
+		processStepResult,
 		unimplementedHelper,
 
 		-- * SDL utils
@@ -134,13 +135,7 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
 			let mresponse = stepWire immutaballN [Keybd char down] in
-			maybe (const mempty) (&) mresponse $ \(response, immutaballNp1) ->
-			--response <> withImmutaballNp1 immutaballNp1
-			(withImmutaballNp1 immutaballNp1 <>) .
-			mconcat . flip map response $ \responseI ->
-			case responseI of
-				PureFork immutaballNp1_2 -> withImmutaballNp1 immutaballNp1_2
-				ImmutaballIOFork ibio -> Fixed $ withImmutaballNp1 <$> ibio
+			processStepResult mresponse withImmutaballNp1
 		_ ->
 			-- Ignore all unhandled events.
 			withImmutaballNp1 immutaballN
@@ -149,7 +144,10 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepClock _cxt du _us immutaballN withImmutaballNp1 =
 	let mresponse = stepWire immutaballN [Clock du] in
-	-- TODO: refactor repetition.
+	processStepResult mresponse withImmutaballNp1
+
+processStepResult :: Maybe (ResponseFrame, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+processStepResult mresponse withImmutaballNp1 =
 	maybe (const mempty) (&) mresponse $ \(response, immutaballNp1) ->
 	--response <> withImmutaballNp1 immutaballNp1
 	(withImmutaballNp1 immutaballNp1 <>) .

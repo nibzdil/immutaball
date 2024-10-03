@@ -147,9 +147,11 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 			withImmutaballNp1 immutaballN
 
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepClock _cxt du _us immutaballN withImmutaballNp1 =
+stepClock _cxt du us immutaballN withImmutaballNp1 =
 	let mresponse = stepWire immutaballN [Clock du] in
-	processStepResult mresponse withImmutaballNp1
+	processStepResult mresponse $ \immutaballNp1 ->
+	let mresponse_ = stepWire immutaballNp1 [Paint $ (fromIntegral us) / 1000000.0] in
+	processStepResult mresponse_ withImmutaballNp1
 
 processStepResult :: Maybe (ResponseFrame, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 processStepResult mresponse withImmutaballNp1 =

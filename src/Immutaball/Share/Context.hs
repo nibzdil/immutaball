@@ -9,7 +9,7 @@
 
 module Immutaball.Share.Context
 	(
-		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc0,
+		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc0, ibSDLManagerHandle,
 		withSDL
 	) where
 
@@ -24,13 +24,16 @@ import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
+import Immutaball.Share.SDLManager
 
 -- | An Immutaball context instance.
 data IBContext = IBContext {
 	_ibStaticConfig :: StaticConfig,
 	_ibDirs         :: IBDirs,
 	-- | The _initial_ neverballrc.
-	_ibNeverballrc0 :: Neverballrc
+	_ibNeverballrc0 :: Neverballrc,
+
+	_ibSDLManagerHandle :: SDLManagerHandle
 
 	-- TODO: Maybe Window and gl context.
 }
@@ -42,8 +45,11 @@ makeLenses ''IBContext
 withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
 	mkBasicImmutaballIO . SDLIO . SDLInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] .
+	withSDLManager $ \sdlManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.ctxCfgStaticConfig,
 		_ibDirs         = cxtCfg^.ctxCfgDirs,
-		_ibNeverballrc0 = cxtCfg^.ctxCfgNeverballrc
+		_ibNeverballrc0 = cxtCfg^.ctxCfgNeverballrc,
+
+		_ibSDLManagerHandle = sdlManagerHandle
 	}

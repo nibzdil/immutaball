@@ -43,6 +43,14 @@ common all-components
 
 	hs-source-dirs: src
 
+	-- We use multiple threads.  Include to fix this error:
+	-- > user error (RTS doesn't support multiple OS threads (use ghc -threaded when linking))
+	-- >
+	-- > Package: ghc-internal
+	-- > Module: GHC.Internal.IO.Exception
+	-- > Type: IOException
+	ghc-options: -threaded
+
 	if flag(add-default-compiler-flags)
 		-- Disable tab warner.
 		-- It's a better style: https://dmitryfrank.com/articles/indent_with_tabs_align_with_spaces
@@ -100,6 +108,7 @@ common executable-components
 		Immutaball.Share.ImmutaballIO.DirectoryIO
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.SDLManager
+		Immutaball.Share.SDLManager.Types
 		Immutaball.Share.State
 		Immutaball.Share.Utils
 		Immutaball.Share.Wire
@@ -139,6 +148,7 @@ library
 		Immutaball.Share.ImmutaballIO.DirectoryIO
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.SDLManager
+		Immutaball.Share.SDLManager.Types
 		Immutaball.Share.State
 		Immutaball.Share.Utils
 		Immutaball.Share.Wire

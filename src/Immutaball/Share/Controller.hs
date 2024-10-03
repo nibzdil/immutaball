@@ -116,20 +116,20 @@ stepEvent cxt event ds us mclockAtUs noClock immutaballN withImmutaballNp1 =
 	case mclockAtUs of
 		Nothing -> stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs noClock)
 		Just (clockAtUs, nextClockAtUs) ->
-			mkBIO . GetUs $ \us ->
-			if' (not $ us >= clockAtUs)
+			mkBIO . GetUs $ \us_ ->
+			if' (not $ us_ >= clockAtUs)
 				(
 					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs False)
 				)
 				(
 					stepClock cxt ds us immutaballN $ \immutaballNp1 ->
 					let mclockAtUs' = (Just (nextClockAtUs clockAtUs, nextClockAtUs)) in
-					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs' True)
+					stepEventNoMaxClockPeriod cxt event immutaballNp1 (withImmutaballNp1 mclockAtUs' True)
 				)
 
 -- | Step an event.
 stepEventNoMaxClockPeriod :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
+stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 	case event of
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
@@ -145,9 +145,18 @@ stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 			-- Ignore all unhandled events.
 			withImmutaballNp1 immutaballN
 
+-- TODO: FIXME: mid-event clock repeats du!
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepClock cxt du us immutaballN withImmutaballNp1 =
-	unimplementedHelper
+stepClock _cxt du _us immutaballN withImmutaballNp1 =
+	let mresponse = stepWire immutaballN [Clock du] in
+	-- TODO: refactor repetition.
+	maybe (const mempty) (&) mresponse $ \(response, immutaballNp1) ->
+	--response <> withImmutaballNp1 immutaballNp1
+	(withImmutaballNp1 immutaballNp1 <>) .
+	mconcat . flip map response $ \responseI ->
+	case responseI of
+		PureFork immutaballNp1_2 -> withImmutaballNp1 immutaballNp1_2
+		ImmutaballIOFork ibio -> Fixed $ withImmutaballNp1 <$> ibio
 
 unimplementedHelper :: ImmutaballIO
 unimplementedHelper =

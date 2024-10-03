@@ -9,7 +9,8 @@
 module Immutaball.Share.Controller
 	(
 		controlImmutaball,
-		takeAllSDLEvents
+		takeAllSDLEvents,
+		stepFrame
 	) where
 
 import Prelude ()
@@ -39,17 +40,18 @@ controlImmutaball cxt0 immutaball0 =
 		result = initialFrame
 		initialFrame :: ImmutaballIO
 		initialFrame =
-			mkBIO . GetUs $ \ us0 ->
-			nextFrame us0
-		nextFrame :: Integer -> ImmutaballIO
-		nextFrame usNm1 =
-			mkBIO . GetUs $ \ usN ->
+			mkBIO . GetUs $ \us0 ->
+			nextFrame us0 immutaball0
+		nextFrame :: Integer -> Immutaball -> ImmutaballIO
+		nextFrame usNm1 immutaballN =
+			mkBIO . GetUs $ \usN ->
 			let dus = max 0 $ usNm1 - usN in
 			let ds = (fromInteger dus / 1000000.0)  :: Float in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
 			if' (usN < usNm1pMinClockPeriod) (mkBIO (DelayUs (usNm1pMinClockPeriod - usN)) <>>) id .
 			takeAllSDLEvents cxt0 $ \events ->
-			runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO
+			let events' = maybe id (take . fromIntegral) (cxt0^.ibStaticConfig.maxFrameEvents) events in
+			stepFrame cxt0 ds usN events' immutaballN (nextFrame usN)
 
 takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
 takeAllSDLEvents cxt withEvents =
@@ -60,3 +62,7 @@ takeAllSDLEvents cxt withEvents =
 	case mevent of
 		Nothing -> withEvents $ reverse events
 		Just event -> me (event:events)
+
+stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepFrame cxt ds us events immutaball withImmutaball =
+	runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO

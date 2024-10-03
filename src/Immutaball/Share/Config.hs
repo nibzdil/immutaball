@@ -9,10 +9,10 @@
 
 module Immutaball.Share.Config
 	(
-		StaticConfig(..), minClockPeriod, maxEventPeriod, maxStepFrameSize,
-			maxResponseFrameSize, defaultStaticDataDir, defaultUserDataDir,
-			defaultUserConfigDir, configFilename,
-		defaultStaticConfig,
+		StaticConfig(..), minClockPeriod, maxEventPeriod, maxFrameEvents,
+			maxStepFrameSize, maxResponseFrameSize, defaultStaticDataDir,
+			defaultUserDataDir, defaultUserConfigDir, configFilename,
+			defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
 			textures, reflection, multisample, mipmap, aniso, background,
@@ -45,20 +45,23 @@ import Control.Lens
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 
 data StaticConfig = StaticConfig {
+	-- | Maximum FPS, except for non-clock SDL events.
 	_minClockPeriod :: Maybe Float,
-		-- ^ Maximum FPS, except for non-clock SDL events.
+	-- | If at least one non-clock event has been stepped, if more SDL
+	-- events are available, delay processing those events if at least this
+	-- much time has passed.
 	_maxEventPeriod :: Maybe Float,
-		-- ^ If at least one non-clock event has been stepped, if more SDL
-		-- events are available, delay processing those events if at least this
-		-- much time has passed.
-	_maxStepFrameSize :: Maybe Int,
-		-- ^ Drop step requests after this many requests if they are all given
-		-- at once.  Also do not send more than this many requests in one step.
-	_maxResponseFrameSize :: Maybe Int,
-		-- ^ Drop step responses after this many responses if they are all
-		-- at once.  Also do not send more than this many responses in one
-		-- step.  The wire may opt to priority queue responses exceeding the
-		-- capacity if there's a response it doesn't want to drop.
+	-- | If a single frame has more than this limit events, drop all after the
+	-- first limit tunmber.
+	_maxFrameEvents :: Maybe Integer,
+	-- | Drop step requests after this many requests if they are all given
+	-- at once.  Also do not send more than this many requests in one step.
+	_maxStepFrameSize :: Maybe Integer,
+	-- | Drop step responses after this many responses if they are all
+	-- at once.  Also do not send more than this many responses in one
+	-- step.  The wire may opt to priority queue responses exceeding the
+	-- capacity if there's a response it doesn't want to drop.
+	_maxResponseFrameSize :: Maybe Integer,
 
 	_defaultStaticDataDir :: Either (DirectoryIOF FilePath) FilePath,
 	_defaultUserDataDir   :: Either (DirectoryIOF FilePath) FilePath,
@@ -72,6 +75,7 @@ defaultStaticConfig :: StaticConfig
 defaultStaticConfig = StaticConfig {
 	_minClockPeriod       = Just 0.001,  -- ^ Max FPS: 1000.
 	_maxEventPeriod       = Just 0.5,    -- ^ Don't let external events block the clock for more than 500ms.
+	_maxFrameEvents       = Nothing,
 	_maxStepFrameSize     = Just 8,      -- ^ Don't request more than 8 at a time.
 	_maxResponseFrameSize = Nothing,     -- ^ Don't request more than 8 at a time.
 

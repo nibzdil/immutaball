@@ -99,6 +99,7 @@ common executable-components
 		Immutaball.Putt.CLI
 		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main
+		Immutaball.Share.AutoPar
 		Immutaball.Share.Config
 		Immutaball.Share.Config.Parser
 		Immutaball.Share.Config.Printer
@@ -140,6 +141,7 @@ library
 		Immutaball.Putt.CLI
 		Immutaball.Putt.CLI.Config
 		Immutaball.Putt.Main
+		Immutaball.Share.AutoPar
 		Immutaball.Share.Config
 		Immutaball.Share.Config.Parser
 		Immutaball.Share.Config.Printer

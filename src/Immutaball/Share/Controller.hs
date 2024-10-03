@@ -33,7 +33,6 @@ import Data.List
 
 import Control.Concurrent.STM.TMVar
 import Control.Lens
-import Control.Wire.Controller
 import SDL.Event
 import SDL.Input.Keyboard
 import qualified SDL.Raw.Enum as Raw
@@ -146,15 +145,15 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 			mempty
 		(Event _ (MouseMotionEvent (MouseMotionEventData _ _ _ (P (V2 x y)) (V2 dx dy)))) ->
 			let (x', y', dx', dy') = (fromIntegral x, fromIntegral y, fromIntegral dx, fromIntegral dy) in
-			let mresponse = stepWire immutaballN [Point x' y' dx' dy'] in
+			let mresponse = stepImmutaball immutaballN [Point x' y' dx' dy'] in
 			processStepResult mresponse withImmutaballNp1
 		(Event _ (MouseButtonEvent (MouseButtonEventData _ pressed _ mouseButton _ _))) ->
 			let (button, down) = (fromIntegral $ getMouseButton mouseButton, isMousePressed pressed) in
-			let mresponse = stepWire immutaballN [Click button down] in
+			let mresponse = stepImmutaball immutaballN [Click button down] in
 			processStepResult mresponse withImmutaballNp1
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
-			let mresponse = stepWire immutaballN [Keybd char down] in
+			let mresponse = stepImmutaball immutaballN [Keybd char down] in
 			processStepResult mresponse withImmutaballNp1
 		_ ->
 			-- Ignore all unhandled events.
@@ -162,9 +161,9 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepClock _cxt du us immutaballN withImmutaballNp1 =
-	let mresponse = stepWire immutaballN [Clock du] in
+	let mresponse = stepImmutaball immutaballN [Clock du] in
 	processStepResult mresponse $ \immutaballNp1 ->
-	let mresponse_ = stepWire immutaballNp1 [Paint $ (fromIntegral us) / 1000000.0] in
+	let mresponse_ = stepImmutaball immutaballNp1 [Paint $ (fromIntegral us) / 1000000.0] in
 	processStepResult mresponse_ withImmutaballNp1
 
 processStepResult :: Maybe (ResponseFrame, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO

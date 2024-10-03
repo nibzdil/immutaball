@@ -10,13 +10,15 @@
 module Immutaball.Share.State
 	(
 		Immutaball,
+		ImmutaballM,
 		RequestFrame,
 		Request(..),
 		ResponseFrame,
 		Response(..),
 		closeFork,
 		closeFork',
-		immutaballIOLinear
+		immutaballIOLinear,
+		stepImmutaball
 	) where
 
 import Prelude ()
@@ -24,8 +26,11 @@ import Immutaball.Prelude
 
 import Control.Arrow
 
+import Control.Monad.Trans.Maybe
 import Control.Wire
+import Control.Wire.Controller
 
+import Immutaball.Share.AutoPar
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.Wire
 
@@ -34,7 +39,11 @@ import Immutaball.Share.Wire
 -- Wire is perhaps like Fixed StateT.
 --
 -- > data Wire m a b = Wire { _stepWire :: a -> m (b, Wire m a b) }
-type Immutaball = Wire Maybe RequestFrame ResponseFrame
+--type Immutaball = Wire Maybe RequestFrame ResponseFrame
+type Immutaball = Wire ImmutaballM RequestFrame ResponseFrame
+
+-- | Maybe identity.  Maybe can end a wire.
+type ImmutaballM = MaybeT AutoPar
 
 type RequestFrame = [Request]
 data Request =
@@ -59,11 +68,17 @@ data Response =
 --
 -- This can be combined with 'ImmutaballIOFork' to keep a single wire running.
 {- --closeFork :: Immutaball -}
-closeFork :: Wire Maybe () ()
-closeFork = withM returnA (const Nothing)
+closeFork :: Wire ImmutaballM () ()
+closeFork = withM returnA (const . hoistMaybe $ Nothing)
 
-closeFork' :: Wire Maybe () a
-closeFork' = withM returnA (const Nothing)
+closeFork' :: Wire ImmutaballM () a
+closeFork' = withM returnA (const . hoistMaybe $ Nothing)
 
-immutaballIOLinear :: ImmutaballIOF Immutaball -> Wire Maybe () ResponseFrame
-immutaballIOLinear ibIO = wire (\() -> Just ([ImmutaballIOFork ibIO], closeFork'))
+immutaballIOLinear :: ImmutaballIOF Immutaball -> Wire ImmutaballM () ResponseFrame
+immutaballIOLinear ibIO = wire (\() -> hoistMaybe $ Just ([ImmutaballIOFork ibIO], closeFork'))
+
+-- | Convenience utility to simplify the 'AutoPar' layer.
+--
+-- It's 'stepWire' without 'AutoPar'.
+stepImmutaball :: Immutaball -> RequestFrame -> Maybe (ResponseFrame, Immutaball)
+stepImmutaball immutaball request = runAutoPar . runMaybeT $ stepWire immutaball request

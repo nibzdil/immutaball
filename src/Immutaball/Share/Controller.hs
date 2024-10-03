@@ -81,7 +81,7 @@ stepFrameNoMaxClockPeriod :: IBContext -> Float -> Integer -> [Event] -> Immutab
 stepFrameNoMaxClockPeriod cxt ds us events immutaball withImmutaball =
 	foldr
 		(\event withImmutaballNp1 -> \immutaballN -> stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1)
-		(\immutaballN -> stepClock cxt immutaballN withImmutaball)
+		(\immutaballN -> stepClock cxt ds us immutaballN withImmutaball)
 		events
 		immutaball
 
@@ -94,8 +94,8 @@ stepFrameNoMaxClockPeriod cxt ds us events immutaball withImmutaball =
 stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepFrame cxt ds us events immutaball withImmutaball =
 	foldr
-		(\event withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event mclockAtUs noClock immutaballN withImmutaballNp1)
-		(\_mclockAtUs _noClock immutaballN -> stepClock cxt immutaballN withImmutaball)
+		(\event withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event ds us mclockAtUs noClock immutaballN withImmutaballNp1)
+		(\_mclockAtUs _noClock immutaballN -> stepClock cxt ds us immutaballN withImmutaball)
 		events
 		((\p -> let pus = (max 0 . round) (1000000.0 * p) in let n us = us + pus in (n us, n)) <$> (cxt^.ibStaticConfig.maxClockPeriod))
 		True
@@ -108,11 +108,11 @@ stepFrame cxt ds us events immutaball withImmutaball =
 -- more events.  Then we also use the ‘noClock’ Bool to make sure we process at
 -- least one Event at a time.
 stepEvent ::
-	IBContext -> Event ->
+	IBContext -> Event -> Float -> Integer ->
 	Maybe (Integer, Integer -> Integer) -> Bool -> Immutaball ->
 	(Maybe (Integer, Integer -> Integer) -> Bool -> Immutaball -> ImmutaballIO) ->
 	ImmutaballIO
-stepEvent cxt event mclockAtUs noClock immutaballN withImmutaballNp1 =
+stepEvent cxt event ds us mclockAtUs noClock immutaballN withImmutaballNp1 =
 	case mclockAtUs of
 		Nothing -> stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs noClock)
 		Just (clockAtUs, nextClockAtUs) ->
@@ -122,7 +122,7 @@ stepEvent cxt event mclockAtUs noClock immutaballN withImmutaballNp1 =
 					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs False)
 				)
 				(
-					stepClock cxt immutaballN $ \immutaballNp1 ->
+					stepClock cxt ds us immutaballN $ \immutaballNp1 ->
 					let mclockAtUs' = (Just (nextClockAtUs clockAtUs, nextClockAtUs)) in
 					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs' True)
 				)
@@ -145,8 +145,8 @@ stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 			-- Ignore all unhandled events.
 			withImmutaballNp1 immutaballN
 
-stepClock :: IBContext -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepClock cxt immutaballN withImmutaballNp1 =
+stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepClock cxt du us immutaballN withImmutaballNp1 =
 	unimplementedHelper
 
 unimplementedHelper :: ImmutaballIO

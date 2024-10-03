@@ -40,7 +40,7 @@ import Control.Concurrent.Async
 import Control.Monad.STM
 import Control.Parallel
 
-import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
+import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils

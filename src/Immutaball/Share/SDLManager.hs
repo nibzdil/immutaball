@@ -42,7 +42,7 @@ import Control.Monad.STM
 import Data.Functor
 
 import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
+import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.SDLManager.Types
 

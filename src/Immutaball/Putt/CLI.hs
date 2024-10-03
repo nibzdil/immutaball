@@ -46,7 +46,7 @@ import Immutaball.Share.Config.Printer
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
+import Immutaball.Share.ImmutaballIO.BasicIO
 --import Immutaball.Share.State
 
 main :: IO ()

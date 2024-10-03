@@ -18,7 +18,7 @@ import Prelude ()
 
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
+import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
 
 controlImmutaball :: IBContext -> Immutaball -> ImmutaballIO

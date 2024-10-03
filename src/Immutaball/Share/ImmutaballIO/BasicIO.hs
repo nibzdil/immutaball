@@ -44,7 +44,8 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		mkReadTextSync,
 		mkCreateDirectoryIfMissing,
 		mkForkOS,
-		mkSDLIO
+		mkSDLIO,
+		mkDelayUs
 	) where
 
 import Prelude ()
@@ -57,6 +58,7 @@ import System.Environment
 import System.Exit
 
 import Control.Concurrent.Async
+import Control.Concurrent.Thread.Delay
 import Control.Parallel
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
@@ -102,6 +104,8 @@ data BasicIOF me =
 
 	| SDLIO (SDLIOF me)
 
+	| DelayUs Integer
+
 runBasicIO :: BasicIO -> IO ()
 runBasicIO bio = cata runBasicIOIO bio
 
@@ -146,6 +150,8 @@ instance Functor BasicIOF where
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
 
+	fmap _f (DelayUs us) = DelayUs us
+
 {-
 instance Foldable BasicIOF where
 	-- TODO
@@ -189,6 +195,7 @@ runBasicIOIO (ReadTextSync path mwithErr withContents)     =
 runBasicIOIO (CreateDirectoryIfMissing path)               = createDirectoryIfMissing True path
 runBasicIOIO (ForkOS ibio)                                 = void . forkOS $ ibio
 runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
+runBasicIOIO (DelayUs us)                                  = delay us
 
 runDirectoryBasicIO :: DirectoryIO -> BasicIO
 runDirectoryBasicIO dio = Fixed . DirectoryIO $ runDirectoryBasicIO <$> getFixed dio
@@ -270,3 +277,7 @@ mkForkOS ibio = Fixed $ ForkOS ibio
 
 mkSDLIO :: SDLIOF BasicIO -> BasicIO
 mkSDLIO sdlio = Fixed $ SDLIO sdlio
+
+-- | Microseconds thread delay, with ‘unbounded-delays’.
+mkDelayUs :: Integer -> BasicIO
+mkDelayUs us = Fixed $ DelayUs us

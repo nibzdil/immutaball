@@ -44,7 +44,7 @@ makeLenses ''IBContext
 -- Does not create a window or set up OpenGL.
 withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
-	mkBasicImmutaballIO . SDLIO . SDLInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] .
+	mkBasicImmutaballIO . SDLIO . SDLWithInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] .
 	withSDLManager $ \sdlManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.ctxCfgStaticConfig,

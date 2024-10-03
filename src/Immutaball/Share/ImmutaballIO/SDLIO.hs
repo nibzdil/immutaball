@@ -19,11 +19,15 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 
 		-- * SDLIO aliases that apply the Fixed wrapper
 		mkSDLInit,
+		mkSDLPollEvent,
+		mkSDLPollEventSync
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Concurrent.Async
+import qualified SDL.Event
 import qualified SDL.Init
 
 import Immutaball.Share.Utils
@@ -31,35 +35,51 @@ import Immutaball.Share.Utils
 -- * DirectoryIO
 
 type SDLIO = Fixed SDLIOF
-data SDLIOF a =
-	SDLInit [SDL.Init.InitFlag] a
-	deriving (Eq, Ord, Show)
+data SDLIOF me =
+	  SDLWithInit [SDL.Init.InitFlag] me
+	-- | WARNING: do not call directly to avoid undefined behavior, but only
+	-- with OS thread management compliant with the requirements of
+	-- 'SDL.Event.pollEvent':
+	-- > You can only call this function in the OS thread that set the video mode.
+	-- SDLManager can handle this.
+	| SDLPollEvent (Async (Maybe SDL.Event.Event) -> me)
+	| SDLPollEventSync (Maybe SDL.Event.Event -> me)
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
-	fmap f (SDLInit subsystems sdlio) = SDLInit subsystems (f sdlio)
+	fmap f (SDLWithInit subsystems sdlio) = SDLWithInit subsystems (f sdlio)
+	fmap f (SDLPollEvent withMEvent)      = SDLPollEvent (f . withMEvent)
+	fmap f (SDLPollEventSync withMEvent)  = SDLPollEventSync (f . withMEvent)
 
 runSDLIO :: SDLIO -> IO ()
-runSDLIO (Fixed (SDLInit subsystems sdlio)) = do
-	SDL.Init.initialize subsystems
-	runSDLIO sdlio
-	SDL.Init.quit
+runSDLIO sdlio = cata runSDLIOIO sdlio
 
+-- TODO: revisit:
+{-
 instance Foldable SDLIOF where
 	foldr :: (a -> b -> b) -> b -> SDLIOF a -> b
-	foldr reduce reduction0 (SDLInit _subsystems sdlio) = reduce sdlio reduction0
+	foldr reduce reduction0 (SDLWithInit _subsystems sdlio) = reduce sdlio reduction0
 instance Traversable SDLIOF where
 	traverse :: Applicative f => (a -> f b) -> SDLIOF a -> f (SDLIOF b)
-	traverse traversal (SDLInit subsystems sdlio) = pure SDLInit <*> pure subsystems <*> traversal sdlio
+	traverse traversal (SDLWithInit subsystems sdlio) = pure SDLWithInit <*> pure subsystems <*> traversal sdlio
+-}
 
 -- * Runners
 
 runSDLIOIO :: SDLIOF (IO ()) -> IO ()
-runSDLIOIO (SDLInit subsystems sdlioio) = do
+runSDLIOIO (SDLWithInit subsystems sdlioio) = do
 	SDL.Init.initialize subsystems
 	sdlioio
 	SDL.Init.quit
+runSDLIOIO (SDLPollEvent withMEvent) = withAsync SDL.Event.pollEvent withMEvent
+runSDLIOIO (SDLPollEventSync withMEvent) = SDL.Event.pollEvent >>= withMEvent
 
--- * DirectoryIO aliases that apply the Fixed wrapper
+-- * SDLIO aliases that apply the Fixed wrapper
 
 mkSDLInit :: [SDL.Init.InitFlag] -> SDLIO -> SDLIO
-mkSDLInit subsystems sdlio = Fixed $ SDLInit subsystems sdlio
+mkSDLInit subsystems sdlio = Fixed $ SDLWithInit subsystems sdlio
+
+mkSDLPollEvent :: (Async (Maybe SDL.Event.Event) -> SDLIO) -> SDLIO
+mkSDLPollEvent withMEvent = Fixed $ SDLPollEvent withMEvent
+
+mkSDLPollEventSync :: (Maybe SDL.Event.Event -> SDLIO) -> SDLIO
+mkSDLPollEventSync withMEvent = Fixed $ SDLPollEventSync withMEvent

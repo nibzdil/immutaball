@@ -34,6 +34,7 @@ module Immutaball.Share.SDLManager
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
 import Control.Lens
@@ -41,6 +42,7 @@ import Control.Monad.STM
 
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
+import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.SDLManager.Types
 
 -- * High level
@@ -94,6 +96,7 @@ sdlManagerThread sdlMgr =
 		False -> case cmd of
 			QuitSDLManager -> quit
 			NopSDLManager -> sdlManagerThread sdlMgr
+			PollEvent to_ -> (mkBasicImmutaballIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (const mempty)) <>> sdlManagerThread sdlMgr
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

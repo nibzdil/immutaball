@@ -112,6 +112,7 @@ common executable-components
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Types
 		Immutaball.Share.State
+		Immutaball.Share.State.Context
 		Immutaball.Share.Utils
 		Immutaball.Share.Wire
 
@@ -152,6 +153,7 @@ library
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Types
 		Immutaball.Share.State
+		Immutaball.Share.State.Context
 		Immutaball.Share.Utils
 		Immutaball.Share.Wire
 

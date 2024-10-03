@@ -27,6 +27,8 @@ import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.SDLManager
 
 -- | An Immutaball context instance.
+--
+-- The controller has access to this.
 data IBContext = IBContext {
 	_ibStaticConfig :: StaticConfig,
 	_ibDirs         :: IBDirs,
@@ -34,8 +36,6 @@ data IBContext = IBContext {
 	_ibNeverballrc0 :: Neverballrc,
 
 	_ibSDLManagerHandle :: SDLManagerHandle
-
-	-- TODO: Maybe Window and gl context.
 }
 makeLenses ''IBContext
 

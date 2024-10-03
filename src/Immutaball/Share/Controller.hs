@@ -27,6 +27,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Data.Function hiding (id, (.))
+import Data.List
 
 import Control.Concurrent.STM.TMVar
 import Control.Lens
@@ -52,20 +53,23 @@ controlImmutaball cxt0 immutaball0 =
 		initialFrame :: ImmutaballIO
 		initialFrame =
 			mkBIO . GetUs $ \us0 ->
-			nextFrame us0 immutaball0
-		nextFrame :: Integer -> Immutaball -> ImmutaballIO
-		nextFrame usNm1 immutaballN =
+			nextFrame us0 [] immutaball0
+		nextFrame :: Integer -> [Event] -> Immutaball -> ImmutaballIO
+		nextFrame usNm1 queuedEvents immutaballN =
 			mkBIO . GetUs $ \usN ->
 			let dus = max 0 $ usNm1 - usN in
 			let ds = (fromInteger dus / 1000000.0)  :: Float in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
 			if' (usN < usNm1pMinClockPeriod) (mkBIO (DelayUs (usNm1pMinClockPeriod - usN)) <>>) id .
 			takeAllSDLEvents cxt0 $ \events ->
-			let events' = maybe id (take . fromIntegral) (cxt0^.ibStaticConfig.maxFrameEvents) events in
-			stepFrame' cxt0 ds usN events' immutaballN (nextFrame usN)
+			let events' = queuedEvents ++ events in
+			let events'' = maybe id (take . fromIntegral) (cxt0^.ibStaticConfig.maxFrameEvents) events' in
+			stepFrame' cxt0 ds usN events'' immutaballN (nextFrame usN)
 		stepFrame'
-			| Nothing <- (cxt0^.ibStaticConfig.maxClockPeriod) = stepFrameNoMaxClockPeriod
+			| Nothing <- (cxt0^.ibStaticConfig.maxClockPeriod) = stepFrameNoMaxClockPeriod'
 			| otherwise                                        = stepFrame
+		stepFrameNoMaxClockPeriod' cxt ds us events immutaball withImmutaball =
+			stepFrameNoMaxClockPeriod cxt ds us events immutaball (withImmutaball [])
 
 takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
 takeAllSDLEvents cxt withEvents =
@@ -92,13 +96,16 @@ stepFrameNoMaxClockPeriod cxt ds us events immutaball withImmutaball =
 -- It ensures that if 'maxClockPeriod' amount of time has passed since any
 -- clock step, a clock step is inserted before processing the next event,
 -- if at least one event has been processed.
-stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> ([Event] -> Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepFrame cxt ds us events immutaball withImmutaball =
+	let z = (\queued _mclockAtUs _noClock immutaballN -> stepClock cxt ds us immutaballN (withImmutaball queued)) in
+	let defer = \queued -> z queued Nothing False in
+	let eventsWithRemaining = zip events (drop 1 $ tails events) in
 	foldr
-		(\event withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event ds us mclockAtUs noClock immutaballN withImmutaballNp1)
-		(\_mclockAtUs _noClock immutaballN -> stepClock cxt ds us immutaballN withImmutaball)
-		events
-		((\p -> let pus = (max 0 . round) (1000000.0 * p) in let n us_ = us_ + pus in (n us, n)) <$> (cxt^.ibStaticConfig.maxClockPeriod))
+		(\(event, eventsRemaining) withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImmutaballNp1)
+		(z [])
+		eventsWithRemaining
+		((\p -> max 0 . round $ 1000000.0 * p) <$> (cxt^.ibStaticConfig.maxClockPeriod))
 		True
 		immutaball
 
@@ -109,24 +116,23 @@ stepFrame cxt ds us events immutaball withImmutaball =
 -- more events.  Then we also use the ‘noClock’ Bool to make sure we process at
 -- least one Event at a time.
 stepEvent ::
-	IBContext -> Event -> Float -> Integer ->
-	Maybe (Integer, Integer -> Integer) -> Bool -> Immutaball ->
-	(Maybe (Integer, Integer -> Integer) -> Bool -> Immutaball -> ImmutaballIO) ->
+	IBContext -> Event -> [Event] ->
+	Maybe Integer -> Bool -> Immutaball ->
+	([Event] -> Immutaball -> ImmutaballIO) ->
+	(Maybe Integer -> Bool -> Immutaball -> ImmutaballIO) ->
 	ImmutaballIO
-stepEvent cxt event ds us mclockAtUs noClock immutaballN withImmutaballNp1 =
-	case mclockAtUs of
-		Nothing -> stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs noClock)
-		Just (clockAtUs, nextClockAtUs) ->
+stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImmutaballNp1 =
+	case (mclockAtUs, noClock) of
+		(Just clockAtUs, False) ->
 			mkBIO . GetUs $ \us_ ->
 			if' (not $ us_ >= clockAtUs)
 				(
 					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs False)
 				)
 				(
-					stepClock cxt ds us immutaballN $ \immutaballNp1 ->
-					let mclockAtUs' = (Just (nextClockAtUs clockAtUs, nextClockAtUs)) in
-					stepEventNoMaxClockPeriod cxt event immutaballNp1 (withImmutaballNp1 mclockAtUs' True)
+					defer eventsRemaining immutaballN
 				)
+		_ -> stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs noClock)
 
 -- | Step an event.
 stepEventNoMaxClockPeriod :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
@@ -140,7 +146,6 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 			-- Ignore all unhandled events.
 			withImmutaballNp1 immutaballN
 
--- TODO: FIXME: mid-event clock repeats du!
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepClock _cxt du _us immutaballN withImmutaballNp1 =
 	let mresponse = stepWire immutaballN [Clock du] in

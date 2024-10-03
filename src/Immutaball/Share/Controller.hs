@@ -47,7 +47,6 @@ controlImmutaball cxt0 immutaball0 =
 			let dus = max 0 $ usNm1 - usN in
 			let ds = (fromInteger dus / 1000000.0)  :: Float in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
-			--if' (ds < maybe 0 id (cxt0^.minClockPeriod)) (mkBIO (DelayUs ()) <>>) id $
 			if' (usN < usNm1pMinClockPeriod) (mkBIO (DelayUs (usNm1pMinClockPeriod - usN)) <>>) id .
 			takeAllSDLEvents cxt0 $ \events ->
 			runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO

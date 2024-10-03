@@ -97,7 +97,7 @@ stepFrame cxt ds us events immutaball withImmutaball =
 		(\event withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event ds us mclockAtUs noClock immutaballN withImmutaballNp1)
 		(\_mclockAtUs _noClock immutaballN -> stepClock cxt ds us immutaballN withImmutaball)
 		events
-		((\p -> let pus = (max 0 . round) (1000000.0 * p) in let n us = us + pus in (n us, n)) <$> (cxt^.ibStaticConfig.maxClockPeriod))
+		((\p -> let pus = (max 0 . round) (1000000.0 * p) in let n us_ = us_ + pus in (n us, n)) <$> (cxt^.ibStaticConfig.maxClockPeriod))
 		True
 		immutaball
 

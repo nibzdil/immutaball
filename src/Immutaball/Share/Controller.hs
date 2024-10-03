@@ -10,8 +10,10 @@ module Immutaball.Share.Controller
 	(
 		controlImmutaball,
 		takeAllSDLEvents,
+		stepFrameNoMaxClockPeriod,
 		stepFrame,
 		stepEvent,
+		stepEventNoMaxClockPeriod,
 		stepClock,
 		unimplementedHelper,
 
@@ -59,7 +61,10 @@ controlImmutaball cxt0 immutaball0 =
 			if' (usN < usNm1pMinClockPeriod) (mkBIO (DelayUs (usNm1pMinClockPeriod - usN)) <>>) id .
 			takeAllSDLEvents cxt0 $ \events ->
 			let events' = maybe id (take . fromIntegral) (cxt0^.ibStaticConfig.maxFrameEvents) events in
-			stepFrame cxt0 ds usN events' immutaballN (nextFrame usN)
+			stepFrame' cxt0 ds usN events' immutaballN (nextFrame usN)
+		stepFrame'
+			| Nothing <- (cxt0^.ibStaticConfig.maxClockPeriod) = stepFrameNoMaxClockPeriod
+			| otherwise                                        = stepFrame
 
 takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
 takeAllSDLEvents cxt withEvents =
@@ -71,19 +76,60 @@ takeAllSDLEvents cxt withEvents =
 		Nothing -> withEvents $ reverse events
 		Just event -> me (event:events)
 
--- Step each event then clock.
--- TODO: handle maxEventPeriod.  (stepEvent just sometimes adds a stepClock
--- before going back to the callback.)
-stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepFrame cxt ds us events immutaball withImmutaball =
+-- | Step each event then clock.
+stepFrameNoMaxClockPeriod :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepFrameNoMaxClockPeriod cxt ds us events immutaball withImmutaball =
 	foldr
-		(\event withImmutaballNp1 -> \immutaballN -> stepEvent cxt event immutaballN withImmutaballNp1)
+		(\event withImmutaballNp1 -> \immutaballN -> stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1)
 		(\immutaballN -> stepClock cxt immutaballN withImmutaball)
 		events
 		immutaball
 
-stepEvent :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepEvent cxt event immutaballN withImmutaballNp1 =
+-- | Step each event then clock.
+--
+-- This variant handles 'maxClockPeriod' (see documentation in 'StaticConfig').
+-- It ensures that if 'maxClockPeriod' amount of time has passed since any
+-- clock step, a clock step is inserted before processing the next event,
+-- if at least one event has been processed.
+stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepFrame cxt ds us events immutaball withImmutaball =
+	foldr
+		(\event withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event mclockAtUs noClock immutaballN withImmutaballNp1)
+		(\_mclockAtUs _noClock immutaballN -> stepClock cxt immutaballN withImmutaball)
+		events
+		((\p -> let pus = (max 0 . round) (1000000.0 * p) in let n us = us + pus in (n us, n)) <$> (cxt^.ibStaticConfig.maxClockPeriod))
+		True
+		immutaball
+
+-- | Step an event; variant that handles 'maxClockPeriod'.
+--
+-- maxClockPeriod: the maybe argument just makes it so that if the current time in
+-- milliseconds is >= the threshold, we insert a clock step before processing
+-- more events.  Then we also use the ‘noClock’ Bool to make sure we process at
+-- least one Event at a time.
+stepEvent ::
+	IBContext -> Event ->
+	Maybe (Integer, Integer -> Integer) -> Bool -> Immutaball ->
+	(Maybe (Integer, Integer -> Integer) -> Bool -> Immutaball -> ImmutaballIO) ->
+	ImmutaballIO
+stepEvent cxt event mclockAtUs noClock immutaballN withImmutaballNp1 =
+	case mclockAtUs of
+		Nothing -> stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs noClock)
+		Just (clockAtUs, nextClockAtUs) ->
+			mkBIO . GetUs $ \us ->
+			if' (not $ us >= clockAtUs)
+				(
+					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs False)
+				)
+				(
+					stepClock cxt immutaballN $ \immutaballNp1 ->
+					let mclockAtUs' = (Just (nextClockAtUs clockAtUs, nextClockAtUs)) in
+					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs' True)
+				)
+
+-- | Step an event.
+stepEventNoMaxClockPeriod :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 	case event of
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in

@@ -9,7 +9,7 @@
 
 module Immutaball.Share.Config
 	(
-		StaticConfig(..), minClockPeriod, maxEventPeriod, maxFrameEvents,
+		StaticConfig(..), minClockPeriod, maxClockPeriod, maxFrameEvents,
 			maxStepFrameSize, maxResponseFrameSize, defaultStaticDataDir,
 			defaultUserDataDir, defaultUserConfigDir, configFilename,
 			defaultStaticConfig,
@@ -45,12 +45,13 @@ import Control.Lens
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 
 data StaticConfig = StaticConfig {
-	-- | Maximum FPS, except for non-clock SDL events.
+	-- | Maximum FPS, including non-clock SDL events.
 	_minClockPeriod :: Maybe Float,
 	-- | If at least one non-clock event has been stepped, if more SDL
 	-- events are available, delay processing those events if at least this
-	-- much time has passed.
-	_maxEventPeriod :: Maybe Float,
+	-- much time has passed.  This might also be known as ‘maxEventPeriod’ with
+	-- respect to clock steps.
+	_maxClockPeriod :: Maybe Float,
 	-- | If a single frame has more than this limit events, drop all after the
 	-- first limit tunmber.
 	_maxFrameEvents :: Maybe Integer,
@@ -74,7 +75,7 @@ makeLenses ''StaticConfig
 defaultStaticConfig :: StaticConfig
 defaultStaticConfig = StaticConfig {
 	_minClockPeriod       = Just 0.001,  -- ^ Max FPS: 1000.
-	_maxEventPeriod       = Just 0.5,    -- ^ Don't let external events block the clock for more than 500ms.
+	_maxClockPeriod       = Just 0.5,    -- ^ Don't let external events block the clock for more than 500ms.
 	_maxFrameEvents       = Nothing,
 	_maxStepFrameSize     = Just 8,      -- ^ Don't request more than 8 at a time.
 	_maxResponseFrameSize = Nothing,     -- ^ Don't request more than 8 at a time.

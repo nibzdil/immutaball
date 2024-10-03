@@ -13,7 +13,9 @@ module Immutaball.Share.Utils
 		getFixed,
 		cata,
 		RCompose(..), rcompose,
-		getRCompose
+		getRCompose,
+		if',
+		deconsBool
 	) where
 
 import Prelude ()
@@ -49,3 +51,11 @@ makeLenses ''RCompose
 
 getRCompose :: RCompose f g a -> g (f a)
 getRCompose = (^.rcompose)
+
+if' :: Bool -> a -> a -> a
+if' True then_ _  = then_
+if' False _ else_ = else_
+
+deconsBool :: r -> r -> Bool -> r
+deconsBool withTrue _  (True)  = withTrue
+deconsBool _ withFalse (False) = withFalse

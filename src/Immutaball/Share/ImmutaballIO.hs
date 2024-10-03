@@ -30,7 +30,10 @@ module Immutaball.Share.ImmutaballIO
 		mkBasicImmutaballIO,
 		mkWait,
 		mkWithAsync,
-		mkAtomically
+		mkAtomically,
+
+		-- * Utils
+		mkBIO
 	) where
 
 import Prelude ()
@@ -138,3 +141,9 @@ mkWithAsync ibio withAsync_ = Fixed $ WithAsync ibio withAsync_
 
 mkAtomically :: STM a -> (a -> ImmutaballIO) -> ImmutaballIO
 mkAtomically stm withStm = Fixed $ Atomically stm withStm
+
+-- * Utils
+
+-- | Short alias for 'mkBasicImmutaballIO'.
+mkBIO :: BasicIOF ImmutaballIO -> ImmutaballIO
+mkBIO = mkBasicImmutaballIO

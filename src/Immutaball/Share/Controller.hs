@@ -10,7 +10,14 @@ module Immutaball.Share.Controller
 	(
 		controlImmutaball,
 		takeAllSDLEvents,
-		stepFrame
+		stepFrame,
+		stepEvent,
+		stepClock,
+		unimplementedHelper,
+
+		-- * SDL utils
+		isKbdEventDown,
+		kbdEventChar
 	) where
 
 import Prelude ()
@@ -20,8 +27,9 @@ import Data.Function hiding (id, (.))
 
 import Control.Concurrent.STM.TMVar
 import Control.Lens
---import Control.Wire
+import Control.Wire.Controller
 import SDL.Event
+import SDL.Input.Keyboard
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context
@@ -63,6 +71,47 @@ takeAllSDLEvents cxt withEvents =
 		Nothing -> withEvents $ reverse events
 		Just event -> me (event:events)
 
+-- Step each event then clock.
+-- TODO: handle maxEventPeriod.  (stepEvent just sometimes adds a stepClock
+-- before going back to the callback.)
 stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepFrame cxt ds us events immutaball withImmutaball =
+	foldr
+		(\event withImmutaballNp1 -> \immutaballN -> stepEvent cxt event immutaballN withImmutaballNp1)
+		(\immutaballN -> stepClock cxt immutaballN withImmutaball)
+		events
+		immutaball
+
+stepEvent :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepEvent cxt event immutaballN withImmutaballNp1 =
+	case event of
+		(Event _ (KeyboardEvent kbdEvent)) ->
+			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
+			let mresponse = stepWire immutaballN [Keybd char down] in
+			maybe (const mempty) (&) mresponse $ \(response, immutaballNp1) ->
+			--response <> withImmutaballNp1 immutaballNp1
+			(withImmutaballNp1 immutaballNp1 <>) .
+			mconcat . flip map response $ \responseI ->
+			case responseI of
+				PureFork immutaballNp1_2 -> withImmutaballNp1 immutaballNp1_2
+				ImmutaballIOFork ibio -> Fixed $ withImmutaballNp1 <$> ibio
+		_ ->
+			-- Ignore all unhandled events.
+			withImmutaballNp1 immutaballN
+
+stepClock :: IBContext -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepClock cxt immutaballN withImmutaballNp1 =
+	unimplementedHelper
+
+unimplementedHelper :: ImmutaballIO
+unimplementedHelper =
 	runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO
+
+-- * SDL utils
+
+isKbdEventDown :: KeyboardEventData -> Bool
+isKbdEventDown (KeyboardEventData _ Pressed  _ _) = True
+isKbdEventDown (KeyboardEventData _ Released _ _) = False
+
+kbdEventChar :: KeyboardEventData -> Integer
+kbdEventChar (KeyboardEventData _ _ _ (Keysym _ (Keycode keyCode) _)) = (fromIntegral keyCode)

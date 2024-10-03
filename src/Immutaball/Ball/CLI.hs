@@ -64,7 +64,7 @@ immutaballCLIMain = do
 
 mainImmutaballIO :: ImmutaballIO
 mainImmutaballIO =
-	mkBasicImmutaballIO . GetArgs $ immutaballWithArgs defaultStaticConfig
+	mkBasicImmutaballIO . GetArgsSync $ immutaballWithArgs defaultStaticConfig
 
 immutaballOptions :: [OptDescr CLIConfigBuilder]
 immutaballOptions =
@@ -157,9 +157,9 @@ getDefaultIBDirs :: StaticConfig -> (IBDirs -> ImmutaballIO) -> ImmutaballIO
 getDefaultIBDirs x'cfg withIBDirs =
 	--mkGetDirectory (runDirectoryAnyIO $ mkGetXdgDirectoryData "path") $ \staticDataDir ->
 	--either (mkGetDirectory . runDirectoryAnyIO . getFixed) (&) (x'cfg^.defaultStaticDataDir) $ \defaultStaticDataDir ->
-	either runDirectoryImmutaballIO (&) (x'cfg^.defaultStaticDataDir) $ \defaultStaticDataDir_ ->
-	either runDirectoryImmutaballIO (&) (x'cfg^.defaultUserDataDir)   $ \defaultUserDataDir_ ->
-	either runDirectoryImmutaballIO (&) (x'cfg^.defaultUserConfigDir) $ \defaultUserConfigDir_ ->
+	either runDirectorySyncImmutaballIO (&) (x'cfg^.defaultStaticDataDir) $ \defaultStaticDataDir_ ->
+	either runDirectorySyncImmutaballIO (&) (x'cfg^.defaultUserDataDir)   $ \defaultUserDataDir_ ->
+	either runDirectorySyncImmutaballIO (&) (x'cfg^.defaultUserConfigDir) $ \defaultUserConfigDir_ ->
 	withIBDirs $ IBDirs {
 		_ibStaticDataDir = defaultStaticDataDir_,
 		_ibUserDataDir   = defaultUserDataDir_,
@@ -177,7 +177,7 @@ immutaballWithCLIConfig' x'cfg cliCfg =
 		withDefaultIBDirs defaultIBDirs = result_
 			where
 				result_ :: ImmutaballIO
-				result_ = createUserDirsIfMissing <>> (mkBasicImmutaballIO . DoesPathExist neverballrcPath $ withNeverballrcExists)
+				result_ = createUserDirsIfMissing <>> (mkBasicImmutaballIO . DoesPathExistSync neverballrcPath $ withNeverballrcExists)
 				createUserDirsIfMissing :: ImmutaballIO
 				createUserDirsIfMissing = mconcat . map (mkBasicImmutaballIO . CreateDirectoryIfMissing) $ [ibDirs_^.ibUserDataDir, ibDirs_^.ibUserConfigDir]
 				ibDirs_ :: IBDirs
@@ -193,7 +193,7 @@ immutaballWithCLIConfig' x'cfg cliCfg =
 				withNeverballrcExists True = result_2
 					where
 						result_2 :: ImmutaballIO
-						result_2 = mkBasicImmutaballIO . ReadText neverballrcPath Nothing $ \neverballrcContents -> withParse $ parseNeverballrc neverballrcPath (T.unpack neverballrcContents)
+						result_2 = mkBasicImmutaballIO . ReadTextSync neverballrcPath Nothing $ \neverballrcContents -> withParse $ parseNeverballrc neverballrcPath (T.unpack neverballrcContents)
 						withParse :: Either String Neverballrc -> ImmutaballIO
 						withParse (Left  parseError)   = (mkBasicImmutaballIO . PutStrLn $ (printf "Error: failed to parse neverballrc: %s" parseError)) <>> mkBasicImmutaballIO ExitFailureBasicIOF
 						withParse (Right neverballrc_) = immutaballWithNeverballrc x'cfg cliCfg ibDirs_ neverballrc_

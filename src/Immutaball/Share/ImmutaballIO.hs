@@ -21,6 +21,7 @@ module Immutaball.Share.ImmutaballIO
 		runImmutaballIOIO,
 		runBasicImmutaballIO,
 		runDirectoryImmutaballIO,
+		runDirectorySyncImmutaballIO,
 		runSDLImmutaballIO,
 
 		-- * ImmutaballIO aliases that apply the Fixed wrapper
@@ -110,12 +111,19 @@ runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF (runBasicImmutaballIO <$> getFixed bio)
 
-runDirectoryImmutaballIO :: DirectoryIO -> (FilePath -> ImmutaballIO) -> ImmutaballIO
+runDirectoryImmutaballIO :: DirectoryIO -> (Async FilePath -> ImmutaballIO) -> ImmutaballIO
 --runDirectoryImmutaballIO dio withPath = runBasicImmutaballIO $ runDirectoryBasicIO dio withPath
 runDirectoryImmutaballIO _dio@(Fixed (GetXdgDirectoryData   path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectory (GetXdgDirectoryData   path) withPath)
 runDirectoryImmutaballIO _dio@(Fixed (GetXdgDirectoryConfig path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectory (GetXdgDirectoryConfig path) withPath)
 runDirectoryImmutaballIO _dio@(Fixed (GetXdgDirectoryCache  path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectory (GetXdgDirectoryCache  path) withPath)
 runDirectoryImmutaballIO _dio@(Fixed (GetXdgDirectoryState  path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectory (GetXdgDirectoryState  path) withPath)
+
+runDirectorySyncImmutaballIO :: DirectoryIO -> (FilePath -> ImmutaballIO) -> ImmutaballIO
+--runDirectorySyncImmutaballIO dio withPath = runBasicImmutaballIO $ runDirectoryBasicIO dio withPath
+runDirectorySyncImmutaballIO _dio@(Fixed (GetXdgDirectoryData   path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectorySync (GetXdgDirectoryData   path) withPath)
+runDirectorySyncImmutaballIO _dio@(Fixed (GetXdgDirectoryConfig path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectorySync (GetXdgDirectoryConfig path) withPath)
+runDirectorySyncImmutaballIO _dio@(Fixed (GetXdgDirectoryCache  path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectorySync (GetXdgDirectoryCache  path) withPath)
+runDirectorySyncImmutaballIO _dio@(Fixed (GetXdgDirectoryState  path)) withPath = Fixed $ BasicImmutaballIOF (GetDirectorySync (GetXdgDirectoryState  path) withPath)
 
 runSDLImmutaballIO :: SDLIO -> ImmutaballIO
 runSDLImmutaballIO sdlio = runBasicImmutaballIO . runSDLBasicIO $ sdlio

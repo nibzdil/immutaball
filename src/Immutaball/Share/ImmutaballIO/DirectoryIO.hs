@@ -15,20 +15,23 @@ module Immutaball.Share.ImmutaballIO.DirectoryIO
 		runDirectoryIO,
 
 		-- * Runners
-		runDirectoryAnyIO,
+		runDirectoryIOIO,
 
 		-- * DirectoryIO aliases that apply the Fixed wrapper
 		mkGetXdgDirectoryData,
+		mkGetXdgDirectoryDataSync,
 		mkGetXdgDirectoryConfig,
+		mkGetXdgDirectoryConfigSync,
 		mkGetXdgDirectoryCache,
-		mkGetXdgDirectoryState
+		mkGetXdgDirectoryCacheSync,
+		mkGetXdgDirectoryState,
+		mkGetXdgDirectoryStateSync
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
-import Data.Functor.Contravariant
-
+import Control.Concurrent.Async
 import System.Directory
 
 import Immutaball.Share.Utils
@@ -37,34 +40,34 @@ import Immutaball.Share.Utils
 
 type DirectoryIO = Fixed DirectoryIOF
 data DirectoryIOF a =
-	  GetXdgDirectoryData FilePath
-		-- ^ Get ~/.local/share/path .
-	| GetXdgDirectoryConfig FilePath
-		-- ^ Get ~/.local/config/path .
-	| GetXdgDirectoryCache FilePath
-		-- ^ Get ~/.local/cache/path .
-	| GetXdgDirectoryState FilePath
-		-- ^ Get ~/.local/state/path .
-	deriving (Eq, Ord, Show)
+	-- | Get ~/.local/share/path .
+	  GetXdgDirectoryData FilePath (Async FilePath -> a)
+	| GetXdgDirectoryDataSync FilePath (FilePath -> a)
+	-- | Get ~/.local/config/path .
+	| GetXdgDirectoryConfig FilePath (Async FilePath -> a)
+	| GetXdgDirectoryConfigSync FilePath (FilePath -> a)
+	-- | Get ~/.local/cache/path .
+	| GetXdgDirectoryCache FilePath (Async FilePath -> a)
+	| GetXdgDirectoryCacheSync FilePath (FilePath -> a)
+	-- | Get ~/.local/state/path .
+	| GetXdgDirectoryState FilePath (Async FilePath -> a)
+	| GetXdgDirectoryStateSync FilePath (FilePath -> a)
 instance Functor DirectoryIOF where
 	fmap :: (a -> b) -> (DirectoryIOF a -> DirectoryIOF b)
-	fmap _f (GetXdgDirectoryData   path) = GetXdgDirectoryData   path
-	fmap _f (GetXdgDirectoryConfig path) = GetXdgDirectoryConfig path
-	fmap _f (GetXdgDirectoryCache  path) = GetXdgDirectoryCache  path
-	fmap _f (GetXdgDirectoryState  path) = GetXdgDirectoryState  path
-instance Contravariant DirectoryIOF where
-	contramap :: (b -> a) -> (DirectoryIOF a -> DirectoryIOF b)
-	contramap _f (GetXdgDirectoryData   path) = GetXdgDirectoryData   path
-	contramap _f (GetXdgDirectoryConfig path) = GetXdgDirectoryConfig path
-	contramap _f (GetXdgDirectoryCache  path) = GetXdgDirectoryCache  path
-	contramap _f (GetXdgDirectoryState  path) = GetXdgDirectoryState  path
+	fmap f (GetXdgDirectoryData       path withDir) = GetXdgDirectoryData       path (f . withDir)
+	fmap f (GetXdgDirectoryDataSync   path withDir) = GetXdgDirectoryDataSync   path (f . withDir)
+	fmap f (GetXdgDirectoryConfig     path withDir) = GetXdgDirectoryConfig     path (f . withDir)
+	fmap f (GetXdgDirectoryConfigSync path withDir) = GetXdgDirectoryConfigSync path (f . withDir)
+	fmap f (GetXdgDirectoryCache      path withDir) = GetXdgDirectoryCache      path (f . withDir)
+	fmap f (GetXdgDirectoryCacheSync  path withDir) = GetXdgDirectoryCacheSync  path (f . withDir)
+	fmap f (GetXdgDirectoryState      path withDir) = GetXdgDirectoryState      path (f . withDir)
+	fmap f (GetXdgDirectoryStateSync  path withDir) = GetXdgDirectoryStateSync  path (f . withDir)
 
-runDirectoryIO :: DirectoryIO -> IO FilePath
-runDirectoryIO (Fixed (GetXdgDirectoryData   path)) = getXdgDirectory XdgData   path
-runDirectoryIO (Fixed (GetXdgDirectoryConfig path)) = getXdgDirectory XdgConfig path
-runDirectoryIO (Fixed (GetXdgDirectoryCache  path)) = getXdgDirectory XdgCache  path
-runDirectoryIO (Fixed (GetXdgDirectoryState  path)) = getXdgDirectory XdgState  path
+runDirectoryIO :: DirectoryIO -> IO ()
+runDirectoryIO dio = cata runDirectoryIOIO dio
 
+-- TODO: revisit.
+{-
 instance Foldable DirectoryIOF where
 	foldr :: (a -> b -> b) -> b -> DirectoryIOF a -> b
 	foldr _reduce reduction0 (GetXdgDirectoryData   _path) = reduction0
@@ -77,25 +80,42 @@ instance Traversable DirectoryIOF where
 	traverse _traversal (GetXdgDirectoryConfig path) = pure GetXdgDirectoryConfig <*> pure path
 	traverse _traversal (GetXdgDirectoryCache  path) = pure GetXdgDirectoryCache  <*> pure path
 	traverse _traversal (GetXdgDirectoryState  path) = pure GetXdgDirectoryState  <*> pure path
+-}
 
 -- * Runners
 
-runDirectoryAnyIO :: DirectoryIOF a -> DirectoryIO
-runDirectoryAnyIO (GetXdgDirectoryData   path) = Fixed $ GetXdgDirectoryData   path
-runDirectoryAnyIO (GetXdgDirectoryConfig path) = Fixed $ GetXdgDirectoryConfig path
-runDirectoryAnyIO (GetXdgDirectoryCache  path) = Fixed $ GetXdgDirectoryCache  path
-runDirectoryAnyIO (GetXdgDirectoryState  path) = Fixed $ GetXdgDirectoryState  path
+runDirectoryIOIO :: DirectoryIOF (IO ()) -> IO ()
+runDirectoryIOIO (GetXdgDirectoryData       path withDir) = withAsync (getXdgDirectory XdgData   path) (withDir)
+runDirectoryIOIO (GetXdgDirectoryDataSync   path withDir) = getXdgDirectory XdgData   path >>= withDir
+runDirectoryIOIO (GetXdgDirectoryConfig     path withDir) = withAsync (getXdgDirectory XdgConfig path) (withDir)
+runDirectoryIOIO (GetXdgDirectoryConfigSync path withDir) = getXdgDirectory XdgConfig path >>= withDir
+runDirectoryIOIO (GetXdgDirectoryCache      path withDir) = withAsync (getXdgDirectory XdgCache  path) (withDir)
+runDirectoryIOIO (GetXdgDirectoryCacheSync  path withDir) = getXdgDirectory XdgCache  path >>= withDir
+runDirectoryIOIO (GetXdgDirectoryState      path withDir) = withAsync (getXdgDirectory XdgState  path) (withDir)
+runDirectoryIOIO (GetXdgDirectoryStateSync  path withDir) = getXdgDirectory XdgState  path >>= withDir
 
 -- * DirectoryIO aliases that apply the Fixed wrapper
 
-mkGetXdgDirectoryData :: FilePath -> DirectoryIO
-mkGetXdgDirectoryData path = Fixed $ GetXdgDirectoryData path
+mkGetXdgDirectoryData :: FilePath -> (Async FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryData path withDir = Fixed $ GetXdgDirectoryData path withDir
 
-mkGetXdgDirectoryConfig :: FilePath -> DirectoryIO
-mkGetXdgDirectoryConfig path = Fixed $ GetXdgDirectoryConfig path
+mkGetXdgDirectoryDataSync :: FilePath -> (FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryDataSync path withDir = Fixed $ GetXdgDirectoryDataSync path withDir
 
-mkGetXdgDirectoryCache :: FilePath -> DirectoryIO
-mkGetXdgDirectoryCache path = Fixed $ GetXdgDirectoryCache path
+mkGetXdgDirectoryConfig :: FilePath -> (Async FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryConfig path withDir = Fixed $ GetXdgDirectoryConfig path withDir
 
-mkGetXdgDirectoryState :: FilePath -> DirectoryIO
-mkGetXdgDirectoryState path = Fixed $ GetXdgDirectoryState path
+mkGetXdgDirectoryConfigSync :: FilePath -> (FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryConfigSync path withDir = Fixed $ GetXdgDirectoryConfigSync path withDir
+
+mkGetXdgDirectoryCache :: FilePath -> (Async FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryCache path withDir = Fixed $ GetXdgDirectoryCache path withDir
+
+mkGetXdgDirectoryCacheSync :: FilePath -> (FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryCacheSync path withDir = Fixed $ GetXdgDirectoryCacheSync path withDir
+
+mkGetXdgDirectoryState :: FilePath -> (Async FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryState path withDir = Fixed $ GetXdgDirectoryState path withDir
+
+mkGetXdgDirectoryStateSync :: FilePath -> (FilePath -> DirectoryIO) -> DirectoryIO
+mkGetXdgDirectoryStateSync path withDir = Fixed $ GetXdgDirectoryStateSync path withDir

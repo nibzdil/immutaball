@@ -33,5 +33,4 @@ data ContextConfig = ContextConfig {
 	_ctxCfgDirs         :: IBDirs,
 	_ctxCfgNeverballrc  :: Neverballrc
 }
-	deriving (Eq, Ord)
 makeLenses ''ContextConfig

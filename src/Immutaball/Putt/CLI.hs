@@ -152,11 +152,9 @@ cliIBDirs cliCfg defaultIBDirs = IBDirs {
 
 getDefaultIBDirs :: StaticConfig -> (IBDirs -> ImmutaballIO) -> ImmutaballIO
 getDefaultIBDirs x'cfg withIBDirs =
-	--mkGetDirectory (runDirectoryAnyIO $ mkGetXdgDirectoryData "path") $ \staticDataDir ->
-	--either (mkGetDirectory . runDirectoryAnyIO . getFixed) (&) (x'cfg^.defaultStaticDataDir) $ \defaultStaticDataDir ->
-	either runDirectorySyncImmutaballIO (&) (x'cfg^.defaultStaticDataDir) $ \defaultStaticDataDir_ ->
-	either runDirectorySyncImmutaballIO (&) (x'cfg^.defaultUserDataDir)   $ \defaultUserDataDir_ ->
-	either runDirectorySyncImmutaballIO (&) (x'cfg^.defaultUserConfigDir) $ \defaultUserConfigDir_ ->
+	either (\d f -> mkBasicImmutaballIO . DirectoryIO . fmap f $ d) (&) (x'cfg^.defaultStaticDataDir) $ \defaultStaticDataDir_ ->
+	either (\d f -> mkBasicImmutaballIO . DirectoryIO . fmap f $ d) (&) (x'cfg^.defaultUserDataDir)   $ \defaultUserDataDir_ ->
+	either (\d f -> mkBasicImmutaballIO . DirectoryIO . fmap f $ d) (&) (x'cfg^.defaultUserConfigDir) $ \defaultUserConfigDir_ ->
 	withIBDirs $ IBDirs {
 		_ibStaticDataDir = defaultStaticDataDir_,
 		_ibUserDataDir   = defaultUserDataDir_,

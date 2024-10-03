@@ -43,7 +43,6 @@ import Immutaball.Prelude
 import Control.Lens
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
-import Immutaball.Share.Utils
 
 data StaticConfig = StaticConfig {
 	_minClockPeriod :: Maybe Float,
@@ -61,13 +60,12 @@ data StaticConfig = StaticConfig {
 		-- step.  The wire may opt to priority queue responses exceeding the
 		-- capacity if there's a response it doesn't want to drop.
 
-	_defaultStaticDataDir :: Either DirectoryIO FilePath,
-	_defaultUserDataDir   :: Either DirectoryIO FilePath,
-	_defaultUserConfigDir :: Either DirectoryIO FilePath,
+	_defaultStaticDataDir :: Either (DirectoryIOF FilePath) FilePath,
+	_defaultUserDataDir   :: Either (DirectoryIOF FilePath) FilePath,
+	_defaultUserConfigDir :: Either (DirectoryIOF FilePath) FilePath,
 
 	_configFilename :: FilePath
 }
-	deriving (Eq, Ord, Show)
 makeLenses ''StaticConfig
 
 defaultStaticConfig :: StaticConfig
@@ -78,8 +76,8 @@ defaultStaticConfig = StaticConfig {
 	_maxResponseFrameSize = Nothing,     -- ^ Don't request more than 8 at a time.
 
 	_defaultStaticDataDir = Right "./data",
-	_defaultUserDataDir   = Left . Fixed $ GetXdgDirectoryData "immutaball",
-	_defaultUserConfigDir = Left . Fixed $ GetXdgDirectoryConfig "immutaball",
+	_defaultUserDataDir   = Left $ GetXdgDirectoryDataSync "immutaball" id,
+	_defaultUserConfigDir = Left $ GetXdgDirectoryConfigSync "immutaball" id,
 
 	_configFilename = "neverballrc"
 }

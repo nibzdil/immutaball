@@ -18,7 +18,6 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		-- * Runners
 		runBasicIOIO,
 		runDirectoryBasicIO,
-		runDirectorySyncBasicIO,
 		runSDLBasicIO,
 
 		-- * BasicIO aliases that apply the Fixed wrapper
@@ -27,8 +26,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		mkThenBasicIO,
 		mkExitSuccessBasicIO,
 		mkExitFailureBasicIO,
-		mkGetDirectory,
-		mkGetDirectorySync,
+		mkDirectoryIO,
 		mkGetArgs,
 		mkGetArgsSync,
 		mkGetEnvironment,
@@ -79,8 +77,7 @@ data BasicIOF me =
 	| ExitSuccessBasicIOF
 	| ExitFailureBasicIOF
 
-	| GetDirectory (DirectoryIOF me) (Async FilePath -> me)
-	| GetDirectorySync (DirectoryIOF me) (FilePath -> me)
+	| DirectoryIO (DirectoryIOF me)
 
 	| GetArgs (Async [String] -> me)
 	| GetArgsSync ([String] -> me)
@@ -126,8 +123,7 @@ instance Functor BasicIOF where
 	fmap _f (ExitFailureBasicIOF) = ExitFailureBasicIOF
 	fmap _f (ExitSuccessBasicIOF) = ExitSuccessBasicIOF
 
-	fmap  f (GetDirectory getDirectory withDirectory)     = GetDirectory (fmap f getDirectory) (f . withDirectory)
-	fmap  f (GetDirectorySync getDirectory withDirectory) = GetDirectorySync (fmap f getDirectory) (f . withDirectory)
+	fmap  f (DirectoryIO dio) = DirectoryIO (f <$> dio)
 
 	fmap  f (GetArgs withArgs_)                  = GetArgs (f . withArgs_)
 	fmap  f (GetArgsSync withArgs_)              = GetArgsSync (f . withArgs_)
@@ -170,8 +166,7 @@ runBasicIOIO (AndBasicIOF a b)                             = a `par` b `par` con
 runBasicIOIO (ThenBasicIOF a b)                            = a >> b
 runBasicIOIO (ExitSuccessBasicIOF)                         = exitSuccess
 runBasicIOIO (ExitFailureBasicIOF)                         = exitFailure
-runBasicIOIO (GetDirectory getDirectory withDirectory)     = withAsync (runDirectoryIO (runDirectoryAnyIO getDirectory)) withDirectory
-runBasicIOIO (GetDirectorySync getDirectory withDirectory) = runDirectoryIO (runDirectoryAnyIO getDirectory) >>= withDirectory
+runBasicIOIO (DirectoryIO dio)                             = runDirectoryIOIO $ dio
 runBasicIOIO (GetArgs withArgs_)                           = withAsync getArgs withArgs_
 runBasicIOIO (GetArgsSync withArgs_)                       = getArgs >>= withArgs_
 runBasicIOIO (GetEnvironment withEnvironment)              = withAsync getEnvironment withEnvironment
@@ -195,17 +190,8 @@ runBasicIOIO (CreateDirectoryIfMissing path)               = createDirectoryIfMi
 runBasicIOIO (ForkOS ibio)                                 = void . forkOS $ ibio
 runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
 
-runDirectoryBasicIO :: DirectoryIO -> (Async FilePath -> BasicIO) -> BasicIO
-runDirectoryBasicIO (Fixed (GetXdgDirectoryData   path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryData   path) withDirectory
-runDirectoryBasicIO (Fixed (GetXdgDirectoryConfig path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryConfig path) withDirectory
-runDirectoryBasicIO (Fixed (GetXdgDirectoryCache  path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryCache  path) withDirectory
-runDirectoryBasicIO (Fixed (GetXdgDirectoryState  path)) withDirectory = Fixed $ GetDirectory (GetXdgDirectoryState  path) withDirectory
-
-runDirectorySyncBasicIO :: DirectoryIO -> (FilePath -> BasicIO) -> BasicIO
-runDirectorySyncBasicIO (Fixed (GetXdgDirectoryData   path)) withDirectory = Fixed $ GetDirectorySync (GetXdgDirectoryData   path) withDirectory
-runDirectorySyncBasicIO (Fixed (GetXdgDirectoryConfig path)) withDirectory = Fixed $ GetDirectorySync (GetXdgDirectoryConfig path) withDirectory
-runDirectorySyncBasicIO (Fixed (GetXdgDirectoryCache  path)) withDirectory = Fixed $ GetDirectorySync (GetXdgDirectoryCache  path) withDirectory
-runDirectorySyncBasicIO (Fixed (GetXdgDirectoryState  path)) withDirectory = Fixed $ GetDirectorySync (GetXdgDirectoryState  path) withDirectory
+runDirectoryBasicIO :: DirectoryIO -> BasicIO
+runDirectoryBasicIO dio = Fixed . DirectoryIO $ runDirectoryBasicIO <$> getFixed dio
 
 runSDLBasicIO :: SDLIO -> BasicIO
 runSDLBasicIO sdlio = Fixed . SDLIO $ runSDLBasicIO <$> getFixed sdlio
@@ -228,11 +214,8 @@ mkExitSuccessBasicIO = Fixed $ ExitFailureBasicIOF
 mkExitFailureBasicIO :: BasicIO
 mkExitFailureBasicIO = Fixed $ ExitFailureBasicIOF
 
-mkGetDirectory :: DirectoryIOF BasicIO -> (Async FilePath -> BasicIO) -> BasicIO
-mkGetDirectory getDirectory withDirectory = Fixed $ GetDirectory getDirectory withDirectory
-
-mkGetDirectorySync :: DirectoryIOF BasicIO -> (FilePath -> BasicIO) -> BasicIO
-mkGetDirectorySync getDirectory withDirectory = Fixed $ GetDirectorySync getDirectory withDirectory
+mkDirectoryIO :: DirectoryIOF BasicIO -> BasicIO
+mkDirectoryIO dio = Fixed $ DirectoryIO dio
 
 mkGetArgs :: (Async [String] -> BasicIO) -> BasicIO
 mkGetArgs withArgs_ = Fixed $ GetArgs withArgs_

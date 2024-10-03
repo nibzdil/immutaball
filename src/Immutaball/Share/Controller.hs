@@ -142,6 +142,8 @@ stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImm
 stepEventNoMaxClockPeriod :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 	case event of
+		(Event _ (QuitEvent)) ->
+			mempty
 		(Event _ (MouseMotionEvent (MouseMotionEventData _ _ _ (P (V2 x y)) (V2 dx dy)))) ->
 			let (x', y', dx', dy') = (fromIntegral x, fromIntegral y, fromIntegral dx, fromIntegral dy) in
 			let mresponse = stepWire immutaballN [Point x' y' dx' dy'] in

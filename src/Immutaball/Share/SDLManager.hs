@@ -39,6 +39,7 @@ import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
 import Control.Lens
 import Control.Monad.STM
+import Data.Functor
 
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO hiding ((<>>))
@@ -89,11 +90,13 @@ quitSDLManager sdlMgr =
 
 sdlManagerThread :: SDLManagerHandle -> ImmutaballIO
 sdlManagerThread sdlMgr =
-	mkAtomically (readTChan $ sdlMgr^.sdlmh_commands) $ \cmd ->
-	mkAtomically (readTVar $ sdlMgr^.sdlmh_done) $ \isDone ->
-	case isDone of
-		True -> quit
-		False -> case cmd of
+	mkAtomically (
+		readTVar (sdlMgr^.sdlmh_done) >>= \done ->
+		(check done $> Left done) `orElse` (Right <$> readTChan (sdlMgr^.sdlmh_commands))
+	) $ \doneOrCmd ->
+	case doneOrCmd of
+		Left done -> if not done then sdlManagerThread sdlMgr else quit
+		Right cmd -> case cmd of
 			QuitSDLManager -> quit
 			NopSDLManager -> sdlManagerThread sdlMgr
 			PollEvent to_ -> (mkBasicImmutaballIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (const mempty)) <>> sdlManagerThread sdlMgr

@@ -34,6 +34,7 @@ import Control.Lens
 import Control.Wire.Controller
 import SDL.Event
 import SDL.Input.Keyboard
+import SDL.Vect
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context
@@ -138,6 +139,10 @@ stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImm
 stepEventNoMaxClockPeriod :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 	case event of
+		(Event _ (MouseMotionEvent (MouseMotionEventData _ _ _ (P (V2 x y)) (V2 dx dy)))) ->
+			let (x', y', dx', dy') = (fromIntegral x, fromIntegral y, fromIntegral dx, fromIntegral dy) in
+			let mresponse = stepWire immutaballN [Point x' y' dx' dy'] in
+			processStepResult mresponse withImmutaballNp1
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
 			let mresponse = stepWire immutaballN [Keybd char down] in

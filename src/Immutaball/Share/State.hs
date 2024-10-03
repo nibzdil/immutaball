@@ -53,6 +53,7 @@ type ResponseFrame = [Response]
 data Response =
 	  PureFork         Immutaball
 	| ImmutaballIOFork (ImmutaballIOF Immutaball)
+	-- | AnythingElseToTellTheController NewIBContextIfNeeded SomeOtherData
 
 -- | End a wire.
 --

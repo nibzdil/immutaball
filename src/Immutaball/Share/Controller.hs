@@ -20,7 +20,9 @@ module Immutaball.Share.Controller
 
 		-- * SDL utils
 		isKbdEventDown,
-		kbdEventChar
+		kbdEventChar,
+		isMousePressed,
+		getMouseButton
 	) where
 
 import Prelude ()
@@ -34,6 +36,7 @@ import Control.Lens
 import Control.Wire.Controller
 import SDL.Event
 import SDL.Input.Keyboard
+import qualified SDL.Raw.Enum as Raw
 import SDL.Vect
 
 import Immutaball.Share.Config
@@ -143,6 +146,10 @@ stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
 			let (x', y', dx', dy') = (fromIntegral x, fromIntegral y, fromIntegral dx, fromIntegral dy) in
 			let mresponse = stepWire immutaballN [Point x' y' dx' dy'] in
 			processStepResult mresponse withImmutaballNp1
+		(Event _ (MouseButtonEvent (MouseButtonEventData _ pressed _ mouseButton _ _))) ->
+			let (button, down) = (fromIntegral $ getMouseButton mouseButton, isMousePressed pressed) in
+			let mresponse = stepWire immutaballN [Click button down] in
+			processStepResult mresponse withImmutaballNp1
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
 			let mresponse = stepWire immutaballN [Keybd char down] in
@@ -180,3 +187,15 @@ isKbdEventDown (KeyboardEventData _ Released _ _) = False
 
 kbdEventChar :: KeyboardEventData -> Integer
 kbdEventChar (KeyboardEventData _ _ _ (Keysym _ (Keycode keyCode) _)) = (fromIntegral keyCode)
+
+isMousePressed :: InputMotion -> Bool
+isMousePressed Pressed  = True
+isMousePressed Released = False
+
+getMouseButton :: MouseButton -> Integer
+getMouseButton (ButtonLeft)         = Raw.SDL_BUTTON_LEFT
+getMouseButton (ButtonMiddle)       = Raw.SDL_BUTTON_MIDDLE
+getMouseButton (ButtonRight)        = Raw.SDL_BUTTON_RIGHT
+getMouseButton (ButtonX1)           = Raw.SDL_BUTTON_X1
+getMouseButton (ButtonX2)           = Raw.SDL_BUTTON_X2
+getMouseButton (ButtonExtra button) = fromIntegral button

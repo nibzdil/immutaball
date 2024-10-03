@@ -45,7 +45,11 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		mkCreateDirectoryIfMissing,
 		mkForkOS,
 		mkSDLIO,
-		mkDelayUs
+		mkDelayUs,
+		mkGetUs,
+
+		-- * Utils
+		getUsIO
 	) where
 
 import Prelude ()
@@ -54,6 +58,7 @@ import Immutaball.Prelude
 import Control.Concurrent
 import Control.Exception (catch, throwIO)
 import Control.Monad
+import Data.Time.Clock.System
 import System.Environment
 import System.Exit
 
@@ -105,6 +110,7 @@ data BasicIOF me =
 	| SDLIO (SDLIOF me)
 
 	| DelayUs Integer
+	| GetUs (Integer -> me)
 
 runBasicIO :: BasicIO -> IO ()
 runBasicIO bio = cata runBasicIOIO bio
@@ -151,6 +157,7 @@ instance Functor BasicIOF where
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
 
 	fmap _f (DelayUs us) = DelayUs us
+	fmap  f (GetUs withUs) = GetUs (f . withUs)
 
 {-
 instance Foldable BasicIOF where
@@ -196,6 +203,7 @@ runBasicIOIO (CreateDirectoryIfMissing path)               = createDirectoryIfMi
 runBasicIOIO (ForkOS ibio)                                 = void . forkOS $ ibio
 runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
 runBasicIOIO (DelayUs us)                                  = delay us
+runBasicIOIO (GetUs withUs)                                = getUsIO >>= withUs
 
 runDirectoryBasicIO :: DirectoryIO -> BasicIO
 runDirectoryBasicIO dio = Fixed . DirectoryIO $ runDirectoryBasicIO <$> getFixed dio
@@ -281,3 +289,11 @@ mkSDLIO sdlio = Fixed $ SDLIO sdlio
 -- | Microseconds thread delay, with ‘unbounded-delays’.
 mkDelayUs :: Integer -> BasicIO
 mkDelayUs us = Fixed $ DelayUs us
+
+mkGetUs :: (Integer -> BasicIO) -> BasicIO
+mkGetUs withUs = Fixed $ GetUs withUs
+
+-- * Utils
+
+getUsIO :: IO Integer
+getUsIO = getSystemTime >>= \(MkSystemTime secs nanosecs) -> return $ (1000000 * (fromIntegral secs)) + ((fromIntegral nanosecs) `div` 1000)

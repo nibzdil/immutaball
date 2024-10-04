@@ -92,6 +92,7 @@ common executable-components
 	build-depends: immutaball
 
 	other-modules:
+		Control.Monad.Trans.EitherM
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Main
@@ -134,6 +135,7 @@ library
 	import: all-components
 
 	exposed-modules:
+		Control.Monad.Trans.EitherM
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Main

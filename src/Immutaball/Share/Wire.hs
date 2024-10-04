@@ -25,7 +25,8 @@ module Immutaball.Share.Wire
 		-- * Utilities
 		mfix',
 		integrate,
-		derive
+		derive,
+		hold
 	) where
 
 import Prelude ()
@@ -36,7 +37,8 @@ import Control.Monad.Fix
 --import Data.Function
 import Data.Functor.Identity
 
-import Control.Wire
+import Control.Wire (Wire)
+--import qualified Control.Wire
 import qualified Control.Wire.Controller
 import qualified Control.Wire.Internal (Wire(Wire))
 
@@ -85,3 +87,10 @@ derive :: (Num a, Monad m, MonadFix m) => Wire m a a
 derive = proc x -> do
 	rec output <- delay 0 returnA -< x - output
 	returnA -< output
+
+-- | Output the last available input.
+-- FIXME: delayed by a frame!  TODO
+hold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
+hold a0 = proc ma -> do
+	rec out <- delay a0 returnA -< maybe out id ma
+	returnA -< out

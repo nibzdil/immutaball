@@ -57,7 +57,7 @@ derivativeThings = proc () -> do
 	thing <- myWire -< ()
 	derive -< thing * dt_
 
-stepThrice :: Wire Identity () Integer -> Integer
+stepThrice :: Wire Identity () a -> a
 stepThrice w0 =
 	let
 		(Identity (_y0,  w1)) = stepWire w0 ()
@@ -68,7 +68,7 @@ stepThrice w0 =
 	in
 		result
 
-stepTwice :: Wire Identity () Integer -> Integer
+stepTwice :: Wire Identity () a -> a
 stepTwice w0 =
 	let
 		(Identity (_y0,  w1)) = stepWire w0 ()
@@ -78,7 +78,7 @@ stepTwice w0 =
 	in
 		result
 
-stepOnce :: Wire Identity () Integer -> Integer
+stepOnce :: Wire Identity () a -> a
 stepOnce w0 =
 	let
 		(Identity (y0, _w1)) = stepWire w0 ()
@@ -87,15 +87,39 @@ stepOnce w0 =
 	in
 		result
 
+waitThenEmit :: Wire Identity () (Maybe Integer)
+waitThenEmit = proc () -> do
+	rec out <- delay Nothing returnA -< Just 3
+	returnA -< out
+
+holdingWire :: Wire Identity () Integer
+holdingWire = proc () -> do
+	couldBe <- waitThenEmit -< ()
+	lastIs <- hold 1 -< couldBe
+	returnA -< lastIs
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Wire" $
 	[
-		testCase "integrate twice" $
-			stepThrice accumulateThings @?= 600,
-		testCase "derive twice" $
-			stepThrice derivativeThings @?= 0,
-		testCase "derive once" $
-			stepTwice derivativeThings @?= 300,
-		testCase "derive never" $
-			stepOnce derivativeThings @?= 0
+		testGroup "integrate / device tests" $
+			[
+				testCase "integrate twice" $
+					stepThrice accumulateThings @?= 600,
+				testCase "derive twice" $
+					stepThrice derivativeThings @?= 0,
+				testCase "derive once" $
+					stepTwice derivativeThings @?= 300,
+				testCase "derive never" $
+					stepOnce derivativeThings @?= 0
+			],
+
+		testGroup "other utils tests" $
+			[
+				testCase "hold thrice" $
+					stepThrice holdingWire @?= 3,
+				testCase "hold twice" $
+					stepTwice holdingWire @?= 3,
+				testCase "hold once" $
+					stepOnce holdingWire @?= 1
+			]
 	]

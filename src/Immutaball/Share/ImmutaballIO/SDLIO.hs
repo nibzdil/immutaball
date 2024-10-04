@@ -31,6 +31,7 @@ import Immutaball.Prelude
 
 import Control.Concurrent.Async
 import qualified Data.Text as T
+-- TODO: file bug report: glFinish is missing in the Core modules.
 import qualified Graphics.GL.Internal.Shared (glFinish)
 import qualified SDL.Event
 import qualified SDL.Init

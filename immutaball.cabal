@@ -178,3 +178,4 @@ test-suite test-immutaball
 
 	other-modules:
 		Test.Immutaball.Test
+		Test.Immutaball.Share.Wire.Test

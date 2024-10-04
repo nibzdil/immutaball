@@ -13,15 +13,13 @@ module Test.Immutaball.Test
 		tests
 	) where
 
+--import Test.HUnit
+--import Test.QuickCheck
 import Test.Tasty
 --import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Test.Tasty.QuickCheck
 
---import Test.HUnit
-
---import Test.QuickCheck
-
---import qualified Test.Immutaball.MyModule.Test
+import qualified Test.Immutaball.Share.Wire.Test
 
 main :: IO ()
 main = testsMain
@@ -32,5 +30,5 @@ testsMain = defaultMain tests
 tests :: TestTree
 tests = testGroup "Immutaball" $
 	[
-		--Test.Immutaball.MyModules.Test.tests
+		Test.Immutaball.Share.Wire.Test.tests
 	]

@@ -20,15 +20,22 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		-- * SDLIO aliases that apply the Fixed wrapper
 		mkSDLInit,
 		mkSDLPollEvent,
-		mkSDLPollEventSync
+		mkSDLPollEventSync,
+		mkSDLWithWindow,
+		mkSDLWithGLContext,
+		mkSDLGLSwapWindow
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
 import Control.Concurrent.Async
+import qualified Data.Text as T
+--import qualified Graphics.GL.Internal.Shared (glFinish)  -- TODO: add dependency and use.
 import qualified SDL.Event
 import qualified SDL.Init
+import qualified SDL.Video
+import qualified SDL.Video.OpenGL
 
 import Immutaball.Share.Utils
 
@@ -44,11 +51,24 @@ data SDLIOF me =
 	-- SDLManager can handle this.
 	| SDLPollEvent (Async (Maybe SDL.Event.Event) -> me)
 	| SDLPollEventSync (Maybe SDL.Event.Event -> me)
+	-- | Automatically handles destruction after lifetime.
+	| SDLWithWindow T.Text SDL.Video.WindowConfig (SDL.Video.Window -> me)
+	-- _| SDLDestroyWindow SDL.Video.Window  -- We can already manage the lifetime with WithCreate.
+	-- | Automatically calls 'glMakeCurrent'.  NOTE: automatically calls
+	-- 'glFinish' upon destruction.
+	| SDLWithGLContext SDL.Video.Window (SDL.Video.OpenGL.GLContext -> me)
+	-- | SDLGLMakeCurrent SDL.Video.Window SDL.Video.OpenGL.GLContext  -- We can automatically call this.
+	-- -- _| See notes on 'glDeleleteContext' and 'glFinish' before using.
+	-- _| SDLGLDeleteContext SDL.Video.OpenGL.GLContext
+	| SDLGLSwapWindow SDL.Video.Window
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
-	fmap f (SDLWithInit subsystems sdlio) = SDLWithInit subsystems (f sdlio)
-	fmap f (SDLPollEvent withMEvent)      = SDLPollEvent (f . withMEvent)
-	fmap f (SDLPollEventSync withMEvent)  = SDLPollEventSync (f . withMEvent)
+	fmap  f (SDLWithInit subsystems sdlio)       = SDLWithInit subsystems (f sdlio)
+	fmap  f (SDLPollEvent withMEvent)            = SDLPollEvent (f . withMEvent)
+	fmap  f (SDLPollEventSync withMEvent)        = SDLPollEventSync (f . withMEvent)
+	fmap  f (SDLWithWindow title cfg withWindow) = SDLWithWindow title cfg (f . withWindow)
+	fmap  f (SDLWithGLContext window withCxt)    = SDLWithGLContext window (f . withCxt)
+	fmap _f (SDLGLSwapWindow window)             = SDLGLSwapWindow window
 
 runSDLIO :: SDLIO -> IO ()
 runSDLIO sdlio = cata runSDLIOIO sdlio
@@ -72,6 +92,17 @@ runSDLIOIO (SDLWithInit subsystems sdlioio) = do
 	SDL.Init.quit
 runSDLIOIO (SDLPollEvent withMEvent) = withAsync SDL.Event.pollEvent withMEvent
 runSDLIOIO (SDLPollEventSync withMEvent) = SDL.Event.pollEvent >>= withMEvent
+runSDLIOIO (SDLWithWindow title cfg withWindow) = do
+	window <- SDL.Video.createWindow title cfg
+	withWindow window
+	SDL.Video.destroyWindow window
+runSDLIOIO (SDLWithGLContext window withCxt) = do
+	cxt <- SDL.Video.OpenGL.glCreateContext window
+	withCxt cxt
+	--Graphics.GL.Internal.Shared.glFinish  -- TODO: add dependency and use.
+	SDL.Video.OpenGL.glDeleteContext cxt
+runSDLIOIO (SDLGLSwapWindow window) = do
+	SDL.Video.OpenGL.glSwapWindow window
 
 -- * SDLIO aliases that apply the Fixed wrapper
 
@@ -83,3 +114,12 @@ mkSDLPollEvent withMEvent = Fixed $ SDLPollEvent withMEvent
 
 mkSDLPollEventSync :: (Maybe SDL.Event.Event -> SDLIO) -> SDLIO
 mkSDLPollEventSync withMEvent = Fixed $ SDLPollEventSync withMEvent
+
+mkSDLWithWindow :: T.Text -> SDL.Video.WindowConfig -> (SDL.Video.Window -> SDLIO) -> SDLIO
+mkSDLWithWindow title cfg withWindow = Fixed $ SDLWithWindow title cfg withWindow
+
+mkSDLWithGLContext :: SDL.Video.Window -> (SDL.Video.OpenGL.GLContext -> SDLIO) -> SDLIO
+mkSDLWithGLContext window withCxt = Fixed $ SDLWithGLContext window withCxt
+
+mkSDLGLSwapWindow :: SDL.Video.Window -> SDLIO
+mkSDLGLSwapWindow window = Fixed $ SDLGLSwapWindow window

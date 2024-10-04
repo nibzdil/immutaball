@@ -112,9 +112,20 @@ differentiate = proc x -> do
 
 -- | Output the last available input.
 hold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
+-- A shorter style:
+{-
 hold a0 = proc ma -> do
 	rec lastJust <- delay a0 -< maybe lastJust id ma
 	returnA -< maybe lastJust id ma
+-}
+-- Arrows counter-style:
+-- {-
+hold a0 = proc ma -> do
+	rec
+		output <- returnA -< maybe lastJust id ma
+		lastJust <- delay a0 -< output
+	returnA -< output
+-- -}
 
 -- TODO: test replace, switch, and applyWire.
 

@@ -9,9 +9,9 @@
 
 module Immutaball.Share.State.Context
 	(
-		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
-		stateContextStorage,
-		requireVideo
+		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow
+		--stateContextStorage,
+		--requireVideo
 	) where
 
 import Prelude ()
@@ -23,8 +23,8 @@ import SDL.Video as SDL
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context
-import Immutaball.Share.State
-import Immutaball.Share.Wire
+--import Immutaball.Share.State
+--import Immutaball.Share.Wire
 
 -- | A running Immutaball context instance.
 --
@@ -39,6 +39,8 @@ data IBStateContext = IBStateContext {
 }
 makeLenses ''IBStateContext
 
+-- TODO:
+{-
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
 stateContextStorage y0 = proc cxt -> do
 	hold y0 -< cxt
@@ -46,3 +48,4 @@ stateContextStorage y0 = proc cxt -> do
 requireVideo :: Wire ImmutaballM IBStateContext Response
 requireVideo = proc _cxt -> do
 	error "TODO: unimplemented" -< ()
+-}

@@ -16,6 +16,7 @@ module Immutaball.Share.Controller
 		stepEventNoMaxClockPeriod,
 		stepClock,
 		processStepResult,
+		doesResponseFork,
 		unimplementedHelper,
 
 		-- * SDL utils
@@ -38,6 +39,8 @@ import SDL.Input.Keyboard
 import qualified SDL.Raw.Enum as Raw
 import SDL.Vect
 
+import Control.Monad.Trans.MaybeM
+import Immutaball.Share.AutoPar
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
@@ -45,13 +48,13 @@ import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.Utils
+import Immutaball.Share.Wire
 
 controlImmutaball :: IBContext -> Immutaball -> ImmutaballIO
 controlImmutaball cxt0 immutaball0 =
 	result
 	where
 		result :: ImmutaballIO
-		--result = runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO
 		result = initialFrame
 		initialFrame :: ImmutaballIO
 		initialFrame =
@@ -139,43 +142,73 @@ stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImm
 
 -- | Step an event.
 stepEventNoMaxClockPeriod :: IBContext -> Event -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepEventNoMaxClockPeriod _cxt event immutaballN withImmutaballNp1 =
+stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 	case event of
 		(Event _ (QuitEvent)) ->
 			mempty
 		(Event _ (MouseMotionEvent (MouseMotionEventData _ _ _ (P (V2 x y)) (V2 dx dy)))) ->
 			let (x', y', dx', dy') = (fromIntegral x, fromIntegral y, fromIntegral dx, fromIntegral dy) in
-			let mresponse = stepImmutaball immutaballN [Point x' y' dx' dy'] in
-			processStepResult mresponse withImmutaballNp1
+			let mresponse = stepWire immutaballN (pure $ Point x' y' dx' dy') in
+			processStepResult cxt mresponse withImmutaballNp1
 		(Event _ (MouseButtonEvent (MouseButtonEventData _ pressed _ mouseButton _ _))) ->
 			let (button, down) = (fromIntegral $ getMouseButton mouseButton, isMousePressed pressed) in
-			let mresponse = stepImmutaball immutaballN [Click button down] in
-			processStepResult mresponse withImmutaballNp1
+			let mresponse = stepWire immutaballN (pure $ Click button down) in
+			processStepResult cxt mresponse withImmutaballNp1
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
-			let mresponse = stepImmutaball immutaballN [Keybd char down] in
-			processStepResult mresponse withImmutaballNp1
+			let mresponse = stepWire immutaballN (pure $ Keybd char down) in
+			processStepResult cxt mresponse withImmutaballNp1
 		_ ->
 			-- Ignore all unhandled events.
 			withImmutaballNp1 immutaballN
 
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepClock _cxt du us immutaballN withImmutaballNp1 =
-	let mresponse = stepImmutaball immutaballN [Clock du] in
-	processStepResult mresponse $ \immutaballNp1 ->
-	let mresponse_ = stepImmutaball immutaballNp1 [Paint $ (fromIntegral us) / 1000000.0] in
-	processStepResult mresponse_ withImmutaballNp1
+stepClock cxt du us immutaballN withImmutaballNp1 =
+	let mresponse = stepWire immutaballN (pure $ Clock du) in
+	processStepResult cxt mresponse $ \immutaballNp1 ->
+	let mresponse_ = stepWire immutaballNp1 (pure . Paint $ (fromIntegral us) / 1000000.0) in
+	processStepResult cxt mresponse_ withImmutaballNp1
 
-processStepResult :: Maybe (ResponseFrame, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-processStepResult mresponse withImmutaballNp1 =
-	maybe (const mempty) (&) mresponse $ \(response, immutaballNp1) ->
-	--response <> withImmutaballNp1 immutaballNp1
-	(withImmutaballNp1 immutaballNp1 <>) .
-	mconcat . flip map response $ \responseI ->
+processStepResult :: (Foldable t) => IBContext -> ImmutaballM (t Response, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+processStepResult cxt mresponse withImmutaballNp1 =
+	runAutoParT mresponse & \mioresponse ->
+	either (\ioresponse -> Fixed . flip fmap ioresponse) (&) (runMaybeMT mioresponse) $ \(response, immutaballNp1) ->
+	let failFork = mkBIO (PutStrLn "Error: processStepResult: wire forking is disabled, but the wire requested a fork; aborting") <>> mkBIO ExitFailureBasicIOF in
+	if' (not (cxt^.ibStaticConfig.allowWireForks) && doesResponseFork response) failFork $
+	flip foldMap response $ \responseI ->
 	case responseI of
-		UnitResponse -> mempty
-		PureFork immutaballNp1_2 -> withImmutaballNp1 immutaballNp1_2
-		ImmutaballIOFork ibio -> Fixed $ withImmutaballNp1 <$> ibio
+		ContinueResponse -> withImmutaballNp1 immutaballNp1
+		DoneResponse -> mempty
+		PureFork immutaballFork -> withImmutaballNp1 immutaballFork <> withImmutaballNp1 immutaballNp1
+		ImmutaballIOFork mimmutaballFork -> Fixed (fmap withImmutaballNp1 mimmutaballFork) <> withImmutaballNp1 immutaballNp1
+
+doesResponseFork :: (Foldable t) => t Response -> Bool
+doesResponseFork response
+	| any isFork responses             = True
+	| lcontinues - if' hasDone 1 0 > 0 = True
+	| otherwise                        = False
+	where
+		responses :: [Response]
+		responses = foldr (:) [] response
+		isFork :: Response -> Bool
+		isFork (ContinueResponse  ) = False
+		isFork (DoneResponse      ) = False
+		isFork (PureFork         _) = True
+		isFork (ImmutaballIOFork _) = True
+		isContinue :: Response -> Bool
+		isContinue (ContinueResponse  ) = True
+		isContinue (DoneResponse      ) = False
+		isContinue (PureFork         _) = False
+		isContinue (ImmutaballIOFork _) = False
+		isDone :: Response -> Bool
+		isDone (ContinueResponse  ) = False
+		isDone (DoneResponse      ) = True
+		isDone (PureFork         _) = False
+		isDone (ImmutaballIOFork _) = False
+		lcontinues :: Integer
+		lcontinues = genericLength . filter isContinue $ responses
+		hasDone :: Bool
+		hasDone = any isDone responses
 
 unimplementedHelper :: ImmutaballIO
 unimplementedHelper =

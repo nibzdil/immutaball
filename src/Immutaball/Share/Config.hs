@@ -10,9 +10,9 @@
 module Immutaball.Share.Config
 	(
 		StaticConfig(..), minClockPeriod, maxClockPeriod, maxFrameEvents,
-			maxStepFrameSize, maxResponseFrameSize, defaultStaticDataDir,
-			defaultUserDataDir, defaultUserConfigDir, configFilename,
-			defaultStaticConfig,
+			allowWireForks, maxStepFrameSize, maxResponseFrameSize,
+			defaultStaticDataDir, defaultUserDataDir, defaultUserConfigDir,
+			configFilename, defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
 			textures, reflection, multisample, mipmap, aniso, background,
@@ -63,6 +63,7 @@ data StaticConfig = StaticConfig {
 	-- step.  The wire may opt to priority queue responses exceeding the
 	-- capacity if there's a response it doesn't want to drop.
 	_maxResponseFrameSize :: Maybe Integer,
+	_allowWireForks :: Bool,
 
 	_defaultStaticDataDir :: Either (DirectoryIOF FilePath) FilePath,
 	_defaultUserDataDir   :: Either (DirectoryIOF FilePath) FilePath,
@@ -72,6 +73,7 @@ data StaticConfig = StaticConfig {
 }
 makeLenses ''StaticConfig
 
+-- | Default static config.
 defaultStaticConfig :: StaticConfig
 defaultStaticConfig = StaticConfig {
 	_minClockPeriod       = Just 0.001,  -- ^ Max FPS: 1000.
@@ -79,6 +81,7 @@ defaultStaticConfig = StaticConfig {
 	_maxFrameEvents       = Nothing,
 	_maxStepFrameSize     = Just 8,      -- ^ Don't request more than 8 at a time.
 	_maxResponseFrameSize = Nothing,     -- ^ Don't request more than 8 at a time.
+	_allowWireForks       = False,       -- ^ Don't let immutaball signals fork.
 
 	_defaultStaticDataDir = Right "./data",
 	_defaultUserDataDir   = Left $ GetXdgDirectoryDataSync "immutaball" id,

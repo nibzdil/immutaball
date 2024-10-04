@@ -5,13 +5,17 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, InstanceSigs #-}
+{-# LANGUAGE TemplateHaskell, InstanceSigs, ExplicitForAll, RankNTypes #-}
 
 module Control.Monad.Trans.MaybeM
 	(
 		MaybeMT(..), maybeMT,
 		runMaybeMT,
-		MaybeM
+		MaybeM,
+		NaturalTransformation,
+		liftNaturalTransformation,
+		liftNT,
+		runMaybeM
 	) where
 
 import Prelude ()
@@ -93,3 +97,24 @@ instance (MonadZip m) => MonadZip (MaybeMT m) where
 	mzip (MaybeMT (Left  ma)) (MaybeMT (Left  mb)) = MaybeMT (Left (mzip ma mb))
 	mzip (MaybeMT (Right a))  (MaybeMT (Left  mb)) = MaybeMT (Left (mzip (pure a) mb))
 	mzip (MaybeMT (Left  ma)) (MaybeMT (Right b))  = MaybeMT (Left (mzip ma (pure b)))
+
+type NaturalTransformation m n = forall a. m a -> n a
+
+-- | We _could_ require a natural transformation if we wanted, but since the
+-- argument is to the _left_ of an arrow, not to the right, then rather than
+-- outputting as specifically as we can, we want to input as generally as we
+-- can.
+--liftNaturalTransformation :: NaturalTransformation m n -> (MaybeMT m a -> MaybeMT n a)
+liftNaturalTransformation :: (m a -> n a) -> (MaybeMT m a -> MaybeMT n a)
+liftNaturalTransformation _nt (MaybeMT (Right a))  = MaybeMT (Right a)
+liftNaturalTransformation  nt (MaybeMT (Left  ma)) = MaybeMT (Left (nt ma))
+
+-- | Alias for 'liftNaturalTransformation'.
+--liftNT :: NaturalTransformation m n -> (MaybeMT m a -> MaybeMT n a)
+liftNT :: (m a -> n a) -> (MaybeMT m a -> MaybeMT n a)
+liftNT = liftNaturalTransformation
+
+-- | Simplify a MaybeMT if the possible monad is 'Identity'.
+runMaybeM :: MaybeM a -> a
+runMaybeM (MaybeMT (Right a))           = a
+runMaybeM (MaybeMT (Left (Identity a))) = a

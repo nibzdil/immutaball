@@ -27,7 +27,7 @@ import Immutaball.Prelude
 import Control.Arrow
 
 import Control.Monad.Trans.Maybe
-import Control.Wire
+--import Control.Wire
 
 import Immutaball.Share.AutoPar
 import Immutaball.Share.ImmutaballIO

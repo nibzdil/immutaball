@@ -1,10 +1,9 @@
 # Immutaball
 
-Immutaball is a rewrite of Neverball in purely functional Haskell.  It is
-useful for gaming and studying a purely functional FRP application.  It does
-not use IO except for interfacing with external dependencies and
-‘base’/‘haskell2010’ IO primitives like writing to a file (including concurrent
-evaluation).
+Immutaball is a rewrite of Neverball in Haskell.  It is useful for gaming and
+studying a purely functional FRP application.  It does not use IO except for
+interfacing with external dependencies and ‘base’/‘haskell2010’ IO primitives
+like writing to a file (including concurrent evaluation).
 
 ## Build notes
 

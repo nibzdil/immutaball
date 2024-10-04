@@ -17,9 +17,13 @@ module Test.Immutaball.Share.Wire.Test
 		dt,
 		accumulateThings,
 		differentiateThings,
+		stepFourTimes,
 		stepThrice,
 		stepTwice,
-		stepOnce
+		stepOnce,
+		waitThenEmit,
+		holdingWire,
+		queueingWire
 	) where
 
 import Control.Arrow
@@ -56,6 +60,18 @@ differentiateThings = proc () -> do
 	dt_ <- dt -< ()
 	thing <- myWire -< ()
 	differentiate -< thing * dt_
+
+stepFourTimes :: Wire Identity () a -> a
+stepFourTimes w0 =
+	let
+		(Identity (_y0,  w1)) = stepWire w0 ()
+		(Identity (_y1,  w2)) = stepWire w1 ()
+		(Identity (_y2,  w3)) = stepWire w2 ()
+		(Identity ( y3, _w4)) = stepWire w3 ()
+
+		result = y3
+	in
+		result
 
 stepThrice :: Wire Identity () a -> a
 stepThrice w0 =
@@ -98,6 +114,11 @@ holdingWire = proc () -> do
 	lastIs <- hold 1 -< couldBe
 	returnA -< lastIs
 
+queueingWire :: Wire Identity () (Maybe Integer)
+queueingWire = proc () -> do
+	pump <- delay [2,3,1] -< returnA []
+	queue -< pump
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Wire" $
 	[
@@ -120,6 +141,15 @@ tests = testGroup "Immutaball.Share.Wire" $
 				testCase "hold twice" $
 					stepTwice holdingWire @?= 3,
 				testCase "hold once" $
-					stepOnce holdingWire @?= 1
+					stepOnce holdingWire @?= 1,
+
+				testCase "queue four times" $
+					stepFourTimes queueingWire @?= Nothing,
+				testCase "queue thrice" $
+					stepThrice queueingWire @?= Just 1,
+				testCase "queue twice" $
+					stepTwice queueingWire @?= Just 3,
+				testCase "queue once" $
+					stepOnce queueingWire @?= Just 2
 			]
 	]

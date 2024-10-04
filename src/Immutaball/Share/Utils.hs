@@ -16,7 +16,9 @@ module Immutaball.Share.Utils
 		getRCompose,
 		if',
 		deconsBool,
-		voidA
+		voidA,
+		safeHead,
+		safeTail
 	) where
 
 import Prelude ()
@@ -64,3 +66,11 @@ deconsBool _ withFalse (False) = withFalse
 
 voidA :: (Arrow a) => a b c -> a b ()
 voidA f = f >>> arr (const ())
+
+safeHead :: [a] -> Maybe a
+safeHead []     = Nothing
+safeHead (x:xs) = Just x
+
+safeTail :: [a] -> Maybe [a]
+safeTail []     = Nothing
+safeTail (_:xs) = Just xs

@@ -32,7 +32,8 @@ module Immutaball.Share.Wire
 		hold,
 		replace,
 		switch,
-		applyWire
+		applyWire,
+		queue
 	) where
 
 import Prelude ()
@@ -47,6 +48,8 @@ import Data.Functor.Identity
 import qualified Control.Wire
 import qualified Control.Wire.Controller
 import qualified Control.Wire.Internal (Wire(Wire))
+
+import Immutaball.Share.Utils
 
 -- * Primitives
 
@@ -150,3 +153,12 @@ applyWire :: (Functor m) => Wire m (Wire m a b, a) b
 --applyWire = wire $ \(w0, a) -> stepWire w0 a >>= \(b, w1) -> return (b, applyWire)
 -- We only need fmap here:
 applyWire = wire $ \(w0, a) -> (\(b, _w1) -> (b, applyWire)) <$> stepWire w0 a
+
+-- | Process one input each frame.
+queue :: (Applicative m, MonadFix m) => Wire m [a] (Maybe a)
+--queue = flip fix [] $ \me queued -> wire $ \(as) -> let as' = queued ++ as in pure (safeHead as', me (drop 1 as'))
+queue = proc ins -> do
+	rec
+		(output, queue) <- returnA -< let ins' = ins ++ lastQueue in (safeHead ins', drop 1 ins')
+		lastQueue <- delay [] -< queue
+	returnA -< output

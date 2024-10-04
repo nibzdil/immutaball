@@ -31,7 +31,7 @@ import Immutaball.Prelude
 
 import Control.Concurrent.Async
 import qualified Data.Text as T
---import qualified Graphics.GL.Internal.Shared (glFinish)  -- TODO: add dependency and use.
+import qualified Graphics.GL.Internal.Shared (glFinish)
 import qualified SDL.Event
 import qualified SDL.Init
 import qualified SDL.Video
@@ -99,7 +99,7 @@ runSDLIOIO (SDLWithWindow title cfg withWindow) = do
 runSDLIOIO (SDLWithGLContext window withCxt) = do
 	cxt <- SDL.Video.OpenGL.glCreateContext window
 	withCxt cxt
-	--Graphics.GL.Internal.Shared.glFinish  -- TODO: add dependency and use.
+	Graphics.GL.Internal.Shared.glFinish
 	SDL.Video.OpenGL.glDeleteContext cxt
 runSDLIOIO (SDLGLSwapWindow window) = do
 	SDL.Video.OpenGL.glSwapWindow window

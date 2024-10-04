@@ -15,12 +15,14 @@ module Immutaball.Share.Utils
 		RCompose(..), rcompose,
 		getRCompose,
 		if',
-		deconsBool
+		deconsBool,
+		voidA
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Arrow
 import Data.Functor.Compose
 
 import Control.Lens
@@ -59,3 +61,6 @@ if' False _ else_ = else_
 deconsBool :: r -> r -> Bool -> r
 deconsBool withTrue _  (True)  = withTrue
 deconsBool _ withFalse (False) = withFalse
+
+voidA :: (Arrow a) => a b c -> a b ()
+voidA f = f >>> arr (const ())

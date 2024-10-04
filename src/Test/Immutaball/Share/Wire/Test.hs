@@ -89,7 +89,7 @@ stepOnce w0 =
 
 waitThenEmit :: Wire Identity () (Maybe Integer)
 waitThenEmit = proc () -> do
-	rec out <- delay Nothing returnA -< Just 3
+	rec out <- delay Nothing -< Just 3
 	returnA -< out
 
 holdingWire :: Wire Identity () Integer

@@ -19,13 +19,14 @@ module Immutaball.Share.Wire
 		Wire(..),
 		stepWire,
 		wire,
-		delay,
+		delayWire,
 		loopWire,
 		loopWireSimple,
 
 		-- * Utilities
 		withM,
 		mfix',
+		delay,
 		integrate,
 		differentiate,
 		hold,
@@ -73,8 +74,8 @@ wire :: (Functor m) => (a -> m (b, Wire m a b)) -> Wire m a b
 wire wireStep_ = ReinstanceWire . Control.Wire.Internal.Wire $ \a -> second _reinstanceWire <$> wireStep_ a
 
 -- | 'Wire' provides us with a delay, in contrast with '->'.
-delay :: (Functor m) => b -> Wire m a b -> Wire m a b
-delay y0 wire_ = wire $ \x -> (\(y, wire') -> (y0, delay y wire')) <$> stepWire wire_ x
+delayWire :: (Functor m) => b -> Wire m a b -> Wire m a b
+delayWire y0 wire_ = wire $ \x -> (\(y, wire') -> (y0, delayWire y wire')) <$> stepWire wire_ x
 
 -- | 'Wire' is an instance of 'ArrowLoop'.
 loopWire :: (Monad m) => Wire m (b, d) (c, d) -> Wire m b c
@@ -94,22 +95,25 @@ mfix' :: (Monad m) => (a -> m a) -> m a
 --mfix' f = let ma = ma >>= f in ma
 mfix' f = fix $ \me -> me >>= f
 
+delay :: (Monad m) => a -> Wire m a a
+delay y0 = delayWire y0 returnA
+
 integrate :: (Num a, Monad m, MonadFix m) => a -> Wire m a a
 -- Low-level example for knowledge aid:
 --integrate y0 = flip fix y0 $ \me y -> wire $ \x -> let result = y + x in return (result, me result)
 integrate y0 = proc x -> do
-	rec output <- delay y0 returnA -< output + x
+	rec output <- delay y0 -< output + x
 	returnA -< output
 
 differentiate :: (Num a, Monad m, MonadFix m) => Wire m a a
 differentiate = proc x -> do
-	rec output <- delay 0 returnA -< x - output
+	rec output <- delay 0 -< x - output
 	returnA -< output
 
 -- | Output the last available input.
 hold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
 hold a0 = proc ma -> do
-	rec lastJust <- delay a0 returnA -< maybe lastJust id ma
+	rec lastJust <- delay a0 -< maybe lastJust id ma
 	returnA -< maybe lastJust id ma
 
 -- TODO: test replace, switch, and applyWire.

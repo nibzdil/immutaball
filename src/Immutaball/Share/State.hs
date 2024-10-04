@@ -9,6 +9,7 @@
 
 module Immutaball.Share.State
 	(
+		-- * Immutaball wires
 		Immutaball,
 		ImmutaballM,
 		RequestFrameMulti,
@@ -25,8 +26,13 @@ module Immutaball.Share.State
 		immutaballIOLinear,
 		-}
 		stepImmutaball,
+
+		-- * Frame management
+		immutaballMultiToSingle,
+		immutaballSingleToMulti,
 		fromImmutaballMulti,
-		fromImmutaballSingle
+		fromImmutaballSingle,
+		immutaballMultiQueueFrames
 	) where
 
 import Prelude ()
@@ -41,6 +47,8 @@ import Control.Monad.Trans.MaybeM
 import Immutaball.Share.AutoPar
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.Wire
+
+-- * Immutaball wires
 
 -- | An immutaball wire.
 --
@@ -106,9 +114,22 @@ immutaballIOLinear ibIO = wire (\() -> hoistMaybe $ Just ([ImmutaballIOFork ibIO
 stepImmutaball :: Immutaball -> RequestFrame -> MaybeMT ImmutaballIOF (ResponseFrame, Immutaball)
 stepImmutaball immutaball request = runAutoParT $ stepWire immutaball request
 
--- TODO:
+-- * Frame management
+
+immutaballMultiToSingle :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameSingle ResponseFrameSingle
+immutaballMultiToSingle = error "TODO: unimplemented."
+
+immutaballSingleToMulti :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
+immutaballSingleToMulti = error "TODO: unimplemented."
+
 fromImmutaballMulti :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
-fromImmutaballMulti = error "TODO: unimplemented."
+fromImmutaballMulti = id
 
 fromImmutaballSingle :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Immutaball
-fromImmutaballSingle = error "TODO: unimplemented."
+fromImmutaballSingle = immutaballSingleToMulti
+
+-- | Transform a wire that can handle unlimited requests and response,
+-- into one that queues up to the context's limit to only process so many
+-- requests and so many responses at once.
+immutaballMultiQueueFrames :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
+immutaballMultiQueueFrames = error "TODO: unimplemented."

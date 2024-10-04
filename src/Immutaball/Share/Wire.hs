@@ -44,7 +44,7 @@ import qualified Control.Wire.Internal (Wire(Wire))
 
 -- * Primitives
 
--- data Wire = …
+-- newtype Wire m a b = { _wireStep :: a -> m (b, Wire m a b) }
 
 -- | Run a 'Wire'.
 stepWire :: Wire m a b -> a -> m (b, Wire m a b)

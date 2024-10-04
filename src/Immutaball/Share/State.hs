@@ -59,7 +59,9 @@ data Request =
 
 type ResponseFrame = [Response]
 data Response =
-	  PureFork         Immutaball
+	-- | No-op.
+	  UnitResponse
+	| PureFork         Immutaball
 	| ImmutaballIOFork (ImmutaballIOF Immutaball)
 	-- | AnythingElseToTellTheController NewIBContextIfNeeded SomeOtherData
 

@@ -173,6 +173,7 @@ processStepResult mresponse withImmutaballNp1 =
 	(withImmutaballNp1 immutaballNp1 <>) .
 	mconcat . flip map response $ \responseI ->
 	case responseI of
+		UnitResponse -> mempty
 		PureFork immutaballNp1_2 -> withImmutaballNp1 immutaballNp1_2
 		ImmutaballIOFork ibio -> Fixed $ withImmutaballNp1 <$> ibio
 

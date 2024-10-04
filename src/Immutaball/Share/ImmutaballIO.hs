@@ -25,6 +25,7 @@ module Immutaball.Share.ImmutaballIO
 
 		-- * ImmutaballIO aliases that apply the Fixed wrapper
 		mkEmptyImmutaballIO,
+		mkPureImmutaballIO,
 		mkAndImmutaballIO,
 		mkThenImmutaballIO,
 		mkBasicImmutaballIO,
@@ -53,6 +54,7 @@ import Immutaball.Share.Utils
 type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF me =
 	  EmptyImmutaballIOF
+	| PureImmutaballIOF me
 	| AndImmutaballIOF me me
 	| ThenImmutaballIOF me me
 	| BasicImmutaballIOF (BasicIOF me)
@@ -84,6 +86,7 @@ instance Monoid ImmutaballIO where
 instance Functor ImmutaballIOF where
 	fmap :: (a -> b) -> (ImmutaballIOF a -> ImmutaballIOF b)
 	fmap _f (EmptyImmutaballIOF)     = EmptyImmutaballIOF
+	fmap  f (PureImmutaballIOF a)    = PureImmutaballIOF (f a)
 	fmap  f (AndImmutaballIOF a b)   = AndImmutaballIOF (f a) (f b)
 	fmap  f (ThenImmutaballIOF a b)  = ThenImmutaballIOF (f a) (f b)
 	fmap  f (BasicImmutaballIOF bio) = BasicImmutaballIOF $ f <$> bio
@@ -102,6 +105,7 @@ infixr 6 <>>
 runImmutaballIOIO :: ImmutaballIOF (IO ()) -> IO ()
 
 runImmutaballIOIO (EmptyImmutaballIOF)     = return ()
+runImmutaballIOIO (PureImmutaballIOF a)    = a
 runImmutaballIOIO (AndImmutaballIOF a b)   = a `par` b `par` concurrently_ a b
 runImmutaballIOIO (ThenImmutaballIOF a b)  = a >> b
 runImmutaballIOIO (BasicImmutaballIOF bio) = runBasicIOIO bio
@@ -123,6 +127,9 @@ runSDLImmutaballIO sdlio = runBasicImmutaballIO . runSDLBasicIO $ sdlio
 
 mkEmptyImmutaballIO :: ImmutaballIO
 mkEmptyImmutaballIO = Fixed $ EmptyImmutaballIOF
+
+mkPureImmutaballIO :: ImmutaballIO -> ImmutaballIO
+mkPureImmutaballIO ibio = Fixed $ PureImmutaballIOF ibio
 
 mkAndImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
 mkAndImmutaballIO a b = Fixed $ AndImmutaballIOF a b

@@ -184,9 +184,9 @@ processStepResult cxt mresponse withImmutaballNp1 =
 
 doesResponseFork :: (Foldable t) => t Response -> Bool
 doesResponseFork response
-	| any isFork responses             = True
-	| lcontinues - if' hasDone 1 0 > 0 = True
-	| otherwise                        = False
+	| any isFork responses = True
+	| lcontinues > 1       = True
+	| otherwise            = False
 	where
 		responses :: [Response]
 		responses = foldr (:) [] response
@@ -200,15 +200,8 @@ doesResponseFork response
 		isContinue (DoneResponse      ) = False
 		isContinue (PureFork         _) = False
 		isContinue (ImmutaballIOFork _) = False
-		isDone :: Response -> Bool
-		isDone (ContinueResponse  ) = False
-		isDone (DoneResponse      ) = True
-		isDone (PureFork         _) = False
-		isDone (ImmutaballIOFork _) = False
 		lcontinues :: Integer
 		lcontinues = genericLength . filter isContinue $ responses
-		hasDone :: Bool
-		hasDone = any isDone responses
 
 unimplementedHelper :: ImmutaballIO
 unimplementedHelper =

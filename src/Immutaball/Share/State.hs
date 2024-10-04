@@ -38,11 +38,10 @@ module Immutaball.Share.State
 import Prelude ()
 import Immutaball.Prelude
 
---import Control.Arrow
+import Control.Arrow
 import Data.Functor.Identity
 
 import Control.Monad.Trans.MaybeM
---import Control.Wire
 
 import Immutaball.Share.AutoPar
 import Immutaball.Share.ImmutaballIO
@@ -81,8 +80,18 @@ type ResponseFrameSingle = Identity Response
 type ResponseFrame = ResponseFrameMulti
 data Response =
 	-- | Tell the controller that we're alive and to keep stepping.
+	-- If there is no continue response, this thread is done if there is no
+	-- forking.  If there are multiple continue responses in a single step,
+	-- this tells the controller to fork (not applicable with single reponse
+	-- wires).  (On a single fork, as the controller source indicates, only use
+	-- the fork construction like 'PureFork', which means this thread will
+	-- still continue alongside the fork; if you include both a PureFork a
+	-- ContinueResponse, the end result will be 3 steppers running, not 2
+	-- steppers.)
 	  ContinueResponse
-	-- | Tell the controller to stop stepping.  We are done.
+	-- | Tell the controller to stop stepping.  We are done.  (In a multi
+	-- frame, this is equivalent to a no-op; removing it from the response list
+	-- gives equivalent results, for our controller.)
 	| DoneResponse
 	-- | Request the controller fork the wire; requires the context enable forking.
 	| PureFork         Immutaball
@@ -116,8 +125,14 @@ stepImmutaball immutaball request = runAutoParT $ stepWire immutaball request
 
 -- * Frame management
 
+-- | Send one request at a time; if there is no response, then treat it as a
+-- DoneResponse (just as the controller would close a wire if a multi-response
+-- wire returns [] with no continue).
 immutaballMultiToSingle :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameSingle ResponseFrameSingle
-immutaballMultiToSingle = error "TODO: unimplemented."
+immutaballMultiToSingle w = proc (Identity request) -> do
+	responses <- w -< [request]
+	mresponse <- queue -< responses
+	returnA -< Identity $ maybe DoneResponse id mresponse
 
 immutaballSingleToMulti :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
 immutaballSingleToMulti = error "TODO: unimplemented."

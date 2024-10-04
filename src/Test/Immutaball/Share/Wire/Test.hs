@@ -11,7 +11,15 @@ module Test.Immutaball.Share.Wire.Test
 	(
 		main,
 		testsMain,
-		tests
+		tests,
+
+		myWire,
+		dt,
+		accumulateThings,
+		derivativeThings,
+		stepThrice,
+		stepTwice,
+		stepOnce
 	) where
 
 import Control.Arrow
@@ -60,11 +68,34 @@ stepThrice w0 =
 	in
 		result
 
+stepTwice :: Wire Identity () Integer -> Integer
+stepTwice w0 =
+	let
+		(Identity (_y0,  w1)) = stepWire w0 ()
+		(Identity ( y1, _w2)) = stepWire w1 ()
+
+		result = y1
+	in
+		result
+
+stepOnce :: Wire Identity () Integer -> Integer
+stepOnce w0 =
+	let
+		(Identity (y0, _w1)) = stepWire w0 ()
+
+		result = y0
+	in
+		result
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Wire" $
 	[
 		testCase "integrate twice" $
 			stepThrice accumulateThings @?= 600,
 		testCase "derive twice" $
-			stepThrice derivativeThings @?= 0
+			stepThrice derivativeThings @?= 0,
+		testCase "derive once" $
+			stepTwice derivativeThings @?= 300,
+		testCase "derive never" $
+			stepOnce derivativeThings @?= 0
 	]

@@ -41,15 +41,13 @@ accumulateThings :: Wire Identity () Integer
 accumulateThings = proc () -> do
 	dt_ <- dt -< ()
 	thing <- myWire -< ()
-	result <- integrate 0 -< thing * dt_
-	returnA -< result
+	integrate 0 -< thing * dt_
 
 derivativeThings :: Wire Identity () Integer
 derivativeThings = proc () -> do
 	dt_ <- dt -< ()
 	thing <- myWire -< ()
-	result <- derive -< thing * dt_
-	returnA -< result
+	derive -< thing * dt_
 
 stepThrice :: Wire Identity () Integer -> Integer
 stepThrice w0 =

@@ -16,7 +16,7 @@ module Test.Immutaball.Share.Wire.Test
 		myWire,
 		dt,
 		accumulateThings,
-		derivativeThings,
+		differentiateThings,
 		stepThrice,
 		stepTwice,
 		stepOnce
@@ -51,11 +51,11 @@ accumulateThings = proc () -> do
 	thing <- myWire -< ()
 	integrate 0 -< thing * dt_
 
-derivativeThings :: Wire Identity () Integer
-derivativeThings = proc () -> do
+differentiateThings :: Wire Identity () Integer
+differentiateThings = proc () -> do
 	dt_ <- dt -< ()
 	thing <- myWire -< ()
-	derive -< thing * dt_
+	differentiate -< thing * dt_
 
 stepThrice :: Wire Identity () a -> a
 stepThrice w0 =
@@ -105,12 +105,12 @@ tests = testGroup "Immutaball.Share.Wire" $
 			[
 				testCase "integrate twice" $
 					stepThrice accumulateThings @?= 600,
-				testCase "derive twice" $
-					stepThrice derivativeThings @?= 0,
-				testCase "derive once" $
-					stepTwice derivativeThings @?= 300,
-				testCase "derive never" $
-					stepOnce derivativeThings @?= 0
+				testCase "differentiate twice" $
+					stepThrice differentiateThings @?= 0,
+				testCase "differentiate once" $
+					stepTwice differentiateThings @?= 300,
+				testCase "differentiate never" $
+					stepOnce differentiateThings @?= 0
 			],
 
 		testGroup "other utils tests" $

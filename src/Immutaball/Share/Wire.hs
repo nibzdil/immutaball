@@ -27,7 +27,7 @@ module Immutaball.Share.Wire
 		withM,
 		mfix',
 		integrate,
-		derive,
+		differentiate,
 		hold,
 		replace,
 		switch,
@@ -101,8 +101,8 @@ integrate y0 = proc x -> do
 	rec output <- delay y0 returnA -< output + x
 	returnA -< output
 
-derive :: (Num a, Monad m, MonadFix m) => Wire m a a
-derive = proc x -> do
+differentiate :: (Num a, Monad m, MonadFix m) => Wire m a a
+differentiate = proc x -> do
 	rec output <- delay 0 returnA -< x - output
 	returnA -< output
 

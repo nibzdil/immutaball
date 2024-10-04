@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, DerivingVia #-}
+{-# LANGUAGE TemplateHaskell, DerivingVia, InstanceSigs #-}
 
 module Immutaball.Share.AutoPar
 	(
@@ -18,6 +18,7 @@ module Immutaball.Share.AutoPar
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Monad.Fix
 import Control.Parallel
 import Data.Functor.Identity
 
@@ -46,3 +47,7 @@ instance (Applicative m) => Applicative (AutoParT m) where
 instance (Monad m) => Monad (AutoParT m) where
 	return = pure
 	(AutoParT ma) >>= fmb = AutoParT $ ma `par` fmb `par` (ma >>= _autoParT . fmb)
+instance (MonadFix m) => MonadFix (AutoParT m) where
+	mfix :: (MonadFix m) => (a -> AutoParT m a) -> AutoParT m a
+	--mfix f = AutoParT $ mfix (_autoParT . f)
+	mfix f = AutoParT $ mfix (\a -> a `par` (_autoParT . f $ a))

@@ -18,6 +18,7 @@ import Prelude ()
 import Control.Lens
 
 import Immutaball.Share.Context
+import Immutaball.Share.State
 
 -- | A running Immutaball context instance.
 --

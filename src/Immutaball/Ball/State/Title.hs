@@ -21,6 +21,7 @@ import Control.Arrow
 
 import Immutaball.Share.Context
 import Immutaball.Share.State
+--import Immutaball.Share.Wire
 
 -- TODO
 mkTitleState :: IBContext -> Immutaball

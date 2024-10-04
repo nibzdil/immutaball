@@ -28,7 +28,6 @@ import Control.Arrow
 
 import Control.Monad.Trans.Maybe
 import Control.Wire
-import Control.Wire.Controller
 
 import Immutaball.Share.AutoPar
 import Immutaball.Share.ImmutaballIO
@@ -69,9 +68,11 @@ data Response =
 -- This can be combined with 'ImmutaballIOFork' to keep a single wire running.
 {- --closeFork :: Immutaball -}
 closeFork :: Wire ImmutaballM () ()
+--closeFork = wire $ \_ -> hoistMaybe Nothing
 closeFork = withM returnA (const . hoistMaybe $ Nothing)
 
 closeFork' :: Wire ImmutaballM () a
+--closeFork' = wire $ \_ -> hoistMaybe Nothing
 closeFork' = withM returnA (const . hoistMaybe $ Nothing)
 
 immutaballIOLinear :: ImmutaballIOF Immutaball -> Wire ImmutaballM () ResponseFrame

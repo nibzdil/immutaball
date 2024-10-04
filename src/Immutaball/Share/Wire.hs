@@ -7,10 +7,6 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell, Arrows, DerivingVia #-}
 
--- Warning: this module has an orphan instance.
--- TODO: maybe just use a newtype wrapper, and comment out a raw definition.
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 -- | Besides low-level wire construction,
 -- ArrowLoop's ‘loop’ helps provide for local state, e.g. as in the ‘counter’
 -- example in
@@ -59,7 +55,7 @@ newtype Wire m a b = ReinstanceWire { _reinstanceWire :: Control.Wire.Wire m a b
 		via (Control.Wire.Wire m a)
 	deriving (Arrow, ArrowChoice, ArrowLoop, {-Choice, Strong, Costrong, Profunctor, -}Category)
 		via (Control.Wire.Wire m)
--- Warning: orphan instance, without newtype wrapper.
+-- (Without newtype wrapper we get a warning: orphan instance.)
 instance (Monad m) => ArrowApply (Wire m) where
 	app = applyWire
 

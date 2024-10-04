@@ -115,7 +115,9 @@ hold a0 = proc ma -> do
 -- TODO: test replace, switch, and applyWire.
 
 replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
+-- This is the direct version, which we are keeping for reference:
 --replace w0 = wire $ \a -> stepWire w0 a >>= \(b, _w1) -> stepWire b a
+-- Here is a higher level version, which we are using:
 -- Without instance ArrowApply:
 -- ‘Could not deduce ‘ArrowApply (Wire m)’’:
 -- {-
@@ -129,5 +131,7 @@ switch w0 = wire $ \a -> stepWire w0 a >>= \(eb, w1) -> either (\w1Override -> s
 
 -- | Discards the wire; gives the result.
 applyWire :: (Functor m) => Wire m (Wire m a b, a) b
+-- Here is a version that uses monads:
 --applyWire = wire $ \(w0, a) -> stepWire w0 a >>= \(b, w1) -> return (b, applyWire)
+-- We only need fmap here:
 applyWire = wire $ \(w0, a) -> (\(b, _w1) -> (b, applyWire)) <$> stepWire w0 a

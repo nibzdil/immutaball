@@ -44,6 +44,13 @@ accumulateThings = proc () -> do
 	result <- integrate 0 -< thing * dt_
 	returnA -< result
 
+derivativeThings :: Wire Identity () Integer
+derivativeThings = proc () -> do
+	dt_ <- dt -< ()
+	thing <- myWire -< ()
+	result <- derive -< thing * dt_
+	returnA -< result
+
 stepThrice :: Wire Identity () Integer -> Integer
 stepThrice w0 =
 	let
@@ -59,5 +66,7 @@ tests :: TestTree
 tests = testGroup "Immutaball.Share.Wire" $
 	[
 		testCase "integrate twice" $
-			stepThrice accumulateThings @?= 600
+			stepThrice accumulateThings @?= 600,
+		testCase "derive twice" $
+			stepThrice derivativeThings @?= 0
 	]

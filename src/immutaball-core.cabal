@@ -1,6 +1,6 @@
 cabal-version: 3.0
 
-name: immutaball
+name: immutaball-core
 version: 0.1.0.1-dev
 
 synopsis: Immutaball platformer game
@@ -10,7 +10,9 @@ category:     Games
 homepage:     https://nibzdil.org/
 bug-reports:  https://nibzdil.org/
 
-license:      GPL-3.0-or-later
+-- When packaged with Neverball data (e.g. into ‘immutaball’), distribute under
+-- GPL terms to be compliant.
+license:      0BSD
 license-file: LICENSE.md
 author:       Byron Johnson
 maintainer:   bjohnson@nibzdil.org
@@ -41,7 +43,7 @@ common all-components
 		FlexibleContexts
 		ExistentialQuantification
 
-	hs-source-dirs: src
+	hs-source-dirs: .
 
 	-- We use multiple threads.  Include to fix this error:
 	-- > user error (RTS doesn't support multiple OS threads (use ghc -threaded when linking))
@@ -89,7 +91,7 @@ common all-components
 		text             >= 2.1      && < 2.2
 
 common executable-components
-	build-depends: immutaball
+	build-depends: immutaball-core
 
 	other-modules:
 		Control.Monad.Trans.MaybeM

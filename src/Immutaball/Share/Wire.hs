@@ -89,8 +89,7 @@ derive = proc x -> do
 	returnA -< output
 
 -- | Output the last available input.
--- FIXME: delayed by a frame!  TODO
 hold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
 hold a0 = proc ma -> do
-	rec out <- delay a0 returnA -< maybe out id ma
-	returnA -< out
+	rec lastJust <- delay a0 returnA -< maybe lastJust id ma
+	returnA -< maybe lastJust id ma

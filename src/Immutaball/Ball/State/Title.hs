@@ -42,55 +42,12 @@ mkTitleState :: IBContext -> Immutaball
 mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 	-- TODO: FIXME: GHC can't see initialCxt; fails with ‘not in scope’.
 	--let initialCxt = initialStateCxt baseCxt0
-	{-
 	rec
 		--cxtn <- stateContextStorage initialCxt -< Just cxtnp1
-		--cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
-		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Nothing
+		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
 		-- TODO: fix commented line
 		--cxtnp1 <- delay Nothing -< requireVideo -< cxtn
+		-- TODO: debugging: okay, now the next line causes an exception.
 		--cxtnp1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< cxtn
 		cxtnp1 <- delayWire (initialStateCxt baseCxt0) returnA -< cxtn
-	-}
-	--cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Nothing
-	--cxtn <- returnA -< Nothing  -- Does not hang.
-	--cxtn <- hold (()) -< Nothing  -- Hangs.  Maybe it's an mfix bug.
-	cxtn <- debugHold (()) -< Nothing  -- Hangs.  Maybe it's an mfix bug.
-	-- TODO:
-	-- case request of  -- TODO
-	--returnA -< Identity ContinueResponse
-	--returnA -< trace "DEBUG0: ContinueResponse" $ Identity ContinueResponse
 	returnA -< trace "DEBUG0: ContinueResponse" $ [ContinueResponse]
-	--returnA -< Identity DoneResponse
-
--- This hangs:
-{-
-debugHold a0 = proc ma -> do
-	rec
-		output <- returnA -< maybe lastJust id ma
-		lastJust <- delay a0 -< output
-	returnA -< output
--}
--- This doesn't:
-{-
-debugHold :: (Applicative m) => a -> Wire m (Maybe a) a
-debugHold a0 = flip fix a0 $ \me lastJust -> wire $ \ma -> let a = maybe lastJust id ma in pure (a, me a)
--}
--- For debugging we can have a hold with a delay by 1 frame bug.
---debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
---debugHold a0 = flip fix a0 $ \me lastJust -> wire $ \ma -> let a = maybe lastJust id ma in pure (a, me a)
---debugHold a0 = wire $ \ma -> (fst <$>) . mfix $ \(_, lastJust) -> let a0' = maybe a0 id ma in return _
---debugHold a0 = wire $ \ma -> mfix $ \(lastJust, w) -> delayWire (maybe a0 id ma) . wire $ \
---debugHold a0 = wire $ \ma -> mfix $ \(lastJust, w) -> delayWire (maybe a0 id ma) w $ \
---debugHold a0 = delayWire a0 . wire $ \ma -> mfix $ (\lastJust, _w) 
--- Okay, good: we provided a simpler repro case!
--- This hangs!:
-{-
-debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
-debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \(lastJust, _w) -> return (maybe lastJust id ma, me)
--}
--- Let's debug.
-debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
-debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \ ~(lastJust, _w) -> return (maybe lastJust id ma, me)
-
--- Is something wrong with mfix?

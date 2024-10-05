@@ -117,7 +117,8 @@ instance Monad ImmutaballIOF where
 	m >>= f = joinImmutaballIOF $ f <$> m
 instance MonadFix ImmutaballIOF where
 	--mfix = mfix'
-	mfix f = let ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
+	--mfix f = let ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
+	mfix f = let ~ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
 --mfix' f = fix $ \me -> me >>= f
 --mfix' f = let ma = ma >>= f in ma
 

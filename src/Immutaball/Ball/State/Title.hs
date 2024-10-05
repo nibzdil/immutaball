@@ -32,6 +32,7 @@ import SDL.Video
 import SDL.Video.OpenGL
 import qualified Data.Text as T
 import Data.Function (fix)
+import Control.Monad.Fix
 
 -- TODO: FIXME: I see no window :(.
 -- TODO:
@@ -71,7 +72,25 @@ debugHold a0 = proc ma -> do
 	returnA -< output
 -}
 -- This doesn't:
+{-
 debugHold :: (Applicative m) => a -> Wire m (Maybe a) a
 debugHold a0 = flip fix a0 $ \me lastJust -> wire $ \ma -> let a = maybe lastJust id ma in pure (a, me a)
+-}
+-- For debugging we can have a hold with a delay by 1 frame bug.
+--debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
+--debugHold a0 = flip fix a0 $ \me lastJust -> wire $ \ma -> let a = maybe lastJust id ma in pure (a, me a)
+--debugHold a0 = wire $ \ma -> (fst <$>) . mfix $ \(_, lastJust) -> let a0' = maybe a0 id ma in return _
+--debugHold a0 = wire $ \ma -> mfix $ \(lastJust, w) -> delayWire (maybe a0 id ma) . wire $ \
+--debugHold a0 = wire $ \ma -> mfix $ \(lastJust, w) -> delayWire (maybe a0 id ma) w $ \
+--debugHold a0 = delayWire a0 . wire $ \ma -> mfix $ (\lastJust, _w) 
+-- Okay, good: we provided a simpler repro case!
+-- This hangs!:
+{-
+debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
+debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \(lastJust, _w) -> return (maybe lastJust id ma, me)
+-}
+-- Let's debug.
+debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
+debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \(lastJust, _w) -> return (maybe lastJust id ma, me)
 
 -- Is something wrong with mfix?

@@ -36,69 +36,26 @@ import qualified Data.Text as T
 -- TODO:
 mkTitleState :: IBContext -> Immutaball
 --mkTitleState baseCxt0 = fromImmutaballSingle $ proc _request -> do
-{-
-mkTitleState baseCxt0 = trace "DEBUG1: start" . fromImmutaballSingle $ proc _request -> do
+--mkTitleState baseCxt0 = trace "DEBUG1: start" . fromImmutaballSingle $ proc _request -> do
+mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 	-- TODO: FIXME: GHC can't see initialCxt; fails with ‘not in scope’.
 	--let initialCxt = initialStateCxt baseCxt0
+	{-
 	rec
 		--cxtn <- stateContextStorage initialCxt -< Just cxtnp1
-		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
+		--cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
+		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Nothing
 		-- TODO: fix commented line
 		--cxtnp1 <- delay Nothing -< requireVideo -< cxtn
-		cxtnp1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< cxtn
+		--cxtnp1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< cxtn
+		cxtnp1 <- delayWire (initialStateCxt baseCxt0) returnA -< cxtn
+	-}
+	--cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Nothing
+	--cxtn <- returnA -< Nothing  -- Does not hang.
+	cxtn <- hold (()) -< Nothing  -- Hangs.  Maybe it's an mfix bug.
 	-- TODO:
 	-- case request of  -- TODO
 	--returnA -< Identity ContinueResponse
-	returnA -< trace "DEBUG0: ContinueResponse" $ Identity ContinueResponse
+	--returnA -< trace "DEBUG0: ContinueResponse" $ Identity ContinueResponse
+	returnA -< trace "DEBUG0: ContinueResponse" $ [ContinueResponse]
 	--returnA -< Identity DoneResponse
--}
-{-
-mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _request -> do
-	--returnA -< [DoneResponse]
-	--_ <- returnA -< ()
-	-- TODO FIXME: how come only the first IO is executed (without the
-	-- controller getting to the point of checking for allowWireForks), and
-	-- then it quits?
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG12: IO works!"
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG13: IO works!"
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF . DelayUs $ (5 * 1000 * 1000)
-
-	--returnA -< [DoneResponse]
-	returnA -< [ContinueResponse]
--}
-
-{-
--- TODO: try a non-arrow notation version to see if it works.  Maybe (probably
--- not) it's an Arrows syntax bug.  Maybe when composing it manually, you find
--- something that doesn't make sense or think of something to check.
-mkTitleState baseCxt0 = trace "DEBUG1: start" $ -- . wire $ \_request ->
-	pure (liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG12: IO works!") >>> monadic >>>
-	pure (liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG13: IO works!") >>> monadic >>>
-	pure (liftIBIO . BasicImmutaballIOF . DelayUs $ (5 * 1000 * 1000)) >>> monadic >>>
-	pure [ContinueResponse]
--}
--- Yay, now the following works!
-{-
--- Okay, same results.  So it's not Arrow notation.
--- Here, I'll just keep it here for now to reduce possible variables:
--- {-
-mkTitleState baseCxt0 = trace "DEBUG1: start" $ -- . wire $ \_request ->
-	pure (liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG12: IO works!" ()) >>> monadic >>>
-	pure (liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG13: IO works!" ()) >>> monadic >>>
-	pure (liftIBIO . BasicImmutaballIOF $ DelayUs (5 * 1000 * 1000) ()) >>> monadic >>>
-	pure [ContinueResponse]
--- -}
--- TODO: try a version that doesn't use ‘monadic’.
--- :O Oh, I think that PutStrLn lacks any callback!!!
--- Aha!!!  That's probably it.  Maybe just add a ‘me’ component to PutStrLn (like ‘(() -> me)’).  So it's not String -> Immu, but String -> Immu -> Immu.
---mkTitleState baseCxt0 = trace "DEBUG1: start" . wire $ \_request -> (liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG12: IO works!")
--}
-
--- This works too =).
-mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _request -> do
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG12: IO works!" ()
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG13: IO works!" ()
-	window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "DEBUG") defaultWindow id
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (5 * 1000 * 1000) ()
-
-	returnA -< [ContinueResponse]

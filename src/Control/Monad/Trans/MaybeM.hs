@@ -30,6 +30,8 @@ import Control.Monad.Fix
 import Control.Monad.Trans.Class
 import Control.Monad.Zip
 
+import Debug.Trace as D  ---------------------------- TODO--
+
 newtype MaybeMT m a = MaybeMT { _maybeMT :: Either (m a) a }
 	deriving (Eq, Ord, Show, Read)
 makeLenses ''MaybeMT
@@ -63,7 +65,8 @@ instance (Monad m) => Monad (MaybeMT m) where
 
 instance (Monad m, MonadFix m) => MonadFix (MaybeMT m) where
 	mfix :: (Monad m) => (a -> MaybeMT m a) -> MaybeMT m a
-	mfix f = MaybeMT . Left . mfix $ \a -> either id return $ runMaybeMT (f a)
+	--mfix f = MaybeMT . Left . mfix $ \a -> either id return $ runMaybeMT (f a)
+	mfix f = MaybeMT . Left . mfix $ \a -> D.trace "DEBUG: mfix MaybeMT: " . either id return $ runMaybeMT (f a)
 
 instance (Alternative m) => Alternative (MaybeMT m) where
 	empty :: (Alternative m) => MaybeMT m a

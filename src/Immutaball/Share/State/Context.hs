@@ -34,6 +34,8 @@ import Immutaball.Share.State
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
+import Debug.Trace as D  ---------------------------- TODO--
+
 -- | A running Immutaball context instance.
 --
 -- Normally the controller doesn't deal with this.
@@ -70,7 +72,9 @@ requireVideo = proc cxt0 -> do
 				windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
 				windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
 			}
-			window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
-			context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
+			--window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
+			window <- monadic -< D.trace "DEBUG30: requireVideo window." . liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
+			--context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
+			context <- monadic -< D.trace "DEBUG31: requireVideo context." . liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
 			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) .  (ibSDLGLContext.~Just (context :: SDL.GLContext))
 			returnA -< cxt1

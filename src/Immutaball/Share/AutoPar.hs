@@ -25,6 +25,8 @@ import Data.Functor.Identity
 
 import Control.Lens
 
+import Debug.Trace as D  ---------------------------- TODO--
+
 type AutoPar = AutoParT Identity
 
 -- Possible extension: an ADT with ‘NoAutoPar’ that does not apply extra ‘par’
@@ -51,7 +53,8 @@ instance (Monad m) => Monad (AutoParT m) where
 instance (MonadFix m) => MonadFix (AutoParT m) where
 	mfix :: (MonadFix m) => (a -> AutoParT m a) -> AutoParT m a
 	--mfix f = AutoParT $ mfix (_autoParT . f)
-	mfix f = AutoParT $ mfix (\a -> a `par` (_autoParT . f $ a))
+	--mfix f = AutoParT $ mfix (\a -> a `par` (_autoParT . f $ a))
+	mfix f = D.trace "DEBUG: mfix AutoParT" . AutoParT $ mfix (\a -> a `par` (_autoParT . f $ D.trace "DEBUG: mfix 2 AutoParT" a))
 instance MonadTrans AutoParT where
 	lift :: (Monad m) => m a -> AutoParT m a
 	lift = AutoParT

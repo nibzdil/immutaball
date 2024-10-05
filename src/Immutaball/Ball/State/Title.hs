@@ -74,6 +74,8 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ -- . wire $ \_request ->
 	pure (liftIBIO . BasicImmutaballIOF . DelayUs $ (5 * 1000 * 1000)) >>> monadic >>>
 	pure [ContinueResponse]
 -}
+-- Yay, now the following works!
+{-
 -- Okay, same results.  So it's not Arrow notation.
 -- Here, I'll just keep it here for now to reduce possible variables:
 -- {-
@@ -87,3 +89,12 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ -- . wire $ \_request ->
 -- :O Oh, I think that PutStrLn lacks any callback!!!
 -- Aha!!!  That's probably it.  Maybe just add a ‘me’ component to PutStrLn (like ‘(() -> me)’).  So it's not String -> Immu, but String -> Immu -> Immu.
 --mkTitleState baseCxt0 = trace "DEBUG1: start" . wire $ \_request -> (liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG12: IO works!")
+-}
+
+-- This works too =).
+mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _request -> do
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG12: IO works!" ()
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG13: IO works!" ()
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (5 * 1000 * 1000) ()
+
+	returnA -< [ContinueResponse]

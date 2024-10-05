@@ -106,6 +106,13 @@ instance Functor ImmutaballIOF where
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinImmutaballIOF
 
+instance Applicative ImmutaballIOF where
+	pure = PureImmutaballIOF
+	mf <*> ma = joinImmutaballIOF . flip fmap mf $ \f -> joinImmutaballIOF .  flip fmap ma $ \a -> pure (f a)
+instance Monad ImmutaballIOF where
+	return = pure
+	m >>= f = joinImmutaballIOF $ f <$> m
+
 -- | Add an ordering constraint.
 infixr 6 <>>
 (<>>) :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO

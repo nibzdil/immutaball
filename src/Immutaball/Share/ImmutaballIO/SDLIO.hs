@@ -61,15 +61,15 @@ data SDLIOF me =
 	-- | SDLGLMakeCurrent SDL.Video.Window SDL.Video.OpenGL.GLContext  -- We can automatically call this.
 	-- -- _| See notes on 'glDeleleteContext' and 'glFinish' before using.
 	-- _| SDLGLDeleteContext SDL.Video.OpenGL.GLContext
-	| SDLGLSwapWindow SDL.Video.Window
+	| SDLGLSwapWindow SDL.Video.Window me
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
-	fmap  f (SDLWithInit subsystems sdlio)       = SDLWithInit subsystems (f sdlio)
-	fmap  f (SDLPollEvent withMEvent)            = SDLPollEvent (f . withMEvent)
-	fmap  f (SDLPollEventSync withMEvent)        = SDLPollEventSync (f . withMEvent)
-	fmap  f (SDLWithWindow title cfg withWindow) = SDLWithWindow title cfg (f . withWindow)
-	fmap  f (SDLWithGLContext window withCxt)    = SDLWithGLContext window (f . withCxt)
-	fmap _f (SDLGLSwapWindow window)             = SDLGLSwapWindow window
+	fmap f (SDLWithInit subsystems sdlio)       = SDLWithInit subsystems (f sdlio)
+	fmap f (SDLPollEvent withMEvent)            = SDLPollEvent (f . withMEvent)
+	fmap f (SDLPollEventSync withMEvent)        = SDLPollEventSync (f . withMEvent)
+	fmap f (SDLWithWindow title cfg withWindow) = SDLWithWindow title cfg (f . withWindow)
+	fmap f (SDLWithGLContext window withCxt)    = SDLWithGLContext window (f . withCxt)
+	fmap f (SDLGLSwapWindow window withUnit)    = SDLGLSwapWindow window (f withUnit)
 
 runSDLIO :: SDLIO -> IO ()
 runSDLIO sdlio = cata runSDLIOIO sdlio
@@ -102,8 +102,9 @@ runSDLIOIO (SDLWithGLContext window withCxt) = do
 	withCxt cxt
 	Graphics.GL.Internal.Shared.glFinish
 	SDL.Video.OpenGL.glDeleteContext cxt
-runSDLIOIO (SDLGLSwapWindow window) = do
+runSDLIOIO (SDLGLSwapWindow window withUnit) = do
 	SDL.Video.OpenGL.glSwapWindow window
+	withUnit
 
 -- * SDLIO aliases that apply the Fixed wrapper
 
@@ -122,5 +123,5 @@ mkSDLWithWindow title cfg withWindow = Fixed $ SDLWithWindow title cfg withWindo
 mkSDLWithGLContext :: SDL.Video.Window -> (SDL.Video.OpenGL.GLContext -> SDLIO) -> SDLIO
 mkSDLWithGLContext window withCxt = Fixed $ SDLWithGLContext window withCxt
 
-mkSDLGLSwapWindow :: SDL.Video.Window -> SDLIO
-mkSDLGLSwapWindow window = Fixed $ SDLGLSwapWindow window
+mkSDLGLSwapWindow :: SDL.Video.Window -> SDLIO -> SDLIO
+mkSDLGLSwapWindow window withUnit = Fixed $ SDLGLSwapWindow window withUnit

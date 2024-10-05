@@ -58,8 +58,8 @@ withSDLManager withHandle =
 -- SDLManagerHandle
 -- SDLManagerCommand
 
-issueCommand :: SDLManagerHandle -> SDLManagerCommand -> ImmutaballIO
-issueCommand sdlMgr cmd = mkAtomically (writeTChan (sdlMgr^.sdlmh_commands) cmd) (const mempty)
+issueCommand :: SDLManagerHandle -> SDLManagerCommand -> ImmutaballIO -> ImmutaballIO
+issueCommand sdlMgr cmd withUnit = mkAtomically (writeTChan (sdlMgr^.sdlmh_commands) cmd) (const withUnit)
 
 -- * Low level
 
@@ -75,7 +75,7 @@ initSDLManager withSdlMgr =
 		_sdlmh_doneReceived = doneReceived,
 		_sdlmh_commands     = commands
 	}
-	in (mkBasicImmutaballIO . ForkOS . sdlManagerThread $ sdlMgr) <>> withSdlMgr sdlMgr
+	in mkBIO . ForkOS (sdlManagerThread sdlMgr) $ withSdlMgr sdlMgr
 
 -- | Manually close the SDLManager thread low-level.  High-level
 -- 'withSDLManager' automatically manages the lifetime.

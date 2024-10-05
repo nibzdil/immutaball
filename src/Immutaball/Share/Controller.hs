@@ -69,7 +69,7 @@ controlImmutaball cxt0 immutaball0 =
 			let dus = max 0 $ usNm1 - usN in
 			let ds = (fromInteger dus / 1000000.0)  :: Float in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
-			if' (usN < usNm1pMinClockPeriod) (mkBIO (DelayUs (usNm1pMinClockPeriod - usN)) <>>) id .
+			if' (usN < usNm1pMinClockPeriod) (mkBIO . DelayUs (usNm1pMinClockPeriod - usN)) id .
 			D.trace "DEBUG3: nextFrame mid" .
 			takeAllSDLEvents cxt0 $ \events ->
 			let events' = queuedEvents ++ events in
@@ -86,7 +86,7 @@ takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
 takeAllSDLEvents cxt withEvents =
 	mkAtomically newEmptyTMVar $ \eventStorage ->
 	flip fix [] $ \me events ->
-	(issueCommand (cxt^.ibSDLManagerHandle) (PollEvent eventStorage) <>) .
+	issueCommand (cxt^.ibSDLManagerHandle) (PollEvent eventStorage) .
 	mkAtomically (takeTMVar eventStorage) $ \mevent ->
 	case mevent of
 		--Nothing -> withEvents $ reverse events
@@ -192,7 +192,7 @@ processStepResult cxt mresponse withImmutaballNp1 =
 	runAutoParT mresponse & \mioresponse ->
 	--either (\ioresponse -> Fixed . flip fmap ioresponse) (&) (runMaybeMT mioresponse) $ \(response, immutaballNp1) ->
 	either (\ioresponse -> D.trace "DEBUG15.1: monadic" . Fixed . flip fmap ioresponse) (D.trace "DEBUG15.2: pure" (&)) (runMaybeMT mioresponse) $ \(response, immutaballNp1) ->
-	let failFork = mkBIO (PutStrLn "Error: processStepResult: wire forking is disabled, but the wire requested a fork; aborting") <>> mkBIO ExitFailureBasicIOF in
+	let failFork = mkBIO . PutStrLn "Error: processStepResult: wire forking is disabled, but the wire requested a fork; aborting" $ mkBIO ExitFailureBasicIOF in
 	D.trace "DEBUG19: processStepResult: checking allowWireForks" .
 	if' (not (cxt^.ibStaticConfig.allowWireForks) && doesResponseFork response) failFork $
 	--if' True failFork $  -- TODO FIXME: does not reach this point!
@@ -228,7 +228,7 @@ doesResponseFork response
 
 unimplementedHelper :: ImmutaballIO
 unimplementedHelper =
-	runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented.") <>> runBasicImmutaballIO mkExitFailureBasicIO
+	runBasicImmutaballIO (mkPutStrLn "Internal error: unimplemented." $ mkExitFailureBasicIO)
 
 -- * SDL utils
 

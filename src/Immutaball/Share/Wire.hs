@@ -154,6 +154,6 @@ queue :: (Applicative m, MonadFix m) => Wire m [a] (Maybe a)
 --queue = flip fix [] $ \me queued -> wire $ \(as) -> let as' = queued ++ as in pure (safeHead as', me (drop 1 as'))
 queue = proc ins -> do
 	rec
-		(output, queue) <- returnA -< let ins' = ins ++ lastQueue in (safeHead ins', drop 1 ins')
+		(output, queue) <- returnA -< let ins' = lastQueue ++ ins in (safeHead ins', drop 1 ins')
 		lastQueue <- delay [] -< queue
 	returnA -< output

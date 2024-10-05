@@ -22,8 +22,10 @@ module Immutaball.Share.Wire
 		delayWire,
 		loopWire,
 		loopWireSimple,
+		monadic,
 
 		-- * Utilities
+		initial,
 		withM,
 		delay,
 		integrate,
@@ -91,7 +93,14 @@ loopWireSimple :: Wire Identity (b, d) (c, d) -> Wire Identity b c
 --loopWireSimple w = wire $ \b -> let Identity ((c, d), w') = stepWire w (b, d) in Identity (c, loopWireSimple w')
 loopWireSimple = fix $ \loopWireSimple_ w -> wire $ \b -> let Identity ((c, _d), w') = fix (\(Identity ((_c, d), _w')) -> stepWire w (b, d)) in Identity (c, loopWireSimple_ w')
 
+-- | Run the given action in the monad.
+monadic :: (Applicative m) => Wire m (m a) a
+monadic = wire $ \m -> (\a -> (a, monadic)) <$> m
+
 -- * Utilities
+
+initial :: (Applicative m) => Wire m (m a) a
+initial = wire $ \m -> (\a -> (a, pure a)) <$> m
 
 withM :: (Monad m) => (s -> Wire m a b) -> (a -> m s) -> Wire m a b
 withM initWire initState = wire $ \a -> initState a >>= \s -> stepWire (initWire s) a

@@ -19,6 +19,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Monad.Fix
+import Control.Monad.Trans.Class
 import Control.Parallel
 import Data.Functor.Identity
 
@@ -51,3 +52,6 @@ instance (MonadFix m) => MonadFix (AutoParT m) where
 	mfix :: (MonadFix m) => (a -> AutoParT m a) -> AutoParT m a
 	--mfix f = AutoParT $ mfix (_autoParT . f)
 	mfix f = AutoParT $ mfix (\a -> a `par` (_autoParT . f $ a))
+instance MonadTrans AutoParT where
+	lift :: (Monad m) => m a -> AutoParT m a
+	lift = AutoParT

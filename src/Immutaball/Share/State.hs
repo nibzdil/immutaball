@@ -26,6 +26,7 @@ module Immutaball.Share.State
 		immutaballIOLinear,
 		-}
 		stepImmutaball,
+		liftIBIO,
 
 		-- * Frame management
 		immutaballMultiToSingle,
@@ -125,6 +126,9 @@ immutaballIOLinear ibIO = wire (\() -> hoistMaybe $ Just ([ImmutaballIOFork ibIO
 -- It's 'stepWire' without 'AutoPar'.
 stepImmutaball :: Immutaball -> RequestFrame -> MaybeMT ImmutaballIOF (ResponseFrame, Immutaball)
 stepImmutaball immutaball request = runAutoParT $ stepWire immutaball request
+
+liftIBIO :: ImmutaballIOF a -> ImmutaballM a
+liftIBIO = AutoParT . MaybeMT . Left
 
 -- * Frame management
 

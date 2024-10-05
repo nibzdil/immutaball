@@ -9,22 +9,29 @@
 
 module Immutaball.Share.State.Context
 	(
-		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow
-		--stateContextStorage,
-		--requireVideo
+		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow, ibSDLGLContext,
+		stateContextStorage,
+		requireVideo
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
---import Control.Arrow
+import Control.Arrow
 import Control.Lens
+import qualified Data.Text as T
+import SDL.Vect as SDL
 import SDL.Video as SDL
+--import SDL.Video.OpenGL as SDL
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context
---import Immutaball.Share.State
---import Immutaball.Share.Wire
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
+import Immutaball.Share.ImmutaballIO.SDLIO
+import Immutaball.Share.State
+import Immutaball.Share.Utils
+import Immutaball.Share.Wire
 
 -- | A running Immutaball context instance.
 --
@@ -34,18 +41,25 @@ data IBStateContext = IBStateContext {
 
 	_ibNeverballrc :: Neverballrc,
 
-	-- TODO: Maybe Window and gl context.
-	_ibSDLWindow :: Maybe (SDL.Window)
+	_ibSDLWindow :: Maybe (SDL.Window),
+	_ibSDLGLContext :: Maybe (SDL.GLContext)
 }
 makeLenses ''IBStateContext
 
--- TODO:
-{-
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
 stateContextStorage y0 = proc cxt -> do
 	hold y0 -< cxt
 
-requireVideo :: Wire ImmutaballM IBStateContext Response
-requireVideo = proc _cxt -> do
-	error "TODO: unimplemented" -< ()
--}
+requireVideo :: Wire ImmutaballM IBStateContext IBStateContext
+requireVideo = proc cxt0 -> do
+	case (cxt0^.ibSDLWindow) of
+		Just _ -> returnA -< cxt0
+		Nothing -> do
+			let windowCfg = defaultWindow {
+				windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
+				windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
+			}
+			window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
+			context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
+			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) .  (ibSDLGLContext.~Just (context :: SDL.GLContext))
+			returnA -< cxt1

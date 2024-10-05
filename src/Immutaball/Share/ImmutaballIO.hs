@@ -143,9 +143,11 @@ fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
 fixImmutaballIOF f = fix $ \me -> case f (maybe emptyErr id $ extractFirstMeImmutaballIOF me) of
 	--    mfix f = mfix f >>= f
 	-- => mfix f = join $ f <$> mfix f
-	--x -> joinImmutaballIOF $ f <$> x
+	x -> joinImmutaballIOF $ f <$> x
+	{-
+	{-
 	EmptyImmutaballIOF -> EmptyImmutaballIOF
-	(PureImmutaballIOF me) -> joinImmutaballIOF $ PureImmutaballIOF (f me)
+	(PureImmutaballIOF a) -> joinImmutaballIOF $ PureImmutaballIOF (f a)
 	(JoinImmutaballIOF ibio) -> joinImmutaballIOF $ JoinImmutaballIOF (fmap (fmap f) ibio)
 	(AndImmutaballIOF a b) -> joinImmutaballIOF $ AndImmutaballIOF (f a) (f b)
 	(ThenImmutaballIOF a b) -> joinImmutaballIOF $ ThenImmutaballIOF (f a) (f b)
@@ -153,8 +155,30 @@ fixImmutaballIOF f = fix $ \me -> case f (maybe emptyErr id $ extractFirstMeImmu
 	(Wait async_ withAsync_) -> joinImmutaballIOF $ Wait async_ (f . withAsync_)
 	(WithAsync async_ withAsync_) -> joinImmutaballIOF $ WithAsync (f async_) (f . withAsync_)
 	(Atomically stm withStm) -> joinImmutaballIOF $ Atomically stm (f . withStm)
+	-}
+	EmptyImmutaballIOF -> EmptyImmutaballIOF
+	(PureImmutaballIOF a) -> joinImmutaballIOF $ PureImmutaballIOF (PureImmutaballIOF a)
+	(JoinImmutaballIOF ibio) -> joinImmutaballIOF $ JoinImmutaballIOF (fmap (fmap f) ibio)
+	(AndImmutaballIOF a b) -> joinImmutaballIOF $ AndImmutaballIOF (PureImmutaballIOF a) (f b)
+	(ThenImmutaballIOF a b) -> joinImmutaballIOF $ ThenImmutaballIOF (PureImmutaballIOF a) (f b)
+	(BasicImmutaballIOF bio) -> joinImmutaballIOF $ BasicImmutaballIOF (fmap f bio)
+	(Wait async_ withAsync_) -> joinImmutaballIOF $ Wait async_ (f . withAsync_)
+	(WithAsync async_ withAsync_) -> joinImmutaballIOF $ WithAsync (f async_) (f . withAsync_)
+	(Atomically stm withStm) -> joinImmutaballIOF $ Atomically stm (f . withStm)
+	-}
 	where
 		emptyErr = error "Error: fixImmutaballIOF: there is no non-empty value in the result"
+{-
+mfix (return . h) = return (fix h)
+
+  mfix (return . h)
+= mfix (PureImmutaballIOF . h)
+= case PureImmutaballIOF (h (mfix (PureImmutaballIOF . h))) of PureImmutaballIO a -> joinImmutaballIOF $ PureImmutaballIOF ((return . h) a)
+= joinImmutaballIOF $ PureImmutaballIOF ((return . h) (h (mfix (PureImmutaballIOF . h))))
+= PureImmutaballIOF ((return . h) (h (mfix (PureImmutaballIOF . h))))
+= return ((return . h) (h (mfix (PureImmutaballIOF . h))))
+= h (h (mfix (PureImmutaballIOF . h)))
+-}
 
 extractMesImmutaballIOF :: ImmutaballIOF me -> [me]
 extractMesImmutaballIOF (EmptyImmutaballIOF)          = []

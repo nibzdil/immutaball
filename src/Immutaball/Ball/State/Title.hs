@@ -43,8 +43,9 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 	-- TODO: FIXME: GHC can't see initialCxt; fails with ‘not in scope’.
 	--let initialCxt = initialStateCxt baseCxt0
 	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG: can print" ()
+	_ <- requireVideo -< (initialStateCxt baseCxt0)
 	--_ <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "dbg") defaultWindow id
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (5 * 1000 * 1000) ()
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
 	rec
 		--cxtn <- stateContextStorage initialCxt -< Just cxtnp1
 		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
@@ -54,8 +55,10 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 		--cxtnp1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< cxtn
 		cxtnp1 <- delayWire (initialStateCxt baseCxt0) returnA -< cxtn
 		--dbg <- requireVideo -< (initialStateCxt baseCxt0)
-		dbg2 <- delay (initialStateCxt baseCxt0) -< dbg1
-		dbg1 <- requireVideo -< dbg2
+		--dbg2 <- delay (initialStateCxt baseCxt0) -< dbg1
+		--dbg1 <- requireVideo -< dbg2
+		-- loop error.  ???
+		dbg1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< dbg1
 	returnA -< trace "DEBUG0: ContinueResponse" $ [ContinueResponse]
 -- -}
 

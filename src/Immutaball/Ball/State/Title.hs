@@ -34,14 +34,17 @@ import qualified Data.Text as T
 import Data.Function (fix)
 import Control.Monad.Fix
 
--- TODO: FIXME: I see no window :(.
 -- TODO:
 mkTitleState :: IBContext -> Immutaball
+-- {-
 --mkTitleState baseCxt0 = fromImmutaballSingle $ proc _request -> do
 --mkTitleState baseCxt0 = trace "DEBUG1: start" . fromImmutaballSingle $ proc _request -> do
 mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 	-- TODO: FIXME: GHC can't see initialCxt; fails with ‘not in scope’.
 	--let initialCxt = initialStateCxt baseCxt0
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG: can print" ()
+	--_ <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "dbg") defaultWindow id
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (5 * 1000 * 1000) ()
 	rec
 		--cxtn <- stateContextStorage initialCxt -< Just cxtnp1
 		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
@@ -50,4 +53,34 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 		-- TODO: debugging: okay, now the next line causes an exception.
 		--cxtnp1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< cxtn
 		cxtnp1 <- delayWire (initialStateCxt baseCxt0) returnA -< cxtn
+		--dbg <- requireVideo -< (initialStateCxt baseCxt0)
+		dbg2 <- delay (initialStateCxt baseCxt0) -< dbg1
+		dbg1 <- requireVideo -< dbg2
 	returnA -< trace "DEBUG0: ContinueResponse" $ [ContinueResponse]
+-- -}
+
+{-
+mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _request -> do
+	--returnA -< [DoneResponse]
+	--_ <- returnA -< ()
+	-- TODO FIXME: how come only the first IO is executed (without the
+	-- controller getting to the point of checking for allowWireForks), and
+	-- then it quits?
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG12: IO works!" ()
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG13: IO works!" ()
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF . DelayUs $ (5 * 1000 * 1000) ()
+
+	--returnA -< [DoneResponse]
+	returnA -< [ContinueResponse]
+-}
+
+{-
+-- TODO: try a non-arrow notation version to see if it works.  Maybe (probably
+-- not) it's an Arrows syntax bug.  Maybe when composing it manually, you find
+-- something that doesn't make sense or think of something to check.
+mkTitleState baseCxt0 = trace "DEBUG1: start" $ -- . wire $ \_request ->
+	pure (liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG12: IO works!") >>> monadic >>>
+	pure (liftIBIO . BasicImmutaballIOF . PutStrLn $ "DEBUG13: IO works!") >>> monadic >>>
+	pure (liftIBIO . BasicImmutaballIOF . DelayUs $ (5 * 1000 * 1000)) >>> monadic >>>
+	pure [ContinueResponse]
+-}

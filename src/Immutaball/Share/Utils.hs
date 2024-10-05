@@ -18,13 +18,15 @@ module Immutaball.Share.Utils
 		deconsBool,
 		voidA,
 		safeHead,
-		safeTail
+		safeTail,
+		mfix'
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
+import Control.Monad.Fix
 import Data.Functor.Compose
 
 import Control.Lens
@@ -68,9 +70,13 @@ voidA :: (Arrow a) => a b c -> a b ()
 voidA f = f >>> arr (const ())
 
 safeHead :: [a] -> Maybe a
-safeHead []     = Nothing
-safeHead (x:xs) = Just x
+safeHead []    = Nothing
+safeHead (x:_) = Just x
 
 safeTail :: [a] -> Maybe [a]
 safeTail []     = Nothing
 safeTail (_:xs) = Just xs
+
+mfix' :: (Monad m) => (a -> m a) -> m a
+--mfix' f = let ma = ma >>= f in ma
+mfix' f = fix $ \me -> me >>= f

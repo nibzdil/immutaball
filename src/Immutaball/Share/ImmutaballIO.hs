@@ -47,6 +47,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Concurrent.Async
+import Control.Monad.Fix
 import Control.Monad.STM
 import Control.Parallel
 
@@ -112,6 +113,8 @@ instance Applicative ImmutaballIOF where
 instance Monad ImmutaballIOF where
 	return = pure
 	m >>= f = joinImmutaballIOF $ f <$> m
+instance MonadFix ImmutaballIOF where
+	mfix = mfix'
 
 -- | Add an ordering constraint.
 infixr 6 <>>

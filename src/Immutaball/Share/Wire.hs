@@ -25,7 +25,6 @@ module Immutaball.Share.Wire
 
 		-- * Utilities
 		withM,
-		mfix',
 		delay,
 		integrate,
 		differentiate,
@@ -93,10 +92,6 @@ loopWireSimple = fix $ \loopWireSimple_ w -> wire $ \b -> let Identity ((c, _d),
 
 withM :: (Monad m) => (s -> Wire m a b) -> (a -> m s) -> Wire m a b
 withM initWire initState = wire $ \a -> initState a >>= \s -> stepWire (initWire s) a
-
-mfix' :: (Monad m) => (a -> m a) -> m a
---mfix' f = let ma = ma >>= f in ma
-mfix' f = fix $ \me -> me >>= f
 
 delay :: (Monad m) => a -> Wire m a a
 delay y0 = delayWire y0 returnA

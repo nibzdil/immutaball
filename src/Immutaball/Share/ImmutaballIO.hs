@@ -138,7 +138,12 @@ fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
 -- left of f applied to f, and the right of f applied to f, and then joining.
 -- Note: accessing \me in ‘fix ImmutaballIO $ \me -> ’ across Wait, Atomically,
 -- or similar callback boundaries is an error.  What would \me refer to?
+-- TODO remove next line after debugging.
+--fixImmutaballIOF f = fix $ \me -> f (maybe emptyErr id $ extractFirstMeImmutaballIOF me)
 fixImmutaballIOF f = fix $ \me -> case f (maybe emptyErr id $ extractFirstMeImmutaballIOF me) of
+	--    mfix f = mfix f >>= f
+	-- => mfix f = join $ f <$> mfix f
+	--x -> joinImmutaballIOF $ f <$> x
 	EmptyImmutaballIOF -> EmptyImmutaballIOF
 	(PureImmutaballIOF me) -> joinImmutaballIOF $ PureImmutaballIOF (f me)
 	(JoinImmutaballIOF ibio) -> joinImmutaballIOF $ JoinImmutaballIOF (fmap (fmap f) ibio)

@@ -134,8 +134,17 @@ immutaballMultiToSingle w = proc (Identity request) -> do
 	mresponse <- queue -< responses
 	returnA -< Identity $ maybe DoneResponse id mresponse
 
+-- | If the single wire received no request, we give an empty response frame
+-- (like a DoneResponse).
 immutaballSingleToMulti :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
-immutaballSingleToMulti = error "TODO: unimplemented."
+immutaballSingleToMulti w = proc requests -> do
+	request <- queue -< requests
+	case request of
+		Nothing -> do
+			returnA -< []
+		Just jrequest -> do
+			(Identity response) <- w -< Identity jrequest
+			returnA -< [response]
 
 fromImmutaballMulti :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
 fromImmutaballMulti = id

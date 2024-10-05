@@ -14,6 +14,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		BasicIOF(..),
 		runBasicIO,
 		(<>>-),
+		extractMesBasicIOF,
 
 		-- * Runners
 		runBasicIOIO,
@@ -152,7 +153,7 @@ instance Functor BasicIOF where
 	fmap  f (ReadText path mwithErr withContents)      = ReadText path ((f .) <$> mwithErr) (f . withContents)
 	fmap  f (ReadTextSync path mwithErr withContents)  = ReadTextSync path ((f .) <$> mwithErr) (f . withContents)
 	fmap  f (CreateDirectoryIfMissing path withUnit)   = CreateDirectoryIfMissing path (f withUnit)
-	fmap  f (ForkOS ibio withUnit)                     = ForkOS (f ibio) (f withUnit)
+	fmap  f (ForkOS bio withUnit)                      = ForkOS (f bio) (f withUnit)
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
 
@@ -170,6 +171,34 @@ instance Traversable BasicIOF where
 infixr 6 <>>-
 (<>>-) :: BasicIO -> BasicIO -> BasicIO
 (<>>-) = mkThenBasicIO
+
+extractMesBasicIOF :: BasicIOF me -> [me]
+extractMesBasicIOF (EmptyBasicIOF)                               = []
+extractMesBasicIOF (AndBasicIOF a b)                             = [a, b]
+extractMesBasicIOF (ThenBasicIOF a b)                            = [a, b]
+extractMesBasicIOF (ExitSuccessBasicIOF)                         = []
+extractMesBasicIOF (ExitFailureBasicIOF)                         = []
+extractMesBasicIOF (DirectoryIO dio)                             = extractMesDirectoryIOF dio
+extractMesBasicIOF (GetArgs _withArgs_)                          = []
+extractMesBasicIOF (GetArgsSync _withArgs_)                      = []
+extractMesBasicIOF (GetEnvironment _withEnvironment)             = []
+extractMesBasicIOF (GetEnvironmentSync _withEnvironment)         = []
+extractMesBasicIOF (PutStrLn _str withUnit)                      = [withUnit]
+extractMesBasicIOF (GetContents _withContents)                   = []
+extractMesBasicIOF (GetContentsSync _withContents)               = []
+extractMesBasicIOF (DoesPathExist _path _withExists)             = []
+extractMesBasicIOF (DoesPathExistSync _path _withExists)         = []
+extractMesBasicIOF (WriteBytes _path _contents withUnit)         = [withUnit]
+extractMesBasicIOF (WriteText _path _contents withUnit)          = [withUnit]
+extractMesBasicIOF (ReadBytes _path _mwithErr _withContents)     = []
+extractMesBasicIOF (ReadBytesSync _path _mwithErr _withContents) = []
+extractMesBasicIOF (ReadText _path _mwithErr _withContents)      = []
+extractMesBasicIOF (ReadTextSync _path _mwithErr _withContents)  = []
+extractMesBasicIOF (CreateDirectoryIfMissing _path withUnit)     = [withUnit]
+extractMesBasicIOF (ForkOS bio withUnit)                         = [bio, withUnit]
+extractMesBasicIOF (SDLIO sdlio)                                 = extractMesSDLIOF sdlio
+extractMesBasicIOF (DelayUs _us withUnit)                        = [withUnit]
+extractMesBasicIOF (GetUs _withUs)                               = []
 
 -- * Runners
 
@@ -200,7 +229,7 @@ runBasicIOIO (ReadText path mwithErr withContents)         =
 runBasicIOIO (ReadTextSync path mwithErr withContents)     =
 	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . withErr . show) mwithErr e)) >>= maybe (return ()) (id . withContents)
 runBasicIOIO (CreateDirectoryIfMissing path withUnit)      = createDirectoryIfMissing True path >> withUnit
-runBasicIOIO (ForkOS ibio withUnit)                        = (void . forkOS) ibio >> withUnit
+runBasicIOIO (ForkOS bio withUnit)                         = (void . forkOS) bio >> withUnit
 runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
 runBasicIOIO (DelayUs us withUnit)                         = delay us >> withUnit
 runBasicIOIO (GetUs withUs)                                = getUsIO >>= withUs
@@ -281,7 +310,7 @@ mkCreateDirectoryIfMissing :: FilePath -> BasicIO -> BasicIO
 mkCreateDirectoryIfMissing path withUnit = Fixed $ CreateDirectoryIfMissing path withUnit
 
 mkForkOS :: BasicIO -> BasicIO -> BasicIO
-mkForkOS ibio withUnit = Fixed $ ForkOS ibio withUnit
+mkForkOS bio withUnit = Fixed $ ForkOS bio withUnit
 
 mkSDLIO :: SDLIOF BasicIO -> BasicIO
 mkSDLIO sdlio = Fixed $ SDLIO sdlio

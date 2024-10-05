@@ -21,6 +21,9 @@ module Immutaball.Share.ImmutaballIO
 		thenImmutaballIO,
 		(<>>),
 		joinImmutaballIOF,
+		fixImmutaballIOF,
+		extractMesImmutaballIOF,
+		extractFirstMeImmutaballIOF,
 
 		-- * Runners
 		runImmutaballIOIO,
@@ -57,6 +60,11 @@ import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils
 
 import Debug.Trace as D  ---------------------------- TODO--
+import System.IO.Unsafe (unsafePerformIO)
+import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
+import Control.Concurrent.MVar
+import Control.Exception
+import Control.Exception.Base
 
 -- * ImmutaballIO
 
@@ -109,6 +117,54 @@ instance Functor ImmutaballIOF where
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinImmutaballIOF
 
+{-
+-- Do it like fixIO.
+fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
+--fixImmutaballIOF f = D.trace "DEBUG: IBIO mfix" $ f <$> fixImmutaballIOF f
+fixImmutaballIOF f = unsafePerformIO $ do
+	m <- newEmptyMVar
+	ans <- unsafeDupableInterleaveIO (readMVar m `catch` \BlockedIndefinitelyOnMVar -> throwIO FixIOException)
+	let result = fmap (\me -> unsafePerformIO $ putMVar m me >> return me) $ f ans
+	return result
+-}
+-- TODO: add a test case for fixm with ImmutaballIO (e.g. could be just
+-- something simple that ignores the input).
+fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
+--fixImmutaballIOF f = D.trace "DEBUG: IBIO mfix" $ f <$> fixImmutaballIOF f
+-- | Try extracting the first ‘me’ to spark things off.
+-- Then if multiple ‘me’s are observed in the result, apply f to each, and join.
+-- e.g. if f returns an And, then the left output (or if empty the right (no
+-- mults in this case)) will first spark f, and then the result is an And of
+-- left of f applied to f, and the right of f applied to f, and then joining.
+-- Note: accessing \me in ‘fix ImmutaballIO $ \me -> ’ across Wait, Atomically,
+-- or similar callback boundaries is an error.  What would \me refer to?
+fixImmutaballIOF f = fix $ \me -> case f (maybe emptyErr id $ extractFirstMeImmutaballIOF me) of
+	EmptyImmutaballIOF -> EmptyImmutaballIOF
+	(PureImmutaballIOF me) -> joinImmutaballIOF $ PureImmutaballIOF (f me)
+	(JoinImmutaballIOF ibio) -> joinImmutaballIOF $ JoinImmutaballIOF (fmap (fmap f) ibio)
+	(AndImmutaballIOF a b) -> joinImmutaballIOF $ AndImmutaballIOF (f a) (f b)
+	(ThenImmutaballIOF a b) -> joinImmutaballIOF $ ThenImmutaballIOF (f a) (f b)
+	(BasicImmutaballIOF bio) -> joinImmutaballIOF $ BasicImmutaballIOF (fmap f bio)
+	(Wait async_ withAsync_) -> joinImmutaballIOF $ Wait async_ (f . withAsync_)
+	(WithAsync async_ withAsync_) -> joinImmutaballIOF $ WithAsync (f async_) (f . withAsync_)
+	(Atomically stm withStm) -> joinImmutaballIOF $ Atomically stm (f . withStm)
+	where
+		emptyErr = error "Error: fixImmutaballIOF: there is no non-empty value in the result"
+
+extractMesImmutaballIOF :: ImmutaballIOF me -> [me]
+extractMesImmutaballIOF (EmptyImmutaballIOF)          = []
+extractMesImmutaballIOF (PureImmutaballIOF a)         = [a]
+extractMesImmutaballIOF (JoinImmutaballIOF ibio)      = extractMesImmutaballIOF ibio >>= extractMesImmutaballIOF
+extractMesImmutaballIOF (AndImmutaballIOF a b)        = [a, b]
+extractMesImmutaballIOF (ThenImmutaballIOF a b)       = [a, b]
+extractMesImmutaballIOF (BasicImmutaballIOF bio)      = extractMesBasicIOF bio
+extractMesImmutaballIOF (Wait _async_ _withAsync_)    = []
+extractMesImmutaballIOF (WithAsync async_ withAsync_) = [async_]
+extractMesImmutaballIOF (Atomically _stm _withStm)    = []
+
+extractFirstMeImmutaballIOF :: ImmutaballIOF me -> Maybe me
+extractFirstMeImmutaballIOF = safeHead . extractMesImmutaballIOF
+
 instance Applicative ImmutaballIOF where
 	pure = PureImmutaballIOF
 	mf <*> ma = joinImmutaballIOF . flip fmap mf $ \f -> joinImmutaballIOF .  flip fmap ma $ \a -> pure (f a)
@@ -121,11 +177,21 @@ instance MonadFix ImmutaballIOF where
 	--mfix f = let ~ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
 	--mfix f = let ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
 	mfix :: (a -> ImmutaballIOF a) -> ImmutaballIOF a
+	mfix = fixImmutaballIOF
 	--mfix f = D.trace "DEBUG: IBIO mfix" $ f ()
 	-- Spams IBIO mfix.
-	mfix f = D.trace "DEBUG: IBIO mfix" $ joinImmutaballIOF $ f <$> mfix f
+	--mfix f = D.trace "DEBUG: IBIO mfix" $ joinImmutaballIOF $ f <$> mfix f
+	--mfix f = D.trace "DEBUG: IBIO mfix" $ f <$> mfix f
 --mfix' f = fix $ \me -> me >>= f
 --mfix' f = let ma = ma >>= f in ma
+
+{-
+instance Foldable ImmutaballIOF where
+	foldr :: (a -> b -> b) -> b -> ImmutaballIOF a -> b
+	foldr _reduce reduction0 (EmptyImmutaballIOF)  = reduction0
+	foldr  reduce reduction0 (PureImmutaballIOF a) = reduce a reduction0
+	foldr  reduce reduction0 (JoinImmutaballIOF ibio) = ??? $ foldr reduce reduction0 <$> ibio
+-}
 
 -- | Add an ordering constraint.
 infixr 6 <>>

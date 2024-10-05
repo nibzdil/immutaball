@@ -13,6 +13,7 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		SDLIO,
 		SDLIOF(..),
 		runSDLIO,
+		extractMesSDLIOF,
 
 		-- * Runners
 		runSDLIOIO,
@@ -83,6 +84,14 @@ instance Traversable SDLIOF where
 	traverse :: Applicative f => (a -> f b) -> SDLIOF a -> f (SDLIOF b)
 	traverse traversal (SDLWithInit subsystems sdlio) = pure SDLWithInit <*> pure subsystems <*> traversal sdlio
 -}
+
+extractMesSDLIOF :: SDLIOF me -> [me]
+extractMesSDLIOF (SDLWithInit _subsystems sdlioio)       = [sdlioio]
+extractMesSDLIOF (SDLPollEvent _withMEvent)              = []
+extractMesSDLIOF (SDLPollEventSync _withMEvent)          = []
+extractMesSDLIOF (SDLWithWindow _title _cfg _withWindow) = []
+extractMesSDLIOF (SDLWithGLContext _window _withCxt)     = []
+extractMesSDLIOF (SDLGLSwapWindow _window withUnit)      = [withUnit]
 
 -- * Runners
 

@@ -13,6 +13,7 @@ module Immutaball.Share.ImmutaballIO.DirectoryIO
 		DirectoryIO,
 		DirectoryIOF(..),
 		runDirectoryIO,
+		extractMesDirectoryIOF,
 
 		-- * Runners
 		runDirectoryIOIO,
@@ -81,6 +82,16 @@ instance Traversable DirectoryIOF where
 	traverse _traversal (GetXdgDirectoryCache  path) = pure GetXdgDirectoryCache  <*> pure path
 	traverse _traversal (GetXdgDirectoryState  path) = pure GetXdgDirectoryState  <*> pure path
 -}
+
+extractMesDirectoryIOF :: DirectoryIOF me -> [me]
+extractMesDirectoryIOF (GetXdgDirectoryData       _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryDataSync   _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryConfig     _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryConfigSync _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryCache      _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryCacheSync  _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryState      _path _withDir) = []
+extractMesDirectoryIOF (GetXdgDirectoryStateSync  _path _withDir) = []
 
 -- * Runners
 

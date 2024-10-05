@@ -27,8 +27,10 @@ import Immutaball.Share.Wire
 -- TODO:
 mkTitleState :: IBContext -> Immutaball
 mkTitleState baseCxt0 = fromImmutaballSingle $ proc _request -> do
+	-- TODO: FIXME: GHC can't see initialCxt; fails with ‘not in scope’.
+	--let initialCxt = initialStateCxt baseCxt0
 	rec
-		-- TODO: maybe revise?
+		--cxtn <- stateContextStorage initialCxt -< Just cxtnp1
 		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
 		-- TODO: fix commented line
 		--cxtnp1 <- delay Nothing -< requireVideo -< cxtn

@@ -56,6 +56,8 @@ import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils
 
+import Debug.Trace as D  ---------------------------- TODO--
+
 -- * ImmutaballIO
 
 type ImmutaballIO = Fixed ImmutaballIOF
@@ -114,7 +116,10 @@ instance Monad ImmutaballIOF where
 	return = pure
 	m >>= f = joinImmutaballIOF $ f <$> m
 instance MonadFix ImmutaballIOF where
-	mfix = mfix'
+	--mfix = mfix'
+	mfix f = let ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
+--mfix' f = fix $ \me -> me >>= f
+--mfix' f = let ma = ma >>= f in ma
 
 -- | Add an ordering constraint.
 infixr 6 <>>

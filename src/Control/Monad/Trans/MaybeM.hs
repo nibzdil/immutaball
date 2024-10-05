@@ -66,7 +66,7 @@ instance (Monad m) => Monad (MaybeMT m) where
 instance (Monad m, MonadFix m) => MonadFix (MaybeMT m) where
 	mfix :: (Monad m) => (a -> MaybeMT m a) -> MaybeMT m a
 	--mfix f = MaybeMT . Left . mfix $ \a -> either id return $ runMaybeMT (f a)
-	mfix f = MaybeMT . Left . mfix $ \a -> D.trace "DEBUG: mfix MaybeMT: " . either id return $ runMaybeMT (f a)
+	mfix f = MaybeMT . Left . mfix $ \a -> D.trace "DEBUG: mfix MaybeMT: " . either id return $ runMaybeMT (D.trace "DEBUG: mfix 2 MaybeMT" $ f a)
 
 instance (Alternative m) => Alternative (MaybeMT m) where
 	empty :: (Alternative m) => MaybeMT m a

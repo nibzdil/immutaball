@@ -31,6 +31,7 @@ import Immutaball.Share.ImmutaballIO.SDLIO
 import SDL.Video
 import SDL.Video.OpenGL
 import qualified Data.Text as T
+import Data.Function (fix)
 
 -- TODO: FIXME: I see no window :(.
 -- TODO:
@@ -52,10 +53,25 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 	-}
 	--cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Nothing
 	--cxtn <- returnA -< Nothing  -- Does not hang.
-	cxtn <- hold (()) -< Nothing  -- Hangs.  Maybe it's an mfix bug.
+	--cxtn <- hold (()) -< Nothing  -- Hangs.  Maybe it's an mfix bug.
+	cxtn <- debugHold (()) -< Nothing  -- Hangs.  Maybe it's an mfix bug.
 	-- TODO:
 	-- case request of  -- TODO
 	--returnA -< Identity ContinueResponse
 	--returnA -< trace "DEBUG0: ContinueResponse" $ Identity ContinueResponse
 	returnA -< trace "DEBUG0: ContinueResponse" $ [ContinueResponse]
 	--returnA -< Identity DoneResponse
+
+-- This hangs:
+{-
+debugHold a0 = proc ma -> do
+	rec
+		output <- returnA -< maybe lastJust id ma
+		lastJust <- delay a0 -< output
+	returnA -< output
+-}
+-- This doesn't:
+debugHold :: (Applicative m) => a -> Wire m (Maybe a) a
+debugHold a0 = flip fix a0 $ \me lastJust -> wire $ \ma -> let a = maybe lastJust id ma in pure (a, me a)
+
+-- Is something wrong with mfix?

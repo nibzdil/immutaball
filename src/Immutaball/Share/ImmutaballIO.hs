@@ -7,6 +7,10 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables, FlexibleContexts, UndecidableInstances, ExistentialQuantification #-}
 
+-- TODO: also add monad and like instances for BasicIO and SDLIO with a Join
+-- like we do here.
+-- (Simple IOs like directoryIO probably don't need it.)
+
 module Immutaball.Share.ImmutaballIO
 	(
 		-- * ImmutaballIO
@@ -16,6 +20,7 @@ module Immutaball.Share.ImmutaballIO
 		andImmutaballIO,
 		thenImmutaballIO,
 		(<>>),
+		joinImmutaballIOF,
 
 		-- * Runners
 		runImmutaballIOIO,
@@ -26,6 +31,7 @@ module Immutaball.Share.ImmutaballIO
 		-- * ImmutaballIO aliases that apply the Fixed wrapper
 		mkEmptyImmutaballIO,
 		mkPureImmutaballIO,
+		mkJoinImmutaballIO,
 		mkAndImmutaballIO,
 		mkThenImmutaballIO,
 		mkBasicImmutaballIO,
@@ -55,6 +61,7 @@ type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF me =
 	  EmptyImmutaballIOF
 	| PureImmutaballIOF me
+	| JoinImmutaballIOF (ImmutaballIOF (ImmutaballIOF me))
 	| AndImmutaballIOF me me
 	| ThenImmutaballIOF me me
 	| BasicImmutaballIOF (BasicIOF me)
@@ -87,6 +94,7 @@ instance Functor ImmutaballIOF where
 	fmap :: (a -> b) -> (ImmutaballIOF a -> ImmutaballIOF b)
 	fmap _f (EmptyImmutaballIOF)     = EmptyImmutaballIOF
 	fmap  f (PureImmutaballIOF a)    = PureImmutaballIOF (f a)
+	fmap  f (JoinImmutaballIOF ibio) = JoinImmutaballIOF (fmap f <$> ibio)
 	fmap  f (AndImmutaballIOF a b)   = AndImmutaballIOF (f a) (f b)
 	fmap  f (ThenImmutaballIOF a b)  = ThenImmutaballIOF (f a) (f b)
 	fmap  f (BasicImmutaballIOF bio) = BasicImmutaballIOF $ f <$> bio
@@ -94,6 +102,9 @@ instance Functor ImmutaballIOF where
 	fmap  f (Wait async_ withAsync_)    = Wait async_ (f . withAsync_)
 	fmap  f (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
 	fmap  f (Atomically stm withStm)    = Atomically stm (f . withStm)
+
+joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
+joinImmutaballIOF = JoinImmutaballIOF
 
 -- | Add an ordering constraint.
 infixr 6 <>>
@@ -106,6 +117,7 @@ runImmutaballIOIO :: ImmutaballIOF (IO ()) -> IO ()
 
 runImmutaballIOIO (EmptyImmutaballIOF)     = return ()
 runImmutaballIOIO (PureImmutaballIOF a)    = a
+runImmutaballIOIO (JoinImmutaballIOF ibio) = runImmutaballIOIO $ runImmutaballIOIO <$> ibio
 runImmutaballIOIO (AndImmutaballIOF a b)   = a `par` b `par` concurrently_ a b
 runImmutaballIOIO (ThenImmutaballIOF a b)  = a >> b
 runImmutaballIOIO (BasicImmutaballIOF bio) = runBasicIOIO bio
@@ -130,6 +142,9 @@ mkEmptyImmutaballIO = Fixed $ EmptyImmutaballIOF
 
 mkPureImmutaballIO :: ImmutaballIO -> ImmutaballIO
 mkPureImmutaballIO ibio = Fixed $ PureImmutaballIOF ibio
+
+mkJoinImmutaballIO :: ImmutaballIO -> ImmutaballIO
+mkJoinImmutaballIO ibio = Fixed $ JoinImmutaballIOF (getFixed <$> getFixed ibio)
 
 mkAndImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
 mkAndImmutaballIO a b = Fixed $ AndImmutaballIOF a b

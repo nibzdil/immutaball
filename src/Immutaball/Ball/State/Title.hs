@@ -15,18 +15,16 @@ module Immutaball.Ball.State.Title
 import Prelude ()
 import Immutaball.Prelude
 
---import Control.Arrow
-
---import Control.Wire
+import Control.Arrow
+import Data.Functor.Identity
 
 import Immutaball.Share.Context
 import Immutaball.Share.State
 --import Immutaball.Share.Wire
 
--- TODO
+-- TODO:
 mkTitleState :: IBContext -> Immutaball
-{-
-mkTitleState _cxt0 = proc _requestFrame -> do
-	returnA -< []
--}
-mkTitleState = error "TODO: undefined."
+mkTitleState _cxt0 = fromImmutaballSingle $ proc _request -> do
+	-- TODO:
+	-- case request of  -- TODO
+	returnA -< Identity ContinueResponse

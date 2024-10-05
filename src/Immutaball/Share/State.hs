@@ -41,9 +41,12 @@ import Immutaball.Prelude
 import Control.Arrow
 import Data.Functor.Identity
 
-import Control.Monad.Trans.MaybeM
+import Control.Lens
 
+import Control.Monad.Trans.MaybeM
 import Immutaball.Share.AutoPar
+import Immutaball.Share.Config
+import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.Wire
 
@@ -155,5 +158,9 @@ fromImmutaballSingle = immutaballSingleToMulti
 -- | Transform a wire that can handle unlimited requests and response,
 -- into one that queues up to the context's limit to only process so many
 -- requests and so many responses at once.
-immutaballMultiQueueFrames :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
-immutaballMultiQueueFrames = error "TODO: unimplemented."
+immutaballMultiQueueFrames :: IBContext -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
+immutaballMultiQueueFrames cxt w = proc requests -> do
+	requestChunk <- maybe returnA queueN (cxt^.ibStaticConfig.maxStepFrameSize) -< requests
+	responses <- w -< requestChunk
+	responseChunk <- maybe returnA queueN (cxt^.ibStaticConfig.maxResponseFrameSize) -< responses
+	returnA -< responseChunk

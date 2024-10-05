@@ -10,6 +10,7 @@
 module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow, ibSDLGLContext,
+		initialStateCxt,
 		stateContextStorage,
 		requireVideo
 	) where
@@ -45,6 +46,16 @@ data IBStateContext = IBStateContext {
 	_ibSDLGLContext :: Maybe (SDL.GLContext)
 }
 makeLenses ''IBStateContext
+
+initialStateCxt :: IBContext -> IBStateContext
+initialStateCxt cxt = IBStateContext {
+	_ibContext = cxt,
+
+	_ibNeverballrc = cxt^.ibNeverballrc0,
+
+	_ibSDLWindow = Nothing,
+	_ibSDLGLContext = Nothing
+}
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
 stateContextStorage y0 = proc cxt -> do

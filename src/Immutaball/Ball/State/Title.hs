@@ -20,11 +20,20 @@ import Data.Functor.Identity
 
 import Immutaball.Share.Context
 import Immutaball.Share.State
---import Immutaball.Share.Wire
+import Immutaball.Share.State.Context
+import Immutaball.Share.Wire
 
+-- TODO: FIXME: I see no window :(.
 -- TODO:
 mkTitleState :: IBContext -> Immutaball
-mkTitleState _cxt0 = fromImmutaballSingle $ proc _request -> do
+mkTitleState baseCxt0 = fromImmutaballSingle $ proc _request -> do
+	rec
+		-- TODO: maybe revise?
+		cxtn <- stateContextStorage (initialStateCxt baseCxt0) -< Just cxtnp1
+		-- TODO: fix commented line
+		--cxtnp1 <- delay Nothing -< requireVideo -< cxtn
+		cxtnp1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< cxtn
 	-- TODO:
 	-- case request of  -- TODO
 	returnA -< Identity ContinueResponse
+	--returnA -< Identity DoneResponse

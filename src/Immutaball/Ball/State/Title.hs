@@ -28,6 +28,9 @@ import Debug.Trace  ---------------------------- TODO--
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
+import SDL.Video
+import SDL.Video.OpenGL
+import qualified Data.Text as T
 
 -- TODO: FIXME: I see no window :(.
 -- TODO:
@@ -95,6 +98,7 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ -- . wire $ \_request ->
 mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _request -> do
 	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG12: IO works!" ()
 	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG13: IO works!" ()
+	window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "DEBUG") defaultWindow id
 	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (5 * 1000 * 1000) ()
 
 	returnA -< [ContinueResponse]

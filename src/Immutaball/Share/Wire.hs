@@ -32,7 +32,9 @@ module Immutaball.Share.Wire
 		replace,
 		switch,
 		applyWire,
-		queue
+		queue,
+		queueN,
+		queueNI
 	) where
 
 import Prelude ()
@@ -42,6 +44,7 @@ import Control.Arrow
 import Control.Monad.Fix
 --import Data.Function
 import Data.Functor.Identity
+import Data.List
 
 --import Control.Wire (Wire)
 import qualified Control.Wire
@@ -157,3 +160,17 @@ queue = proc ins -> do
 		(output, queue) <- returnA -< let ins' = lastQueue ++ ins in (safeHead ins', drop 1 ins')
 		lastQueue <- delay [] -< queue
 	returnA -< output
+
+-- TODO: test queueN.
+
+-- | Send at most N chunks at once.
+queueN :: (Integral i, Monad m, MonadFix m) => i -> Wire m [a] [a]
+queueN n = queueNI (fromIntegral n)
+
+-- | 'queueN' variant specialized to Integer.
+queueNI :: (Monad m, MonadFix m) => Integer -> Wire m [a] [a]
+queueNI n = proc ins -> do
+	rec
+		(chunk, queue) <- returnA -< let ins' = lastQueue ++ ins in (genericTake n ins', genericDrop n ins')
+		lastQueue <- delay [] -< queue
+	returnA -< chunk

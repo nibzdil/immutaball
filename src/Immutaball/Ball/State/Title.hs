@@ -91,6 +91,6 @@ debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \(lastJust, _w) 
 -}
 -- Let's debug.
 debugHold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a
-debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \(lastJust, _w) -> return (maybe lastJust id ma, me)
+debugHold a0 = delayWire a0 . fix $ \me -> wire $ \ma -> mfix $ \ ~(lastJust, _w) -> return (maybe lastJust id ma, me)
 
 -- Is something wrong with mfix?

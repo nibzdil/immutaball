@@ -82,7 +82,8 @@ wire wireStep_ = ReinstanceWire . Control.Wire.Internal.Wire $ \a -> second _rei
 
 -- | 'Wire' provides us with a delay, in contrast with '->'.
 delayWire :: (Functor m) => b -> Wire m a b -> Wire m a b
-delayWire y0 wire_ = wire $ \x -> (\(y, wire') -> (y0, delayWire y wire')) <$> stepWire wire_ x
+--delayWire y0 wire_ = wire $ \x -> (\(y, wire') -> (y0, delayWire y wire')) <$> stepWire wire_ x
+delayWire y0 wire_ = wire $ \x -> (\ ~(y, wire') -> (y0, delayWire y wire')) <$> stepWire wire_ x
 
 -- | 'Wire' is an instance of 'ArrowLoop'.
 loopWire :: (Monad m) => Wire m (b, d) (c, d) -> Wire m b c

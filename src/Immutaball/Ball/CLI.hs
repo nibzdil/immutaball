@@ -52,6 +52,10 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
 
+import Debug.Trace as D  ---------------------------- TODO--
+import Control.Monad.Fix
+import Immutaball.Share.Utils
+
 main :: IO ()
 main = immutaballMain
 
@@ -60,7 +64,12 @@ immutaballMain = immutaballCLIMain
 
 immutaballCLIMain :: IO ()
 immutaballCLIMain = do
-	runImmutaballIO mainImmutaballIO
+	--runImmutaballIO mainImmutaballIO
+	runImmutaballIO dbg
+
+-- TODO: FIXME: okay, we've narrowed down the mfix bug.  This hangs and never prints.
+dbg :: ImmutaballIO
+dbg = Fixed . mfix $ \a -> BasicImmutaballIOF . PutStrLn "TODO: DEBUG dbg this mfix works!" $ mkBIO ExitFailureBasicIOF
 
 mainImmutaballIO :: ImmutaballIO
 mainImmutaballIO =

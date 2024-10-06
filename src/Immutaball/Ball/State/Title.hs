@@ -58,7 +58,10 @@ mkTitleState baseCxt0 = trace "DEBUG1: start" $ proc _requests -> do
 		--dbg2 <- delay (initialStateCxt baseCxt0) -< dbg1
 		--dbg1 <- requireVideo -< dbg2
 		-- loop error.  ???
-		dbg1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< dbg1
+		--dbg1 <- delayWire (initialStateCxt baseCxt0) requireVideo -< dbg1
+		--_ <- hold (3 :: Integer) -< Nothing
+		x <- hold (3 :: Integer) -< Nothing
+	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ (PutStrLn $ "DEBUG: can print x" ++ show x) ()
 	returnA -< trace "DEBUG0: ContinueResponse" $ [ContinueResponse]
 -- -}
 

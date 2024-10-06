@@ -330,6 +330,8 @@ joinTodo (JoinImmutaballIOF ibio) = joinTodo $ joinTodo <$> ibio
 -- TODO:
 --joinTodo ()
 
+--fmapTodo :: (a -> b) -> ImmutaballIOF a -> ImmutaballIO f
+
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF (runBasicImmutaballIO <$> getFixed bio)
 

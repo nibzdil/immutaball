@@ -69,7 +69,10 @@ immutaballCLIMain = do
 
 dbg :: ImmutaballIO
 --dbg = Fixed . mfix $ \a -> BasicImmutaballIOF . PutStrLn "TODO: DEBUG dbg this mfix works!" $ mkBIO ExitFailureBasicIOF
-dbg = Fixed . (const (mkBIO ExitFailureBasicIOF) <$>) . mfix $ \r -> BasicImmutaballIOF $ PutStrLn ("TODO: DEBUG dbg this mfix works with rec!  r: " ++ show r) 3
+--dbg = Fixed . (const (mkBIO ExitFailureBasicIOF) <$>) . mfix $ \r -> BasicImmutaballIOF $ PutStrLn ("TODO: DEBUG dbg this mfix works with rec!  r: " ++ show r) 3
+--dbg = Fixed . (const (mkBIO ExitFailureBasicIOF) <$>) . mfix $ \r -> BasicImmutaballIOF $ PutStrLn ("TODO: DEBUG dbg this mfix works with rec!  r: " ++ show 8) 3
+dbg = Fixed . (const (mkBIO ExitFailureBasicIOF) <$>) . mfix $ \r -> BasicImmutaballIOF $ PutStrLn ("TODO: DEBUG dbg this mfix works with repeating! ") r
+-- TODO: getArgs with mfix.
 
 mainImmutaballIO :: ImmutaballIO
 mainImmutaballIO =

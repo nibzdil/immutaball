@@ -161,8 +161,21 @@ fixImmutaballIOF f = unsafePerformIO $ do
 --fixThing f :: (me -> me) -> me
 --fixThing f = fix f
 
-fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixImmutaballIOF f = FixImmutaballIOF f
+{-
+fixTodo :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
+fixTodo = fix $ \out -> case f out of
+	(EmptyResult) -> EmptyResult
+	(PureImmutaballIOF a) -> f a
+	(AndImmutaballIOF a b) -> AndImmutaballIOF (f a) (f b)
+-}
+fixTodo :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
+fixTodo f = case f (error "Error: fixTodo: premature evaluation of result before we could start it!") of
+	x -> joinImmutaballIOF $ f <$> x
+
+fixImmutaballIOF = fixTodo
+
+fixImmutaballIOF_ :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
+fixImmutaballIOF_ f = FixImmutaballIOF f
 {-
 forall oldMe. FmapImmutaballIOF (oldMe -> me) (ImmutaballIOF oldMe)
 	--    mfix f = mfix f >>= f

@@ -14,7 +14,6 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		BasicIOF(..),
 		runBasicIO,
 		(<>>-),
-		extractMesBasicIOF,
 
 		-- * Runners
 		runBasicIOIO,
@@ -171,34 +170,6 @@ instance Traversable BasicIOF where
 infixr 6 <>>-
 (<>>-) :: BasicIO -> BasicIO -> BasicIO
 (<>>-) = mkThenBasicIO
-
-extractMesBasicIOF :: BasicIOF me -> [me]
-extractMesBasicIOF (EmptyBasicIOF)                               = []
-extractMesBasicIOF (AndBasicIOF a b)                             = [a, b]
-extractMesBasicIOF (ThenBasicIOF a b)                            = [a, b]
-extractMesBasicIOF (ExitSuccessBasicIOF)                         = []
-extractMesBasicIOF (ExitFailureBasicIOF)                         = []
-extractMesBasicIOF (DirectoryIO dio)                             = extractMesDirectoryIOF dio
-extractMesBasicIOF (GetArgs _withArgs_)                          = []
-extractMesBasicIOF (GetArgsSync _withArgs_)                      = []
-extractMesBasicIOF (GetEnvironment _withEnvironment)             = []
-extractMesBasicIOF (GetEnvironmentSync _withEnvironment)         = []
-extractMesBasicIOF (PutStrLn _str withUnit)                      = [withUnit]
-extractMesBasicIOF (GetContents _withContents)                   = []
-extractMesBasicIOF (GetContentsSync _withContents)               = []
-extractMesBasicIOF (DoesPathExist _path _withExists)             = []
-extractMesBasicIOF (DoesPathExistSync _path _withExists)         = []
-extractMesBasicIOF (WriteBytes _path _contents withUnit)         = [withUnit]
-extractMesBasicIOF (WriteText _path _contents withUnit)          = [withUnit]
-extractMesBasicIOF (ReadBytes _path _mwithErr _withContents)     = []
-extractMesBasicIOF (ReadBytesSync _path _mwithErr _withContents) = []
-extractMesBasicIOF (ReadText _path _mwithErr _withContents)      = []
-extractMesBasicIOF (ReadTextSync _path _mwithErr _withContents)  = []
-extractMesBasicIOF (CreateDirectoryIfMissing _path withUnit)     = [withUnit]
-extractMesBasicIOF (ForkOS bio withUnit)                         = [bio, withUnit]
-extractMesBasicIOF (SDLIO sdlio)                                 = extractMesSDLIOF sdlio
-extractMesBasicIOF (DelayUs _us withUnit)                        = [withUnit]
-extractMesBasicIOF (GetUs _withUs)                               = []
 
 -- * Runners
 

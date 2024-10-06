@@ -22,8 +22,6 @@ module Immutaball.Share.ImmutaballIO
 		(<>>),
 		joinImmutaballIOF,
 		fixImmutaballIOF,
-		extractMesImmutaballIOF,
-		extractFirstMeImmutaballIOF,
 
 		-- * Runners
 		runImmutaballIOIO,
@@ -35,8 +33,6 @@ module Immutaball.Share.ImmutaballIO
 		mkEmptyImmutaballIO,
 		mkPureImmutaballIO,
 		mkJoinImmutaballIO,
-		mkFixImmutaballIO,
-		mkFmapImmutaballIO,
 		mkAndImmutaballIO,
 		mkThenImmutaballIO,
 		mkBasicImmutaballIO,
@@ -61,14 +57,6 @@ import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils
 
-import Debug.Trace as D  ---------------------------- TODO--
-import System.IO.Unsafe (unsafePerformIO)
-import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
-import Control.Concurrent.MVar
-import Control.Exception
-import Control.Exception.Base
-import System.IO
-
 -- * ImmutaballIO
 
 type ImmutaballIO = Fixed ImmutaballIOF
@@ -76,8 +64,6 @@ data ImmutaballIOF me =
 	  EmptyImmutaballIOF
 	| PureImmutaballIOF me
 	| JoinImmutaballIOF (ImmutaballIOF (ImmutaballIOF me))
-	| FixImmutaballIOF (me -> ImmutaballIOF me)
-	| forall oldMe. FmapImmutaballIOF (oldMe -> me) (ImmutaballIOF oldMe)
 	| AndImmutaballIOF me me
 	| ThenImmutaballIOF me me
 	| BasicImmutaballIOF (BasicIOF me)
@@ -106,28 +92,11 @@ instance Semigroup ImmutaballIO where
 instance Monoid ImmutaballIO where
 	mempty = Fixed EmptyImmutaballIOF
 
--- fmap f xs = xs >>= return . f
--- fmap f xs = join $ (return . f) <$> xs
--- fmap f xs = join $ (return . f) <$> xs
--- fmap f (Join xs) = join $ (return . f) <$> (Join xs)
--- fmap f (Join xs) = join $ join $ (return . return . f) <$> Join xs
 instance Functor ImmutaballIOF where
 	fmap :: (a -> b) -> (ImmutaballIOF a -> ImmutaballIOF b)
 	fmap _f   (EmptyImmutaballIOF)     = EmptyImmutaballIOF
 	fmap  f   (PureImmutaballIOF a)    = PureImmutaballIOF (f a)
-	--fmap  f   (JoinImmutaballIOF ibio) = JoinImmutaballIOF (fmap f <$> ibio)
 	fmap  f   (JoinImmutaballIOF ibio) = JoinImmutaballIOF (fmap f <$> ibio)
-	fmap  f   x@(FixImmutaballIOF withIbio)  = FmapImmutaballIOF f x
-	fmap  f   (FmapImmutaballIOF g ibio) = FmapImmutaballIOF (f . g) ibio
-	--fmap  f   (JoinImmutaballIOF (JoinImmutaballIOF ibio)) = 
-	--fmap  f x@(FixImmutaballIOF g)     = f <$> (JoinImmutaballIOF (g <$> x))
-	--fmap  f x@(FixImmutaballIOF g)     = JoinImmutaballIOF (fmap f <$> (g <$> x))
-	--fmap  f x@(FixImmutaballIOF g)     = JoinImmutaballIOF (fmap (fmap f) . fmap g $ x)
-	--fmap  f x@(FixImmutaballIOF g)     = JoinImmutaballIOF (fmap (fmap f . g) $ x)
-
-	--fmap  f x@(FixImmutaballIOF g)     = f <$> (JoinImmutaballIOF (g <$> x))
--- TODO
---fixImmutaballIOF f = joinImmutaballIOF $ f <$> fixImmutaballIOF f
 	fmap  f   (AndImmutaballIOF a b)   = AndImmutaballIOF (f a) (f b)
 	fmap  f   (ThenImmutaballIOF a b)  = ThenImmutaballIOF (f a) (f b)
 	fmap  f   (BasicImmutaballIOF bio) = BasicImmutaballIOF $ f <$> bio
@@ -139,142 +108,11 @@ instance Functor ImmutaballIOF where
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinImmutaballIOF
 
-{-
--- Do it like fixIO.
+--    mfix f = mfix f >>= f
+-- => mfix f = join $ f <$> mfix f
 fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
---fixImmutaballIOF f = D.trace "DEBUG: IBIO mfix" $ f <$> fixImmutaballIOF f
-fixImmutaballIOF f = unsafePerformIO $ do
-	m <- newEmptyMVar
-	ans <- unsafeDupableInterleaveIO (readMVar m `catch` \BlockedIndefinitelyOnMVar -> throwIO FixIOException)
-	let result = fmap (\me -> unsafePerformIO $ putMVar m me >> return me) $ f ans
-	return result
--}
-
--- TODO: add a test case for fixm with ImmutaballIO (e.g. could be just
--- something simple that ignores the input).
--- TODO: docs
---fixImmutaballIOF f = fix $ \me -> fmap 
---fixThing :: (me -> (FilePath -> me)) -> (FilePath -> me)
---fixThing f = f (f (f (f)))
---fixThing f = \filepath -> fix $ \me -> f me filepath  -- ReaderT
---fixThing f = f (f (f (f)))
---fixThing f :: (me -> me) -> me
---fixThing f = fix f
-
-{-
-fixTodo :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixTodo = fix $ \out -> case f out of
-	(EmptyResult) -> EmptyResult
-	(PureImmutaballIOF a) -> f a
-	(AndImmutaballIOF a b) -> AndImmutaballIOF (f a) (f b)
--}
-fixTodo :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixTodo f = case f (error "Error: fixTodo: premature evaluation of result before we could start it!") of
+fixImmutaballIOF f = case f (error "Error: fixTodo: premature evaluation of result before we could start it!") of
 	x -> joinImmutaballIOF $ f <$> x
-
-fixImmutaballIOF = fixTodo
-
-fixImmutaballIOF_ :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixImmutaballIOF_ f = FixImmutaballIOF f
-{-
-forall oldMe. FmapImmutaballIOF (oldMe -> me) (ImmutaballIOF oldMe)
-	--    mfix f = mfix f >>= f
-	-- => mfix f = join $ f <$> mfix f
-fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixImmutaballIOF f = fix $ \me -> joinImmutaballIOF $ fmap f me
---fixImmutaballIOF f = fix $ \me -> case f (maybe emptyErr id $ extractFirstMeImmutaballIOF me) of
---	x -> joinImmutaballIOF $ f <$> x
-	where
-		emptyErr = error "Error: fixImmutaballIOF: there is no non-empty value in the result"
--}
-{-
-fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixImmutaballIOF f = joinImmutaballIOF $ f <$> fixImmutaballIOF f
--}
-{-
-fixImmutaballIOF f = fix (\me -> f $ extract me)
-	where
-		extract :: ImmutaballIOF me -> me
-		extract (EmptyImmutaballIOF) = error "TODO ERROR0"
-		extract (PureImmutaballIOF a) = a
-		extract (BasicImmutaballIOF _) = error "TODO ERROR1"
-		--extract (AndImmutaballIOF a EmptyImmutaballIOF) = extract a
-		--extract (AndImmutaballIOF EmptyImmutaballIOF b) = extract b
-		--extract (ThenImmutaballIOF a EmptyImmutaballIOF) = extract a
-		--extract (ThenImmutaballIOF EmptyImmutaballIOF b) = extract b
-		extract _ = error "TODO ERROR2"
--}
-
---fixImmutaballIOF f = joinImmutaballIOF $ f <$> fixImmutaballIOF f
---fixImmutaballIOF f = f $ error "TODOOOOOOO"
---fixImmutaballIOF f = error "TODOOOOO: DEBUG undefined"
---fixImmutaballIOF f = FixImmutaballIOF f
---fixImmutaballIOF f = fix (f . \ ~(PureImmutaballIOF a) -> a)
---fixImmutaballIOF f = D.trace "DEBUG: IBIO mfix" $ f <$> fixImmutaballIOF f
--- | Try extracting the first ‘me’ to spark things off.
--- Then if multiple ‘me’s are observed in the result, apply f to each, and join.
--- e.g. if f returns an And, then the left output (or if empty the right (no
--- mults in this case)) will first spark f, and then the result is an And of
--- left of f applied to f, and the right of f applied to f, and then joining.
--- Note: accessing \me in ‘fix ImmutaballIO $ \me -> ’ across Wait, Atomically,
--- or similar callback boundaries is an error.  What would \me refer to?
--- TODO remove next line after debugging.
---fixImmutaballIOF f = fix $ \me -> f (maybe emptyErr id $ extractFirstMeImmutaballIOF me)
--- {-
-fixImmutaballIOF_ f = fix $ \me -> case f (maybe emptyErr id $ extractFirstMeImmutaballIOF me) of
-	--    mfix f = mfix f >>= f
-	-- => mfix f = join $ f <$> mfix f
-	x -> joinImmutaballIOF $ f <$> x
--- -}
-	{-
-	{-
-	EmptyImmutaballIOF -> EmptyImmutaballIOF
-	(PureImmutaballIOF a) -> joinImmutaballIOF $ PureImmutaballIOF (f a)
-	(JoinImmutaballIOF ibio) -> joinImmutaballIOF $ JoinImmutaballIOF (fmap (fmap f) ibio)
-	(AndImmutaballIOF a b) -> joinImmutaballIOF $ AndImmutaballIOF (f a) (f b)
-	(ThenImmutaballIOF a b) -> joinImmutaballIOF $ ThenImmutaballIOF (f a) (f b)
-	(BasicImmutaballIOF bio) -> joinImmutaballIOF $ BasicImmutaballIOF (fmap f bio)
-	(Wait async_ withAsync_) -> joinImmutaballIOF $ Wait async_ (f . withAsync_)
-	(WithAsync async_ withAsync_) -> joinImmutaballIOF $ WithAsync (f async_) (f . withAsync_)
-	(Atomically stm withStm) -> joinImmutaballIOF $ Atomically stm (f . withStm)
-	-}
-	EmptyImmutaballIOF -> EmptyImmutaballIOF
-	(PureImmutaballIOF a) -> joinImmutaballIOF $ PureImmutaballIOF (PureImmutaballIOF a)
-	(JoinImmutaballIOF ibio) -> joinImmutaballIOF $ JoinImmutaballIOF (fmap (fmap f) ibio)
-	(AndImmutaballIOF a b) -> joinImmutaballIOF $ AndImmutaballIOF (PureImmutaballIOF a) (f b)
-	(ThenImmutaballIOF a b) -> joinImmutaballIOF $ ThenImmutaballIOF (PureImmutaballIOF a) (f b)
-	(BasicImmutaballIOF bio) -> joinImmutaballIOF $ BasicImmutaballIOF (fmap f bio)
-	(Wait async_ withAsync_) -> joinImmutaballIOF $ Wait async_ (f . withAsync_)
-	(WithAsync async_ withAsync_) -> joinImmutaballIOF $ WithAsync (f async_) (f . withAsync_)
-	(Atomically stm withStm) -> joinImmutaballIOF $ Atomically stm (f . withStm)
-	-}
-	where
-		emptyErr = error "Error: fixImmutaballIOF: there is no non-empty value in the result"
-{-
-mfix (return . h) = return (fix h)
-
-  mfix (return . h)
-= mfix (PureImmutaballIOF . h)
-= case PureImmutaballIOF (h (mfix (PureImmutaballIOF . h))) of PureImmutaballIO a -> joinImmutaballIOF $ PureImmutaballIOF ((return . h) a)
-= joinImmutaballIOF $ PureImmutaballIOF ((return . h) (h (mfix (PureImmutaballIOF . h))))
-= PureImmutaballIOF ((return . h) (h (mfix (PureImmutaballIOF . h))))
-= return ((return . h) (h (mfix (PureImmutaballIOF . h))))
-= h (h (mfix (PureImmutaballIOF . h)))
--}
-
-extractMesImmutaballIOF :: ImmutaballIOF me -> [me]
-extractMesImmutaballIOF (EmptyImmutaballIOF)          = []
-extractMesImmutaballIOF (PureImmutaballIOF a)         = [a]
-extractMesImmutaballIOF (JoinImmutaballIOF ibio)      = extractMesImmutaballIOF ibio >>= extractMesImmutaballIOF
-extractMesImmutaballIOF (AndImmutaballIOF a b)        = [a, b]
-extractMesImmutaballIOF (ThenImmutaballIOF a b)       = [a, b]
-extractMesImmutaballIOF (BasicImmutaballIOF bio)      = extractMesBasicIOF bio
-extractMesImmutaballIOF (Wait _async_ _withAsync_)    = []
-extractMesImmutaballIOF (WithAsync async_ withAsync_) = [async_]
-extractMesImmutaballIOF (Atomically _stm _withStm)    = []
-
-extractFirstMeImmutaballIOF :: ImmutaballIOF me -> Maybe me
-extractFirstMeImmutaballIOF = safeHead . extractMesImmutaballIOF
 
 instance Applicative ImmutaballIOF where
 	pure = PureImmutaballIOF
@@ -283,18 +121,8 @@ instance Monad ImmutaballIOF where
 	return = pure
 	m >>= f = joinImmutaballIOF $ f <$> m
 instance MonadFix ImmutaballIOF where
-	--mfix = mfix'
-	--mfix f = let ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
-	--mfix f = let ~ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
-	--mfix f = let ma = D.trace "DEBUG: IBIO mfix" ma >>= f in ma
 	mfix :: (a -> ImmutaballIOF a) -> ImmutaballIOF a
 	mfix = fixImmutaballIOF
-	--mfix f = D.trace "DEBUG: IBIO mfix" $ f ()
-	-- Spams IBIO mfix.
-	--mfix f = D.trace "DEBUG: IBIO mfix" $ joinImmutaballIOF $ f <$> mfix f
-	--mfix f = D.trace "DEBUG: IBIO mfix" $ f <$> mfix f
---mfix' f = fix $ \me -> me >>= f
---mfix' f = let ma = ma >>= f in ma
 
 {-
 instance Foldable ImmutaballIOF where
@@ -316,18 +144,6 @@ runImmutaballIOIO :: ImmutaballIOF (IO ()) -> IO ()
 runImmutaballIOIO (EmptyImmutaballIOF)     = return ()
 runImmutaballIOIO (PureImmutaballIOF a)    = a
 runImmutaballIOIO (JoinImmutaballIOF ibio) = runImmutaballIOIO $ runImmutaballIOIO <$> ibio
-runImmutaballIOIO (FixImmutaballIOF withIbio) = let out = runImmutaballIOIO (withIbio out) in out  -- withIbio :: IO () -> ImmutaballIOF (IO ())
---runImmutaballIOIO (FmapImmutaballIOF f ibio) = D.trace "uhoh " . runImmutaballIOIO $ fmap f ibio  -- f :: oldMe -> IO ();  ibio :: ImmutaballIOF oldMe
---    mfix f = mfix f >>= f
--- => mfix f = join $ f <$> mfix f
---runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = ???  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe
---runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = runImmutaballIOIO $ f . runImmutaballIOIO <$> let out = runImmutaballIOIO (withIbio out) in out  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe
---runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = runImmutaballIOIO $ fmap f (let out = runImmutaballIOIO (withIbio out) in out)  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe
---runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = runImmutaballIOIO $ fmap f (let out = runImmutaballIOIO (withIbio out) in out)  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe
---runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = runImmutaballIOIO $ fmap f (fix $ \me -> join $ withIbio <$> me)  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe
---runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = runImmutaballIOIO $ fmap f (fix $ \me -> JoinImmutaballIOF $ withIbio <$> me)  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe  -- COMPILES BUT HANGS
-runImmutaballIOIO (FmapImmutaballIOF f (FixImmutaballIOF withIbio)) = runImmutaballIOIO $ fmap f (fix $ \me -> joinTodo $ withIbio <$> me)  -- f :: oldMe -> IO ();  withIbio :: oldMe -> ImmutaballIOF oldMe
-runImmutaballIOIO (FmapImmutaballIOF f ibio) = runImmutaballIOIO $ fmap f ibio  -- f :: oldMe -> IO ();  ibio :: ImmutaballIOF oldMe
 runImmutaballIOIO (AndImmutaballIOF a b)   = a `par` b `par` concurrently_ a b
 runImmutaballIOIO (ThenImmutaballIOF a b)  = a >> b
 runImmutaballIOIO (BasicImmutaballIOF bio) = runBasicIOIO bio
@@ -335,15 +151,6 @@ runImmutaballIOIO (BasicImmutaballIOF bio) = runBasicIOIO bio
 runImmutaballIOIO (Wait async_ withAsync_)    = wait async_ >>= withAsync_
 runImmutaballIOIO (WithAsync ibio withAsync_) = withAsync ibio withAsync_
 runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
-
-joinTodo :: ImmutaballIOF (ImmutaballIOF me) -> ImmutaballIOF me
-joinTodo (EmptyImmutaballIOF)     = EmptyImmutaballIOF
-joinTodo (PureImmutaballIOF a)    = a
-joinTodo (JoinImmutaballIOF ibio) = joinTodo $ joinTodo <$> ibio
--- TODO:
---joinTodo ()
-
---fmapTodo :: (a -> b) -> ImmutaballIOF a -> ImmutaballIO f
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF (runBasicImmutaballIO <$> getFixed bio)
@@ -364,17 +171,6 @@ mkPureImmutaballIO ibio = Fixed $ PureImmutaballIOF ibio
 
 mkJoinImmutaballIO :: ImmutaballIO -> ImmutaballIO
 mkJoinImmutaballIO ibio = Fixed $ JoinImmutaballIOF (getFixed <$> getFixed ibio)
-
--- TODO:
-mkFixImmutaballIO = error "TODO: unimplemented mkFix."
-mkFmapImmutaballIO = error "TODO: unimplemented mkFmap."
-{-
-mkFixImmutaballIO :: (ImmutaballIO -> ImmutaballIO) -> ImmutaballIO
-mkFixImmutaballIO withIbio = Fixed $ FixImmutaballIOF (withIbio . getFixed)
-
-mkFmapImmutaballIO :: (oldMe -> me) -> ImmutaballIOF oldMe -> ImmutaballIO
-mkFmapImmutaballIO f ibio = Fixed $ FmapImmutaballIOF f ibio
--}
 
 mkAndImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
 mkAndImmutaballIO a b = Fixed $ AndImmutaballIOF a b

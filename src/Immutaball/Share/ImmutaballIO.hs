@@ -324,7 +324,11 @@ runImmutaballIOIO (WithAsync ibio withAsync_) = withAsync ibio withAsync_
 runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 
 joinTodo :: ImmutaballIOF (ImmutaballIOF me) -> ImmutaballIOF me
-joinTodo = _
+joinTodo (EmptyImmutaballIOF)     = EmptyImmutaballIOF
+joinTodo (PureImmutaballIOF a)    = a
+joinTodo (JoinImmutaballIOF ibio) = joinTodo $ joinTodo <$> ibio
+-- TODO:
+--joinTodo ()
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF (runBasicImmutaballIO <$> getFixed bio)

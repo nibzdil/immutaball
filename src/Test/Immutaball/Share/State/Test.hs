@@ -12,6 +12,7 @@ module Test.Immutaball.Share.State.Test
 		main,
 		testsMain,
 		tests,
+		withFrameManager,
 
 		trivialImmutaball,
 		tenTimesImmutaball,
@@ -34,6 +35,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
+import Immutaball.Share.Utils
 import Test.Immutaball.Share.State.Fixtures
 
 main :: IO ()
@@ -47,43 +49,73 @@ tests = testGroup "Immutaball.Share.State" $
 	[
 		testCase "trivial is 3" $
 			withImmutaball trivialImmutaball [] >>= (@?= 3),
-		testCase "tenTimes is 3" $
+		testCase "tenTimes is 4" $
 			withImmutaball tenTimesImmutaball [] >>= (@?= 4),
-		testCase "holding is 3" $
+		testCase "holding is 5" $
 			withImmutaball holdingImmutaball [] >>= (@?= 5),
 		testCase "tenTimesCounter is 13" $
 			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13),
 		testCase "can hold a video context" $
-			withImmutaball' False glImmutaball [] >>= (@?= ())
+			withImmutaball' False glImmutaball [] >>= (@?= ()),
+
+		withFrameManager False "id frame manager: " id,
+		withFrameManager False "immutaballMultiToSingle: " (fromImmutaballSingle . immutaballMultiToSingle),
+		withFrameManager False "immutaballSigleToMulti: "  (fromImmutaballMulti  . immutaballSingleToMulti)
 	]
 
-trivialImmutaball :: TMVar Integer -> IBContext -> Immutaball
-trivialImmutaball mout _cxt0 = proc _requests -> do
+withFrameManager :: (Applicative t) =>
+	Bool ->
+	String ->
+	(
+		Wire ImmutaballM (t Request)  (t Response) ->
+		Wire ImmutaballM RequestFrame ResponseFrame
+	) ->
+	TestTree
+withFrameManager includeVideo prefix frameManager =
+	testGroup (prefix ++ " immutaball wire tests with frame manager") $
+		[
+			testCase (prefix ++ "trivial is 3") $
+				withImmutaball ((frameManager .) . trivialImmutaball) [] >>= (@?= 3),
+			testCase (prefix ++ "tenTimes is 4") $
+				withImmutaball ((frameManager .) . tenTimesImmutaball) [] >>= (@?= 4),
+			testCase (prefix ++ "holding is 5") $
+				withImmutaball ((frameManager .) . holdingImmutaball) [] >>= (@?= 5),
+			testCase (prefix ++ "tenTimesCounter is 13") $
+				withImmutaball ((frameManager .) . tenTimesCounterImmutaball) [] >>= (@?= 13)
+		] ++ (if' (not includeVideo) [] $
+		[
+			testCase "can hold a video context" $
+				withImmutaball' False ((frameManager .) . glImmutaball) [] >>= (@?= ())
+		])
+
+--trivialImmutaball :: TMVar Integer -> IBContext -> Immutaball
+trivialImmutaball :: (Applicative t) => TMVar Integer -> IBContext -> Wire ImmutaballM (t Request) (t Response)
+trivialImmutaball mout _cxt0 = proc _request -> do
 	_ <- monadic -< liftIBIO $ Atomically (putTMVar mout 3) id
-	returnA -< [DoneResponse]
+	returnA -< pure DoneResponse
 
-tenTimesImmutaball :: TMVar Integer -> IBContext -> Immutaball
-tenTimesImmutaball mout _cxt0 = proc _requests -> do
+tenTimesImmutaball :: (Applicative t) => TMVar Integer -> IBContext -> Wire ImmutaballM (t Request) (t Response)
+tenTimesImmutaball mout _cxt0 = proc _request -> do
 	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout 4) id
-	delayNI 9 [ContinueResponse] -< [DoneResponse]
+	delayNI 9 (pure ContinueResponse) -< pure DoneResponse
 
-holdingImmutaball :: TMVar Integer -> IBContext -> Immutaball
+holdingImmutaball :: (Applicative t) => TMVar Integer -> IBContext -> Wire ImmutaballM (t Request) (t Response)
 holdingImmutaball mout _cxt0 = proc _requests -> do
 	x <- hold 5 -< Nothing
 	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout x) id
-	delayNI 9 [ContinueResponse] -< [DoneResponse]
+	delayNI 9 (pure ContinueResponse) -< pure DoneResponse
 
-tenTimesCounterImmutaball :: TMVar Integer -> IBContext -> Immutaball
+tenTimesCounterImmutaball :: (Applicative t) => TMVar Integer -> IBContext -> Wire ImmutaballM (t Request) (t Response)
 tenTimesCounterImmutaball mout _cxt0 = proc _requests -> do
 	_ <- monadic <<< delay (liftIBIO $ Atomically (putTMVar mout 3) id) <<< constWire (liftIBIO $ pure ()) -< ()
 	x <- monadic -< liftIBIO $ Atomically (takeTMVar mout) id
 	_ <- monadic -< liftIBIO $ Atomically (putTMVar mout (x+1)) id
-	delayNI 9 [ContinueResponse] -< [DoneResponse]
+	delayNI 9 (pure ContinueResponse) -< pure DoneResponse
 
-glImmutaball :: TMVar () -> IBContext -> Immutaball
+glImmutaball :: (Applicative t) => TMVar () -> IBContext -> Wire ImmutaballM (t Request) (t Response)
 glImmutaball mout cxt0 = proc _requests -> do
 	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout ()) id
 	rec
 		cxtnp1 <- delay (initialStateCxt cxt0) -< cxtn
 		cxtn <- stateContextStorage (initialStateCxt cxt0) <<< Just <$> requireVideo -< cxtnp1
-	delayNI 9 [ContinueResponse] -< [DoneResponse]
+	delayNI 9 (pure ContinueResponse) -< pure DoneResponse

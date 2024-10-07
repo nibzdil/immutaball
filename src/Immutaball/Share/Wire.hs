@@ -33,7 +33,7 @@ module Immutaball.Share.Wire
 		hold,
 		replace,
 		switch,
-		applyWire,
+		apply,
 		queue,
 		queueN,
 		queueNI,
@@ -69,7 +69,7 @@ newtype Wire m a b = ReinstanceWire { _reinstanceWire :: Control.Wire.Wire m a b
 		via (Control.Wire.Wire m)
 -- (Without newtype wrapper we get a warning: orphan instance.)
 instance (Monad m) => ArrowApply (Wire m) where
-	app = applyWire
+	app = apply
 
 -- | Run a 'Wire'.
 stepWire :: (Functor m) => Wire m a b -> a -> m (b, Wire m a b)
@@ -142,7 +142,7 @@ hold a0 = proc ma -> do
 	returnA -< output
 -- -}
 
--- TODO: test replace, switch, and applyWire.
+-- TODO: test replace, switch, and apply.
 
 replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
 -- This is the direct version, which we are keeping for reference:
@@ -160,11 +160,11 @@ switch :: (Monad m) => Wire m a (Either (Wire m a b) b) -> Wire m a b
 switch w0 = wire $ \a -> stepWire w0 a >>= \(eb, w1) -> either (\w1Override -> stepWire w1Override a) (\b -> return (b, switch w1)) eb
 
 -- | Discards the wire; gives the result.
-applyWire :: (Functor m) => Wire m (Wire m a b, a) b
+apply :: (Functor m) => Wire m (Wire m a b, a) b
 -- Here is a version that uses monads:
---applyWire = wire $ \(w0, a) -> stepWire w0 a >>= \(b, w1) -> return (b, applyWire)
+--apply = wire $ \(w0, a) -> stepWire w0 a >>= \(b, w1) -> return (b, apply)
 -- We only need fmap here:
-applyWire = wire $ \(w0, a) -> (\(b, _w1) -> (b, applyWire)) <$> stepWire w0 a
+apply = wire $ \(w0, a) -> (\(b, _w1) -> (b, apply)) <$> stepWire w0 a
 
 -- | Process one input each frame.
 queue :: (Applicative m, MonadFix m) => Wire m [a] (Maybe a)

@@ -11,7 +11,12 @@ module Test.Immutaball.Share.State.Test
 	(
 		main,
 		testsMain,
-		tests
+		tests,
+
+		trivialImmutaball,
+		tenTimesImmutaball,
+		holdingImmutaball,
+		tenTimesCounterImmutaball
 	) where
 
 import Control.Arrow
@@ -39,10 +44,34 @@ tests :: TestTree
 tests = testGroup "Immutaball.Share.State" $
 	[
 		testCase "trivial is 3" $
-			withImmutaball trivialImmutaball [] >>= (@?= 3)
+			withImmutaball trivialImmutaball [] >>= (@?= 3),
+		testCase "tenTimes is 3" $
+			withImmutaball tenTimesImmutaball [] >>= (@?= 4),
+		testCase "holding is 3" $
+			withImmutaball holdingImmutaball [] >>= (@?= 5),
+		testCase "tenTimesCounter is 13" $
+			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13)
 	]
 
 trivialImmutaball :: TMVar Integer -> IBContext -> Immutaball
 trivialImmutaball mout _cxt0 = proc _requests -> do
 	_ <- monadic -< liftIBIO $ Atomically (putTMVar mout 3) id
 	returnA -< [DoneResponse]
+
+tenTimesImmutaball :: TMVar Integer -> IBContext -> Immutaball
+tenTimesImmutaball mout _cxt0 = proc _requests -> do
+	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout 4) id
+	delayNI 9 [ContinueResponse] -< [DoneResponse]
+
+holdingImmutaball :: TMVar Integer -> IBContext -> Immutaball
+holdingImmutaball mout _cxt0 = proc _requests -> do
+	x <- hold 5 -< Nothing
+	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout x) id
+	delayNI 9 [ContinueResponse] -< [DoneResponse]
+
+tenTimesCounterImmutaball :: TMVar Integer -> IBContext -> Immutaball
+tenTimesCounterImmutaball mout _cxt0 = proc _requests -> do
+	_ <- monadic <<< delay (liftIBIO $ Atomically (putTMVar mout 3) id) <<< constWire (liftIBIO $ pure ()) -< ()
+	x <- monadic -< liftIBIO $ Atomically (takeTMVar mout) id
+	_ <- monadic -< liftIBIO $ Atomically (putTMVar mout (x+1)) id
+	delayNI 9 [ContinueResponse] -< [DoneResponse]

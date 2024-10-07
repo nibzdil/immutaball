@@ -11,7 +11,7 @@ module Immutaball.Share.Context.Config
 	(
 		IBDirs(..), ibStaticDataDir, ibUserDataDir, ibUserConfigDir,
 		ContextConfig'(..), cxtCfgStaticConfig, cxtCfgDirs, cxtCfgNeverballrc,
-			cxtCfgInitialWire
+			cxtCfgInitialWire, cxtCfgHeadless
 	) where
 
 import Prelude ()
@@ -33,6 +33,7 @@ data ContextConfig' cxt initialWire = ContextConfig {
 	_cxtCfgStaticConfig :: StaticConfig' (cxt -> Maybe initialWire),
 	_cxtCfgDirs         :: IBDirs,
 	_cxtCfgNeverballrc  :: Neverballrc,
-	_cxtCfgInitialWire  :: cxt -> Maybe initialWire
+	_cxtCfgInitialWire  :: cxt -> Maybe initialWire,
+	_cxtCfgHeadless     :: Bool
 }
 makeLenses ''ContextConfig'

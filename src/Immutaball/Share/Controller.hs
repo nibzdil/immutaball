@@ -184,7 +184,9 @@ stepClock cxt du us immutaballN withImmutaballNp1 =
 	processStepResult cxt mresponse $ \immutaballNp1 ->
 	let mresponse_ = stepWire immutaballNp1 (pure . Paint $ (fromIntegral us) / 1000000.0) in
 	D.trace "DEBUG14: paint step" $
-	processStepResult cxt mresponse_ withImmutaballNp1
+	if' (cxt^.ibHeadless)
+		(withImmutaballNp1 immutaballNp1)
+		(processStepResult cxt mresponse_ withImmutaballNp1)
 
 processStepResult :: (Foldable t) => IBContext -> ImmutaballM (t Response, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 processStepResult cxt mresponse withImmutaballNp1 =

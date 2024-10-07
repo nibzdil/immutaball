@@ -92,6 +92,11 @@ immutaballOptions =
 		Option [] ["no-user-data-dir"]   (NoArg . b $ cliCfgUserDataDir   .~ Nothing)
 			"",
 		Option [] ["no-user-config-dir"] (NoArg . b $ cliCfgUserConfigDir .~ Nothing)
+			"",
+
+		Option [] ["headless"] (NoArg . b $ cliCfgHeadless .~ True)
+			"",
+		Option [] ["no-headless"] (NoArg . b $ cliCfgHeadless .~ False)
 			""
 	]
 	where b = CLIConfigBuilder
@@ -127,7 +132,9 @@ immutaballHelp = intercalate "\n" $
 		"\t--user-data-dir PATH:",
 		"\t\tSet user data directory path.",
 		"\t--user-config-dir PATH:",
-		"\t\tSet user config directory path."
+		"\t\tSet user config directory path.",
+		"\t--headless:",
+		"\t\tDisable video and audio.  Useful for automated testing."
 	]
 
 immutaballVersion :: String
@@ -200,7 +207,7 @@ immutaballWithCLIConfig' x'cfg cliCfg =
 
 --- | Run immutaball after getting neverballrc and dirs.
 immutaballWithNeverballrc :: StaticConfig -> CLIConfig -> IBDirs -> Neverballrc -> ImmutaballIO
-immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
+immutaballWithNeverballrc x'cfg cliCfg ibDirs_ nrcCfg =
 	result
 	where
 		result :: ImmutaballIO
@@ -210,7 +217,8 @@ immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
 			_cxtCfgStaticConfig = x'cfg,
 			_cxtCfgDirs         = ibDirs_,
 			_cxtCfgNeverballrc  = nrcCfg,
-			_cxtCfgInitialWire  = joinMaybeResult $ (x'cfg^.x'cfgInitialWireWithCxt)
+			_cxtCfgInitialWire  = joinMaybeResult $ (x'cfg^.x'cfgInitialWireWithCxt),
+			_cxtCfgHeadless     = (cliCfg^.cliCfgHeadless)
 		}
 
 --- | Run immutaball after setting up an initial immutaball context.

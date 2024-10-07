@@ -10,7 +10,7 @@
 module Immutaball.Share.Context
 	(
 		IBContext'(..), ibStaticConfig, ibDirs, ibNeverballrc0, ibInitialWire,
-			ibSDLManagerHandle,
+			ibHeadless, ibSDLManagerHandle,
 		withSDL
 	) where
 
@@ -26,6 +26,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.SDLManager
+import Immutaball.Share.Utils
 
 -- | An Immutaball context instance.
 --
@@ -35,7 +36,8 @@ data IBContext' initialWire = IBContext {
 	_ibDirs         :: IBDirs,
 	-- | The _initial_ neverballrc.
 	_ibNeverballrc0 :: Neverballrc,
-	_ibInitialWire :: IBContext' initialWire -> Maybe initialWire,
+	_ibInitialWire  :: IBContext' initialWire -> Maybe initialWire,
+	_ibHeadless     :: Bool,
 
 	_ibSDLManagerHandle :: SDLManagerHandle
 }
@@ -46,13 +48,15 @@ makeLenses ''IBContext'
 -- Does not create a window or set up OpenGL.
 withSDL :: ContextConfig' (IBContext' initialWire) initialWire -> (IBContext' initialWire -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
-	mkBasicImmutaballIO . SDLIO . SDLWithInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] .
+	let initFlags = if' (cxtCfg^.cxtCfgHeadless) [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
+	mkBasicImmutaballIO . SDLIO . SDLWithInit initFlags .
 	withSDLManager $ \sdlManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,
 		_ibDirs         = cxtCfg^.cxtCfgDirs,
 		_ibNeverballrc0 = cxtCfg^.cxtCfgNeverballrc,
 		_ibInitialWire  = cxtCfg^.cxtCfgInitialWire,
+		_ibHeadless     = cxtCfg^.cxtCfgHeadless,
 
 		_ibSDLManagerHandle = sdlManagerHandle
 	}

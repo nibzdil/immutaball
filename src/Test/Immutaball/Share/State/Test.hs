@@ -6,7 +6,7 @@
 
 {-# LANGUAGE Haskell2010 #-}
 
-module Test.Immutaball.Test
+module Test.Immutaball.Share.State.Test
 	(
 		main,
 		testsMain,
@@ -19,8 +19,7 @@ import Test.Tasty
 --import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Test.Tasty.QuickCheck
 
-import qualified Test.Immutaball.Share.State.Test
-import qualified Test.Immutaball.Share.Wire.Test
+--import Immutaball.Share.State
 
 main :: IO ()
 main = testsMain
@@ -29,8 +28,7 @@ testsMain :: IO ()
 testsMain = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Immutaball" $
+tests = testGroup "Immutaball.Share.State" $
 	[
-		Test.Immutaball.Share.Wire.Test.tests,
-		Test.Immutaball.Share.State.Test.tests
+		-- TODO
 	]

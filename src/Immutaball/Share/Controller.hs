@@ -50,8 +50,6 @@ import Immutaball.Share.State
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
-import Debug.Trace as D  ---------------------------- TODO--
-
 controlImmutaball :: IBContext -> Immutaball -> ImmutaballIO
 controlImmutaball cxt0 immutaball0 =
 	result
@@ -64,17 +62,14 @@ controlImmutaball cxt0 immutaball0 =
 			nextFrame us0 [] immutaball0
 		nextFrame :: Integer -> [Event] -> Immutaball -> ImmutaballIO
 		nextFrame usNm1 queuedEvents immutaballN =
-			D.trace "DEBUG2: nextFrame start" .
 			mkBIO . GetUs $ \usN ->
 			let dus = max 0 $ usNm1 - usN in
 			let ds = (fromInteger dus / 1000000.0)  :: Float in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
 			if' (usN < usNm1pMinClockPeriod) (mkBIO . DelayUs (usNm1pMinClockPeriod - usN)) id .
-			D.trace "DEBUG3: nextFrame mid" .
 			takeAllSDLEvents cxt0 $ \events ->
 			let events' = queuedEvents ++ events in
 			let events'' = maybe id (take . fromIntegral) (cxt0^.ibStaticConfig.maxFrameEvents) events' in
-			D.trace "DEBUG4: took events" $
 			stepFrame' cxt0 ds usN events'' immutaballN (nextFrame usN)
 		stepFrame'
 			| Nothing <- (cxt0^.ibStaticConfig.maxClockPeriod) = stepFrameNoMaxClockPeriod'
@@ -89,10 +84,8 @@ takeAllSDLEvents cxt withEvents =
 	issueCommand (cxt^.ibSDLManagerHandle) (PollEvent eventStorage) .
 	mkAtomically (takeTMVar eventStorage) $ \mevent ->
 	case mevent of
-		--Nothing -> withEvents $ reverse events
-		Nothing -> D.trace "DEBUG5: no events" . withEvents $ reverse events
-		--Just event -> me (event:events)
-		Just event -> D.trace "DEBUG6: event" $ me (event:events)
+		Nothing -> withEvents $ reverse events
+		Just event -> me (event:events)
 
 -- | Step each event then clock.
 stepFrameNoMaxClockPeriod :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
@@ -114,7 +107,6 @@ stepFrame cxt ds us events immutaball withImmutaball =
 	let z = (\queued _mclockAtUs _noClock immutaballN -> stepClock cxt ds us immutaballN (withImmutaball queued)) in
 	let defer = \queued -> z queued Nothing False in
 	let eventsWithRemaining = zip events (drop 1 $ tails events) in
-	D.trace "DEBUG7: stepFrame start" $
 	foldr
 		(\(event, eventsRemaining) withImmutaballNp1 -> \mclockAtUs noClock immutaballN -> stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImmutaballNp1)
 		(z [])
@@ -136,17 +128,14 @@ stepEvent ::
 	(Maybe Integer -> Bool -> Immutaball -> ImmutaballIO) ->
 	ImmutaballIO
 stepEvent cxt event eventsRemaining mclockAtUs noClock immutaballN defer withImmutaballNp1 =
-	D.trace "DEBUG8: stepEvent start" $
 	case (mclockAtUs, noClock) of
 		(Just clockAtUs, False) ->
 			mkBIO . GetUs $ \us_ ->
 			if' (not $ us_ >= clockAtUs)
 				(
-					D.trace "DEBUG9: stepEventNoMaxClockPeriod (no defer in stepEvent)" $
 					stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs False)
 				)
 				(
-					D.trace "DEBUG10: defer in stepEvent" $
 					defer eventsRemaining immutaballN
 				)
 		_ -> stepEventNoMaxClockPeriod cxt event immutaballN (withImmutaballNp1 mclockAtUs noClock)
@@ -160,47 +149,35 @@ stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 		(Event _ (MouseMotionEvent (MouseMotionEventData _ _ _ (P (V2 x y)) (V2 dx dy)))) ->
 			let (x', y', dx', dy') = (fromIntegral x, fromIntegral y, fromIntegral dx, fromIntegral dy) in
 			let mresponse = stepWire immutaballN (pure $ Point x' y' dx' dy') in
-			D.trace "DEBUG11: processing step result for mouse motion event" $
 			processStepResult cxt mresponse withImmutaballNp1
 		(Event _ (MouseButtonEvent (MouseButtonEventData _ pressed _ mouseButton _ _))) ->
 			let (button, down) = (fromIntegral $ getMouseButton mouseButton, isMousePressed pressed) in
 			let mresponse = stepWire immutaballN (pure $ Click button down) in
-			D.trace "DEBUG11: processing step result for mouse button event" $
 			processStepResult cxt mresponse withImmutaballNp1
 		(Event _ (KeyboardEvent kbdEvent)) ->
 			let (char, down) = (fromIntegral $ kbdEventChar kbdEvent, isKbdEventDown kbdEvent) in
 			let mresponse = stepWire immutaballN (pure $ Keybd char down) in
-			D.trace "DEBUG11: processing step result for keyboard event" $
 			processStepResult cxt mresponse withImmutaballNp1
 		_ ->
 			-- Ignore all unhandled events.
-			D.trace "DEBUG12: ignoring unhandled event" $
 			withImmutaballNp1 immutaballN
 
 stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepClock cxt du us immutaballN withImmutaballNp1 =
 	let mresponse = stepWire immutaballN (pure $ Clock du) in
-	D.trace "DEBUG13: clock step" .
 	processStepResult cxt mresponse $ \immutaballNp1 ->
 	let mresponse_ = stepWire immutaballNp1 (pure . Paint $ (fromIntegral us) / 1000000.0) in
-	D.trace "DEBUG14: paint step" $
 	if' (cxt^.ibHeadless)
 		(withImmutaballNp1 immutaballNp1)
 		(processStepResult cxt mresponse_ withImmutaballNp1)
 
 processStepResult :: (Foldable t) => IBContext -> ImmutaballM (t Response, Immutaball) -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 processStepResult cxt mresponse withImmutaballNp1 =
-	D.trace "DEBUG15: processStepResult start" $
 	runAutoParT mresponse & \mioresponse ->
-	--either (\ioresponse -> Fixed . flip fmap ioresponse) (&) (runMaybeMT mioresponse) $ \(response, immutaballNp1) ->
-	either (\ioresponse -> D.trace "DEBUG15.1: monadic" . Fixed . flip fmap ioresponse) (D.trace "DEBUG15.2: pure" (&)) (runMaybeMT mioresponse) $ \(response, immutaballNp1) ->
+	either (\ioresponse -> Fixed . flip fmap ioresponse) (&) (runMaybeMT mioresponse) $ \(response, immutaballNp1) ->
 	let failFork = mkBIO . PutStrLn "Error: processStepResult: wire forking is disabled, but the wire requested a fork; aborting" $ mkBIO ExitFailureBasicIOF in
-	D.trace "DEBUG19: processStepResult: checking allowWireForks" .
 	if' (not (cxt^.ibStaticConfig.allowWireForks) && doesResponseFork response) failFork $
-	--if' True failFork $  -- TODO FIXME: does not reach this point!
 	flip foldMap response $ \responseI ->
-	let debugshow ContinueResponse = "ContinueResponse"; debugshow DoneResponse = "DoneResponse"; debugshow (PureFork _) = "PureFork _"; debugshow (ImmutaballIOFork _) = "ImmutaballIOFork _" in
-	D.trace ("DEBUG20: processStepResult: found responseI: " ++ debugshow responseI) $
 	case responseI of
 		ContinueResponse -> withImmutaballNp1 immutaballNp1
 		DoneResponse -> mempty

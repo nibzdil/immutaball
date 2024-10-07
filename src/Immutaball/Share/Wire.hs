@@ -94,8 +94,8 @@ delayWire :: (Functor m) => b -> Wire m a b -> Wire m a b
 delayWire y0 wire_ = wire $ \x -> (\ ~(y, wire') -> (y0, delayWire y wire')) <$> stepWire wire_ x
 
 -- | 'Wire' is an instance of 'ArrowLoop'.
-loopWire :: (Monad m) => Wire m (b, d) (c, d) -> Wire m b c
-loopWire w = wire $ \b -> (\ ~( ~(c, _d), w') -> (c, loopWire w')) <$> (mfix' $ \((_c, d), _w') -> stepWire w (b, d))
+loopWire :: (Monad m, MonadFix m) => Wire m (b, d) (c, d) -> Wire m b c
+loopWire w = wire $ \b -> (\ ~( ~(c, _d), w') -> (c, loopWire w')) <$> (mfix $ \ ~( ~(_c, d), _w') -> stepWire w (b, d))
 
 -- | Simple example with Identity.
 loopWireSimple :: Wire Identity (b, d) (c, d) -> Wire Identity b c

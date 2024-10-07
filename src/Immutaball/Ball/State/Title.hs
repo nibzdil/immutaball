@@ -16,16 +16,24 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
+import Data.Functor.Identity
 
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 
 -- TODO:
 mkTitleState :: IBContext -> Immutaball
-mkTitleState baseCxt0 = fromImmutaballSingle $ proc _request -> do
+mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
+	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG1: mkTitleState start") ())
 	rec
-		cxtnp1 <- delay (initialStateCxt baseCxt0) -< cxtn
-		cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> requireVideo -< cxtnp1
+		--cxtnp1 <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxtn
+		--cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> returnA -< cxtnp1
+		cxt <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxt
+	-- TODO:
+	_ <- monadic -< case request of (Keybd i b) -> liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG0: keyboard event: " ++ show (i, b)) ()); _ -> liftIBIO (pure ())
+	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG2: mkTitleState end") ())
 	-- TODO:
 	returnA -< pure ContinueResponse

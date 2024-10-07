@@ -5,7 +5,7 @@
 -- ImmutaballIO/Basic.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables, ExistentialQuantification #-}
 
 module Immutaball.Share.ImmutaballIO.BasicIO
 	(
@@ -15,6 +15,15 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		runBasicIO,
 		(<>>-),
 
+		-- * mfix
+		FixBasicIOException(..),
+		fixBasicIOExceptionToException,
+		fixBasicIOExceptionFromException,
+		PrematureEvaluationFixBasicIOException(..),
+		EmptyFixBasicIOException(..),
+		fixBasicIOF,
+		unsafeFixBasicIOFTo,
+
 		-- * Runners
 		runBasicIOIO,
 		runDirectoryBasicIO,
@@ -22,6 +31,9 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 
 		-- * BasicIO aliases that apply the Fixed wrapper
 		mkEmptyBasicIO,
+		mkPureBasicIO,
+		mkUnfixBasicIO,
+		mkJoinBasicIO,
 		mkAndBasicIO,
 		mkThenBasicIO,
 		mkExitSuccessBasicIO,
@@ -56,7 +68,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Concurrent
-import Control.Exception (catch, throwIO)
+--import Control.Exception (catch, throwIO)
 import Control.Monad
 import Data.Time.Clock.System
 import System.Environment
@@ -74,11 +86,21 @@ import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils
 
+-- (mfix imports.)
+--import Control.Concurrent.MVar
+import Control.Exception
+import Data.Typeable
+import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
+import System.IO.Unsafe (unsafePerformIO)
+
 -- * BasicIO
 
 type BasicIO = Fixed BasicIOF
 data BasicIOF me =
 	  EmptyBasicIOF
+	| PureBasicIOF me
+	| UnfixBasicIOF (BasicIOF me)
+	| JoinBasicIOF (BasicIOF (BasicIOF me))
 	| AndBasicIOF me me
 	| ThenBasicIOF me me
 	| ExitSuccessBasicIOF
@@ -128,6 +150,9 @@ instance Monoid BasicIO where
 instance Functor BasicIOF where
 	fmap :: (a -> b) -> (BasicIOF a -> BasicIOF b)
 	fmap _f (EmptyBasicIOF)       = EmptyBasicIOF
+	fmap  f (PureBasicIOF a)      = PureBasicIOF (f a)
+	fmap  f (UnfixBasicIOF bio)   = UnfixBasicIOF (f <$> bio)
+	fmap  f (JoinBasicIOF bio)    = JoinBasicIOF (fmap f <$> bio)
 	fmap  f (AndBasicIOF a b)     = AndBasicIOF (f a) (f b)
 	fmap  f (ThenBasicIOF a b)    = ThenBasicIOF (f a) (f b)
 	fmap _f (ExitFailureBasicIOF) = ExitFailureBasicIOF
@@ -171,10 +196,93 @@ infixr 6 <>>-
 (<>>-) :: BasicIO -> BasicIO -> BasicIO
 (<>>-) = mkThenBasicIO
 
+-- * mfix
+
+data FixBasicIOException = forall e. Exception e => FixBasicIOException e
+instance Show FixBasicIOException where
+	show (FixBasicIOException e) = show e
+instance Exception FixBasicIOException
+fixBasicIOExceptionToException :: Exception e => e -> SomeException
+fixBasicIOExceptionToException = toException . FixBasicIOException
+fixBasicIOExceptionFromException :: Exception e => SomeException -> Maybe e
+fixBasicIOExceptionFromException x = do
+	FixBasicIOException a <- fromException x
+	cast a
+
+data PrematureEvaluationFixBasicIOException = PrematureEvaluationFixBasicIOException
+	deriving (Show)
+instance Exception PrematureEvaluationFixBasicIOException where
+	toException = fixBasicIOExceptionToException
+	fromException = fixBasicIOExceptionFromException
+
+data EmptyFixBasicIOException = EmptyFixBasicIOException
+	deriving (Show)
+instance Exception EmptyFixBasicIOException where
+	toException = fixBasicIOExceptionToException
+	fromException = fixBasicIOExceptionFromException
+
+--    mfix f = mfix f >>= f
+-- => mfix f = join $ f <$> mfix f
+-- Incorrect: runs f twice.
+	--x -> f undefined >>= mfix f
+{-
+fixBasicIOF :: (me -> BasicIOF me) -> BasicIOF me
+fixBasicIOF f = case f (error "Error: fixBasicIOF: premature evaluation of result before we could start it!") of
+	x -> joinBasicIOF $ f <$> x
+-}
+-- Do it like fixIO.  Use a lazily read MVar.
+fixBasicIOF :: (me -> BasicIOF me) -> BasicIOF me
+fixBasicIOF f = unsafePerformIO $ do
+	mme <- newEmptyMVar
+	return $ unsafeFixBasicIOFTo mme f
+
+-- | Helper for fixBasicIOF.
+unsafeFixBasicIOFTo :: MVar me -> (me -> BasicIOF me) -> BasicIOF me
+unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
+	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixBasicIOException)
+	case f me_ of
+		_y@(EmptyBasicIOF)       -> throwIO EmptyFixBasicIOException
+		y@( PureBasicIOF a)      -> putMVar mme a >> return y
+		_y@(UnfixBasicIOF bio)   -> return . UnfixBasicIOF . unsafeFixBasicIOFTo mme $ const bio
+		_y@(JoinBasicIOF bio)    -> return . UnfixBasicIOF . unsafeFixBasicIOFTo mme $ const (JoinBasicIOF bio)
+		_y@(AndBasicIOF  a b)    -> putMVar mme a >> return (JoinBasicIOF $ AndBasicIOF (PureBasicIOF a) (f b))
+		_y@(ThenBasicIOF a b)    -> putMVar mme a >> return (JoinBasicIOF $ ThenBasicIOF (PureBasicIOF a) (f b))
+		_y@(ExitSuccessBasicIOF) -> throwIO EmptyFixBasicIOException
+		_y@(ExitFailureBasicIOF) -> throwIO EmptyFixBasicIOException
+
+		_y@(DirectoryIO dio) -> return . DirectoryIO . unsafeFixDirectoryIOFTo mme $ const dio
+
+		_y@(GetArgs            withArgs_)       -> return $ GetArgs            ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withArgs_)
+		_y@(GetArgsSync        withArgs_)       -> return $ GetArgsSync        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withArgs_)
+		_y@(GetEnvironment     withEnvironment) -> return $ GetEnvironment     ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withEnvironment)
+		_y@(GetEnvironmentSync withEnvironment) -> return $ GetEnvironmentSync ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withEnvironment)
+		y@( PutStrLn           _str me)         -> putMVar mme me >> return y
+		_y@(GetContents        withContents)    -> return $ GetContents        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(GetContentsSync    withContents)    -> return $ GetContentsSync    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+
+		_y@(DoesPathExist     path withExists)            -> return $ DoesPathExist     path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withExists)
+		_y@(DoesPathExistSync path withExists)            -> return $ DoesPathExistSync path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withExists)
+		y@( WriteBytes        _path _contents me)         -> putMVar mme me >> return y
+		y@( WriteText         _path _contents me)         -> putMVar mme me >> return y
+		_y@(ReadBytes         path mwithErr withContents) -> return $ ReadBytes         path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadBytesSync     path mwithErr withContents) -> return $ ReadBytesSync     path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadText          path mwithErr withContents) -> return $ ReadText          path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadTextSync      path mwithErr withContents) -> return $ ReadTextSync      path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		y@( CreateDirectoryIfMissing _path me)            -> putMVar mme me >> return y
+		y@( ForkOS            _os me)                     -> putMVar mme me >> return y
+
+		_y@(SDLIO sdlio) -> return . SDLIO . unsafeFixSDLIOFTo mme $ const sdlio
+
+		y@( DelayUs _us me) -> putMVar mme me >> return y
+		_y@(GetUs   withUs) -> return $ GetUs ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withUs)
+
 -- * Runners
 
 runBasicIOIO :: BasicIOF (IO ()) -> IO ()
 runBasicIOIO (EmptyBasicIOF)                               = return ()
+runBasicIOIO (PureBasicIOF bio)                            = bio
+runBasicIOIO (UnfixBasicIOF bio)                           = runBasicIOIO bio
+runBasicIOIO (JoinBasicIOF bio)                            = runBasicIOIO $ runBasicIOIO <$> bio
 runBasicIOIO (AndBasicIOF a b)                             = a `par` b `par` concurrently_ a b
 runBasicIOIO (ThenBasicIOF a b)                            = a >> b
 runBasicIOIO (ExitSuccessBasicIOF)                         = exitSuccess
@@ -216,6 +324,15 @@ runSDLBasicIO sdlio = Fixed . SDLIO $ runSDLBasicIO <$> getFixed sdlio
 
 mkEmptyBasicIO :: BasicIO
 mkEmptyBasicIO = Fixed $ EmptyBasicIOF
+
+mkPureBasicIO :: BasicIO -> BasicIO
+mkPureBasicIO bio = Fixed $ PureBasicIOF bio
+
+mkUnfixBasicIO :: BasicIO -> BasicIO
+mkUnfixBasicIO bio = Fixed $ UnfixBasicIOF (getFixed bio)
+
+mkJoinBasicIO :: BasicIO -> BasicIO
+mkJoinBasicIO bio = Fixed $ JoinBasicIOF (getFixed <$> getFixed bio)
 
 mkAndBasicIO :: BasicIO -> BasicIO -> BasicIO
 mkAndBasicIO a b = Fixed $ AndBasicIOF a b

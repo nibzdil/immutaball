@@ -5,7 +5,7 @@
 -- ImmutaballIO.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables, ExistentialQuantification #-}
 
 module Immutaball.Share.ImmutaballIO.DirectoryIO
 	(
@@ -13,6 +13,15 @@ module Immutaball.Share.ImmutaballIO.DirectoryIO
 		DirectoryIO,
 		DirectoryIOF(..),
 		runDirectoryIO,
+
+		-- * mfix
+		FixDirectoryIOException(..),
+		fixDirectoryIOExceptionToException,
+		fixDirectoryIOExceptionFromException,
+		PrematureEvaluationFixDirectoryIOException(..),
+		EmptyFixDirectoryIOException(..),
+		fixDirectoryIOF,
+		unsafeFixDirectoryIOFTo,
 
 		-- * Runners
 		runDirectoryIOIO,
@@ -35,6 +44,13 @@ import Control.Concurrent.Async
 import System.Directory
 
 import Immutaball.Share.Utils
+
+-- (mfix imports.)
+import Control.Concurrent.MVar
+import Control.Exception
+import Data.Typeable
+import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
+import System.IO.Unsafe (unsafePerformIO)
 
 -- * DirectoryIO
 
@@ -81,6 +97,60 @@ instance Traversable DirectoryIOF where
 	traverse _traversal (GetXdgDirectoryCache  path) = pure GetXdgDirectoryCache  <*> pure path
 	traverse _traversal (GetXdgDirectoryState  path) = pure GetXdgDirectoryState  <*> pure path
 -}
+
+-- * mfix
+
+data FixDirectoryIOException = forall e. Exception e => FixDirectoryIOException e
+instance Show FixDirectoryIOException where
+	show (FixDirectoryIOException e) = show e
+instance Exception FixDirectoryIOException
+fixDirectoryIOExceptionToException :: Exception e => e -> SomeException
+fixDirectoryIOExceptionToException = toException . FixDirectoryIOException
+fixDirectoryIOExceptionFromException :: Exception e => SomeException -> Maybe e
+fixDirectoryIOExceptionFromException x = do
+	FixDirectoryIOException a <- fromException x
+	cast a
+
+data PrematureEvaluationFixDirectoryIOException = PrematureEvaluationFixDirectoryIOException
+	deriving (Show)
+instance Exception PrematureEvaluationFixDirectoryIOException where
+	toException = fixDirectoryIOExceptionToException
+	fromException = fixDirectoryIOExceptionFromException
+
+data EmptyFixDirectoryIOException = EmptyFixDirectoryIOException
+	deriving (Show)
+instance Exception EmptyFixDirectoryIOException where
+	toException = fixDirectoryIOExceptionToException
+	fromException = fixDirectoryIOExceptionFromException
+
+--    mfix f = mfix f >>= f
+-- => mfix f = join $ f <$> mfix f
+-- Incorrect: runs f twice.
+	--x -> f undefined >>= mfix f
+{-
+fixDirectoryIOF :: (me -> DirectoryIOF me) -> DirectoryIOF me
+fixDirectoryIOF f = case f (error "Error: fixDirectoryIOF: premature evaluation of result before we could start it!") of
+	x -> joinDirectoryIOF $ f <$> x
+-}
+-- Do it like fixIO.  Use a lazily read MVar.
+fixDirectoryIOF :: (me -> DirectoryIOF me) -> DirectoryIOF me
+fixDirectoryIOF f = unsafePerformIO $ do
+	mme <- newEmptyMVar
+	return $ unsafeFixDirectoryIOFTo mme f
+
+-- | Helper for fixDirectoryIOF.
+unsafeFixDirectoryIOFTo :: MVar me -> (me -> DirectoryIOF me) -> DirectoryIOF me
+unsafeFixDirectoryIOFTo mme f = unsafePerformIO $ do
+	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixDirectoryIOException)
+	case f me_ of
+		_y@(GetXdgDirectoryData       path withDir) -> return $ GetXdgDirectoryData       path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryDataSync   path withDir) -> return $ GetXdgDirectoryDataSync   path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryConfig     path withDir) -> return $ GetXdgDirectoryConfig     path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryConfigSync path withDir) -> return $ GetXdgDirectoryConfigSync path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryCache      path withDir) -> return $ GetXdgDirectoryCache      path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryCacheSync  path withDir) -> return $ GetXdgDirectoryCacheSync  path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryState      path withDir) -> return $ GetXdgDirectoryState      path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
+		_y@(GetXdgDirectoryStateSync  path withDir) -> return $ GetXdgDirectoryStateSync  path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withDir)
 
 -- * Runners
 

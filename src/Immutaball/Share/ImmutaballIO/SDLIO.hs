@@ -5,7 +5,7 @@
 -- ImmutaballIO.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, InstanceSigs, ScopedTypeVariables, ExistentialQuantification #-}
 
 module Immutaball.Share.ImmutaballIO.SDLIO
 	(
@@ -13,6 +13,15 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		SDLIO,
 		SDLIOF(..),
 		runSDLIO,
+
+		-- * mfix
+		FixSDLIOException(..),
+		fixSDLIOExceptionToException,
+		fixSDLIOExceptionFromException,
+		PrematureEvaluationFixSDLIOException(..),
+		EmptyFixSDLIOException(..),
+		fixSDLIOF,
+		unsafeFixSDLIOFTo,
 
 		-- * Runners
 		runSDLIOIO,
@@ -39,6 +48,13 @@ import qualified SDL.Video
 import qualified SDL.Video.OpenGL
 
 import Immutaball.Share.Utils
+
+-- (mfix imports.)
+import Control.Concurrent.MVar
+import Control.Exception
+import Data.Typeable
+import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
+import System.IO.Unsafe (unsafePerformIO)
 
 -- * DirectoryIO
 
@@ -83,6 +99,58 @@ instance Traversable SDLIOF where
 	traverse :: Applicative f => (a -> f b) -> SDLIOF a -> f (SDLIOF b)
 	traverse traversal (SDLWithInit subsystems sdlio) = pure SDLWithInit <*> pure subsystems <*> traversal sdlio
 -}
+
+-- * mfix
+
+data FixSDLIOException = forall e. Exception e => FixSDLIOException e
+instance Show FixSDLIOException where
+	show (FixSDLIOException e) = show e
+instance Exception FixSDLIOException
+fixSDLIOExceptionToException :: Exception e => e -> SomeException
+fixSDLIOExceptionToException = toException . FixSDLIOException
+fixSDLIOExceptionFromException :: Exception e => SomeException -> Maybe e
+fixSDLIOExceptionFromException x = do
+	FixSDLIOException a <- fromException x
+	cast a
+
+data PrematureEvaluationFixSDLIOException = PrematureEvaluationFixSDLIOException
+	deriving (Show)
+instance Exception PrematureEvaluationFixSDLIOException where
+	toException = fixSDLIOExceptionToException
+	fromException = fixSDLIOExceptionFromException
+
+data EmptyFixSDLIOException = EmptyFixSDLIOException
+	deriving (Show)
+instance Exception EmptyFixSDLIOException where
+	toException = fixSDLIOExceptionToException
+	fromException = fixSDLIOExceptionFromException
+
+--    mfix f = mfix f >>= f
+-- => mfix f = join $ f <$> mfix f
+-- Incorrect: runs f twice.
+	--x -> f undefined >>= mfix f
+{-
+fixSDLIOF :: (me -> SDLIOF me) -> SDLIOF me
+fixSDLIOF f = case f (error "Error: fixSDLIOF: premature evaluation of result before we could start it!") of
+	x -> joinSDLIOF $ f <$> x
+-}
+-- Do it like fixIO.  Use a lazily read MVar.
+fixSDLIOF :: (me -> SDLIOF me) -> SDLIOF me
+fixSDLIOF f = unsafePerformIO $ do
+	mme <- newEmptyMVar
+	return $ unsafeFixSDLIOFTo mme f
+
+-- | Helper for fixSDLIOF.
+unsafeFixSDLIOFTo :: MVar me -> (me -> SDLIOF me) -> SDLIOF me
+unsafeFixSDLIOFTo mme f = unsafePerformIO $ do
+	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixSDLIOException)
+	case f me_ of
+		y@( SDLWithInit _subsystems me)         -> putMVar mme me >> return y
+		_y@(SDLPollEvent withMEvent)            -> return $ SDLPollEvent               ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMEvent)
+		_y@(SDLPollEventSync withMEvent)        -> return $ SDLPollEventSync           ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMEvent)
+		_y@(SDLWithWindow title cfg withWindow) -> return $ SDLWithWindow    title cfg ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withWindow)
+		_y@(SDLWithGLContext window withCxt)    -> return $ SDLWithGLContext window    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withCxt)
+		y@( SDLGLSwapWindow _window me)         -> putMVar mme me >> return y
 
 -- * Runners
 

@@ -13,13 +13,15 @@ module Test.Immutaball.Share.State.Test
 		tests
 	) where
 
+--import Control.Concurrent.STM.TMVar
+--import Control.Monad.STM
 --import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
 --import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Test.Tasty.QuickCheck
 
---import Immutaball.Share.State
+--import Test.Immutaball.Share.State.Fixtures
 
 main :: IO ()
 main = testsMain

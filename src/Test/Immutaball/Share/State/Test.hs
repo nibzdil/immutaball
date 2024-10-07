@@ -5,6 +5,7 @@
 -- Test.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE Arrows #-}
 
 module Test.Immutaball.Share.State.Test
 	(
@@ -13,15 +14,20 @@ module Test.Immutaball.Share.State.Test
 		tests
 	) where
 
---import Control.Concurrent.STM.TMVar
---import Control.Monad.STM
---import Test.HUnit
+import Control.Arrow
+
+import Control.Concurrent.STM.TMVar
+import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
---import Test.Tasty.HUnit hiding ((@?=), assertBool)
+import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Test.Tasty.QuickCheck
 
---import Test.Immutaball.Share.State.Fixtures
+--import Immutaball.Share.Context
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.State
+import Immutaball.Share.Wire
+import Test.Immutaball.Share.State.Fixtures
 
 main :: IO ()
 main = testsMain
@@ -32,5 +38,11 @@ testsMain = defaultMain tests
 tests :: TestTree
 tests = testGroup "Immutaball.Share.State" $
 	[
-		-- TODO
+		testCase "trivial is 3" $
+			withImmutaball trivialImmutaball [] >>= (@?= 3)
 	]
+
+trivialImmutaball :: TMVar Integer -> IBContext -> Immutaball
+trivialImmutaball mout _cxt0 = proc _requests -> do
+	_ <- monadic -< liftIBIO $ Atomically (putTMVar mout 3) id
+	returnA -< [DoneResponse]

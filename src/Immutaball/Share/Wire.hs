@@ -36,7 +36,11 @@ module Immutaball.Share.Wire
 		applyWire,
 		queue,
 		queueN,
-		queueNI
+		queueNI,
+		delayN,
+		delayNI,
+		returnWire,
+		constWire
 	) where
 
 import Prelude ()
@@ -184,3 +188,23 @@ queueNI n = proc ins -> do
 		(chunk, queue) <- returnA -< let ins' = lastQueue ++ ins in (genericTake n ins', genericDrop n ins')
 		lastQueue <- delay [] -< queue
 	returnA -< chunk
+
+-- | Delay a given number of frames >= 0, with the same output for all frames
+-- in between.
+delayN :: (Integral i, Applicative m) => i -> a -> Wire m a a
+delayN n y0tn = delayNI (fromIntegral n) y0tn
+
+-- | 'delayN' variant specialized to Integer.
+delayNI :: (Applicative m) => Integer -> a -> Wire m a a
+delayNI n y0tn
+	| n < 0     = error $ "delayNI: negative argument: " ++ (show n)
+	| 0 <- n    = returnWire
+	| otherwise = delayWire y0tn (delayNI (n-1) y0tn)
+
+-- | The identity wire.
+returnWire :: (Applicative m) => Wire m a a
+returnWire = wire $ \a -> pure (a, returnWire)
+
+-- | An input ignoring wire.
+constWire :: (Applicative m) => b -> Wire m a b
+constWire b = wire $ \_ -> pure (b, constWire b)

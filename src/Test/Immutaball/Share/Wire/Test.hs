@@ -135,6 +135,7 @@ tests = testGroup "Immutaball.Share.Wire" $
 			],
 
 		testGroup "other utils tests" $
+			let i = id :: Integer -> Integer in
 			[
 				testCase "hold thrice" $
 					stepThrice holdingWire @?= 3,
@@ -150,6 +151,15 @@ tests = testGroup "Immutaball.Share.Wire" $
 				testCase "queue twice" $
 					stepTwice queueingWire @?= Just 3,
 				testCase "queue once" $
-					stepOnce queueingWire @?= Just 2
+					stepOnce queueingWire @?= Just 2,
+
+				testCase "delayNI 2 once" $
+					stepOnce      (delayNI 2 7 <<< constWire 3) @?= i 7,
+				testCase "delayNI 2 twice" $
+					stepTwice     (delayNI 2 7 <<< constWire 3) @?= i 7,
+				testCase "delayNI 2 thrice" $
+					stepThrice    (delayNI 2 7 <<< constWire 3) @?= i 3,
+				testCase "delayNI 2 four times" $
+					stepFourTimes (delayNI 2 7 <<< constWire 3) @?= i 3
 			]
 	]

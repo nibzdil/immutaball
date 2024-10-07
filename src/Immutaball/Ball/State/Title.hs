@@ -31,7 +31,14 @@ mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 	rec
 		--cxtnp1 <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxtn
 		--cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> returnA -< cxtnp1
-		cxt <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxt
+		--cxt <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxt
+		--cxt <- delayNI 2 (initialStateCxt baseCxt0) >>> requireVideo -< cxt
+		--cxt <- delayNI 2 (initialStateCxt baseCxt0) >>> requireVideo -< cxt
+		--cxt <- replaceNow (constWire ()) <<< constWire () <<< requireVideo -< (initialStateCxt baseCxt0)
+		_cxt <- replaceNow (constWire (constWire ())) <<< constWire () <<< requireVideo -< (initialStateCxt baseCxt0)
+		_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
+
+--replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
 	-- TODO:
 	_ <- monadic -< case request of (Keybd i b) -> liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG0: keyboard event: " ++ show (i, b)) ()); _ -> liftIBIO (pure ())
 	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG2: mkTitleState end") ())

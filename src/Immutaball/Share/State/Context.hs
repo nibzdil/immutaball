@@ -77,5 +77,5 @@ requireVideo = proc cxt0 -> do
 			context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
 			-- TODO:
 			_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG0: created window") ())
-			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) .  (ibSDLGLContext.~Just (context :: SDL.GLContext))
+			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
 			returnA -< cxt1

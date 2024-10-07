@@ -16,7 +16,7 @@ module Immutaball.Share.Wire
 	(
 		-- * Primitives
 		--Wire,
-		Wire(..),
+		Wire(..), reinstancedWire,
 		stepWire,
 		wire,
 		delayWire,
@@ -52,6 +52,7 @@ import Control.Monad.Fix
 import Data.Functor.Identity
 import Data.List
 
+import Control.Lens
 --import Control.Wire (Wire)
 import qualified Control.Wire
 import qualified Control.Wire.Controller
@@ -62,11 +63,12 @@ import Immutaball.Share.Utils
 -- * Primitives
 
 -- newtype Wire m a b = { _wireStep :: a -> m (b, Wire m a b) }
-newtype Wire m a b = ReinstanceWire { _reinstanceWire :: Control.Wire.Wire m a b }
+newtype Wire m a b = ReinstanceWire { _reinstancedWire :: Control.Wire.Wire m a b }
 	deriving (Functor, Applicative)
 		via (Control.Wire.Wire m a)
 	deriving (Arrow, ArrowChoice, ArrowLoop, {-Choice, Strong, Costrong, Profunctor, -}Category)
 		via (Control.Wire.Wire m)
+makeLenses ''Wire
 -- (Without newtype wrapper we get a warning: orphan instance.)
 instance (Monad m) => ArrowApply (Wire m) where
 	app = apply
@@ -74,7 +76,7 @@ instance (Monad m) => ArrowApply (Wire m) where
 -- | Run a 'Wire'.
 stepWire :: (Functor m) => Wire m a b -> a -> m (b, Wire m a b)
 --stepWire = Control.Wire.Controller.stepWire
-stepWire w a = second ReinstanceWire <$> Control.Wire.Controller.stepWire (_reinstanceWire w) a
+stepWire w a = second ReinstanceWire <$> Control.Wire.Controller.stepWire (_reinstancedWire w) a
 
 -- | Expose primitives that IMO should be already non-internal, or at the very
 -- least accessible through a non-internal interface.  Weirdly, I found no way
@@ -82,7 +84,7 @@ stepWire w a = second ReinstanceWire <$> Control.Wire.Controller.stepWire (_rein
 -- ‘wires’ API.
 wire :: (Functor m) => (a -> m (b, Wire m a b)) -> Wire m a b
 --wire = Control.Wire.Internal.Wire
-wire wireStep_ = ReinstanceWire . Control.Wire.Internal.Wire $ \a -> second _reinstanceWire <$> wireStep_ a
+wire wireStep_ = ReinstanceWire . Control.Wire.Internal.Wire $ \a -> second _reinstancedWire <$> wireStep_ a
 
 -- | 'Wire' provides us with a delay, in contrast with '->'.
 delayWire :: (Functor m) => b -> Wire m a b -> Wire m a b

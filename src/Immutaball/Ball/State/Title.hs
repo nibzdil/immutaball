@@ -28,7 +28,7 @@ import Immutaball.Share.Wire
 mkTitleState :: IBContext -> Immutaball
 mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG1: mkTitleState start") ())
-	rec
+	--rec
 		--cxtnp1 <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxtn
 		--cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> returnA -< cxtnp1
 		--cxt <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxt
@@ -37,10 +37,13 @@ mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 		--cxt <- replaceNow (constWire ()) <<< constWire () <<< requireVideo -< (initialStateCxt baseCxt0)
 		--_cxt <- replaceNow (constWire (constWire ())) <<< constWire () <<< requireVideo -< (initialStateCxt baseCxt0)
 		--_cxt <- requireVideo >>> constWire () >>> id &&& constWire (constWire ()) >>> replace -< (initialStateCxt baseCxt0)
-		_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
-		_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
 
---replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
+		--_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
+		--_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
+	_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
+	_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
+
+	--replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
 	-- TODO:
 	_ <- monadic -< case request of (Keybd i b) -> liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG0: keyboard event: " ++ show (i, b)) ()); _ -> liftIBIO (pure ())
 	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG2: mkTitleState end") ())

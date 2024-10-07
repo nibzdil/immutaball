@@ -41,8 +41,10 @@ mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 		--_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
 		--_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
 	-- TODO: FIXME: when in rec, we get 2 windows!
-	rec
-		_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
+	--rec
+		--_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
+	-- TODO: FIXME: loopWire also makes 2 windows.
+	_cxt <- loopWire . first $ replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
 	_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
 
 	--replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b

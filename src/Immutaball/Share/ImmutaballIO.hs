@@ -111,7 +111,7 @@ joinImmutaballIOF = JoinImmutaballIOF
 --    mfix f = mfix f >>= f
 -- => mfix f = join $ f <$> mfix f
 fixImmutaballIOF :: (me -> ImmutaballIOF me) -> ImmutaballIOF me
-fixImmutaballIOF f = case f (error "Error: fixTodo: premature evaluation of result before we could start it!") of
+fixImmutaballIOF f = case f (error "Error: fixImmutaballIOF: premature evaluation of result before we could start it!") of
 	x -> joinImmutaballIOF $ f <$> x
 
 instance Applicative ImmutaballIOF where

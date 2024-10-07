@@ -60,7 +60,12 @@ tests = testGroup "Immutaball.Share.State" $
 
 		withFrameManager False "id frame manager: " id,
 		withFrameManager False "immutaballMultiToSingle: " (fromImmutaballSingle . immutaballMultiToSingle),
-		withFrameManager False "immutaballSigleToMulti: "  (fromImmutaballMulti  . immutaballSingleToMulti)
+		withFrameManager False "immutaballSigleToMulti: "  (fromImmutaballMulti  . immutaballSingleToMulti),
+
+		testGroup "test mfix works" $
+			[
+				withFrameManager False "loopWire . first: " (loopWire . first)
+			]
 	]
 
 withFrameManager :: (Applicative t) =>

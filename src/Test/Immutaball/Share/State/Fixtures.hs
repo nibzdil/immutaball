@@ -18,7 +18,6 @@ import Control.Monad.STM
 
 import qualified Immutaball.Ball.CLI as CLI
 import Immutaball.Share.Config
-import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.State
 import Immutaball.Share.Utils

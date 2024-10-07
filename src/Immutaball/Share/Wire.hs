@@ -31,7 +31,9 @@ module Immutaball.Share.Wire
 		integrate,
 		differentiate,
 		hold,
+		replaceNow,
 		replace,
+		switchNow,
 		switch,
 		apply,
 		queue,
@@ -144,22 +146,34 @@ hold a0 = proc ma -> do
 	returnA -< output
 -- -}
 
--- TODO: test replace, switch, and apply.
+-- TODO: test replace*, switch*, and apply.
 
-replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
+-- | Feed the input back into the new wire.
+replaceNow :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
 -- This is the direct version, which we are keeping for reference:
 --replace w0 = wire $ \a -> stepWire w0 a >>= \(b, _w1) -> stepWire b a
 -- Here is a higher level version, which we are using:
 -- Without instance ArrowApply:
 -- ‘Could not deduce ‘ArrowApply (Wire m)’’:
 -- {-
-replace w0 = proc a -> do
+replaceNow w0 = proc a -> do
 	b <- w0 -< a
 	b -<< a
 -- -}
 
-switch :: (Monad m) => Wire m a (Either (Wire m a b) b) -> Wire m a b
-switch w0 = wire $ \a -> stepWire w0 a >>= \(eb, w1) -> either (\w1Override -> stepWire w1Override a) (\b -> return (b, switch w1)) eb
+-- | Discards the outer new wire, replacing it with the output wire instead.
+replace :: (Functor m) => Wire m a (b, (Wire m a b)) -> Wire m a b
+--replace w0 = wire $ \a -> (\(b, w1) -> delayWire b w1) <$> stepWire w0 a
+replace w0 = wire $ \a -> (\((b, w1), _w1Outer) -> (b, w1)) <$> stepWire w0 a
+
+-- | Feed the input back into the new wire.
+switchNow :: (Monad m) => Wire m a (Either (Wire m a b) b) -> Wire m a b
+switchNow w0 = wire $ \a -> stepWire w0 a >>= \(eb, w1) -> either (\w1Override -> stepWire w1Override a) (\b -> return (b, switchNow w1)) eb
+
+-- | Optionally discard the outer new wire, replacing it with the provided
+-- output wire instead.
+switch :: (Functor m) => Wire m a (b, Maybe (Wire m a b)) -> Wire m a b
+switch w0 = wire $ \a -> (\((b, mw1), w1Outer) -> (b, maybe (switch w1Outer) id mw1)) <$> stepWire w0 a
 
 -- | Discards the wire; gives the result.
 apply :: (Functor m) => Wire m (Wire m a b, a) b

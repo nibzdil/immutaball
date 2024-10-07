@@ -64,9 +64,12 @@ immutaballCLIMain :: IO ()
 immutaballCLIMain = do
 	runImmutaballIO mainImmutaballIO
 
-mainImmutaballIO :: ImmutaballIO
-mainImmutaballIO =
-	mkBIO . GetArgsSync $ immutaballWithArgs defaultStaticConfig
+mainImmutaballIO' :: ImmutaballIO
+mainImmutaballIO' = mainImmutaballIO defaultStaticConfig
+
+mainImmutaballIO :: StaticConfig -> ImmutaballIO
+mainImmutaballIO x'cfg =
+	mkBIO . GetArgsSync $ immutaballWithArgs x'cfg
 
 immutaballOptions :: [OptDescr CLIConfigBuilder]
 immutaballOptions =

@@ -16,7 +16,8 @@ module Test.Immutaball.Share.State.Test
 		trivialImmutaball,
 		tenTimesImmutaball,
 		holdingImmutaball,
-		tenTimesCounterImmutaball
+		tenTimesCounterImmutaball,
+		glImmutaball
 	) where
 
 import Control.Arrow
@@ -31,6 +32,7 @@ import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.State
+import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 import Test.Immutaball.Share.State.Fixtures
 
@@ -50,7 +52,9 @@ tests = testGroup "Immutaball.Share.State" $
 		testCase "holding is 3" $
 			withImmutaball holdingImmutaball [] >>= (@?= 5),
 		testCase "tenTimesCounter is 13" $
-			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13)
+			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13),
+		testCase "can hold a video context" $
+			withImmutaball' False glImmutaball [] >>= (@?= ())
 	]
 
 trivialImmutaball :: TMVar Integer -> IBContext -> Immutaball
@@ -74,4 +78,12 @@ tenTimesCounterImmutaball mout _cxt0 = proc _requests -> do
 	_ <- monadic <<< delay (liftIBIO $ Atomically (putTMVar mout 3) id) <<< constWire (liftIBIO $ pure ()) -< ()
 	x <- monadic -< liftIBIO $ Atomically (takeTMVar mout) id
 	_ <- monadic -< liftIBIO $ Atomically (putTMVar mout (x+1)) id
+	delayNI 9 [ContinueResponse] -< [DoneResponse]
+
+glImmutaball :: TMVar () -> IBContext -> Immutaball
+glImmutaball mout cxt0 = proc _requests -> do
+	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout ()) id
+	rec
+		cxtnp1 <- delay (initialStateCxt cxt0) -< cxtn
+		cxtn <- stateContextStorage (initialStateCxt cxt0) <<< Just <$> requireVideo -< cxtnp1
 	delayNI 9 [ContinueResponse] -< [DoneResponse]

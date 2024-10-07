@@ -9,10 +9,11 @@
 
 module Immutaball.Share.Config
 	(
-		StaticConfig(..), minClockPeriod, maxClockPeriod, maxFrameEvents,
+		StaticConfig'(..), minClockPeriod, maxClockPeriod, maxFrameEvents,
 			allowWireForks, maxStepFrameSize, maxResponseFrameSize,
 			defaultStaticDataDir, defaultUserDataDir, defaultUserConfigDir,
-			configFilename, defaultStaticConfig,
+			configFilename, x'cfgInitialWireWithCxt,
+		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
 			textures, reflection, multisample, mipmap, aniso, background,
@@ -44,7 +45,7 @@ import Control.Lens
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 
-data StaticConfig = StaticConfig {
+data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- | Maximum FPS, including non-clock SDL events.
 	_minClockPeriod :: Maybe Float,
 	-- | If at least one non-clock event has been stepped, if more SDL
@@ -69,12 +70,14 @@ data StaticConfig = StaticConfig {
 	_defaultUserDataDir   :: Either (DirectoryIOF FilePath) FilePath,
 	_defaultUserConfigDir :: Either (DirectoryIOF FilePath) FilePath,
 
-	_configFilename :: FilePath
+	_configFilename :: FilePath,
+
+	_x'cfgInitialWireWithCxt :: Maybe initialWireWithCxt
 }
-makeLenses ''StaticConfig
+makeLenses ''StaticConfig'
 
 -- | Default static config.
-defaultStaticConfig :: StaticConfig
+defaultStaticConfig :: StaticConfig' a
 defaultStaticConfig = StaticConfig {
 	_minClockPeriod       = Just 0.001,  -- ^ Max FPS: 1000.
 	_maxClockPeriod       = Just 0.5,    -- ^ Don't let external events block the clock for more than 500ms.
@@ -87,7 +90,8 @@ defaultStaticConfig = StaticConfig {
 	_defaultUserDataDir   = Left $ GetXdgDirectoryDataSync "immutaball" id,
 	_defaultUserConfigDir = Left $ GetXdgDirectoryConfigSync "immutaball" id,
 
-	_configFilename = "neverballrc"
+	_configFilename = "neverballrc",
+	_x'cfgInitialWireWithCxt = Nothing
 }
 
 type Neverballrc = Config

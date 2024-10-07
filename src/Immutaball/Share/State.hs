@@ -28,6 +28,10 @@ module Immutaball.Share.State
 		stepImmutaball,
 		liftIBIO,
 
+		IBContext,
+		ContextConfig,
+		StaticConfig,
+
 		-- * Frame management
 		immutaballMultiToSingle,
 		immutaballSingleToMulti,
@@ -48,6 +52,7 @@ import Control.Monad.Trans.MaybeM
 import Immutaball.Share.AutoPar
 import Immutaball.Share.Config
 import Immutaball.Share.Context
+import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.Wire
 
@@ -129,6 +134,10 @@ stepImmutaball immutaball request = runAutoParT $ stepWire immutaball request
 
 liftIBIO :: ImmutaballIOF a -> ImmutaballM a
 liftIBIO = AutoParT . MaybeMT . Left
+
+type IBContext     = IBContext' Immutaball
+type ContextConfig = ContextConfig' IBContext Immutaball
+type StaticConfig  = StaticConfig' (IBContext -> Maybe Immutaball)
 
 -- * Frame management
 

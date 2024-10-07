@@ -9,7 +9,8 @@
 
 module Immutaball.Share.Context
 	(
-		IBContext(..), ibStaticConfig, ibDirs, ibNeverballrc0, ibSDLManagerHandle,
+		IBContext'(..), ibStaticConfig, ibDirs, ibNeverballrc0, ibInitialWire,
+			ibSDLManagerHandle,
 		withSDL
 	) where
 
@@ -29,27 +30,29 @@ import Immutaball.Share.SDLManager
 -- | An Immutaball context instance.
 --
 -- The controller has access to this.
-data IBContext = IBContext {
-	_ibStaticConfig :: StaticConfig,
+data IBContext' initialWire = IBContext {
+	_ibStaticConfig :: StaticConfig' (IBContext' initialWire -> Maybe initialWire),
 	_ibDirs         :: IBDirs,
 	-- | The _initial_ neverballrc.
 	_ibNeverballrc0 :: Neverballrc,
+	_ibInitialWire :: IBContext' initialWire -> Maybe initialWire,
 
 	_ibSDLManagerHandle :: SDLManagerHandle
 }
-makeLenses ''IBContext
+makeLenses ''IBContext'
 
 -- | Just set up SDL.
 --
 -- Does not create a window or set up OpenGL.
-withSDL :: ContextConfig -> (IBContext -> ImmutaballIO) -> ImmutaballIO
+withSDL :: ContextConfig' (IBContext' initialWire) initialWire -> (IBContext' initialWire -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
 	mkBasicImmutaballIO . SDLIO . SDLWithInit [SDL.Init.InitVideo, SDL.Init.InitAudio, SDL.Init.InitJoystick] .
 	withSDLManager $ \sdlManagerHandle ->
 	withCxt $ IBContext {
-		_ibStaticConfig = cxtCfg^.ctxCfgStaticConfig,
-		_ibDirs         = cxtCfg^.ctxCfgDirs,
-		_ibNeverballrc0 = cxtCfg^.ctxCfgNeverballrc,
+		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,
+		_ibDirs         = cxtCfg^.cxtCfgDirs,
+		_ibNeverballrc0 = cxtCfg^.cxtCfgNeverballrc,
+		_ibInitialWire  = cxtCfg^.cxtCfgInitialWire,
 
 		_ibSDLManagerHandle = sdlManagerHandle
 	}

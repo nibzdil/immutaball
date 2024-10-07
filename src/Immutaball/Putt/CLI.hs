@@ -47,7 +47,8 @@ import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
---import Immutaball.Share.State
+import Immutaball.Share.State
+import Immutaball.Share.Utils
 
 main :: IO ()
 main = immutaballMain
@@ -199,12 +200,13 @@ immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
 	result
 	where
 		result :: ImmutaballIO
-		result = withSDL ctxCfg immutaballWithContext
-		ctxCfg :: ContextConfig
-		ctxCfg = ContextConfig {
-			_ctxCfgStaticConfig = x'cfg,
-			_ctxCfgDirs         = ibDirs_,
-			_ctxCfgNeverballrc  = nrcCfg
+		result = withSDL cxtCfg immutaballWithContext
+		cxtCfg :: ContextConfig
+		cxtCfg = ContextConfig {
+			_cxtCfgStaticConfig = x'cfg,
+			_cxtCfgDirs         = ibDirs_,
+			_cxtCfgNeverballrc  = nrcCfg,
+			_cxtCfgInitialWire  = joinMaybeResult $ (x'cfg^.x'cfgInitialWireWithCxt)
 		}
 
 --- | Run immutaball after setting up an immutaball context.

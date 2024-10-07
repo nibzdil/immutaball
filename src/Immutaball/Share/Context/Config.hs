@@ -10,7 +10,8 @@
 module Immutaball.Share.Context.Config
 	(
 		IBDirs(..), ibStaticDataDir, ibUserDataDir, ibUserConfigDir,
-		ContextConfig(..), ctxCfgStaticConfig, ctxCfgDirs, ctxCfgNeverballrc
+		ContextConfig'(..), cxtCfgStaticConfig, cxtCfgDirs, cxtCfgNeverballrc,
+			cxtCfgInitialWire
 	) where
 
 import Prelude ()
@@ -28,9 +29,10 @@ data IBDirs = IBDirs {
 	deriving (Eq, Ord, Show)
 makeLenses ''IBDirs
 
-data ContextConfig = ContextConfig {
-	_ctxCfgStaticConfig :: StaticConfig,
-	_ctxCfgDirs         :: IBDirs,
-	_ctxCfgNeverballrc  :: Neverballrc
+data ContextConfig' cxt initialWire = ContextConfig {
+	_cxtCfgStaticConfig :: StaticConfig' (cxt -> Maybe initialWire),
+	_cxtCfgDirs         :: IBDirs,
+	_cxtCfgNeverballrc  :: Neverballrc,
+	_cxtCfgInitialWire  :: cxt -> Maybe initialWire
 }
-makeLenses ''ContextConfig
+makeLenses ''ContextConfig'

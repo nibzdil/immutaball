@@ -9,7 +9,8 @@
 
 module Immutaball.Share.State.Context
 	(
-		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow, ibSDLGLContext,
+		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
+			ibSDLGLContext,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo

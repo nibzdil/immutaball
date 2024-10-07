@@ -19,7 +19,8 @@ module Immutaball.Share.Utils
 		voidA,
 		safeHead,
 		safeTail,
-		mfix'
+		mfix',
+		joinMaybeResult
 	) where
 
 import Prelude ()
@@ -80,3 +81,8 @@ safeTail (_:xs) = Just xs
 mfix' :: (Monad m) => (a -> m a) -> m a
 --mfix' f = let ma = ma >>= f in ma
 mfix' f = fix $ \me -> me >>= f
+
+joinMaybeResult :: Maybe (a -> Maybe b) -> (a -> Maybe b)
+joinMaybeResult mf = \a -> do
+	f <- mf
+	f a

@@ -22,7 +22,8 @@ module Immutaball.Ball.CLI
 		immutaballWithCLIConfig',
 		immutaballWithNeverballrc,
 		immutaballWithContext,
-		initialImmutaball
+		initialImmutaball,
+		defaultInitialImmutaball
 	) where
 
 -- Prelude imports
@@ -51,6 +52,7 @@ import Immutaball.Share.Controller
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
+import Immutaball.Share.Utils
 
 main :: IO ()
 main = immutaballMain
@@ -202,12 +204,13 @@ immutaballWithNeverballrc x'cfg _cliCfg ibDirs_ nrcCfg =
 	result
 	where
 		result :: ImmutaballIO
-		result = withSDL ctxCfg immutaballWithContext
-		ctxCfg :: ContextConfig
-		ctxCfg = ContextConfig {
-			_ctxCfgStaticConfig = x'cfg,
-			_ctxCfgDirs         = ibDirs_,
-			_ctxCfgNeverballrc  = nrcCfg
+		result = withSDL cxtCfg immutaballWithContext
+		cxtCfg :: ContextConfig
+		cxtCfg = ContextConfig {
+			_cxtCfgStaticConfig = x'cfg,
+			_cxtCfgDirs         = ibDirs_,
+			_cxtCfgNeverballrc  = nrcCfg,
+			_cxtCfgInitialWire  = joinMaybeResult $ (x'cfg^.x'cfgInitialWireWithCxt)
 		}
 
 --- | Run immutaball after setting up an initial immutaball context.
@@ -219,4 +222,7 @@ immutaballWithContext cxt0 =
 		result = controlImmutaball cxt0 (initialImmutaball cxt0)
 
 initialImmutaball :: IBContext -> Immutaball
-initialImmutaball cxt0 = mkTitleState cxt0
+initialImmutaball cxt0 = maybe (defaultInitialImmutaball cxt0) id $ (cxt0^.ibInitialWire) cxt0
+
+defaultInitialImmutaball :: IBContext -> Immutaball
+defaultInitialImmutaball cxt0 = mkTitleState cxt0

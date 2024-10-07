@@ -10,7 +10,9 @@ module Immutaball.Putt.CLI
 	(
 		main,
 		immutaballMain,
+		immutaballCLIMain',
 		immutaballCLIMain,
+		mainImmutaballIO',
 		mainImmutaballIO,
 		immutaballOptions,
 		immutaballWithArgs,
@@ -54,11 +56,14 @@ main :: IO ()
 main = immutaballMain
 
 immutaballMain :: IO ()
-immutaballMain = immutaballCLIMain
+immutaballMain = immutaballCLIMain'
 
-immutaballCLIMain :: IO ()
-immutaballCLIMain = do
-	runImmutaballIO mainImmutaballIO
+immutaballCLIMain' :: IO ()
+immutaballCLIMain' = immutaballCLIMain defaultStaticConfig
+
+immutaballCLIMain :: StaticConfig -> IO ()
+immutaballCLIMain x'cfg = do
+	runImmutaballIO (mainImmutaballIO x'cfg)
 
 mainImmutaballIO' :: ImmutaballIO
 mainImmutaballIO' = mainImmutaballIO defaultStaticConfig

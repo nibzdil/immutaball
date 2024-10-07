@@ -66,9 +66,10 @@ stateContextStorage y0 = proc cxt -> do
 
 requireVideo :: Wire ImmutaballM IBStateContext IBStateContext
 requireVideo = proc cxt0 -> do
-	case (cxt0^.ibSDLWindow) of
-		Just _ -> returnA -< cxt0
-		Nothing -> do
+	case ((cxt0^.ibContext.ibHeadless), (cxt0^.ibSDLWindow)) of
+		(True, _)        -> returnA -< cxt0
+		(False, Just _)  -> returnA -< cxt0
+		(False, Nothing) -> do
 			let windowCfg = defaultWindow {
 				windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
 				windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL,

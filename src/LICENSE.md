@@ -1,1 +1,1 @@
-../doc/legal/license-0BSD.txt
+../LICENSE.md

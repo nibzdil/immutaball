@@ -26,11 +26,11 @@ main :: IO ()
 main = testsMain
 
 testsMain :: IO ()
-testsMain = defaultMain tests
+testsMain = defaultMain (tests False)
 
-tests :: TestTree
-tests = testGroup "Immutaball" $
+tests :: Bool -> TestTree
+tests headless = testGroup "Immutaball" $
 	[
 		Test.Immutaball.Share.Wire.Test.tests,
-		Test.Immutaball.Share.State.Test.tests
+		Test.Immutaball.Share.State.Test.tests headless
 	]

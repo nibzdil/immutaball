@@ -42,10 +42,10 @@ main :: IO ()
 main = testsMain
 
 testsMain :: IO ()
-testsMain = defaultMain tests
+testsMain = defaultMain (tests False)
 
-tests :: TestTree
-tests = testGroup "Immutaball.Share.State" $
+tests :: Bool -> TestTree
+tests headless = testGroup "Immutaball.Share.State" $
 	[
 		testCase "trivial is 3" $
 			withImmutaball trivialImmutaball [] >>= (@?= 3),
@@ -54,17 +54,20 @@ tests = testGroup "Immutaball.Share.State" $
 		testCase "holding is 5" $
 			withImmutaball holdingImmutaball [] >>= (@?= 5),
 		testCase "tenTimesCounter is 13" $
-			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13),
+			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13)
+	] ++ (if' headless [] $
+	[
 		testCase "can hold a video context" $
-			withImmutaball' False glImmutaball [] >>= (@?= ()),
-
-		withFrameManager False "id frame manager: " id,
-		withFrameManager False "immutaballMultiToSingle: " (fromImmutaballSingle . immutaballMultiToSingle),
-		withFrameManager False "immutaballSigleToMulti: "  (fromImmutaballMulti  . immutaballSingleToMulti),
+			withImmutaball' False glImmutaball [] >>= (@?= ())
+	]) ++
+	[
+		withFrameManager headless "id frame manager: " id,
+		withFrameManager headless "immutaballMultiToSingle: " (fromImmutaballSingle . immutaballMultiToSingle),
+		withFrameManager headless "immutaballSigleToMulti: "  (fromImmutaballMulti  . immutaballSingleToMulti),
 
 		testGroup "test mfix works" $
 			[
-				withFrameManager False "loopWire . first: " (loopWire . first)
+				withFrameManager headless "loopWire . first: " (loopWire . first)
 			]
 	]
 
@@ -76,7 +79,7 @@ withFrameManager :: (Applicative t) =>
 		Wire ImmutaballM RequestFrame ResponseFrame
 	) ->
 	TestTree
-withFrameManager includeVideo prefix frameManager =
+withFrameManager headless prefix frameManager =
 	testGroup (prefix ++ " immutaball wire tests with frame manager") $
 		[
 			testCase (prefix ++ "trivial is 3") $
@@ -87,7 +90,7 @@ withFrameManager includeVideo prefix frameManager =
 				withImmutaball ((frameManager .) . holdingImmutaball) [] >>= (@?= 5),
 			testCase (prefix ++ "tenTimesCounter is 13") $
 				withImmutaball ((frameManager .) . tenTimesCounterImmutaball) [] >>= (@?= 13)
-		] ++ (if' (not includeVideo) [] $
+		] ++ (if' headless [] $
 		[
 			testCase "can hold a video context" $
 				withImmutaball' False ((frameManager .) . glImmutaball) [] >>= (@?= ())

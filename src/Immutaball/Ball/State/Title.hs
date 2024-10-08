@@ -23,10 +23,16 @@ import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 
 -- TODO:
-mkTitleState :: IBContext -> Immutaball
+mkTitleState :: Either IBContext IBStateContext -> Immutaball
 mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity _request) -> do
+	--let cxt0 = either initialStateCxt id baseCxt0
 	rec
-		cxtnp1 <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxtn
-		cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> returnA -< cxtnp1
+		-- BROKEN: -<< discards wires!  This turns into a fork bomb of new windows.
+		-- 	> cl && cabal build --package-db=~/.local/state/cabal/store/ghc-9.13.20240927/package.db && cl && { (sleep 2.5s && pkill -KILL immutaball) & timeout --kill-after=0.5s 2s cabal run --package-db=~/.local/state/cabal/store/ghc-9.13.20240927/package.db immutaball -- ; }
+		-- If you use -<<, don't expect the left side to ‘keep stepping’.
+		--cxtnp1 <- delay cxt0 -<< cxtn
+		--cxtn <- stateContextStorage cxt0 <<< Just <$> requireVideo -<< cxtnp1
+		cxtnp1 <- delay (either initialStateCxt id baseCxt0) -< cxtn
+		cxtn <- stateContextStorage (either initialStateCxt id baseCxt0) <<< Just <$> requireVideo -< cxtnp1
 	-- TODO
 	returnA -< pure ContinueResponse

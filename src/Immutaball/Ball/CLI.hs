@@ -241,4 +241,4 @@ initialImmutaball :: IBContext -> Immutaball
 initialImmutaball cxt0 = maybe (defaultInitialImmutaball cxt0) id $ (cxt0^.ibInitialWire) cxt0
 
 defaultInitialImmutaball :: IBContext -> Immutaball
-defaultInitialImmutaball cxt0 = mkTitleState cxt0
+defaultInitialImmutaball cxt0 = mkTitleState (Left cxt0)

@@ -65,6 +65,12 @@ import Immutaball.Share.Utils
 -- * Primitives
 
 -- newtype Wire m a b = { _wireStep :: a -> m (b, Wire m a b) }
+-- | A wire.  A function that changes itself each time it is called / stepped.
+--
+-- Note that -<< would discard wires with this, which might not be what you want.
+-- Beware that the left side of '-<<' may ‘never advance’ in stepping!  (-<<
+-- does have uses, e.g. see 'replaceNow' where ‘-<<’ is exactly what we want
+-- there and correct.)
 newtype Wire m a b = ReinstanceWire { _reinstancedWire :: Control.Wire.Wire m a b }
 	deriving (Functor, Applicative)
 		via (Control.Wire.Wire m a)
@@ -72,6 +78,8 @@ newtype Wire m a b = ReinstanceWire { _reinstancedWire :: Control.Wire.Wire m a 
 		via (Control.Wire.Wire m)
 makeLenses ''Wire
 -- (Without newtype wrapper we get a warning: orphan instance.)
+-- Note that -<< would discard wires with this, which might not be what you want.
+-- Beware that the left side of '-<<' may ‘never advance’ in stepping!
 instance (Monad m) => ArrowApply (Wire m) where
 	app = apply
 
@@ -151,7 +159,12 @@ hold a0 = proc ma -> do
 -- | Feed the input back into the new wire.
 replaceNow :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
 -- This is the direct version, which we are keeping for reference:
---replace w0 = wire $ \a -> stepWire w0 a >>= \(b, _w1) -> stepWire b a
+-- Actually, we commented out the ArrowApply instance (keeping arrowDiscard),
+-- although arrowDiscard is exactly what we want here and correct, so use the
+-- direct version now rather than the proc syntax.
+{-
+replaceNow w0 = wire $ \a -> stepWire w0 a >>= \(b, _w1) -> stepWire b a
+-}
 -- Here is a higher level version, which we are using:
 -- Without instance ArrowApply:
 -- ‘Could not deduce ‘ArrowApply (Wire m)’’:
@@ -176,9 +189,16 @@ switch :: (Functor m) => Wire m a (b, Maybe (Wire m a b)) -> Wire m a b
 switch w0 = wire $ \a -> (\((b, mw1), w1Outer) -> (b, maybe (switch w1Outer) id mw1)) <$> stepWire w0 a
 
 -- | Discards the wire; gives the result.
+--
+-- Each wire produces a wire sequence for future wires in time, but at every
+-- frame the entire sequence is discarded and replaced with the new wire that
+-- is provided as input.
+--
+-- Note that -<< would discard wires with this, which might not be what you want.
+-- Beware that the left side of '-<<' may ‘never advance’ in stepping!
 apply :: (Functor m) => Wire m (Wire m a b, a) b
 -- Here is a version that uses monads:
---apply = wire $ \(w0, a) -> stepWire w0 a >>= \(b, w1) -> return (b, apply)
+--apply = wire $ \(w0, a) -> stepWire w0 a >>= \(b, _w1) -> return (b, apply)
 -- We only need fmap here:
 apply = wire $ \(w0, a) -> (\(b, _w1) -> (b, apply)) <$> stepWire w0 a
 

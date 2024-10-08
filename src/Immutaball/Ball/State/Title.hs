@@ -18,51 +18,15 @@ import Immutaball.Prelude
 import Control.Arrow
 import Data.Functor.Identity
 
-import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 
 -- TODO:
 mkTitleState :: IBContext -> Immutaball
-mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
-	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG1: mkTitleState start") ())
-	--rec
-		--cxtnp1 <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxtn
-		--cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> returnA -< cxtnp1
-		--cxt <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxt
-		--cxt <- delayNI 2 (initialStateCxt baseCxt0) >>> requireVideo -< cxt
-		--cxt <- delayNI 2 (initialStateCxt baseCxt0) >>> requireVideo -< cxt
-		--cxt <- replaceNow (constWire ()) <<< constWire () <<< requireVideo -< (initialStateCxt baseCxt0)
-		--_cxt <- replaceNow (constWire (constWire ())) <<< constWire () <<< requireVideo -< (initialStateCxt baseCxt0)
-		--_cxt <- requireVideo >>> constWire () >>> id &&& constWire (constWire ()) >>> replace -< (initialStateCxt baseCxt0)
-
-		--_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
-		--_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
-	-- TODO: FIXME: when in rec, we get 2 windows!
-	--rec
-		--_cxt <- replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
-	-- TODO: FIXME: loopWire also makes 2 windows.
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG0: start" ()
-	--_cxt <- loopWire . first $ replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
-	_ <- loopWire . first $ monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG0.5: mid" ()
-	_ <- loopWire . first $ monadic -< liftIBIO . BasicImmutaballIOF $ GetArgsSync (\_args -> ())
-	args <- loopWire . first $ monadic -< liftIBIO . BasicImmutaballIOF $ GetArgsSync id
-	_ <- loopWire . first $ monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn ("DEBUG0.8: mid args: " ++ show args) ()
-	_repeatSafe <- monadic -< liftIBIO . BasicImmutaballIOF $ DelayUs (1 * 1000 * 1000) ()
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG1: mid almost to finish" ()
-
-	-- TODO: FIXME: hangs!
-	--_cxt <- loopWire . first $ replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
-	-- TODO: FIXME: hangs!  (Simpler case).
-	_cxt <- replace ((loopWire . first $ requireVideo) >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
-
-	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG2: finish (yay, loopWire works here!)" ()
-
-	--replace :: (Monad m) => Wire m a (Wire m a b) -> Wire m a b
-	-- TODO:
-	_ <- monadic -< case request of (Keybd i b) -> liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG0: keyboard event: " ++ show (i, b)) ()); _ -> liftIBIO (pure ())
-	--_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG2: mkTitleState end") ())
-	-- TODO:
+mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity _request) -> do
+	rec
+		cxtnp1 <- delay (initialStateCxt baseCxt0) >>> requireVideo -< cxtn
+		cxtn <- stateContextStorage (initialStateCxt baseCxt0) <<< Just <$> returnA -< cxtnp1
+	-- TODO
 	returnA -< pure ContinueResponse

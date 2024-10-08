@@ -54,7 +54,9 @@ mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG1: mid almost to finish" ()
 
 	-- TODO: FIXME: hangs!
-	_cxt <- loopWire . first $ replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
+	--_cxt <- loopWire . first $ replace (requireVideo >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
+	-- TODO: FIXME: hangs!  (Simpler case).
+	_cxt <- replace ((loopWire . first $ requireVideo) >>> constWire () >>> id &&& constWire (constWire ())) -< (initialStateCxt baseCxt0)
 
 	_ <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn "DEBUG2: finish (yay, loopWire works here!)" ()
 

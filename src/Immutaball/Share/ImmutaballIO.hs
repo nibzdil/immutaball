@@ -173,11 +173,14 @@ unsafeFixImmutaballIOFTo :: MVar me -> (me -> ImmutaballIOF me) -> ImmutaballIOF
 unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixImmutaballIOException)
 	case f me_ of
-		_y@(EmptyImmutaballIOF)         -> throwIO EmptyFixImmutaballIOException
+		_y@(EmptyImmutaballIOF)        -> throwIO EmptyFixImmutaballIOException
 		y@(PureImmutaballIOF a)        -> putMVar mme a >> return y
 		_y@(UnfixImmutaballIOF ibio)   -> return . UnfixImmutaballIOF . unsafeFixImmutaballIOFTo mme $ const ibio
-		_y@(JoinImmutaballIOF ibio)    -> return . UnfixImmutaballIOF . unsafeFixImmutaballIOFTo mme $ const (JoinImmutaballIOF ibio)
-		_y@(AndImmutaballIOF  a b)     -> putMVar mme a >> return (JoinImmutaballIOF $ AndImmutaballIOF (PureImmutaballIOF a) (f b))
+		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.
+		_y@(JoinImmutaballIOF (AndImmutaballIOF a b)) -> return (JoinImmutaballIOF (AndImmutaballIOF (unsafeFixImmutaballIOFTo mme (const a)) (JoinImmutaballIOF $ f <$> b)))
+		_y@(JoinImmutaballIOF (ThenImmutaballIOF a b)) -> return (JoinImmutaballIOF (ThenImmutaballIOF (unsafeFixImmutaballIOFTo mme (const a)) (JoinImmutaballIOF $ f <$> b)))
+		_y@(JoinImmutaballIOF ibio)    -> return $ JoinImmutaballIOF (unsafeFixImmutaballIOFTo mme . const <$> ibio)
+		_y@(AndImmutaballIOF  a b)     -> putMVar mme a >> return (JoinImmutaballIOF $ AndImmutaballIOF  (PureImmutaballIOF a) (f b))
 		_y@(ThenImmutaballIOF a b)     -> putMVar mme a >> return (JoinImmutaballIOF $ ThenImmutaballIOF (PureImmutaballIOF a) (f b))
 		_y@(BasicImmutaballIOF bio)    -> return . BasicImmutaballIOF . unsafeFixBasicIOFTo mme $ const bio
 		_y@(Wait async_ withAsync_)    -> return $ Wait       async_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withAsync_)

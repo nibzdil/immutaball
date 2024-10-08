@@ -74,7 +74,8 @@ requireVideo = proc cxt0 -> do
 				windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
 			}
 			window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
-			context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
+			--context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
+			let context = error "TODO: DEBUGGING undefined context"
 			-- TODO:
 			_ <- monadic -< liftIBIO (BasicImmutaballIOF $ PutStrLn ("DEBUG0: created window") ())
 			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))

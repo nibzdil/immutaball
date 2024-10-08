@@ -244,7 +244,10 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		_y@(EmptyBasicIOF)       -> throwIO EmptyFixBasicIOException
 		y@( PureBasicIOF a)      -> putMVar mme a >> return y
 		_y@(UnfixBasicIOF bio)   -> return . UnfixBasicIOF . unsafeFixBasicIOFTo mme $ const bio
-		_y@(JoinBasicIOF bio)    -> return . UnfixBasicIOF . unsafeFixBasicIOFTo mme $ const (JoinBasicIOF bio)
+		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.
+		_y@(JoinBasicIOF (AndBasicIOF a b)) -> return (JoinBasicIOF (AndBasicIOF (unsafeFixBasicIOFTo mme (const a)) (JoinBasicIOF $ f <$> b)))
+		_y@(JoinBasicIOF (ThenBasicIOF a b)) -> return (JoinBasicIOF (ThenBasicIOF (unsafeFixBasicIOFTo mme (const a)) (JoinBasicIOF $ f <$> b)))
+		_y@(JoinBasicIOF ibio)    -> return $ JoinBasicIOF (unsafeFixBasicIOFTo mme . const <$> ibio)
 		_y@(AndBasicIOF  a b)    -> putMVar mme a >> return (JoinBasicIOF $ AndBasicIOF (PureBasicIOF a) (f b))
 		_y@(ThenBasicIOF a b)    -> putMVar mme a >> return (JoinBasicIOF $ ThenBasicIOF (PureBasicIOF a) (f b))
 		_y@(ExitSuccessBasicIOF) -> throwIO EmptyFixBasicIOException

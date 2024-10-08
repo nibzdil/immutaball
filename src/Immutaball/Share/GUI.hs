@@ -11,7 +11,7 @@ module Immutaball.Share.GUI
 	(
 		-- * widgets
 		Root(..), rootId,
-		Space(..), spaceId, spaceParent,
+		Space(..), spaceId, spaceParent, spaceFill,
 		VStack(..), vstackId, vstackParent,
 		HStack(..), hstackId, hstackParent,
 		Label(..), labelId, labelParent, labelText,
@@ -29,7 +29,7 @@ module Immutaball.Share.GUI
 import Prelude ()
 import Immutaball.Prelude
 
---import Control.Arrow
+import Control.Arrow
 --import Data.Functor.Identity
 
 import Control.Lens
@@ -48,7 +48,10 @@ makeLenses ''Root
 
 data Space id = Space {
 	_spaceId     :: id,
-	_spaceParent :: id
+	_spaceParent :: id,
+
+	-- | Max space to anchor at bottom.
+	_spaceFill   :: Bool
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Space
@@ -146,4 +149,7 @@ data WidgetResponse id =
 
 -- TODO:
 mkGUI :: [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
-mkGUI _initialWidgets = error "TODO: unimplemented."
+mkGUI initialWidgets = proc request -> do
+	--widgets <- hold initialWidgets -< case request of ResetGUI widgets -> Just widgets_; _ -> Nothing
+	-- TODO:
+	returnA -< NoWidgetAction

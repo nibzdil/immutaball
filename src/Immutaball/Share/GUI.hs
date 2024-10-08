@@ -11,6 +11,9 @@ module Immutaball.Share.GUI
 	(
 		-- * widgets
 		Root(..), rootId,
+		Space(..), spaceId, spaceParent,
+		VStack(..), vstackId, vstackParent,
+		HStack(..), hstackId, hstackParent,
 		Label(..), labelId, labelParent, labelText,
 		Button(..), buttonId, buttonParent, buttonText,
 		Widget(..),
@@ -43,6 +46,27 @@ data Root id = Root {
 	deriving (Eq, Ord, Show)
 makeLenses ''Root
 
+data Space id = Space {
+	_spaceId     :: id,
+	_spaceParent :: id
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''Space
+
+data VStack id = VStack {
+	_vstackId     :: id,
+	_vstackParent :: id
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''VStack
+
+data HStack id = HStack {
+	_hstackId     :: id,
+	_hstackParent :: id
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''HStack
+
 data Label id = Label {
 	_labelId     :: id,
 	_labelParent :: id,
@@ -63,6 +87,9 @@ makeLenses ''Button
 
 data Widget id =
 	  RootWidget   (Root   id)
+	| SpaceWidget  (Space  id)
+	| VStackWidget (VStack id)
+	| HStackWidget (HStack id)
 	| LabelWidget  (Label  id)
 	| ButtonWidget (Button id)
 	deriving (Eq, Ord, Show)
@@ -75,6 +102,12 @@ class WidgetParent w id | w -> id where
 
 instance WidgetId     (Root   id) id where widgetId     = rootId
 instance WidgetParent (Root   id) id where widgetParent = rootId
+instance WidgetId     (Space  id) id where widgetId     = spaceId
+instance WidgetParent (Space  id) id where widgetParent = spaceParent
+instance WidgetId     (VStack id) id where widgetId     = vstackId
+instance WidgetParent (VStack id) id where widgetParent = vstackParent
+instance WidgetId     (HStack id) id where widgetId     = hstackId
+instance WidgetParent (HStack id) id where widgetParent = hstackParent
 instance WidgetId     (Label  id) id where widgetId     = labelId
 instance WidgetParent (Label  id) id where widgetParent = labelParent
 instance WidgetId     (Button id) id where widgetId     = buttonId
@@ -83,11 +116,17 @@ instance WidgetParent (Button id) id where widgetParent = buttonParent
 instance WidgetId (Widget id) id where
 	widgetId :: forall f. Functor f => (id -> f id) -> Widget id -> f (Widget id)
 	widgetId accessor (RootWidget   root)   = RootWidget   <$> widgetId accessor root
+	widgetId accessor (SpaceWidget  space)  = SpaceWidget  <$> widgetId accessor space
+	widgetId accessor (VStackWidget vstack) = VStackWidget <$> widgetId accessor vstack
+	widgetId accessor (HStackWidget hstack) = HStackWidget <$> widgetId accessor hstack
 	widgetId accessor (LabelWidget  label)  = LabelWidget  <$> widgetId accessor label
 	widgetId accessor (ButtonWidget button) = ButtonWidget <$> widgetId accessor button
 instance WidgetParent (Widget id) id where
 	widgetParent :: forall f. Functor f => (id -> f id) -> Widget id -> f (Widget id)
 	widgetParent accessor (RootWidget   root)   = RootWidget   <$> widgetParent accessor root
+	widgetParent accessor (SpaceWidget  space)  = SpaceWidget  <$> widgetParent accessor space
+	widgetParent accessor (VStackWidget vstack) = VStackWidget <$> widgetParent accessor vstack
+	widgetParent accessor (HStackWidget hstack) = HStackWidget <$> widgetParent accessor hstack
 	widgetParent accessor (LabelWidget  label)  = LabelWidget  <$> widgetParent accessor label
 	widgetParent accessor (ButtonWidget button) = ButtonWidget <$> widgetParent accessor button
 

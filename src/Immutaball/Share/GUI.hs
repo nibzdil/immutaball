@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, Arrows, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExplicitForAll, InstanceSigs #-}
+{-# LANGUAGE TemplateHaskell, Arrows, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExplicitForAll, InstanceSigs, ScopedTypeVariables #-}
 
 module Immutaball.Share.GUI
 	(
@@ -145,15 +145,19 @@ data WidgetResponse id =
 makeClassyPrisms ''WidgetResponse
 
 -- TODO:
-mkGUI :: (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
+mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
 mkGUI initialWidgets = proc request -> do
 	widgets <- hold initialWidgets -< either (const Nothing) Just $ matching _ResetGUI request
-	_widgetBy <- hold (mkWidgetBy initialWidgets) -< either (const Nothing) (const . Just $ mkWidgetBy widgets) $ matching _ResetGUI request
-	_widgetIdx <- hold (mkWidgetIdx initialWidgets) -< either (const Nothing) (const . Just $ mkWidgetIdx widgets) $ matching _ResetGUI request
-	_getChildren <- hold (mkGetChildren initialWidgets) -< either (const Nothing) (const . Just $ mkGetChildren widgets) $ matching _ResetGUI request
+	widgetsReq <- returnA -< (widgets, request)
+	_widgetBy <- mkWidgetsAnalysis mkWidgetBy -< widgetsReq
+	_widgetIdx <- mkWidgetsAnalysis mkWidgetIdx -< widgetsReq
+	_getChildren <- mkWidgetsAnalysis mkGetChildren -< widgetsReq
 	-- TODO:
 	returnA -< NoWidgetAction
 	where
+		-- | Only recalculates the analysis on reset.
+		mkWidgetsAnalysis :: ([Widget id] -> a) -> Wire ImmutaballM ([Widget id], WidgetRequest id) a
+		mkWidgetsAnalysis analyzer = do proc (widgets, request) -> hold (analyzer initialWidgets) -< either (const Nothing) (const . Just $ analyzer widgets) $ matching _ResetGUI request
 		mkWidgetBy :: (Eq id, Ord id) => [Widget id] -> M.Map id (Widget id)
 		mkWidgetBy widgets = M.fromList . flip map widgets $ \w -> ((w^.wid), w)
 		mkWidgetIdx :: [Widget id] -> M.Map Integer (Widget id)

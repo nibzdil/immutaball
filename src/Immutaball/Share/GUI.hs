@@ -35,7 +35,10 @@ import Control.Arrow
 --import Data.Functor.Identity
 
 import Control.Lens
+import qualified Data.Map.Lazy as M
 
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
 --import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
@@ -142,8 +145,22 @@ data WidgetResponse id =
 makeClassyPrisms ''WidgetResponse
 
 -- TODO:
-mkGUI :: [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
+mkGUI :: (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
 mkGUI initialWidgets = proc request -> do
-	_widgets <- hold initialWidgets -< either (const Nothing) Just $ matching _ResetGUI request
+	widgets <- hold initialWidgets -< either (const Nothing) Just $ matching _ResetGUI request
+	_widgetBy <- hold (mkWidgetBy initialWidgets) -< either (const Nothing) (const . Just $ mkWidgetBy widgets) $ matching _ResetGUI request
+	_widgetIdx <- hold (mkWidgetIdx initialWidgets) -< either (const Nothing) (const . Just $ mkWidgetIdx widgets) $ matching _ResetGUI request
+	_getChildren <- hold (mkGetChildren initialWidgets) -< either (const Nothing) (const . Just $ mkGetChildren widgets) $ matching _ResetGUI request
 	-- TODO:
 	returnA -< NoWidgetAction
+	where
+		mkWidgetBy :: (Eq id, Ord id) => [Widget id] -> M.Map id (Widget id)
+		mkWidgetBy widgets = M.fromList . flip map widgets $ \w -> ((w^.wid), w)
+		mkWidgetIdx :: [Widget id] -> M.Map Integer (Widget id)
+		mkWidgetIdx widgets = M.fromList $ zip [0..] widgets
+		_warn :: String -> Wire ImmutaballM () ()
+		_warn msg = proc () -> do
+			_ <- monadic -< pure . liftIBIO . BasicImmutaballIOF $ PutStrLn msg ()
+			returnA -< ()
+		mkGetChildren :: (Eq id) => [Widget id] -> id -> [Widget id]
+		mkGetChildren widgets wid_ = filter (\w -> (w^.wid) == wid_) widgets

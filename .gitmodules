@@ -1,0 +1,3 @@
+[submodule "submodules/neverball"]
+	path = submodules/neverball
+	url = https://github.com/Neverball/neverball

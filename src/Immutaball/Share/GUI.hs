@@ -23,8 +23,8 @@ module Immutaball.Share.GUI
 		Widget(..), AsWidget(..),
 
 		-- * wires
-		WidgetRequest(..),
-		WidgetResponse(..),
+		WidgetRequest(..), AsWidgetRequest(..),
+		WidgetResponse(..), AsWidgetResponse(..),
 		mkGUI
 	) where
 
@@ -133,15 +133,17 @@ data WidgetRequest id =
 	| GUISetFocus id
 	| ResetGUI [Widget id]
 	deriving (Eq, Ord, Show)
+makeClassyPrisms ''WidgetRequest
 
 data WidgetResponse id =
 	  NoWidgetAction
 	| WidgetAction id
 	deriving (Eq, Ord, Show)
+makeClassyPrisms ''WidgetResponse
 
 -- TODO:
 mkGUI :: [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
-mkGUI _initialWidgets = proc _request -> do
-	--widgets <- hold initialWidgets -< case request of ResetGUI widgets -> Just widgets_; _ -> Nothing
+mkGUI initialWidgets = proc request -> do
+	_widgets <- hold initialWidgets -< either (const Nothing) Just $ matching _ResetGUI request
 	-- TODO:
 	returnA -< NoWidgetAction

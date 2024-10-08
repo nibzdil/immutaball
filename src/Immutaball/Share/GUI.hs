@@ -135,6 +135,8 @@ instance WidgetParent (Widget id) id where
 data WidgetRequest id =
 	  GUIDrive Request
 	| GUISetText id String
+	| GUISetFocus id
+	| ResetGUI [Widget id]
 	deriving (Eq, Ord, Show)
 
 data WidgetResponse id =

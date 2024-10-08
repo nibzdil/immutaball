@@ -11,12 +11,8 @@ homepage:     https://nibzdil.org/
 bug-reports:  https://nibzdil.org/
 
 -- When packaged with Neverball data (e.g. into ‘immutaball’), distribute under
--- GPL terms to be compliant.  There's enough inside core too that arguably is
--- a derivative work of Neverball, at least by my judgement (the whole project
--- is meant to be a port of Neverball to Haskell after all), so to get
--- permission to use Neverball in this port, I'll license this whole package
--- GPL, but everything else is 0BSD licensed, as I indicated in LICENSE.md.
-license:      GPL-3.0-or-later
+-- GPL terms to be compliant.
+license:      0BSD
 license-file: LICENSE.md
 author:       Byron Johnson
 maintainer:   bjohnson@nibzdil.org

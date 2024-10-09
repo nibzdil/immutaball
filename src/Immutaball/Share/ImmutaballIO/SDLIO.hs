@@ -134,7 +134,8 @@ fixSDLIOF :: (me -> SDLIOF me) -> SDLIOF me
 fixSDLIOF f = case f (error "Error: fixSDLIOF: premature evaluation of result before we could start it!") of
 	x -> joinSDLIOF $ f <$> x
 -}
--- Do it like fixIO.  Use a lazily read MVar.
+-- Do it like fixIO and fixST (see also their notes; it's a little tricky).
+-- Use a lazily read MVar.
 fixSDLIOF :: (me -> SDLIOF me) -> SDLIOF me
 fixSDLIOF f = unsafePerformIO $ do
 	mme <- newEmptyMVar

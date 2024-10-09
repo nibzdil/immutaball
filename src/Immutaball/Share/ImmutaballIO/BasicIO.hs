@@ -230,7 +230,8 @@ fixBasicIOF :: (me -> BasicIOF me) -> BasicIOF me
 fixBasicIOF f = case f (error "Error: fixBasicIOF: premature evaluation of result before we could start it!") of
 	x -> joinBasicIOF $ f <$> x
 -}
--- Do it like fixIO.  Use a lazily read MVar.
+-- Do it like fixIO and fixST (see also their notes; it's a little tricky).
+-- Use a lazily read MVar.
 fixBasicIOF :: (me -> BasicIOF me) -> BasicIOF me
 fixBasicIOF f = unsafePerformIO $ do
 	mme <- newEmptyMVar

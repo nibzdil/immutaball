@@ -28,9 +28,11 @@ module Immutaball.Share.Wire
 		initial,
 		withM,
 		delay,
+		delayWith,
 		integrate,
 		differentiate,
 		hold,
+		holdWith,
 		replaceNow,
 		replace,
 		switchNow,
@@ -125,6 +127,16 @@ withM initWire initState = wire $ \a -> initState a >>= \s -> stepWire (initWire
 delay :: (Monad m) => a -> Wire m a a
 delay y0 = delayWire y0 returnA
 
+-- TODO: test delayWith.
+
+-- | A 'delay' variant that takes the initial value through the wire.
+--
+-- The _second_ argument (not the first) is the initial value.
+--
+-- The initial argument is ignored after the first frame.
+delayWith :: (Monad m) => Wire m (a, a) a
+delayWith = wire $ \(y1, y0) -> pure (y0, delay y1 <<< arr fst)
+
 integrate :: (Num a, Monad m, MonadFix m) => a -> Wire m a a
 -- Low-level example for knowledge aid:
 --integrate y0 = flip fix y0 $ \me y -> wire $ \x -> let result = y + x in return (result, me result)
@@ -153,6 +165,18 @@ hold a0 = proc ma -> do
 		lastJust <- delay a0 -< output
 	returnA -< output
 -- -}
+
+-- TODO: test holdWith
+
+-- | A 'hold' variant that takes the initial value through the wire.
+--
+-- The initial argument is ignored after being reset.
+holdWith :: (Monad m, MonadFix m) => Wire m (Maybe a, a) a
+holdWith = proc (set_, initial_) -> do
+	rec
+		output <- returnA -< maybe lastOutput id set_
+		lastOutput <- delayWith -< (output, initial_)
+	returnA -< output
 
 -- TODO: test replace*, switch*, and apply.
 

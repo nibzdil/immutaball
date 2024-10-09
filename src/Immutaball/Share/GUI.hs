@@ -168,11 +168,15 @@ mkGUI initialWidgets = proc request -> do
 	widgetBy    <- mkWidgetsAnalysis' mkWidgetBy    -< widgetsReq
 	widgetIdx   <- mkWidgetsAnalysis' mkWidgetIdx   -< widgetsReq
 	widgetToIdx <- mkWidgetsAnalysis' mkWidgetToIdx -< widgetsReq
-	--getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
+	getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
+
+	nextWidgetHier' <- returnA -< nextWidgetHier widgetBy getChildren
+	prevWidgetHier' <- returnA -< prevWidgetHier widgetBy getChildren
 
 	rec
-		currentFocus <- hold 0 -< newFocus
-		lastFocus <- delay 0 -< currentFocus
+		initialFocus <- returnA -< maybe 0 id $ flip M.lookup widgetIdx 0 >>= flip M.lookup widgetBy . nextWidgetHier' . prevWidgetHier' . (^.wid) >>= flip M.lookup widgetToIdx
+		currentFocus <- holdWith -< (newFocus, initialFocus)
+		lastFocus <- delayWith -< (currentFocus, initialFocus)
 		newFocus <- case request of
 			GUISetFocus wid_ -> returnA -< flip M.lookup widgetBy wid_ >>= flip M.lookup widgetToIdx
 			GUIDrive (Keybd char True) -> returnA -<

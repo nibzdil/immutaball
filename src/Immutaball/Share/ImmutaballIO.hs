@@ -87,7 +87,6 @@ data ImmutaballIOF me =
 	| BasicImmutaballIOF (BasicIOF me)
 
 	| forall hiddenTypeField. Wait (Async hiddenTypeField) (hiddenTypeField -> me)
-	-- TODO: | forall hiddenTypeField. WithAsync (ImmutaballIOF hiddenTypeField) (Async hiddenTypeField -> me)
 	| WithAsync me (Async () -> me)
 	| forall hiddenTypeField. Atomically (STM hiddenTypeField) (hiddenTypeField -> me)
 

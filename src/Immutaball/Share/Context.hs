@@ -49,8 +49,8 @@ makeLenses ''IBContext'
 withSDL :: ContextConfig' (IBContext' initialWire) initialWire -> (IBContext' initialWire -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
 	let initFlags = if' (cxtCfg^.cxtCfgHeadless) [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
-	mkBasicImmutaballIO . SDLIO . SDLWithInit initFlags .
-	mkBasicImmutaballIO . SDLIO . SDLWithTTFInit .
+	mkBIO . SDLIO . SDLWithInit initFlags .
+	mkBIO . SDLIO . SDLWithTTFInit .
 	withSDLManager $ \sdlManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,

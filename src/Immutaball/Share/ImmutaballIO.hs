@@ -38,13 +38,13 @@ module Immutaball.Share.ImmutaballIO
 		runSDLImmutaballIO,
 
 		-- * ImmutaballIO aliases that apply the Fixed wrapper
-		mkEmptyImmutaballIO,
-		mkPureImmutaballIO,
-		mkUnfixImmutaballIO,
-		mkJoinImmutaballIO,
-		mkAndImmutaballIO,
-		mkThenImmutaballIO,
-		mkBasicImmutaballIO,
+		mkEmptyIBIO,
+		mkPureIBIO,
+		mkUnfixIBIO,
+		mkJoinIBIO,
+		mkAndIBIO,
+		mkThenIBIO,
+		mkBasicIBIO,
 		mkWait,
 		mkWithAsync,
 		mkAtomically,
@@ -236,26 +236,26 @@ runSDLImmutaballIO sdlio = runBasicImmutaballIO . runSDLBasicIO $ sdlio
 
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
-mkEmptyImmutaballIO :: ImmutaballIO
-mkEmptyImmutaballIO = Fixed $ EmptyIBIOF
+mkEmptyIBIO :: ImmutaballIO
+mkEmptyIBIO = Fixed $ EmptyIBIOF
 
-mkPureImmutaballIO :: ImmutaballIO -> ImmutaballIO
-mkPureImmutaballIO ibio = Fixed $ PureIBIOF ibio
+mkPureIBIO :: ImmutaballIO -> ImmutaballIO
+mkPureIBIO ibio = Fixed $ PureIBIOF ibio
 
-mkUnfixImmutaballIO :: ImmutaballIO -> ImmutaballIO
-mkUnfixImmutaballIO ibio = Fixed $ UnfixIBIOF (getFixed ibio)
+mkUnfixIBIO :: ImmutaballIO -> ImmutaballIO
+mkUnfixIBIO ibio = Fixed $ UnfixIBIOF (getFixed ibio)
 
-mkJoinImmutaballIO :: ImmutaballIO -> ImmutaballIO
-mkJoinImmutaballIO ibio = Fixed $ JoinIBIOF (getFixed <$> getFixed ibio)
+mkJoinIBIO :: ImmutaballIO -> ImmutaballIO
+mkJoinIBIO ibio = Fixed $ JoinIBIOF (getFixed <$> getFixed ibio)
 
-mkAndImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
-mkAndImmutaballIO a b = Fixed $ AndIBIOF a b
+mkAndIBIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
+mkAndIBIO a b = Fixed $ AndIBIOF a b
 
-mkThenImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
-mkThenImmutaballIO a b = Fixed $ ThenIBIOF a b
+mkThenIBIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
+mkThenIBIO a b = Fixed $ ThenIBIOF a b
 
-mkBasicImmutaballIO :: BasicIOF ImmutaballIO -> ImmutaballIO
-mkBasicImmutaballIO bio = Fixed $ BasicIBIOF bio
+mkBasicIBIO :: BasicIOF ImmutaballIO -> ImmutaballIO
+mkBasicIBIO bio = Fixed $ BasicIBIOF bio
 
 mkWait :: Async a -> (a -> ImmutaballIO) -> ImmutaballIO
 mkWait async_ withAsync_ = Fixed $ Wait async_ withAsync_
@@ -270,4 +270,4 @@ mkAtomically stm withStm = Fixed $ Atomically stm withStm
 
 -- | Short alias for 'mkBasicImmutaballIO'.
 mkBIO :: BasicIOF ImmutaballIO -> ImmutaballIO
-mkBIO = mkBasicImmutaballIO
+mkBIO = mkBasicIBIO

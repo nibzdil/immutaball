@@ -44,7 +44,8 @@ module Immutaball.Share.Wire
 		delayN,
 		delayNI,
 		returnWire,
-		constWire
+		constWire,
+		multistep
 	) where
 
 import Prelude ()
@@ -268,3 +269,14 @@ returnWire = wire $ \a -> pure (a, returnWire)
 -- | An input ignoring wire.
 constWire :: (Applicative m) => b -> Wire m a b
 constWire b = wire $ \_ -> pure (b, constWire b)
+
+-- TODO: add test multiStep.
+
+-- | Step the wire multiple times, once for each input.
+--
+-- If we had dependent types in our language, we could probably represent
+-- equality of lengths.
+multistep :: (Monad m) => Wire m a b -> Wire m [a] [b]
+multistep w0 = wire . flip fix w0 $ \me wn as -> case as of
+	[]        -> pure ([], multistep wn)
+	(an:rest) -> stepWire wn an >>= \(bn, wnp1) -> first (bn:) <$> me wnp1 rest

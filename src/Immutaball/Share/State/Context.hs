@@ -13,7 +13,9 @@ module Immutaball.Share.State.Context
 			ibSDLGLContext,
 		initialStateCxt,
 		stateContextStorage,
-		requireVideo
+		requireVideo,
+		requireBasics,
+		finishFrame
 	) where
 
 import Prelude ()
@@ -77,3 +79,15 @@ requireVideo = proc cxt0 -> do
 			context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
 			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
 			returnA -< cxt1
+
+-- | Also handles common set-up tasks like clearing the color for rendering.
+-- TODO:
+requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
+requireBasics = proc (cxt0, _request) -> do
+	requireVideo -< cxt0
+
+-- | Handles common frame finishing like swapping the scene on paint.
+-- TODO:
+finishFrame :: Wire ImmutaballM IBStateContext ()
+finishFrame = proc _cxt0 -> do
+	returnA -< ()

@@ -29,12 +29,14 @@ import Immutaball.Share.Wire
 mkTitleState :: Either IBContext IBStateContext -> Immutaball
 mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 	rec
-		cxtn <- stateContextStorage cxt0 <<< Just <$> requireVideo <<< delay cxt0 -< cxtn
+		--cxtn <- stateContextStorage cxt0 <<< Just <$> requireVideo <<< delay cxt0 -< cxtn
+		cxtn <- stateContextStorage cxt0 <<< Just <$> requireBasics <<< first (delay cxt0) -< (cxtn, request)
 	guiResponse <- mkGUI titleGui -< GUIDrive request
 	response <- returnA -< case guiResponse of
 		NoWidgetAction          -> ContinueResponse
 		WidgetAction QuitButton -> DoneResponse
 		_                       -> ContinueResponse
+	() <- finishFrame -< cxtn
 	returnA -< Identity response
 	where cxt0 = either initialStateCxt id baseCxt0
 

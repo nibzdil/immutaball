@@ -22,8 +22,11 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
+import Data.Bits
+
 import Control.Lens
 import qualified Data.Text as T
+import Graphics.GL.Core45
 import SDL.Vect as SDL
 import SDL.Video as SDL
 --import SDL.Video.OpenGL as SDL
@@ -32,6 +35,7 @@ import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
+import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.State
 import Immutaball.Share.Utils
@@ -81,10 +85,12 @@ requireVideo = proc cxt0 -> do
 			returnA -< cxt1
 
 -- | Also handles common set-up tasks like clearing the color for rendering.
--- TODO:
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
 requireBasics = proc (cxt0, _request) -> do
-	requireVideo -< cxt0
+	cxt <- requireVideo -< cxt0
+	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClearColor 0.1 0.1 0.9 1.0 ()
+	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) ()
+	returnA -< cxt
 
 -- | Handles common frame finishing like swapping the scene on paint.
 finishFrame :: Wire ImmutaballM IBStateContext ()

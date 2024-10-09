@@ -29,6 +29,7 @@ module Immutaball.Share.GUI
 		mkWidgetsAnalysis,
 		mkWidgetBy,
 		mkWidgetIdx,
+		mkWidgetToIdx,
 		mkGetChildren,
 		nextWidgetDirect,
 		prevWidgetDirect,
@@ -45,11 +46,13 @@ import Control.Arrow
 
 import Control.Lens
 import qualified Data.Map.Lazy as M
+import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.State
 --import Immutaball.Share.State.Context
+import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
 -- * widgets
@@ -158,12 +161,24 @@ mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRe
 mkGUI initialWidgets = proc request -> do
 	resetWidgets <- returnA -< either (const Nothing) Just $ matching _ResetGUI request
 	_widgets <- hold initialWidgets -< resetWidgets
-	widgetsReq <- returnA -< resetWidgets
-	_widgetBy <- mkWidgetsAnalysis' mkWidgetBy -< widgetsReq
-	_widgetIdx <- mkWidgetsAnalysis' mkWidgetIdx -< widgetsReq
-	_getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
 
-	--_currentFocus <- hold 0 -< Nothing
+	widgetsReq <- returnA -< resetWidgets
+	widgetBy    <- mkWidgetsAnalysis' mkWidgetBy    -< widgetsReq
+	widgetIdx   <- mkWidgetsAnalysis' mkWidgetIdx   -< widgetsReq
+	widgetToIdx <- mkWidgetsAnalysis' mkWidgetToIdx -< widgetsReq
+	--getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
+
+	rec
+		currentFocus <- hold 0 -< newFocus
+		lastFocus <- delay 0 -< currentFocus
+		newFocus <- case request of
+			GUISetFocus wid_ -> returnA -< flip M.lookup widgetBy wid_ >>= flip M.lookup widgetToIdx
+			GUIDrive (Keybd char _down) -> returnA -<
+				if' (char == fromIntegral Raw.SDLK_DOWN) (Just $ nextWidgetDirect widgetIdx lastFocus) .
+				if' (char == fromIntegral Raw.SDLK_UP  ) (Just $ prevWidgetDirect widgetIdx lastFocus) $
+				Nothing
+			_ -> returnA -< Nothing
+
 	-- TODO:
 	returnA -< NoWidgetAction
 	where
@@ -183,6 +198,9 @@ mkWidgetBy widgets = M.fromList . flip map widgets $ \w -> ((w^.wid), w)
 
 mkWidgetIdx :: [Widget id] -> M.Map Integer (Widget id)
 mkWidgetIdx widgets = M.fromList $ zip [0..] widgets
+
+mkWidgetToIdx :: (Eq id, Ord id) => [Widget id] -> M.Map (Widget id) Integer
+mkWidgetToIdx widgets = M.fromList $ zip widgets [0..]
 
 mkGetChildren :: (Eq id) => [Widget id] -> id -> [Widget id]
 mkGetChildren widgets wid_ = filter (\w -> (w^.wid) == wid_) widgets

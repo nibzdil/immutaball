@@ -195,7 +195,7 @@ mkGUI initialWidgets = proc request -> do
 		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()
 		_warn msg = proc () -> do
-			() <- monadic -< liftIBIO . BasicImmutaballIOF $ PutStrLn msg ()
+			() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn msg ()
 			returnA -< ()
 
 -- | Only recalculates the analysis on reset.

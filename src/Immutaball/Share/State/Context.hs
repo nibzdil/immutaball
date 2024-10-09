@@ -75,8 +75,8 @@ requireVideo = proc cxt0 -> do
 				windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL,
 				windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
 			}
-			window <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
-			context <- monadic -< liftIBIO . BasicImmutaballIOF . SDLIO $ SDLWithGLContext window id
+			window <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
+			context <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithGLContext window id
 			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
 			returnA -< cxt1
 
@@ -89,5 +89,5 @@ requireBasics = proc (cxt0, _request) -> do
 -- | Handles common frame finishing like swapping the scene on paint.
 finishFrame :: Wire ImmutaballM IBStateContext ()
 finishFrame = proc cxt -> do
-	() <- monadic -< maybe (pure ()) (liftIBIO . BasicImmutaballIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
+	() <- monadic -< maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
 	returnA -< ()

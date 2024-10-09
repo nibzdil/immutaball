@@ -77,14 +77,13 @@ import System.IO.Unsafe (unsafePerformIO)
 
 type ImmutaballIO = Fixed ImmutaballIOF
 data ImmutaballIOF me =
-	  EmptyImmutaballIOF
-	| PureImmutaballIOF me
-	| UnfixImmutaballIOF (ImmutaballIOF me)
-	| JoinImmutaballIOF (ImmutaballIOF (ImmutaballIOF me))
-	| AndImmutaballIOF me me
-	| ThenImmutaballIOF me me
-	-- TODO: Simply constructor name to BasicIO.
-	| BasicImmutaballIOF (BasicIOF me)
+	  EmptyIBIOF
+	| PureIBIOF me
+	| UnfixIBIOF (ImmutaballIOF me)
+	| JoinIBIOF (ImmutaballIOF (ImmutaballIOF me))
+	| AndIBIOF me me
+	| ThenIBIOF me me
+	| BasicIBIOF (BasicIOF me)
 
 	| forall hiddenTypeField. Wait (Async hiddenTypeField) (hiddenTypeField -> me)
 	| WithAsync me (Async () -> me)
@@ -94,38 +93,38 @@ runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
 
 andImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO 
-andImmutaballIO x y = Fixed $ AndImmutaballIOF x y
+andImmutaballIO x y = Fixed $ AndIBIOF x y
 
 thenImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
-thenImmutaballIO x y = Fixed $ ThenImmutaballIOF x y
+thenImmutaballIO x y = Fixed $ ThenIBIOF x y
 
 instance Semigroup (ImmutaballIOF ImmutaballIO) where
 	(<>) :: ImmutaballIOF ImmutaballIO -> ImmutaballIOF ImmutaballIO -> ImmutaballIOF ImmutaballIO
-	a <> b = AndImmutaballIOF (Fixed a) (Fixed b)
+	a <> b = AndIBIOF (Fixed a) (Fixed b)
 instance (Semigroup (ImmutaballIOF me)) => Monoid (ImmutaballIOF me) where
-	mempty = EmptyImmutaballIOF
+	mempty = EmptyIBIOF
 
 instance Semigroup ImmutaballIO where
 	(Fixed a) <> (Fixed b) = Fixed (a <> b)
 instance Monoid ImmutaballIO where
-	mempty = Fixed EmptyImmutaballIOF
+	mempty = Fixed EmptyIBIOF
 
 instance Functor ImmutaballIOF where
 	fmap :: (a -> b) -> (ImmutaballIOF a -> ImmutaballIOF b)
-	fmap _f   (EmptyImmutaballIOF)      = EmptyImmutaballIOF
-	fmap  f   (PureImmutaballIOF a)     = PureImmutaballIOF (f a)
-	fmap  f   (UnfixImmutaballIOF ibio) = UnfixImmutaballIOF (f <$> ibio)
-	fmap  f   (JoinImmutaballIOF ibio)  = JoinImmutaballIOF (fmap f <$> ibio)
-	fmap  f   (AndImmutaballIOF a b)    = AndImmutaballIOF (f a) (f b)
-	fmap  f   (ThenImmutaballIOF a b)   = ThenImmutaballIOF (f a) (f b)
-	fmap  f   (BasicImmutaballIOF bio)  = BasicImmutaballIOF $ f <$> bio
+	fmap _f   (EmptyIBIOF)      = EmptyIBIOF
+	fmap  f   (PureIBIOF a)     = PureIBIOF (f a)
+	fmap  f   (UnfixIBIOF ibio) = UnfixIBIOF (f <$> ibio)
+	fmap  f   (JoinIBIOF ibio)  = JoinIBIOF (fmap f <$> ibio)
+	fmap  f   (AndIBIOF a b)    = AndIBIOF (f a) (f b)
+	fmap  f   (ThenIBIOF a b)   = ThenIBIOF (f a) (f b)
+	fmap  f   (BasicIBIOF bio)  = BasicIBIOF $ f <$> bio
 
 	fmap  f   (Wait async_ withAsync_)    = Wait async_ (f . withAsync_)
 	fmap  f   (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
 	fmap  f   (Atomically stm withStm)    = Atomically stm (f . withStm)
 
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
-joinImmutaballIOF = JoinImmutaballIOF
+joinImmutaballIOF = JoinIBIOF
 
 -- * mfix
 
@@ -173,22 +172,22 @@ unsafeFixImmutaballIOFTo :: MVar me -> (me -> ImmutaballIOF me) -> ImmutaballIOF
 unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixImmutaballIOException)
 	case f me_ of
-		_y@(EmptyImmutaballIOF)        -> throwIO EmptyFixImmutaballIOException
-		y@(PureImmutaballIOF a)        -> putMVar mme a >> return y
-		_y@(UnfixImmutaballIOF ibio)   -> return . UnfixImmutaballIOF . unsafeFixImmutaballIOFTo mme $ const ibio
+		_y@(EmptyIBIOF)        -> throwIO EmptyFixImmutaballIOException
+		y@(PureIBIOF a)        -> putMVar mme a >> return y
+		_y@(UnfixIBIOF ibio)   -> return . UnfixIBIOF . unsafeFixImmutaballIOFTo mme $ const ibio
 		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.
-		_y@(JoinImmutaballIOF (AndImmutaballIOF a b)) -> return (JoinImmutaballIOF (AndImmutaballIOF (unsafeFixImmutaballIOFTo mme (const a)) (JoinImmutaballIOF $ f <$> b)))
-		_y@(JoinImmutaballIOF (ThenImmutaballIOF a b)) -> return (JoinImmutaballIOF (ThenImmutaballIOF (unsafeFixImmutaballIOFTo mme (const a)) (JoinImmutaballIOF $ f <$> b)))
-		_y@(JoinImmutaballIOF ibio)    -> return $ JoinImmutaballIOF (unsafeFixImmutaballIOFTo mme . const <$> ibio)
-		_y@(AndImmutaballIOF  a b)     -> putMVar mme a >> return (JoinImmutaballIOF $ AndImmutaballIOF  (PureImmutaballIOF a) (f b))
-		_y@(ThenImmutaballIOF a b)     -> putMVar mme a >> return (JoinImmutaballIOF $ ThenImmutaballIOF (PureImmutaballIOF a) (f b))
-		_y@(BasicImmutaballIOF bio)    -> return . BasicImmutaballIOF . unsafeFixBasicIOFTo mme $ const bio
+		_y@(JoinIBIOF (AndIBIOF a b)) -> return (JoinIBIOF (AndIBIOF (unsafeFixImmutaballIOFTo mme (const a)) (JoinIBIOF $ f <$> b)))
+		_y@(JoinIBIOF (ThenIBIOF a b)) -> return (JoinIBIOF (ThenIBIOF (unsafeFixImmutaballIOFTo mme (const a)) (JoinIBIOF $ f <$> b)))
+		_y@(JoinIBIOF ibio)    -> return $ JoinIBIOF (unsafeFixImmutaballIOFTo mme . const <$> ibio)
+		_y@(AndIBIOF  a b)     -> putMVar mme a >> return (JoinIBIOF $ AndIBIOF  (PureIBIOF a) (f b))
+		_y@(ThenIBIOF a b)     -> putMVar mme a >> return (JoinIBIOF $ ThenIBIOF (PureIBIOF a) (f b))
+		_y@(BasicIBIOF bio)    -> return . BasicIBIOF . unsafeFixBasicIOFTo mme $ const bio
 		_y@(Wait async_ withAsync_)    -> return $ Wait       async_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withAsync_)
 		_y@(WithAsync ibio withAsync_) -> return $ WithAsync  ibio   ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withAsync_)
 		_y@(Atomically stm withStm)    -> return $ Atomically stm    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withStm)
 
 instance Applicative ImmutaballIOF where
-	pure = PureImmutaballIOF
+	pure = PureIBIOF
 	mf <*> ma = joinImmutaballIOF . flip fmap mf $ \f -> joinImmutaballIOF .  flip fmap ma $ \a -> pure (f a)
 instance Monad ImmutaballIOF where
 	return = pure
@@ -200,9 +199,9 @@ instance MonadFix ImmutaballIOF where
 {-
 instance Foldable ImmutaballIOF where
 	foldr :: (a -> b -> b) -> b -> ImmutaballIOF a -> b
-	foldr _reduce reduction0 (EmptyImmutaballIOF)  = reduction0
-	foldr  reduce reduction0 (PureImmutaballIOF a) = reduce a reduction0
-	foldr  reduce reduction0 (JoinImmutaballIOF ibio) = ??? $ foldr reduce reduction0 <$> ibio
+	foldr _reduce reduction0 (EmptyIBIOF)  = reduction0
+	foldr  reduce reduction0 (PureIBIOF a) = reduce a reduction0
+	foldr  reduce reduction0 (JoinIBIOF ibio) = ??? $ foldr reduce reduction0 <$> ibio
 -}
 
 -- | Add an ordering constraint.
@@ -214,20 +213,20 @@ infixr 6 <>>
 
 runImmutaballIOIO :: ImmutaballIOF (IO ()) -> IO ()
 
-runImmutaballIOIO (EmptyImmutaballIOF)      = return ()
-runImmutaballIOIO (PureImmutaballIOF a)     = a
-runImmutaballIOIO (UnfixImmutaballIOF ibio) = runImmutaballIOIO ibio
-runImmutaballIOIO (JoinImmutaballIOF ibio)  = runImmutaballIOIO $ runImmutaballIOIO <$> ibio
-runImmutaballIOIO (AndImmutaballIOF a b)    = a `par` b `par` concurrently_ a b
-runImmutaballIOIO (ThenImmutaballIOF a b)   = a >> b
-runImmutaballIOIO (BasicImmutaballIOF bio)  = runBasicIOIO bio
+runImmutaballIOIO (EmptyIBIOF)      = return ()
+runImmutaballIOIO (PureIBIOF a)     = a
+runImmutaballIOIO (UnfixIBIOF ibio) = runImmutaballIOIO ibio
+runImmutaballIOIO (JoinIBIOF ibio)  = runImmutaballIOIO $ runImmutaballIOIO <$> ibio
+runImmutaballIOIO (AndIBIOF a b)    = a `par` b `par` concurrently_ a b
+runImmutaballIOIO (ThenIBIOF a b)   = a >> b
+runImmutaballIOIO (BasicIBIOF bio)  = runBasicIOIO bio
 
 runImmutaballIOIO (Wait async_ withAsync_)    = wait async_ >>= withAsync_
 runImmutaballIOIO (WithAsync ibio withAsync_) = withAsync ibio withAsync_
 runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
-runBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF (runBasicImmutaballIO <$> getFixed bio)
+runBasicImmutaballIO bio = Fixed $ BasicIBIOF (runBasicImmutaballIO <$> getFixed bio)
 
 runDirectoryImmutaballIO :: DirectoryIO -> ImmutaballIO
 runDirectoryImmutaballIO dio = runBasicImmutaballIO . runDirectoryBasicIO $ dio
@@ -238,25 +237,25 @@ runSDLImmutaballIO sdlio = runBasicImmutaballIO . runSDLBasicIO $ sdlio
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
 mkEmptyImmutaballIO :: ImmutaballIO
-mkEmptyImmutaballIO = Fixed $ EmptyImmutaballIOF
+mkEmptyImmutaballIO = Fixed $ EmptyIBIOF
 
 mkPureImmutaballIO :: ImmutaballIO -> ImmutaballIO
-mkPureImmutaballIO ibio = Fixed $ PureImmutaballIOF ibio
+mkPureImmutaballIO ibio = Fixed $ PureIBIOF ibio
 
 mkUnfixImmutaballIO :: ImmutaballIO -> ImmutaballIO
-mkUnfixImmutaballIO ibio = Fixed $ UnfixImmutaballIOF (getFixed ibio)
+mkUnfixImmutaballIO ibio = Fixed $ UnfixIBIOF (getFixed ibio)
 
 mkJoinImmutaballIO :: ImmutaballIO -> ImmutaballIO
-mkJoinImmutaballIO ibio = Fixed $ JoinImmutaballIOF (getFixed <$> getFixed ibio)
+mkJoinImmutaballIO ibio = Fixed $ JoinIBIOF (getFixed <$> getFixed ibio)
 
 mkAndImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
-mkAndImmutaballIO a b = Fixed $ AndImmutaballIOF a b
+mkAndImmutaballIO a b = Fixed $ AndIBIOF a b
 
 mkThenImmutaballIO :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
-mkThenImmutaballIO a b = Fixed $ ThenImmutaballIOF a b
+mkThenImmutaballIO a b = Fixed $ ThenIBIOF a b
 
 mkBasicImmutaballIO :: BasicIOF ImmutaballIO -> ImmutaballIO
-mkBasicImmutaballIO bio = Fixed $ BasicImmutaballIOF bio
+mkBasicImmutaballIO bio = Fixed $ BasicIBIOF bio
 
 mkWait :: Async a -> (a -> ImmutaballIO) -> ImmutaballIO
 mkWait async_ withAsync_ = Fixed $ Wait async_ withAsync_

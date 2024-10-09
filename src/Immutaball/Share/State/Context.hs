@@ -87,7 +87,7 @@ requireBasics = proc (cxt0, _request) -> do
 	requireVideo -< cxt0
 
 -- | Handles common frame finishing like swapping the scene on paint.
--- TODO:
 finishFrame :: Wire ImmutaballM IBStateContext ()
-finishFrame = proc _cxt0 -> do
+finishFrame = proc cxt -> do
+	() <- monadic -< maybe (pure ()) (liftIBIO . BasicImmutaballIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
 	returnA -< ()

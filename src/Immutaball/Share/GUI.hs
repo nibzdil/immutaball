@@ -156,13 +156,15 @@ data WidgetResponse id =
 	deriving (Eq, Ord, Show)
 makeClassyPrisms ''WidgetResponse
 
--- TODO:
+-- TODO: handle mouse input.
+-- TODO: paint.
+
 mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
 mkGUI initialWidgets = proc request -> do
 	resetWidgets <- returnA -< either (const Nothing) Just $ matching _ResetGUI request
 	_widgets <- hold initialWidgets -< resetWidgets
 
-	widgetsReq <- returnA -< resetWidgets
+	widgetsReq  <- returnA -< resetWidgets
 	widgetBy    <- mkWidgetsAnalysis' mkWidgetBy    -< widgetsReq
 	widgetIdx   <- mkWidgetsAnalysis' mkWidgetIdx   -< widgetsReq
 	widgetToIdx <- mkWidgetsAnalysis' mkWidgetToIdx -< widgetsReq
@@ -173,14 +175,18 @@ mkGUI initialWidgets = proc request -> do
 		lastFocus <- delay 0 -< currentFocus
 		newFocus <- case request of
 			GUISetFocus wid_ -> returnA -< flip M.lookup widgetBy wid_ >>= flip M.lookup widgetToIdx
-			GUIDrive (Keybd char _down) -> returnA -<
+			GUIDrive (Keybd char True) -> returnA -<
 				if' (char == fromIntegral Raw.SDLK_DOWN) (Just $ nextWidgetDirect widgetIdx lastFocus) .
 				if' (char == fromIntegral Raw.SDLK_UP  ) (Just $ prevWidgetDirect widgetIdx lastFocus) $
 				Nothing
 			_ -> returnA -< Nothing
 
-	-- TODO:
-	returnA -< NoWidgetAction
+	response <- returnA -< case request of
+		GUIDrive (Keybd char True) ->
+			if' (char == fromIntegral Raw.SDLK_RETURN) (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus) $
+			NoWidgetAction
+		_ -> NoWidgetAction
+	returnA -< response
 	where
 		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()

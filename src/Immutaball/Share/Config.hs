@@ -12,7 +12,8 @@ module Immutaball.Share.Config
 		StaticConfig'(..), minClockPeriod, maxClockPeriod, maxFrameEvents,
 			allowWireForks, maxStepFrameSize, maxResponseFrameSize,
 			defaultStaticDataDir, defaultUserDataDir, defaultUserConfigDir,
-			configFilename, x'cfgInitialWireWithCxt,
+			configFilename, x'cfgInitialWireWithCxt, immutaballFont,
+			immutaballFontSize,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -72,7 +73,11 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 
 	_configFilename :: FilePath,
 
-	_x'cfgInitialWireWithCxt :: Maybe initialWireWithCxt
+	_x'cfgInitialWireWithCxt :: Maybe initialWireWithCxt,
+
+	-- | Relative to the static data dir.
+	_immutaballFont     :: FilePath,
+	_immutaballFontSize :: Integer
 }
 makeLenses ''StaticConfig'
 
@@ -90,8 +95,11 @@ defaultStaticConfig = StaticConfig {
 	_defaultUserDataDir   = Left $ GetXdgDirectoryDataSync "immutaball" id,
 	_defaultUserConfigDir = Left $ GetXdgDirectoryConfigSync "immutaball" id,
 
-	_configFilename = "neverballrc",
-	_x'cfgInitialWireWithCxt = Nothing
+	_configFilename          = "neverballrc",
+	_x'cfgInitialWireWithCxt = Nothing,
+
+	_immutaballFont     = "ttf/DejaVuSans-Bold.ttf",
+	_immutaballFontSize = 12
 }
 
 type Neverballrc = Config

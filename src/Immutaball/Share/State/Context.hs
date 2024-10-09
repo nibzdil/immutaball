@@ -10,7 +10,7 @@
 module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
-			ibSDLGLContext,
+			ibSDLGLContext, ibSDLFont,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
@@ -27,12 +27,15 @@ import Data.Bits
 import Control.Lens
 import qualified Data.Text as T
 import Graphics.GL.Core45
+import qualified SDL.Font as SDL.Font  -- (sdl2-ttf)
 import SDL.Vect as SDL
 import SDL.Video as SDL
 --import SDL.Video.OpenGL as SDL
+import System.FilePath
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context
+import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
@@ -50,7 +53,8 @@ data IBStateContext = IBStateContext {
 	_ibNeverballrc :: Neverballrc,
 
 	_ibSDLWindow :: Maybe (SDL.Window),
-	_ibSDLGLContext :: Maybe (SDL.GLContext)
+	_ibSDLGLContext :: Maybe (SDL.GLContext),
+	_ibSDLFont :: Maybe (SDL.Font.Font)
 }
 makeLenses ''IBStateContext
 
@@ -61,7 +65,8 @@ initialStateCxt cxt = IBStateContext {
 	_ibNeverballrc = cxt^.ibNeverballrc0,
 
 	_ibSDLWindow = Nothing,
-	_ibSDLGLContext = Nothing
+	_ibSDLGLContext = Nothing,
+	_ibSDLFont = Nothing
 }
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
@@ -84,10 +89,31 @@ requireVideo = proc cxt0 -> do
 			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
 			returnA -< cxt1
 
+requireFont :: Wire ImmutaballM IBStateContext IBStateContext
+requireFont = proc cxt0 -> do
+	case (cxt0^.ibSDLFont) of
+		Just _ -> returnA -< cxt0
+		Nothing -> do
+			let path = cxt0^.ibContext.ibDirs.ibStaticDataDir </> cxt0^.ibContext.ibStaticConfig.immutaballFont
+			let size = cxt0^.ibContext.ibStaticConfig.immutaballFontSize
+			-- Since this is likely the first time a data file is accessed,
+			-- check the path exists and warn if it doesn't with a helpful
+			-- message that ‘-d data-path’ needs to be correct.
+			exists <- monadic -< liftIBIO . BasicIBIOF $ DoesPathExistSync path id
+			() <- warnIf -< (not exists, ("Warning: ./immutaball -d PATH_TO_DATA_DIR must be passed with a path to a compiled neverball data directory; failed to find font file: " ++ path))
+			font <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLTTFLoad path (fromIntegral size) id
+			let cxt1 = cxt0 & (ibSDLFont.~Just font)
+			returnA -< cxt1
+	where
+		warnIf :: Wire ImmutaballM (Bool, String) ()
+		warnIf = proc (condition, msg) -> do
+			() <- monadic -< if' (not condition) (pure ()) . liftIBIO . BasicIBIOF $ PutStrLn msg ()
+			returnA -< ()
+
 -- | Also handles common set-up tasks like clearing the color for rendering.
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
 requireBasics = proc (cxt0, _request) -> do
-	cxt <- requireVideo -< cxt0
+	cxt <- requireFont <<< requireVideo -< cxt0
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClearColor 0.1 0.1 0.9 1.0 ()
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) ()
 	returnA -< cxt

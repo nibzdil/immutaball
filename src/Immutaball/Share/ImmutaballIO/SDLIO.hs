@@ -33,7 +33,8 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		mkSDLPollEventSync,
 		mkSDLWithWindow,
 		mkSDLWithGLContext,
-		mkSDLGLSwapWindow
+		mkSDLGLSwapWindow,
+		mkSDLTTFLoad
 	) where
 
 import Prelude ()
@@ -80,6 +81,7 @@ data SDLIOF me =
 	-- -- _| See notes on 'glDeleleteContext' and 'glFinish' before using.
 	-- _| SDLGLDeleteContext SDL.Video.OpenGL.GLContext
 	| SDLGLSwapWindow SDL.Video.Window me
+	| SDLTTFLoad FilePath SDL.Font.PointSize (SDL.Font.Font -> me)
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
 	fmap f (SDLWithInit subsystems sdlio)       = SDLWithInit subsystems (f sdlio)
@@ -89,6 +91,7 @@ instance Functor SDLIOF where
 	fmap f (SDLWithWindow title cfg withWindow) = SDLWithWindow title cfg (f . withWindow)
 	fmap f (SDLWithGLContext window withCxt)    = SDLWithGLContext window (f . withCxt)
 	fmap f (SDLGLSwapWindow window withUnit)    = SDLGLSwapWindow window (f withUnit)
+	fmap f (SDLTTFLoad path size withFont)      = SDLTTFLoad path size (f . withFont)
 
 runSDLIO :: SDLIO -> IO ()
 runSDLIO sdlio = cata runSDLIOIO sdlio
@@ -156,6 +159,7 @@ unsafeFixSDLIOFTo mme f = unsafePerformIO $ do
 		_y@(SDLWithWindow title cfg withWindow) -> return $ SDLWithWindow    title cfg ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withWindow)
 		_y@(SDLWithGLContext window withCxt)    -> return $ SDLWithGLContext window    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withCxt)
 		y@( SDLGLSwapWindow _window me)         -> putMVar mme me >> return y
+		_y@(SDLTTFLoad path size withFont)      -> return $ SDLTTFLoad       path size ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withFont)
 
 -- * Runners
 
@@ -182,6 +186,9 @@ runSDLIOIO (SDLWithGLContext window withCxt) = do
 runSDLIOIO (SDLGLSwapWindow window withUnit) = do
 	SDL.Video.OpenGL.glSwapWindow window
 	withUnit
+runSDLIOIO (SDLTTFLoad path size withFont) = do
+	font <- SDL.Font.load path size
+	withFont font
 
 -- * SDLIO aliases that apply the Fixed wrapper
 
@@ -205,3 +212,6 @@ mkSDLWithGLContext window withCxt = Fixed $ SDLWithGLContext window withCxt
 
 mkSDLGLSwapWindow :: SDL.Video.Window -> SDLIO -> SDLIO
 mkSDLGLSwapWindow window withUnit = Fixed $ SDLGLSwapWindow window withUnit
+
+mkSDLTTFLoad :: FilePath -> SDL.Font.PointSize -> (SDL.Font.Font -> SDLIO) -> SDLIO
+mkSDLTTFLoad path size withFont = Fixed $ SDLTTFLoad path size withFont

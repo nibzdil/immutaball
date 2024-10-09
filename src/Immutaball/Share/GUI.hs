@@ -234,35 +234,35 @@ prevWidgetDirect widgetIdx idx = tryNextWidget (idx-1)
 -- | The order is input order except container hierarchy takes precedence.
 -- Does not check for cycles.
 nextWidgetHier :: (Eq id, Ord id) => M.Map id (Widget id) -> (id -> [Widget id]) -> id -> id
-nextWidgetHier widgetBy getChildren wid0 = maybe wid0 (flip nextWidgetUnder (Just wid0) . (^.wparent)) $ M.lookup wid0 widgetBy
+nextWidgetHier widgetBy getChildren wid0 = maybe wid0 (nextWidgetUnder True (Just wid0) . (^.wparent)) $ M.lookup wid0 widgetBy
 	where
 		wBy = flip M.lookup widgetBy
-		nextWidgetUnder parent mwid
+		nextWidgetUnder isFirst mwid parent
 			| mwid == Just wid0 = wid0
 			| Nothing <- mwid
 			, Just (rw@RootWidget {}) <- wBy parent =
-				nextWidgetUnder parent (Just (rw^.wid))
+				nextWidgetUnder isFirst (Just (rw^.wid)) parent
 			| otherwise = withRemaining . maybe id (\wid_ -> drop 1 . dropWhile (\w -> (w^.wid) /= wid_)) mwid $ getChildren parent
 			where
-				withRemaining []                                = maybe wid0 (\parent_ -> nextWidgetUnder (parent_^.wparent) (Just (parent_^.wid))) $ wBy parent
+				withRemaining []                                = maybe wid0 (\parent_ -> nextWidgetUnder False (Just (parent_^.wid)) (parent_^.wparent)) $ wBy parent
 				withRemaining (w:_remaining) | (w^.wid) == wid0 = w^.wid
 				withRemaining (w:_remaining) | isSelectable w   = w^.wid
-				withRemaining (w:_remaining) | otherwise        = nextWidgetUnder (w^.wid) Nothing
+				withRemaining (w:_remaining) | otherwise        = nextWidgetUnder False Nothing (w^.wid)
 prevWidgetHier :: (Eq id, Ord id) => M.Map id (Widget id) -> (id -> [Widget id]) -> id -> id
-prevWidgetHier widgetBy getChildren wid0 = maybe wid0 (flip prevWidgetUnder (Just wid0) . (^.wparent)) $ M.lookup wid0 widgetBy
+prevWidgetHier widgetBy getChildren wid0 = maybe wid0 (prevWidgetUnder True (Just wid0) . (^.wparent)) $ M.lookup wid0 widgetBy
 	where
 		wBy = flip M.lookup widgetBy
-		prevWidgetUnder parent mwid
+		prevWidgetUnder isFirst mwid parent
 			| mwid == Just wid0 = wid0
 			| Nothing <- mwid
 			, Just (rw@RootWidget {}) <- wBy parent =
-				prevWidgetUnder parent (Just (rw^.wid))
+				prevWidgetUnder isFirst (Just (rw^.wid)) parent
 			| otherwise = withRemaining . maybe id (\wid_ -> drop 1 . dropWhile (\w -> (w^.wid) /= wid_) . reverse) mwid $ getChildren parent
 			where
-				withRemaining []                                = maybe wid0 (\parent_ -> prevWidgetUnder (parent_^.wparent) (Just (parent_^.wid))) $ wBy parent
+				withRemaining []                                = maybe wid0 (\parent_ -> prevWidgetUnder False (Just (parent_^.wid)) (parent_^.wparent)) $ wBy parent
 				withRemaining (w:_remaining) | (w^.wid) == wid0 = w^.wid
 				withRemaining (w:_remaining) | isSelectable w   = w^.wid
-				withRemaining (w:_remaining) | otherwise        = prevWidgetUnder (w^.wid) Nothing
+				withRemaining (w:_remaining) | otherwise        = prevWidgetUnder False Nothing (w^.wid)
 
 isSelectable :: Widget id -> Bool
 isSelectable (ButtonWidget {}) = True

@@ -27,7 +27,8 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		runSDLIOIO,
 
 		-- * SDLIO aliases that apply the Fixed wrapper
-		mkSDLInit,
+		mkSDLWithInit,
+		mkSDLWithTTFInit,
 		mkSDLPollEvent,
 		mkSDLPollEventSync,
 		mkSDLWithWindow,
@@ -42,6 +43,7 @@ import Control.Concurrent.Async
 import qualified Data.Text as T
 import Graphics.GL.Core45
 import qualified SDL.Event
+import qualified SDL.Font
 import qualified SDL.Init
 import qualified SDL.Video
 import qualified SDL.Video.OpenGL
@@ -60,6 +62,7 @@ import System.IO.Unsafe (unsafePerformIO)
 type SDLIO = Fixed SDLIOF
 data SDLIOF me =
 	  SDLWithInit [SDL.Init.InitFlag] me
+	| SDLWithTTFInit me
 	-- | WARNING: do not call directly to avoid undefined behavior, but only
 	-- with OS thread management compliant with the requirements of
 	-- 'SDL.Event.pollEvent':
@@ -80,6 +83,7 @@ data SDLIOF me =
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
 	fmap f (SDLWithInit subsystems sdlio)       = SDLWithInit subsystems (f sdlio)
+	fmap f (SDLWithTTFInit sdlio)               = SDLWithTTFInit (f sdlio)
 	fmap f (SDLPollEvent withMEvent)            = SDLPollEvent (f . withMEvent)
 	fmap f (SDLPollEventSync withMEvent)        = SDLPollEventSync (f . withMEvent)
 	fmap f (SDLWithWindow title cfg withWindow) = SDLWithWindow title cfg (f . withWindow)
@@ -146,6 +150,7 @@ unsafeFixSDLIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixSDLIOException)
 	case f me_ of
 		y@( SDLWithInit _subsystems me)         -> putMVar mme me >> return y
+		y@( SDLWithTTFInit me)                  -> putMVar mme me >> return y
 		_y@(SDLPollEvent withMEvent)            -> return $ SDLPollEvent               ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMEvent)
 		_y@(SDLPollEventSync withMEvent)        -> return $ SDLPollEventSync           ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMEvent)
 		_y@(SDLWithWindow title cfg withWindow) -> return $ SDLWithWindow    title cfg ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withWindow)
@@ -159,6 +164,10 @@ runSDLIOIO (SDLWithInit subsystems sdlioio) = do
 	SDL.Init.initialize subsystems
 	sdlioio
 	SDL.Init.quit
+runSDLIOIO (SDLWithTTFInit sdlioio) = do
+	SDL.Font.initialize
+	sdlioio
+	SDL.Font.quit
 runSDLIOIO (SDLPollEvent withMEvent) = withAsync SDL.Event.pollEvent withMEvent
 runSDLIOIO (SDLPollEventSync withMEvent) = SDL.Event.pollEvent >>= withMEvent
 runSDLIOIO (SDLWithWindow title cfg withWindow) = do
@@ -176,8 +185,11 @@ runSDLIOIO (SDLGLSwapWindow window withUnit) = do
 
 -- * SDLIO aliases that apply the Fixed wrapper
 
-mkSDLInit :: [SDL.Init.InitFlag] -> SDLIO -> SDLIO
-mkSDLInit subsystems sdlio = Fixed $ SDLWithInit subsystems sdlio
+mkSDLWithInit :: [SDL.Init.InitFlag] -> SDLIO -> SDLIO
+mkSDLWithInit subsystems sdlio = Fixed $ SDLWithInit subsystems sdlio
+
+mkSDLWithTTFInit :: SDLIO -> SDLIO
+mkSDLWithTTFInit sdlio = Fixed $ SDLWithTTFInit sdlio
 
 mkSDLPollEvent :: (Async (Maybe SDL.Event.Event) -> SDLIO) -> SDLIO
 mkSDLPollEvent withMEvent = Fixed $ SDLPollEvent withMEvent

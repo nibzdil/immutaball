@@ -50,6 +50,7 @@ withSDL :: ContextConfig' (IBContext' initialWire) initialWire -> (IBContext' in
 withSDL cxtCfg withCxt =
 	let initFlags = if' (cxtCfg^.cxtCfgHeadless) [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
 	mkBasicImmutaballIO . SDLIO . SDLWithInit initFlags .
+	mkBasicImmutaballIO . SDLIO . SDLWithTTFInit .
 	withSDLManager $ \sdlManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,

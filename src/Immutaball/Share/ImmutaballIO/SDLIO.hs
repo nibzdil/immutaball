@@ -9,7 +9,7 @@
 
 module Immutaball.Share.ImmutaballIO.SDLIO
 	(
-		-- * DirectoryIO
+		-- * SDLIO
 		SDLIO,
 		SDLIOF(..),
 		runSDLIO,
@@ -55,7 +55,7 @@ import Data.Typeable
 import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
 import System.IO.Unsafe (unsafePerformIO)
 
--- * DirectoryIO
+-- * SDLIO
 
 type SDLIO = Fixed SDLIOF
 data SDLIOF me =

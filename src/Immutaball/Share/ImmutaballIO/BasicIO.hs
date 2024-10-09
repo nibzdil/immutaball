@@ -28,6 +28,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		runBasicIOIO,
 		runDirectoryBasicIO,
 		runSDLBasicIO,
+		runGLBasicIO,
 
 		-- * BasicIO aliases that apply the Fixed wrapper
 		mkEmptyBasicIO,
@@ -57,6 +58,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		mkCreateDirectoryIfMissing,
 		mkForkOS,
 		mkSDLIO,
+		mkGLIO,
 		mkDelayUs,
 		mkGetUs,
 
@@ -83,6 +85,7 @@ import qualified Data.Text.IO.Utf8 as TIO
 import System.Directory
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
+import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Utils
 
@@ -130,6 +133,7 @@ data BasicIOF me =
 	| ForkOS me me
 
 	| SDLIO (SDLIOF me)
+	| GLIO (GLIOF me)
 
 	| DelayUs Integer me
 	| GetUs (Integer -> me)
@@ -180,6 +184,7 @@ instance Functor BasicIOF where
 	fmap  f (ForkOS bio withUnit)                      = ForkOS (f bio) (f withUnit)
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
+	fmap  f (GLIO glio)   = GLIO  (f <$> glio)
 
 	fmap  f (DelayUs us withUnit) = DelayUs us (f withUnit)
 	fmap  f (GetUs withUs)        = GetUs (f . withUs)
@@ -276,6 +281,7 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		y@( ForkOS            _os me)                     -> putMVar mme me >> return y
 
 		_y@(SDLIO sdlio) -> return . SDLIO . unsafeFixSDLIOFTo mme $ const sdlio
+		_y@(GLIO  glio)  -> return . GLIO  . unsafeFixGLIOFTo  mme $ const glio
 
 		y@( DelayUs _us me) -> putMVar mme me >> return y
 		_y@(GetUs   withUs) -> return $ GetUs ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withUs)
@@ -314,6 +320,7 @@ runBasicIOIO (ReadTextSync path mwithErr withContents)     =
 runBasicIOIO (CreateDirectoryIfMissing path withUnit)      = createDirectoryIfMissing True path >> withUnit
 runBasicIOIO (ForkOS bio withUnit)                         = (void . forkOS) bio >> withUnit
 runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
+runBasicIOIO (GLIO  glio)                                  = runGLIOIO  $ glio
 runBasicIOIO (DelayUs us withUnit)                         = delay us >> withUnit
 runBasicIOIO (GetUs withUs)                                = getUsIO >>= withUs
 
@@ -322,7 +329,9 @@ runDirectoryBasicIO dio = Fixed . DirectoryIO $ runDirectoryBasicIO <$> getFixed
 
 runSDLBasicIO :: SDLIO -> BasicIO
 runSDLBasicIO sdlio = Fixed . SDLIO $ runSDLBasicIO <$> getFixed sdlio
---runSDLBasicIO (Fixed (SDLInit subsystems sdlio)) = Fixed . SDLIO $ SDLInit subsystems (runSDLBasicIO sdlio)
+
+runGLBasicIO :: GLIO -> BasicIO
+runGLBasicIO glio = Fixed . GLIO $ runGLBasicIO <$> getFixed glio
 
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
@@ -406,6 +415,9 @@ mkForkOS bio withUnit = Fixed $ ForkOS bio withUnit
 
 mkSDLIO :: SDLIOF BasicIO -> BasicIO
 mkSDLIO sdlio = Fixed $ SDLIO sdlio
+
+mkGLIO :: GLIOF BasicIO -> BasicIO
+mkGLIO glio = Fixed $ GLIO glio
 
 -- | Microseconds thread delay, with ‘unbounded-delays’.
 mkDelayUs :: Integer -> BasicIO -> BasicIO

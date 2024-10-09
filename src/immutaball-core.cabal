@@ -115,6 +115,7 @@ common executable-components
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.ImmutaballIO.BasicIO
 		Immutaball.Share.ImmutaballIO.DirectoryIO
+		Immutaball.Share.ImmutaballIO.GLIO
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Types
@@ -159,6 +160,7 @@ library
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.ImmutaballIO.BasicIO
 		Immutaball.Share.ImmutaballIO.DirectoryIO
+		Immutaball.Share.ImmutaballIO.GLIO
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Types

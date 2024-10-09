@@ -26,6 +26,7 @@ module Immutaball.Share.GUI
 		WidgetRequest(..), AsWidgetRequest(..),
 		WidgetResponse(..), AsWidgetResponse(..),
 		mkGUI,
+		mkWidgetsAnalysis,
 		mkWidgetBy,
 		mkWidgetIdx,
 		mkGetChildren,
@@ -155,23 +156,27 @@ makeClassyPrisms ''WidgetResponse
 -- TODO:
 mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
 mkGUI initialWidgets = proc request -> do
-	widgets <- hold initialWidgets -< either (const Nothing) Just $ matching _ResetGUI request
-	widgetsReq <- returnA -< (widgets, request)
-	_widgetBy <- mkWidgetsAnalysis mkWidgetBy -< widgetsReq
-	_widgetIdx <- mkWidgetsAnalysis mkWidgetIdx -< widgetsReq
-	_getChildren <- mkWidgetsAnalysis mkGetChildren -< widgetsReq
+	resetWidgets <- returnA -< either (const Nothing) Just $ matching _ResetGUI request
+	_widgets <- hold initialWidgets -< resetWidgets
+	widgetsReq <- returnA -< resetWidgets
+	_widgetBy <- mkWidgetsAnalysis' mkWidgetBy -< widgetsReq
+	_widgetIdx <- mkWidgetsAnalysis' mkWidgetIdx -< widgetsReq
+	_getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
 
 	--_currentFocus <- hold 0 -< Nothing
 	-- TODO:
 	returnA -< NoWidgetAction
 	where
-		-- | Only recalculates the analysis on reset.
-		mkWidgetsAnalysis :: ([Widget id] -> a) -> Wire ImmutaballM ([Widget id], WidgetRequest id) a
-		mkWidgetsAnalysis analyzer = do proc (widgets, request) -> hold (analyzer initialWidgets) -< either (const Nothing) (const . Just $ analyzer widgets) $ matching _ResetGUI request
+		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()
 		_warn msg = proc () -> do
 			_ <- monadic -< pure . liftIBIO . BasicImmutaballIOF $ PutStrLn msg ()
 			returnA -< ()
+
+-- | Only recalculates the analysis on reset.
+mkWidgetsAnalysis :: [Widget id] -> ([Widget id] -> a) -> Wire ImmutaballM (Maybe [Widget id]) a
+mkWidgetsAnalysis initialWidgets analyzer = proc resetWidgets -> do
+	hold (analyzer initialWidgets) -< analyzer <$> resetWidgets
 
 mkWidgetBy :: (Eq id, Ord id) => [Widget id] -> M.Map id (Widget id)
 mkWidgetBy widgets = M.fromList . flip map widgets $ \w -> ((w^.wid), w)

@@ -40,8 +40,7 @@ import Immutaball.Prelude
 
 import Control.Concurrent.Async
 import qualified Data.Text as T
--- TODO: file bug report: glFinish is missing in the Core modules.
-import qualified Graphics.GL.Internal.Shared (glFinish)
+import Graphics.GL.Core45
 import qualified SDL.Event
 import qualified SDL.Init
 import qualified SDL.Video
@@ -169,7 +168,7 @@ runSDLIOIO (SDLWithWindow title cfg withWindow) = do
 runSDLIOIO (SDLWithGLContext window withCxt) = do
 	cxt <- SDL.Video.OpenGL.glCreateContext window
 	withCxt cxt
-	Graphics.GL.Internal.Shared.glFinish
+	glFinish
 	SDL.Video.OpenGL.glDeleteContext cxt
 runSDLIOIO (SDLGLSwapWindow window withUnit) = do
 	SDL.Video.OpenGL.glSwapWindow window

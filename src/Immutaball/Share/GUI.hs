@@ -53,6 +53,7 @@ import Data.Maybe
 
 import Control.Lens
 import qualified Data.Map.Lazy as M
+import qualified Data.Text as T
 import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Share.ImmutaballIO
@@ -327,7 +328,15 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 	-- TODO: clean up textures; just debugging for now to test what I have so far.
 	-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 	-- TODO test
-	returnA -< cxtn
+	case widget of
+		(ButtonWidget button) -> do
+			(((w, h), name), cxtnp1) <- cachingRenderText -< (T.pack $ button^.text, cxtn)
+			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
+			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
+			() <- monadic -< unsafePerformIO $ do
+				return $ pure ()
+			returnA -< cxtnp1
+		_ -> returnA -< cxtn
 
 -- Optionally this could be moved to static config.
 focusDecayTime :: Float

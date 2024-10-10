@@ -22,6 +22,8 @@ module Immutaball.Share.State.Context
 		finishFrame,
 
 		-- * Utils
+		newTextureNameWithoutGenText,
+		freeTextureNameWithoutGenText,
 		newTextureName,
 		freeTextureName,
 		createTexture,
@@ -195,8 +197,10 @@ finishFrame = proc cxt -> do
 
 -- * Utils
 
-newTextureName :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
-newTextureName = proc cxtn -> do
+-- Edit: actually we need glGenTextures to create names.
+-- So don't use the 'WithoutGenText' versions since they won't work.
+newTextureNameWithoutGenText :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
+newTextureNameWithoutGenText = proc cxtn -> do
 	(glTextureNames, cxtnp1) <- requireGLTextureNames -< cxtn
 	(name, err) <- monadic -< liftIBIO . flip Atomically id $ do
 		(used, freed) <- readTVar glTextureNames
@@ -209,8 +213,8 @@ newTextureName = proc cxtn -> do
 	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
 	returnA -< (name, cxtnp1)
 
-freeTextureName :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
-freeTextureName = proc (name, cxtn) -> do
+freeTextureNameWithoutGenText :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
+freeTextureNameWithoutGenText = proc (name, cxtn) -> do
 	(glTextureNames, cxtnp1) <- requireGLTextureNames -< cxtn
 	err <- monadic -< liftIBIO . flip Atomically id $ do
 		(used, freed) <- readTVar glTextureNames
@@ -224,6 +228,15 @@ freeTextureName = proc (name, cxtn) -> do
 	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
 	returnA -< cxtnp1
 
+newTextureName :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
+newTextureName = proc cxtn -> do
+	[name] <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLGenTextures 1 id
+	returnA -< (name, cxtn)
+
+freeTextureName :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
+freeTextureName = proc (_name, cxtn) -> do
+	returnA -< cxtn
+
 -- | Tight RGBA.
 createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
@@ -232,6 +245,7 @@ createTexture = proc (((w, h), image), cxtn) -> do
 		[
 			GLBindTexture GL_TEXTURE_2D name (),
 			GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
+			-- TODO: mipmap.
 		]
 	returnA -< (name, cxtnp1)
 

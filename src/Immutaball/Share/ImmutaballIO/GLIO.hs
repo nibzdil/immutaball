@@ -26,12 +26,14 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		-- * Runners
 		runGLIOIO,
 		hglTexImage2D,
+		hglGenTextures,
 		hglDeleteTextures,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkGLClear,
 		mkGLClearColor,
 		mkGLTexImage2D,
+		mkGLGenTextures,
 		mkGLBindTexture,
 		mkGLDeleteTextures
 	) where
@@ -68,6 +70,8 @@ data GLIOF me =
 	-- | Set a texture.
 	| GLTexImage2D GLenum GLint GLint GLsizei GLsizei GLint GLenum GLenum BL.ByteString me
 	-- | Create a texture.
+	| GLGenTextures GLsizei ([GLuint] -> me)
+	-- | Set OpenGL current texture.
 	| GLBindTexture GLenum GLuint me
 	-- | Delete a texture.
 	| GLDeleteTextures [GLuint] me
@@ -77,8 +81,9 @@ instance Functor GLIOF where
 	fmap f (GLClearColor red green blue alpha withUnit) = GLClearColor red green blue alpha (f withUnit)
 
 	fmap f (GLTexImage2D     target level internalformat width height border format type_ data_ withUnit) = GLTexImage2D target level internalformat width height border format type_ data_ (f withUnit)
-	fmap f (GLBindTexture    target texture withUnit) = GLBindTexture    target texture (f withUnit)
-	fmap f (GLDeleteTextures textures       withUnit) = GLDeleteTextures textures       (f withUnit)
+	fmap f (GLGenTextures    numNames       withNames) = GLGenTextures    numNames       (f . withNames)
+	fmap f (GLBindTexture    target texture withUnit)  = GLBindTexture    target texture (f withUnit)
+	fmap f (GLDeleteTextures textures       withUnit)  = GLDeleteTextures textures       (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -143,8 +148,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLClearColor _red _green _blue _alpha me) -> putMVar mme me >> return y
 
 		y@( GLTexImage2D     _target _level _internalformat _width _height _border _format _type _data me) -> putMVar mme me >> return y
-		y@( GLBindTexture    _target _texture me) -> putMVar mme me >> return y
-		y@( GLDeleteTextures _textures        me) -> putMVar mme me >> return y
+		_y@(GLGenTextures    numNames         withNames) -> return $ GLGenTextures numNames ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
+		y@( GLBindTexture    _target _texture me)        -> putMVar mme me >> return y
+		y@( GLDeleteTextures _textures        me)        -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -152,6 +158,7 @@ runGLIOIO :: GLIOF (IO ()) -> IO ()
 runGLIOIO (GLClear          mask_2               glio) = glClear       mask_2               >> glio
 runGLIOIO (GLClearColor     red green blue alpha glio) = glClearColor  red green blue alpha >> glio
 runGLIOIO (GLTexImage2D     target level internalformat width height border format type_ data_ glio) = hglTexImage2D target level internalformat width height border format type_ data_ >> glio
+runGLIOIO (GLGenTextures    numNames             withNames) = hglGenTextures numNames       >>= withNames
 runGLIOIO (GLBindTexture    target texture       glio) = glBindTexture target texture       >> glio
 runGLIOIO (GLDeleteTextures textures             glio) = hglDeleteTextures textures         >> glio
 
@@ -159,6 +166,14 @@ hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLen
 hglTexImage2D target level internalformat width height border format type_ data_ = do
 	let strictCopy = BL.toStrict data_  -- bytestrings only provides a CString interface to strict.
 	BS.useAsCString strictCopy $ \ptr -> glTexImage2D target level internalformat width height border format type_ (castPtr ptr)
+
+hglGenTextures :: GLsizei -> IO [GLuint]
+hglGenTextures numNames = do
+	let len = fromIntegral numNames  :: Integer
+	array_ <- newArray_ (0, numNames - 1)
+	withStorableArray array_ $ \ptr -> glGenTextures (fromIntegral len) ptr
+	names <- getElems array_
+	return names
 
 hglDeleteTextures :: [GLuint] -> IO ()
 hglDeleteTextures textures = do
@@ -176,6 +191,9 @@ mkGLClearColor red green blue alpha glio = Fixed $ GLClearColor red green blue a
 
 mkGLTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> GLIO -> GLIO
 mkGLTexImage2D target level internalformat width height border format type_ data_ glio = Fixed $ GLTexImage2D target level internalformat width height border format type_ data_ glio
+
+mkGLGenTextures :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
+mkGLGenTextures numNames withNames = Fixed $ GLGenTextures numNames withNames
 
 mkGLBindTexture :: GLenum -> GLuint -> GLIO -> GLIO
 mkGLBindTexture target texture glio = Fixed $ GLBindTexture target texture glio

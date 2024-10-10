@@ -112,6 +112,8 @@ common executable-components
 		Immutaball.Share.Context
 		Immutaball.Share.Context.Config
 		Immutaball.Share.Controller
+		Immutaball.Share.GLManager
+		Immutaball.Share.GLManager.Types
 		Immutaball.Share.GUI
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.ImmutaballIO.BasicIO
@@ -158,6 +160,8 @@ library
 		Immutaball.Share.Context
 		Immutaball.Share.Context.Config
 		Immutaball.Share.Controller
+		Immutaball.Share.GLManager
+		Immutaball.Share.GLManager.Types
 		Immutaball.Share.GUI
 		Immutaball.Share.ImmutaballIO
 		Immutaball.Share.ImmutaballIO.BasicIO

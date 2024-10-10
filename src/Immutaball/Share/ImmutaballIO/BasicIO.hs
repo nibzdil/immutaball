@@ -72,6 +72,7 @@ import Immutaball.Prelude
 import Control.Concurrent
 --import Control.Exception (catch, throwIO)
 import Control.Monad
+import Control.Monad.Fix
 import Data.Time.Clock.System
 import System.Environment
 import System.Exit
@@ -188,6 +189,16 @@ instance Functor BasicIOF where
 
 	fmap  f (DelayUs us withUnit) = DelayUs us (f withUnit)
 	fmap  f (GetUs withUs)        = GetUs (f . withUs)
+
+instance Applicative BasicIOF where
+	pure = PureBasicIOF
+	mf <*> ma = JoinBasicIOF . flip fmap mf $ \f -> JoinBasicIOF .  flip fmap ma $ \a -> pure (f a)
+instance Monad BasicIOF where
+	return = pure
+	m >>= f = JoinBasicIOF $ f <$> m
+instance MonadFix BasicIOF where
+	mfix :: (a -> BasicIOF a) -> BasicIOF a
+	mfix = fixBasicIOF
 
 {-
 instance Foldable BasicIOF where

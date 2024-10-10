@@ -10,7 +10,7 @@
 module Immutaball.Share.Context
 	(
 		IBContext'(..), ibStaticConfig, ibDirs, ibNeverballrc0, ibInitialWire,
-			ibHeadless, ibSDLManagerHandle,
+			ibHeadless, ibSDLManagerHandle, ibGLManagerHandle,
 		withSDL
 	) where
 
@@ -25,6 +25,7 @@ import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
+import Immutaball.Share.GLManager
 import Immutaball.Share.SDLManager
 import Immutaball.Share.Utils
 
@@ -39,7 +40,8 @@ data IBContext' initialWire = IBContext {
 	_ibInitialWire  :: IBContext' initialWire -> Maybe initialWire,
 	_ibHeadless     :: Bool,
 
-	_ibSDLManagerHandle :: SDLManagerHandle
+	_ibSDLManagerHandle :: SDLManagerHandle,
+	_ibGLManagerHandle :: GLManagerHandle
 }
 makeLenses ''IBContext'
 
@@ -52,6 +54,7 @@ withSDL cxtCfg withCxt =
 	mkBIO . SDLIO . SDLWithInit initFlags .
 	mkBIO . SDLIO . SDLWithTTFInit .
 	withSDLManager $ \sdlManagerHandle ->
+	withGLManager $ \glManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,
 		_ibDirs         = cxtCfg^.cxtCfgDirs,
@@ -59,5 +62,6 @@ withSDL cxtCfg withCxt =
 		_ibInitialWire  = cxtCfg^.cxtCfgInitialWire,
 		_ibHeadless     = cxtCfg^.cxtCfgHeadless,
 
-		_ibSDLManagerHandle = sdlManagerHandle
+		_ibSDLManagerHandle = sdlManagerHandle,
+		_ibGLManagerHandle  = glManagerHandle
 	}

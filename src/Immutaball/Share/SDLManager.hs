@@ -23,7 +23,7 @@ module Immutaball.Share.SDLManager
 		withSDLManager,
 		SDLManagerHandle(..), sdlmh_done, sdlmh_doneReceived, sdlmh_commands,
 		SDLManagerCommand(..),
-		issueCommand,
+		issueSDLCommand,
 
 		-- * Low level
 		initSDLManager,
@@ -58,8 +58,8 @@ withSDLManager withHandle =
 -- SDLManagerHandle
 -- SDLManagerCommand
 
-issueCommand :: SDLManagerHandle -> SDLManagerCommand -> ImmutaballIO -> ImmutaballIO
-issueCommand sdlMgr cmd withUnit = mkAtomically (writeTChan (sdlMgr^.sdlmh_commands) cmd) (const withUnit)
+issueSDLCommand :: SDLManagerHandle -> SDLManagerCommand -> ImmutaballIO -> ImmutaballIO
+issueSDLCommand sdlMgr cmd withUnit = mkAtomically (writeTChan (sdlMgr^.sdlmh_commands) cmd) (const withUnit)
 
 -- * Low level
 

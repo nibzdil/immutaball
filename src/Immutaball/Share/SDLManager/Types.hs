@@ -21,7 +21,9 @@ import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
 import Control.Lens
+import qualified Data.Text as T
 import SDL.Event
+import SDL.Video
 
 -- Moved from later to fix Template Haskell errors.
 data SDLManagerCommand =
@@ -32,6 +34,8 @@ data SDLManagerCommand =
 	-- thread which set the video mode, which is why SDLManager solely manages
 	-- this.
 	| PollEvent (TMVar (Maybe Event))
+	| WithWindow T.Text WindowConfig (TMVar Window)
+	| WithGLContext Window (TMVar GLContext)
 	deriving (Eq)
 
 -- | The inner fields and lenses are internal (low-level).

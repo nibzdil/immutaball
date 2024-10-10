@@ -99,7 +99,9 @@ sdlManagerThread sdlMgr =
 		Right cmd -> case cmd of
 			QuitSDLManager -> quit
 			NopSDLManager -> sdlManagerThread sdlMgr
-			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (const mempty)) <>> sdlManagerThread sdlMgr
+			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr
+			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $ \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
+			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $ \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

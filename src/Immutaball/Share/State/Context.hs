@@ -36,6 +36,7 @@ import Data.Bits
 import Data.Maybe
 
 import Control.Lens
+import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Set as S
@@ -56,6 +57,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.ImmutaballIO.SDLIO
+import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
@@ -101,15 +103,31 @@ requireVideo = proc cxt0 -> do
 		(True, _)        -> returnA -< cxt0
 		(False, Just _)  -> returnA -< cxt0
 		(False, Nothing) -> do
+			let windowTitle = T.pack "Immutaball"
 			let windowCfg = SDL.defaultWindow {
 				SDL.windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
 				SDL.windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL,
 				SDL.windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
 			}
-			window <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
-			context <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithGLContext window id
-			let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
-			returnA -< cxt1
+			if not sdlNeedsSpecialThread
+				then do
+					window <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithWindow windowTitle windowCfg id
+					context <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithGLContext window id
+					let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
+					returnA -< cxt1
+				else do
+					let h = cxt0^.ibContext.ibSDLManagerHandle
+					mwindow <- monadic -< liftIBIO $ Atomically (newEmptyTMVar) id
+					() <- monadic -< liftIBIO $ issueSDLCommand h (WithWindow windowTitle windowCfg mwindow) ()
+					window <- monadic -< liftIBIO $ Atomically (readTMVar mwindow) id
+					mcontext <- monadic -< liftIBIO $ Atomically (newEmptyTMVar) id
+					() <- monadic -< liftIBIO $ issueSDLCommand h (WithGLContext window mcontext) ()
+					context <- monadic -< liftIBIO $ Atomically (readTMVar mcontext) id
+					let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
+					returnA -< cxt1
+	where
+		sdlNeedsSpecialThread :: Bool
+		sdlNeedsSpecialThread = True
 
 requireFont :: Wire ImmutaballM IBStateContext IBStateContext
 requireFont = proc cxt0 -> do

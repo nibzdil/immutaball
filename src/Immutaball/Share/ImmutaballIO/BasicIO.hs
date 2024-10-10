@@ -13,7 +13,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		BasicIO,
 		BasicIOF(..),
 		runBasicIO,
-		(<>>-),
+		(-<>>),
 
 		-- * mfix
 		FixBasicIOException(..),
@@ -197,9 +197,9 @@ instance Traversable BasicIOF where
 -}
 
 -- | Add an ordering constraint.
-infixr 6 <>>-
-(<>>-) :: BasicIO -> BasicIO -> BasicIO
-(<>>-) = mkThenBasicIO
+infixr 6 -<>>
+(-<>>) :: BasicIO -> BasicIO -> BasicIO
+(-<>>) = mkThenBasicIO
 
 -- * mfix
 

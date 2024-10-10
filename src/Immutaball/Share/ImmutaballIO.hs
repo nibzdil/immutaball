@@ -20,6 +20,8 @@ module Immutaball.Share.ImmutaballIO
 		andImmutaballIO,
 		thenImmutaballIO,
 		(<>>),
+		(<>>-),
+		(<>-),
 		joinImmutaballIOF,
 
 		-- * mfix
@@ -208,6 +210,16 @@ instance Foldable ImmutaballIOF where
 infixr 6 <>>
 (<>>) :: ImmutaballIO -> ImmutaballIO -> ImmutaballIO
 (<>>) = thenImmutaballIO
+
+-- | A more general version.
+infixr 6 <>>-
+(<>>-) :: ImmutaballIOF me -> ImmutaballIOF me -> ImmutaballIOF me
+a <>>- b = JoinIBIOF $ a `ThenIBIOF` b
+
+-- | Without an ordering constraint.
+infixr 6 <>-
+(<>-) :: ImmutaballIOF me -> ImmutaballIOF me -> ImmutaballIOF me
+a <>- b = JoinIBIOF $ a `AndIBIOF` b
 
 -- * Runners
 

@@ -38,7 +38,9 @@ module Immutaball.Share.GUI
 		nextWidgetHier,
 		prevWidgetHier,
 		isSelectable,
-		guiPaint
+		guiPaint,
+		focusDecayTime,
+		focusScale
 	) where
 
 import Prelude ()
@@ -46,6 +48,7 @@ import Immutaball.Prelude
 
 import Control.Arrow
 --import Data.Functor.Identity
+import Control.Monad
 import Data.Maybe
 
 import Control.Lens
@@ -308,6 +311,19 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t) 
 	_dt <- differentiate -< t
 	rec
 		(widgetLastFocusLast :: M.Map id Float) <- delay M.empty -< widgetLastFocus
-		widgetLastFocus <- returnA -< foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
+		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
+
+	let
+		-- TODO:
+		paintWidget :: Widget id -> ImmutaballIOF ()
+		paintWidget w = pure ()
+	() <- monadic -< liftIBIO $ forM_ widgets paintWidget
 
 	returnA -< ()
+
+-- Optionally this could be moved to static config.
+focusDecayTime :: Float
+focusDecayTime = 0.25
+
+focusScale :: Float
+focusScale = 1.20

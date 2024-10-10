@@ -39,6 +39,7 @@ module Immutaball.Share.GUI
 		prevWidgetHier,
 		isSelectable,
 		guiPaint,
+		guiPaintWidget,
 		focusDecayTime,
 		focusScale
 	) where
@@ -48,7 +49,6 @@ import Immutaball.Prelude
 
 import Control.Arrow
 --import Data.Functor.Identity
-import Control.Monad
 import Data.Maybe
 
 import Control.Lens
@@ -318,21 +318,15 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, 
 		(widgetLastFocusLast :: M.Map id Float) <- delay M.empty -< widgetLastFocus
 		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
 
+	cxtnp1 <- foldrA guiPaintWidget -< (cxtn, flip map widgets $ \w -> (w, widgetLastFocus, geometry, widgetIdx, t))
+	returnA -< cxtnp1
+
+guiPaintWidget :: Wire ImmutaballM ((Widget id, M.Map id Float, M.Map id (Rect Float), M.Map id (Widget id), Float), IBStateContext) IBStateContext
+guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
+	_dt <- differentiate -< t
 	-- TODO: clean up textures; just debugging for now to test what I have so far.
+	-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 	-- TODO test
-
-	let
-		-- TODO:
-		{-
-		paintWidget :: Widget id -> ImmutaballIOF ()
-		paintWidget w = pure ()
-		-}
-		-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
-		paintWidget w = unsafePerformIO $ do
-			-- GL calls go here.
-			return $ pure ()
-	() <- monadic -< liftIBIO $ forM_ widgets paintWidget
-
 	returnA -< cxtn
 
 -- Optionally this could be moved to static config.

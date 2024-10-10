@@ -285,6 +285,9 @@ multistep w0 = wire . flip fix w0 $ \me wn as -> case as of
 	(an:rest) -> stepWire wn an >>= \(bn, wnp1) -> first (bn:) <$> me wnp1 rest
 
 -- TODO: see if can maybe you can do something like class LeftArrow with inArr :: ((a -> b) -> c) -> Arr … ?
+----inArrWire :: ((a -> b) -> c) -> Wire m a b -> Wire m () c
+--inArrWire :: ((a -> b) -> (c -> d)) -> Wire m a b -> Wire m c d
+--inArrWire f w = wire $ \c -> f $ \a -> ???
 
 foldrA :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, t a) b
 foldrA reduce = foldrListA reduce <<< second (arr toList)

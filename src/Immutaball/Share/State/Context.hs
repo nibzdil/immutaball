@@ -51,6 +51,7 @@ import System.FilePath
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
+import Immutaball.Share.GLManager
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
@@ -194,12 +195,11 @@ type WidthHeightI = (Integer, Integer)
 createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn
-	-- Unfortunately since these are separate calls, there is a possible race
-	-- condition if rendering is concurrent.  If rendering is concurrent, calls
-	-- like this might be well handled with a separate GL manager thread, like
-	-- SDLManager.
-	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLBindTexture GL_TEXTURE_2D name ()
-	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
+	() <- monadic -< liftIBIO . flip (glQueueValueless (cxtnp1^.ibContext.ibGLManagerHandle)) () $
+		[
+			GLBindTexture GL_TEXTURE_2D name (),
+			GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
+		]
 	returnA -< (name, cxtnp1)
 
 -- | This also frees the texture, not just the name.

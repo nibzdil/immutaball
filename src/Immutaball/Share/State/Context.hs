@@ -193,7 +193,10 @@ requireBasics = proc (cxt0, _request) -> do
 -- | Handles common frame finishing like swapping the scene on paint.
 finishFrame :: Wire ImmutaballM IBStateContext ()
 finishFrame = proc cxt -> do
-	() <- monadic -< maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
+	-- Swapping outside the SDL Manager thread on my platform didn't work.  So
+	-- we'll have the SDL Manager thread do it.
+	--() <- monadic -< maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
+	() <- monadic -< maybe (pure ()) (liftIBIO . flip (sdlGLSwapWindow (cxt^.ibContext.ibSDLManagerHandle)) ()) $ (cxt^.ibSDLWindow)
 	error_ <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLGetError id
 	case error_ of
 		GL_NO_ERROR -> returnA -< ()

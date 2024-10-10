@@ -36,6 +36,7 @@ data SDLManagerCommand =
 	| PollEvent (TMVar (Maybe Event))
 	| WithWindow T.Text WindowConfig (TMVar Window)
 	| WithGLContext Window (TMVar GLContext)
+	| GLSwapWindow Window (TMVar ())
 	deriving (Eq)
 
 -- | The inner fields and lenses are internal (low-level).

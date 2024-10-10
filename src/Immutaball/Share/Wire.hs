@@ -45,7 +45,9 @@ module Immutaball.Share.Wire
 		delayNI,
 		returnWire,
 		constWire,
-		multistep
+		multistep,
+		foldrA,
+		foldrListA
 	) where
 
 import Prelude ()
@@ -53,6 +55,7 @@ import Immutaball.Prelude
 
 import Control.Arrow
 import Control.Monad.Fix
+import Data.Foldable
 --import Data.Function
 import Data.Functor.Identity
 import Data.List
@@ -280,3 +283,16 @@ multistep :: (Monad m) => Wire m a b -> Wire m [a] [b]
 multistep w0 = wire . flip fix w0 $ \me wn as -> case as of
 	[]        -> pure ([], multistep wn)
 	(an:rest) -> stepWire wn an >>= \(bn, wnp1) -> first (bn:) <$> me wnp1 rest
+
+-- TODO: see if can maybe you can do something like class LeftArrow with inArr :: ((a -> b) -> c) -> Arr … ?
+
+foldrA :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, t a) b
+foldrA reduce = foldrListA reduce <<< second (arr toList)
+
+foldrListA :: (Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, [a]) b
+foldrListA reduce = proc (reduction0, xs) -> do
+	--foldr reduce reduction0 [] = reduction0
+	--foldr reduce reduction0 (x:rest) = reduce x (foldr reduce reduction0 rest)
+	case xs of
+		[] -> returnA -< reduction0
+		(x:rest) -> reduce <<< second (foldrListA reduce) -< (x, (reduction0, rest))

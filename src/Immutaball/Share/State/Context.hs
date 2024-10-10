@@ -5,17 +5,18 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, Arrows #-}
+{-# LANGUAGE TemplateHaskell, Arrows, ScopedTypeVariables #-}
 
 module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
-			ibSDLGLContext, ibSDLFont, ibGLTextureNames,
+			ibSDLGLContext, ibSDLFont, ibGLTextureNames, ibGLTextTextures,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
 		requireFont,
 		requireGLTextureNames,
+		requireGLTextTextures,
 		requireMisc,
 		requireBasics,
 		finishFrame,
@@ -23,9 +24,12 @@ module Immutaball.Share.State.Context
 		-- * Utils
 		newTextureName,
 		freeTextureName,
-		WidthHeightI,
 		createTexture,
-		freeTexture
+		freeTexture,
+
+		cachingRenderText,
+		uncacheText,
+		clearTextCache
 	) where
 
 import Prelude ()
@@ -39,6 +43,7 @@ import Control.Lens
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.Map.Lazy as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Graphics.GL.Core45
@@ -57,6 +62,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.ImmutaballIO.SDLIO
+import Immutaball.Share.Math
 import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.Utils
@@ -75,7 +81,8 @@ data IBStateContext = IBStateContext {
 	_ibSDLFont :: Maybe (SDL.Font.Font),
 
 	-- | Used, freed.
-	_ibGLTextureNames :: Maybe (TVar (S.Set GLuint, S.Set GLuint))
+	_ibGLTextureNames :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
+	_ibGLTextTextures :: Maybe (TVar (M.Map T.Text (WidthHeightI, GLuint)))
 }
 makeLenses ''IBStateContext
 
@@ -88,7 +95,8 @@ initialStateCxt cxt = IBStateContext {
 	_ibSDLWindow      = Nothing,
 	_ibSDLGLContext   = Nothing,
 	_ibSDLFont        = Nothing,
-	_ibGLTextureNames = Nothing
+	_ibGLTextureNames = Nothing,
+	_ibGLTextTextures = Nothing
 }
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
@@ -129,10 +137,10 @@ requireVideo = proc cxt0 -> do
 		sdlNeedsSpecialThread :: Bool
 		sdlNeedsSpecialThread = True
 
-requireFont :: Wire ImmutaballM IBStateContext IBStateContext
+requireFont :: Wire ImmutaballM IBStateContext (SDL.Font.Font, IBStateContext)
 requireFont = proc cxt0 -> do
 	case (cxt0^.ibSDLFont) of
-		Just _ -> returnA -< cxt0
+		Just font -> returnA -< (font, cxt0)
 		Nothing -> do
 			let path = cxt0^.ibContext.ibDirs.ibStaticDataDir </> cxt0^.ibContext.ibStaticConfig.immutaballFont
 			let size = cxt0^.ibContext.ibStaticConfig.immutaballFontSize
@@ -143,7 +151,7 @@ requireFont = proc cxt0 -> do
 			() <- warnIf -< (not exists, ("Warning: ./immutaball -d PATH_TO_DATA_DIR must be passed with a path to a compiled neverball data directory; failed to find font file: " ++ path))
 			font <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLTTFLoad path (fromIntegral size) id
 			let cxt1 = cxt0 & (ibSDLFont.~Just font)
-			returnA -< cxt1
+			returnA -< (font, cxt1)
 	where
 		warnIf :: Wire ImmutaballM (Bool, String) ()
 		warnIf = proc (condition, msg) -> do
@@ -159,13 +167,22 @@ requireGLTextureNames = proc cxt0 -> do
 			let cxt1 = cxt0 & (ibGLTextureNames.~Just glTextureNames)
 			returnA -< (glTextureNames, cxt1)
 
+requireGLTextTextures :: Wire ImmutaballM IBStateContext (TVar (M.Map T.Text (WidthHeightI, GLuint)), IBStateContext)
+requireGLTextTextures = proc cxt0 -> do
+	case (cxt0^.ibGLTextTextures) of
+		Just glTextTextures -> returnA -< (glTextTextures, cxt0)
+		Nothing -> do
+			glTextTextures <- monadic -< liftIBIO $ Atomically (newTVar M.empty) id
+			let cxt1 = cxt0 & (ibGLTextTextures.~Just glTextTextures)
+			returnA -< (glTextTextures, cxt1)
+
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
-requireMisc = snd <$> requireGLTextureNames <<< id
+requireMisc = snd <$> requireGLTextTextures <<< snd <$> requireGLTextureNames <<< snd <$> requireFont <<< id
 
 -- | Also handles common set-up tasks like clearing the color for rendering.
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
 requireBasics = proc (cxt0, _request) -> do
-	cxt <- requireMisc <<< requireFont <<< requireVideo -< cxt0
+	cxt <- requireMisc <<< requireVideo -< cxt0
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClearColor 0.1 0.1 0.9 1.0 ()
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) ()
 	returnA -< cxt
@@ -207,8 +224,6 @@ freeTextureName = proc (name, cxtn) -> do
 	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
 	returnA -< cxtnp1
 
-type WidthHeightI = (Integer, Integer)
-
 -- | Tight RGBA.
 createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
@@ -226,3 +241,60 @@ freeTexture = proc (name, cxtn) -> do
 	cxtnp1 <- freeTextureName -< (name, cxtn)
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLDeleteTextures [name] ()
 	returnA -< cxtnp1
+
+-- | Render a text.
+--
+-- Since rending a text may have a cost, hold onto the texture until its freed
+-- with 'uncacheText'.
+cachingRenderText :: Wire ImmutaballM (T.Text, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)
+cachingRenderText = proc (text, cxtn) -> do
+	(mglTextTextures, cxtnp1) <- requireGLTextTextures -< cxtn
+	glTextTextures <- monadic -< liftIBIO $ Atomically (readTVar mglTextTextures) id
+	case M.lookup text glTextTextures of
+		Just ((w, h), name) -> do
+			returnA -< (((w, h), name), cxtnp1)
+		Nothing -> do
+			(font, cxtnp2) <- requireFont -< cxtnp1
+			((w, h), image) <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLTTFRenderSync font text id
+			(name, cxtnp3) <- createTexture -< (((w, h), image), cxtnp2)
+			-- Also see if somebody already cached our text while we were
+			-- creating the texture.
+			raceAlreadyCached <- monadic -< liftIBIO . flip Atomically id $ do
+				glTextTextures2 <- readTVar mglTextTextures
+				case M.lookup text glTextTextures2 of
+					Nothing -> do
+						let glTextTextures3 = M.insert text ((w, h), name) glTextTextures2
+						writeTVar mglTextTextures glTextTextures3
+						return Nothing
+					Just ((w2, h2), name2) -> do
+						return $ Just ((w2, h2), name2)
+			case raceAlreadyCached of
+				Nothing -> do returnA -< (((w, h), name), cxtnp3)
+				Just ((w2, h2), name2) -> do
+					cxtnp4 <- freeTexture -< (name, cxtnp3)
+					returnA -< (((w2, h2), name2), cxtnp4)
+
+-- | Can be repeated; does not if no cache exists for the text.
+--
+-- Delete the texture and free its texture name if the text has a texture
+-- created for it.
+uncacheText :: Wire ImmutaballM (T.Text, IBStateContext) IBStateContext
+uncacheText = proc (text, cxtn) -> do
+	(mglTextTextures, cxtnp1) <- requireGLTextTextures -< cxtn
+	mname <- monadic -< liftIBIO . flip Atomically id $ do
+		glTextTextures <- readTVar mglTextTextures
+		let glTextTextures2 = M.delete text glTextTextures
+		writeTVar mglTextTextures glTextTextures2
+		return $ snd <$> M.lookup text glTextTextures
+	case mname of
+		Nothing -> returnA -< cxtnp1
+		Just name -> do
+			cxtnp2 <- freeTexture -< (name, cxtnp1)
+			returnA -< cxtnp2
+
+clearTextCache :: Wire ImmutaballM IBStateContext IBStateContext
+clearTextCache = proc cxtn -> do
+	(mglTextTextures, cxtnp1) <- requireGLTextTextures -< cxtn
+	glTextTextures <- monadic -< liftIBIO $ Atomically (readTVar mglTextTextures) id
+	let (texts :: [T.Text]) = M.keys glTextTextures
+	foldrA uncacheText -< (cxtnp1, texts)

@@ -63,6 +63,7 @@ import qualified SDL.Video
 import qualified SDL.Video.OpenGL
 import qualified SDL.Video.Renderer
 
+import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
 -- (mfix imports.)
@@ -73,8 +74,6 @@ import GHC.IO.Unsafe (unsafeDupableInterleaveIO)
 import System.IO.Unsafe (unsafePerformIO)
 
 -- * SDLIO
-
-type SDLWidthHeight = (Integer, Integer)
 
 type SDLIO = Fixed SDLIOF
 data SDLIOF me =
@@ -99,8 +98,8 @@ data SDLIOF me =
 	| SDLGLSwapWindow SDL.Video.Window me
 	| SDLTTFLoad FilePath SDL.Font.PointSize (SDL.Font.Font -> me)
 	-- | Tight RGBA encoding.  Caching recommended.
-	| SDLTTFRender SDL.Font.Font T.Text (Async (SDLWidthHeight, BL.ByteString) -> me)
-	| SDLTTFRenderSync SDL.Font.Font T.Text ((SDLWidthHeight, BL.ByteString) -> me)
+	| SDLTTFRender SDL.Font.Font T.Text (Async (WidthHeightI, BL.ByteString) -> me)
+	| SDLTTFRenderSync SDL.Font.Font T.Text ((WidthHeightI, BL.ByteString) -> me)
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
 	fmap f (SDLWithInit subsystems sdlio)         = SDLWithInit subsystems (f sdlio)
@@ -219,7 +218,7 @@ runSDLIOIO (SDLTTFRenderSync font text withImage) = hsdlttfRender font text >>= 
 --
 -- We need some low-level C-like processing to interface with the SDL
 -- libraries.
-hsdlttfRender :: SDL.Font.Font -> T.Text -> IO (SDLWidthHeight, BL.ByteString)
+hsdlttfRender :: SDL.Font.Font -> T.Text -> IO (WidthHeightI, BL.ByteString)
 hsdlttfRender font text = do
 	let maxColorComponent = 255  :: Word8
 	let mcc = maxColorComponent
@@ -294,8 +293,8 @@ mkSDLGLSwapWindow window withUnit = Fixed $ SDLGLSwapWindow window withUnit
 mkSDLTTFLoad :: FilePath -> SDL.Font.PointSize -> (SDL.Font.Font -> SDLIO) -> SDLIO
 mkSDLTTFLoad path size withFont = Fixed $ SDLTTFLoad path size withFont
 
-mkSDLTTFRender :: SDL.Font.Font -> T.Text -> (Async (SDLWidthHeight, BL.ByteString) -> SDLIO) -> SDLIO
+mkSDLTTFRender :: SDL.Font.Font -> T.Text -> (Async (WidthHeightI, BL.ByteString) -> SDLIO) -> SDLIO
 mkSDLTTFRender font text withImage = Fixed $ SDLTTFRender font text withImage
 
-mkSDLTTFRenderSync :: SDL.Font.Font -> T.Text -> ((SDLWidthHeight, BL.ByteString) -> SDLIO) -> SDLIO
+mkSDLTTFRenderSync :: SDL.Font.Font -> T.Text -> ((WidthHeightI, BL.ByteString) -> SDLIO) -> SDLIO
 mkSDLTTFRenderSync font text withImage = Fixed $ SDLTTFRenderSync font text withImage

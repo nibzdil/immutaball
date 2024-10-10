@@ -35,8 +35,11 @@ module Immutaball.Share.Math
 		rectLeft,
 		rectUpperLeft,
 		rectLowerRight,
+		rectWidthAboutCenter,
+		rectHeightAboutCenter,
 		lerpWith,
-		lerp
+		lerp,
+		lerpV2
 	) where
 
 import Prelude ()
@@ -240,6 +243,28 @@ rectLowerRight = lens getter (flip setter)
 		getter (Rect (Vec2 ax ay) (Vec2 bx by)) = Vec2 (if' (ax <= bx) bx ax) (if' (ay <= by) ay by)
 		setter :: Vec2 a -> Rect a -> Rect a
 		setter (Vec2 x' y') (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) ax x') (if' (ay <= by) y' ay)) (Vec2 (if' (ax <= bx) x' bx) (if' (ay <= by) by y'))
+
+rectWidthAboutCenter :: forall a. (Num a, Fractional a) => Lens' (Rect a) a
+rectWidthAboutCenter = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter (Rect (Vec2 ax _ay) (Vec2 bx _by)) = ax + bx
+		setter :: a -> Rect a -> Rect a
+		setter w1 (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (cx - wr) ay) (Vec2 (cx + wr) by)
+			where
+				cx = ax + (bx - ax)/2
+				wr = w1/2
+
+rectHeightAboutCenter :: forall a. (Num a, Fractional a) => Lens' (Rect a) a
+rectHeightAboutCenter = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter (Rect (Vec2 _ax ay) (Vec2 _bx by)) = ay + by
+		setter :: a -> Rect a -> Rect a
+		setter h1 (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 ax (cy - hr)) (Vec2 bx (cy + hr))
+			where
+				cy = ay + (by - ay)/2
+				hr = h1/2
 
 lerpWith :: (a -> a -> a) -> (a -> a -> a) -> (s -> a -> a) -> a -> a -> s -> a
 lerpWith plus minus scale from_ to_ v = from_ `plus` (v`scale`(to_ `minus` from_))

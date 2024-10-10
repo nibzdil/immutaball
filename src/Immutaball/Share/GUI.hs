@@ -334,6 +334,21 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 			() <- monadic -< unsafePerformIO $ do
+				GL.glColor4f 0.7 0.1 0.3 1.0
+				GL.glBegin GL.GL_QUADS
+				GL.glVertex2f (-9.0) (-9.0)
+				GL.glVertex2f (-9.0) ( 9.0)
+				GL.glVertex2f ( 9.0) ( 9.0)
+				GL.glVertex2f ( 9.0) (-9.0)
+				GL.glEnd
+
+				GL.glColor4f 0.1 0.1 0.9 1.0
+				GL.glBegin GL.GL_QUADS
+				GL.glVertex2f ax ay
+				GL.glVertex2f ax by
+				GL.glVertex2f bx by
+				GL.glVertex2f bx ay
+				GL.glEnd
 				return $ pure ()
 			returnA -< cxtnp1
 		_ -> returnA -< cxtn

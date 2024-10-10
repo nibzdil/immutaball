@@ -37,7 +37,8 @@ module Immutaball.Share.GUI
 		prevWidgetDirect,
 		nextWidgetHier,
 		prevWidgetHier,
-		isSelectable
+		isSelectable,
+		guiPaint
 	) where
 
 import Prelude ()
@@ -167,19 +168,22 @@ makeClassyPrisms ''WidgetResponse
 
 mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
 mkGUI initialWidgets = proc request -> do
+	-- Set up widgets.
 	resetWidgets <- returnA -< either (const Nothing) Just $ matching _ResetGUI request
-	_widgets <- hold initialWidgets -< resetWidgets
+	widgets <- hold initialWidgets -< resetWidgets
 
+	-- Analyze widgets.
 	widgetsReq  <- returnA -< resetWidgets
 	widgetBy    <- mkWidgetsAnalysis' mkWidgetBy    -< widgetsReq
 	widgetIdx   <- mkWidgetsAnalysis' mkWidgetIdx   -< widgetsReq
 	widgetToIdx <- mkWidgetsAnalysis' mkWidgetToIdx -< widgetsReq
 	getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
-	_geometry   <- mkWidgetsAnalysis' mkGeometry    -< widgetsReq
+	geometry   <- mkWidgetsAnalysis' mkGeometry    -< widgetsReq
 
 	nextWidgetHier' <- returnA -< nextWidgetHier widgetBy getChildren
 	prevWidgetHier' <- returnA -< prevWidgetHier widgetBy getChildren
 
+	-- Manage focus.
 	rec
 		initialFocus <- returnA -< maybe 0 id $ flip M.lookup widgetIdx 0 >>= flip M.lookup widgetBy . nextWidgetHier' . prevWidgetHier' . (^.wid) >>= flip M.lookup widgetToIdx
 		currentFocus <- holdWith -< (newFocus, initialFocus)
@@ -192,6 +196,21 @@ mkGUI initialWidgets = proc request -> do
 				Nothing
 			_ -> returnA -< Nothing
 
+		-- Find 'widgetsFocusedSinceLastPaintIdx'.
+		isPaint <- returnA -< case request of (GUIDrive (Paint _t)) -> True; _ -> False
+		lastIsPaint <- delay False -< isPaint
+		lastWidgetsFocusedSinceLastPaintIdx <- delay [] -< widgetsFocusedSinceLastPaintIdx
+		(widgetsFocusedSinceLastPaintIdx :: [Integer]) <- returnA -<
+			catMaybes [newFocus] ++ if' lastIsPaint [] lastWidgetsFocusedSinceLastPaintIdx
+		(widgetsFocusedSinceLastPaint :: [id]) <- returnA -<
+			flip mapMaybe widgetsFocusedSinceLastPaintIdx $ \idx -> (^.wid) <$> flip M.lookup widgetIdx idx
+
+	-- Paint.
+	() <- case request of
+		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t)
+		_ -> returnA -< ()
+
+	-- Set up response.
 	response <- returnA -< case request of
 		GUIDrive (Keybd char True) ->
 			if' (char == fromIntegral Raw.SDLK_RETURN) (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus) $
@@ -283,3 +302,12 @@ prevWidgetHier widgetBy getChildren wid0 = maybe wid0 (prevWidgetUnder True (Jus
 isSelectable :: Widget id -> Bool
 isSelectable (ButtonWidget {}) = True
 isSelectable _                 = False
+
+guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Float), M.Map id (Widget id), [id], Float) ()
+guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t) -> do
+	_dt <- differentiate -< t
+	rec
+		(widgetLastFocusLast :: M.Map id Float) <- delay M.empty -< widgetLastFocus
+		widgetLastFocus <- returnA -< foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
+
+	returnA -< ()

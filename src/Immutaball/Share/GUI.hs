@@ -63,6 +63,11 @@ import Immutaball.Share.State
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
+-- TODO: reomve this debugging.  Basically I've written a lot without being
+-- able to see anything, and I just want to test our GUI before I write more advanced OpenGL.
+import System.IO.Unsafe (unsafePerformIO)
+import Graphics.GL.Internal.Shared as GL
+
 -- * widgets
 
 data Root id = Root {
@@ -313,10 +318,19 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t) 
 		(widgetLastFocusLast :: M.Map id Float) <- delay M.empty -< widgetLastFocus
 		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
 
+	-- TODO: clean up textures; just debugging for now to test what I have so far.
+	-- TODO test
+
 	let
 		-- TODO:
+		{-
 		paintWidget :: Widget id -> ImmutaballIOF ()
 		paintWidget w = pure ()
+		-}
+		-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
+		paintWidget w = unsafePerformIO $ do
+			-- GL calls go here.
+			return $ pure ()
 	() <- monadic -< liftIBIO $ forM_ widgets paintWidget
 
 	returnA -< ()

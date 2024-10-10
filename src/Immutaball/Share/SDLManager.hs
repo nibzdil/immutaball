@@ -53,6 +53,8 @@ import Graphics.GL.Internal.Shared as GL
 import Immutaball.Share.Utils
 import Data.Bits
 import Immutaball.Share.ImmutaballIO.GLIO
+import SDL.Video
+import SDL.Video.OpenGL
 
 -- * High level
 
@@ -83,7 +85,8 @@ initSDLManager withSdlMgr =
 		_sdlmh_doneReceived = doneReceived,
 		_sdlmh_commands     = commands
 	}
-	in mkBIO . ForkOS (sdlManagerThread sdlMgr) $ withSdlMgr sdlMgr
+	--in mkBIO . ForkOS (sdlManagerThread sdlMgr) $ withSdlMgr sdlMgr
+	in mkBIO . ForkOS (sdlManagerThread sdlMgr Nothing) $ withSdlMgr sdlMgr
 
 -- | Manually close the SDLManager thread low-level.  High-level
 -- 'withSDLManager' automatically manages the lifetime.
@@ -111,23 +114,31 @@ fff =
 		return id
 	)
 
-sdlManagerThread :: SDLManagerHandle -> ImmutaballIO
-sdlManagerThread sdlMgr =
+--sdlManagerThread :: SDLManagerHandle -> ImmutaballIO
+--sdlManagerThread sdlMgr =
+sdlManagerThread :: SDLManagerHandle -> Maybe Window -> ImmutaballIO
+sdlManagerThread sdlMgr mwindow =
 	fff .
 	mkBIO . GLIO . GLClearColor 0.1 0.7 0.2 1.0 .
 	mkBIO . GLIO . GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) .
+	maybe id (\window -> mkBIO . SDLIO . SDLGLSwapWindow (window)) mwindow .
 	mkAtomically (
 		readTVar (sdlMgr^.sdlmh_done) >>= \done ->
 		(check done $> Left done) `orElse` (Right <$> readTChan (sdlMgr^.sdlmh_commands))
 	) $ \doneOrCmd ->
 	case doneOrCmd of
-		Left done -> if not done then sdlManagerThread sdlMgr else quit
+		--Left done -> if not done then sdlManagerThread sdlMgr else quit
+		Left done -> if not done then sdlManagerThread sdlMgr mwindow else quit
 		Right cmd -> case cmd of
 			QuitSDLManager -> quit
-			NopSDLManager -> sdlManagerThread sdlMgr
-			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr
-			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $ \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
-			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $ \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
+			--NopSDLManager -> sdlManagerThread sdlMgr
+			NopSDLManager -> sdlManagerThread sdlMgr mwindow
+			--PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr
+			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr mwindow
+			--WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $ \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
+			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $ \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr (Just window)
+			--WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $ \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
+			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $ \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr mwindow
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

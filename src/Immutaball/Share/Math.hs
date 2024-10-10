@@ -39,7 +39,9 @@ module Immutaball.Share.Math
 		rectHeightAboutCenter,
 		lerpWith,
 		lerp,
-		lerpV2
+		lerpV2,
+		lerpV3,
+		lerpV4
 	) where
 
 import Prelude ()
@@ -275,3 +277,9 @@ lerp = lerpWith (+) (-) (*)
 
 lerpV2 :: (Num a) => Vec2 a -> Vec2 a -> a -> Vec2 a
 lerpV2 = lerpWith pv2 mv2 sv2
+
+lerpV3 :: (Num a) => Vec3 a -> Vec3 a -> a -> Vec3 a
+lerpV3 = lerpWith pv3 mv3 sv3
+
+lerpV4 :: (Num a) => Vec4 a -> Vec4 a -> a -> Vec4 a
+lerpV4 = lerpWith pv4 mv4 sv4

@@ -17,6 +17,7 @@ module Immutaball.Share.GLManager
 		GLManagerHandle(..), glmh_done, glmh_doneReceived, glmh_commands,
 		GLManagerCommand(..),
 		issueGLCommand,
+		glQueueValueless,
 
 		-- * Low level
 		initGLManager,
@@ -52,6 +53,10 @@ withGLManager withHandle =
 
 issueGLCommand :: GLManagerHandle -> GLManagerCommand -> ImmutaballIO -> ImmutaballIO
 issueGLCommand glMgr cmd withUnit = mkAtomically (writeTChan (glMgr^.glmh_commands) cmd) (const withUnit)
+
+glQueueValueless :: GLManagerHandle -> [GLIOF ()] -> ImmutaballIO -> ImmutaballIO
+glQueueValueless glMgr orderedGLCommands withUnit =
+	issueGLCommand glMgr (GLQueueValueless orderedGLCommands) withUnit
 
 -- * Low level
 

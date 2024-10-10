@@ -22,7 +22,10 @@ module Immutaball.Share.State.Context
 
 		-- * Utils
 		newTextureName,
-		freeTextureName
+		freeTextureName,
+		WidthHeightI,
+		createTexture,
+		freeTexture
 	) where
 
 import Prelude ()
@@ -34,13 +37,14 @@ import Data.Maybe
 
 import Control.Lens
 import Control.Concurrent.STM.TVar
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Graphics.GL.Core45
 import Graphics.GL.Types
 import qualified SDL.Font as SDL.Font  -- (sdl2-ttf)
 import SDL.Vect as SDL
-import SDL.Video as SDL
+import qualified SDL.Video as SDL  -- (ambiguous ‘createTexture’)
 --import SDL.Video.OpenGL as SDL
 import System.FilePath
 
@@ -88,16 +92,18 @@ stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext)
 stateContextStorage y0 = proc cxt -> do
 	hold y0 -< cxt
 
+-- TODO: I forget SDL wants video mode setting in a special thread.  So send
+-- these with window and with gl context calls over to SDLManager.
 requireVideo :: Wire ImmutaballM IBStateContext IBStateContext
 requireVideo = proc cxt0 -> do
 	case ((cxt0^.ibContext.ibHeadless), (cxt0^.ibSDLWindow)) of
 		(True, _)        -> returnA -< cxt0
 		(False, Just _)  -> returnA -< cxt0
 		(False, Nothing) -> do
-			let windowCfg = defaultWindow {
-				windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
-				windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL,
-				windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
+			let windowCfg = SDL.defaultWindow {
+				SDL.windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
+				SDL.windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL,
+				SDL.windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
 			}
 			window <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithWindow (T.pack "Immutaball") windowCfg id
 			context <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLWithGLContext window id
@@ -182,4 +188,23 @@ freeTextureName = proc (name, cxtn) -> do
 	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
 	returnA -< cxtnp1
 
--- TODO: create and delete texture utils (they combine new/free and GL calls).
+type WidthHeightI = (Integer, Integer)
+
+-- | Tight RGBA.
+createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
+createTexture = proc (((w, h), image), cxtn) -> do
+	(name, cxtnp1) <- newTextureName -< cxtn
+	-- Unfortunately since these are separate calls, there is a possible race
+	-- condition if rendering is concurrent.  If rendering is concurrent, calls
+	-- like this might be well handled with a separate GL manager thread, like
+	-- SDLManager.
+	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLBindTexture GL_TEXTURE_2D name ()
+	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
+	returnA -< (name, cxtnp1)
+
+-- | This also frees the texture, not just the name.
+freeTexture :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
+freeTexture = proc (name, cxtn) -> do
+	cxtnp1 <- freeTextureName -< (name, cxtn)
+	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLDeleteTextures [name] ()
+	returnA -< cxtnp1

@@ -25,6 +25,22 @@ module Immutaball.Share.Math
 		mv4,
 		Mat3(..), getMat3,
 		Mat4(..), getMat4,
+		r0_3,
+		r1_3,
+		r2_3,
+		r0_4,
+		r1_4,
+		r2_4,
+		r3_4,
+		transposeMat3,
+		transposeMat4,
+		c0_3,
+		c1_3,
+		c2_3,
+		c0_4,
+		c1_4,
+		c2_4,
+		c3_4,
 		Rect(..), rectp1, rectp2,
 		rectLowerLeft,
 		rectUpperRight,
@@ -147,12 +163,87 @@ newtype Mat4 a = Mat4 { _getMat4 :: Vec4 (Vec4 a) }
 	deriving (Eq, Ord, Show)
 makeLenses ''Mat4
 
---r0_3 :: Lens' (Mat3 a) (Vec3 a)
---r1_3 :: Lens' (Mat3 a) (Vec3 a)
---r2_3 :: Lens' (Mat3 a) (Vec3 a)
---c0_3 :: Lens' (Mat3 a) (Vec3 a)
---c1_3 :: Lens' (Mat3 a) (Vec3 a)
---c2_3 :: Lens' (Mat3 a) (Vec3 a)
+r0_3 :: Lens' (Mat3 a) (Vec3 a)
+r0_3 = getMat3.x3
+
+r1_3 :: Lens' (Mat3 a) (Vec3 a)
+r1_3 = getMat3.y3
+
+r2_3 :: Lens' (Mat3 a) (Vec3 a)
+r2_3 = getMat3.z3
+
+r0_4 :: Lens' (Mat4 a) (Vec4 a)
+r0_4 = getMat4.x4
+
+r1_4 :: Lens' (Mat4 a) (Vec4 a)
+r1_4 = getMat4.y4
+
+r2_4 :: Lens' (Mat4 a) (Vec4 a)
+r2_4 = getMat4.z4
+
+r3_4 :: Lens' (Mat4 a) (Vec4 a)
+r3_4 = getMat4.w4
+
+transposeMat3 :: Mat3 a -> Mat3 a
+transposeMat3 (Mat3 (Vec3
+		(Vec3 v0_0 v0_1 v0_2)
+		(Vec3 v1_0 v1_1 v1_2)
+		(Vec3 v2_0 v2_1 v2_2)
+	)) = Mat3 (Vec3
+		(Vec3 v0_0 v1_0 v2_0)
+		(Vec3 v0_1 v1_1 v2_1)
+		(Vec3 v0_2 v1_2 v2_2)
+	)
+
+transposeMat4 :: Mat4 a -> Mat4 a
+transposeMat4 (Mat4 (Vec4
+		(Vec4 v0_0 v0_1 v0_2 v0_3)
+		(Vec4 v1_0 v1_1 v1_2 v1_3)
+		(Vec4 v2_0 v2_1 v2_2 v2_3)
+		(Vec4 v3_0 v3_1 v3_2 v3_3)
+	)) = Mat4 (Vec4
+		(Vec4 v0_0 v1_0 v2_0 v3_0)
+		(Vec4 v0_1 v1_1 v2_1 v3_1)
+		(Vec4 v0_2 v1_2 v2_2 v3_2)
+		(Vec4 v0_3 v1_3 v2_3 v3_3)
+	)
+
+c0_3 :: Lens' (Mat3 a) (Vec3 a)
+c0_3 = transposeM3.r0_3
+
+c1_3 :: Lens' (Mat3 a) (Vec3 a)
+c1_3 = transposeM3.r1_3
+
+c2_3 :: Lens' (Mat3 a) (Vec3 a)
+c2_3 = transposeM3.r2_3
+
+c0_4 :: Lens' (Mat4 a) (Vec4 a)
+c0_4 = transposeM4.r0_4
+
+c1_4 :: Lens' (Mat4 a) (Vec4 a)
+c1_4 = transposeM4.r1_4
+
+c2_4 :: Lens' (Mat4 a) (Vec4 a)
+c2_4 = transposeM4.r2_4
+
+c3_4 :: Lens' (Mat4 a) (Vec4 a)
+c3_4 = transposeM4.r3_4
+
+transposeM3 :: Lens' (Mat3 a) (Mat3 a)
+transposeM3 = lens getter (flip setter)
+	where
+		getter :: Mat3 a -> Mat3 a
+		getter m = transposeMat3 m
+		setter :: Mat3 a -> Mat3 a -> Mat3 a
+		setter m _ = transposeMat3 m
+
+transposeM4 :: Lens' (Mat4 a) (Mat4 a)
+transposeM4 = lens getter (flip setter)
+	where
+		getter :: Mat4 a -> Mat4 a
+		getter m = transposeMat4 m
+		setter :: Mat4 a -> Mat4 a -> Mat4 a
+		setter m _ = transposeMat4 m
 
 data Rect a = Rect {
 	_rectp1 :: Vec2 a,

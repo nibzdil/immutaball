@@ -29,6 +29,12 @@ module Immutaball.Share.Math
 		rectLowerLeft,
 		rectUpperRight,
 		rectCenter,
+		rectTop,
+		rectRight,
+		rectBottom,
+		rectLeft,
+		rectUpperLeft,
+		rectLowerRight,
 		lerpWith,
 		lerp
 	) where
@@ -150,6 +156,7 @@ data Rect a = Rect {
 	deriving (Eq, Ord, Show)
 makeLenses ''Rect
 
+-- | Not a lens by laws definition; see 'rectBottom'.
 rectLowerLeft :: forall a. (Ord a) => Lens' (Rect a) (Vec2 a)
 rectLowerLeft = lens getter (flip setter)
 	where
@@ -158,6 +165,7 @@ rectLowerLeft = lens getter (flip setter)
 		setter :: Vec2 a -> Rect a -> Rect a
 		setter (Vec2 x' y') (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) x' ax) (if' (ay <= by) y' ay)) (Vec2 (if' (ax <= bx) bx x') (if' (ay <= by) by y'))
 
+-- | Not a lens by laws definition; see 'rectBottom'.
 rectUpperRight :: forall a. (Ord a) => Lens' (Rect a) (Vec2 a)
 rectUpperRight = lens getter (flip setter)
 	where
@@ -166,6 +174,7 @@ rectUpperRight = lens getter (flip setter)
 		setter :: Vec2 a -> Rect a -> Rect a
 		setter (Vec2 x' y') (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) ax x') (if' (ay <= by) ay y')) (Vec2 (if' (ax <= bx) x' bx) (if' (ay <= by) y' by))
 
+-- | Not a lens by laws definition; see 'rectBottom'.
 rectCenter :: forall a. (Num a, Fractional a) => Lens' (Rect a) (Vec2 a)
 rectCenter = lens getter (flip setter)
 	where
@@ -176,6 +185,61 @@ rectCenter = lens getter (flip setter)
 			where
 				offset = c1 `mv2` c0
 				c0 = getter r
+
+-- | Not a lens by laws definition; see 'rectBottom'.
+rectTop :: forall a. (Ord a) => Lens' (Rect a) a
+rectTop = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter (Rect (Vec2 _ax ay) (Vec2 _bx by)) = if' (ay <= by) by ay
+		setter :: a -> Rect a -> Rect a
+		setter y' (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 ax (if' (ay <= by) ay y')) (Vec2 bx (if' (ay <= by) y' by))
+
+-- | Not a lens by laws definition; see 'rectBottom'.
+rectRight :: forall a. (Ord a) => Lens' (Rect a) a
+rectRight = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter (Rect (Vec2 ax _ay) (Vec2 bx _by)) = if' (ax <= bx) bx ax
+		setter :: a -> Rect a -> Rect a
+		setter x' (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) ax x') ay) (Vec2 (if' (ax <= bx) x' bx) by)
+
+-- | This lens does not satisfy the 1st lens law, since you can set a new
+-- bottom above the old top.  Same for the other 3 setters in this category, and also the corner setters.
+rectBottom :: forall a. (Ord a) => Lens' (Rect a) a
+rectBottom = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter (Rect (Vec2 _ax ay) (Vec2 _bx by)) = if' (ay <= by) ay by
+		setter :: a -> Rect a -> Rect a
+		setter y' (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 ax (if' (ay <= by) y' ay)) (Vec2 bx (if' (ay <= by) by y'))
+
+-- | Not a lens by laws definition; see 'rectBottom'.
+rectLeft :: forall a. (Ord a) => Lens' (Rect a) a
+rectLeft = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter (Rect (Vec2 ax _ay) (Vec2 bx _by)) = if' (ax <= bx) ax bx
+		setter :: a -> Rect a -> Rect a
+		setter x' (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) x' ax) ay) (Vec2 (if' (ax <= bx) bx x') by)
+
+-- | Not a lens by laws definition; see 'rectBottom'.
+rectUpperLeft :: forall a. (Ord a) => Lens' (Rect a) (Vec2 a)
+rectUpperLeft = lens getter (flip setter)
+	where
+		getter :: Rect a -> Vec2 a
+		getter (Rect (Vec2 ax ay) (Vec2 bx by)) = Vec2 (if' (ax <= bx) ax bx) (if' (ay <= by) by ay)
+		setter :: Vec2 a -> Rect a -> Rect a
+		setter (Vec2 x' y') (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) x' ax) (if' (ay <= by) ay y')) (Vec2 (if' (ax <= bx) bx x') (if' (ay <= by) y' by))
+
+-- | Not a lens by laws definition; see 'rectBottom'.
+rectLowerRight :: forall a. (Ord a) => Lens' (Rect a) (Vec2 a)
+rectLowerRight = lens getter (flip setter)
+	where
+		getter :: Rect a -> Vec2 a
+		getter (Rect (Vec2 ax ay) (Vec2 bx by)) = Vec2 (if' (ax <= bx) bx ax) (if' (ay <= by) ay by)
+		setter :: Vec2 a -> Rect a -> Rect a
+		setter (Vec2 x' y') (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (if' (ax <= bx) ax x') (if' (ay <= by) y' ay)) (Vec2 (if' (ax <= bx) x' bx) (if' (ay <= by) by y'))
 
 lerpWith :: (a -> a -> a) -> (a -> a -> a) -> (s -> a -> a) -> a -> a -> s -> a
 lerpWith plus minus scale from_ to_ v = from_ `plus` (v`scale`(to_ `minus` from_))

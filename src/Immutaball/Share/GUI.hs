@@ -59,7 +59,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.Math
 import Immutaball.Share.State
---import Immutaball.Share.State.Context
+import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
@@ -174,8 +174,8 @@ makeClassyPrisms ''WidgetResponse
 -- TODO: handle mouse input.
 -- TODO: paint.
 
-mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id) (WidgetResponse id)
-mkGUI initialWidgets = proc request -> do
+mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id, IBStateContext) (WidgetResponse id, IBStateContext)
+mkGUI initialWidgets = proc (request, cxtn) -> do
 	-- Set up widgets.
 	resetWidgets <- returnA -< either (const Nothing) Just $ matching _ResetGUI request
 	widgets <- hold initialWidgets -< resetWidgets
@@ -214,9 +214,9 @@ mkGUI initialWidgets = proc request -> do
 			flip mapMaybe widgetsFocusedSinceLastPaintIdx $ \idx -> (^.wid) <$> flip M.lookup widgetIdx idx
 
 	-- Paint.
-	() <- case request of
-		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t)
-		_ -> returnA -< ()
+	cxtnp1 <- case request of
+		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t, cxtn)
+		_ -> returnA -< cxtn
 
 	-- Set up response.
 	response <- returnA -< case request of
@@ -224,7 +224,7 @@ mkGUI initialWidgets = proc request -> do
 			if' (char == fromIntegral Raw.SDLK_RETURN) (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus) $
 			NoWidgetAction
 		_ -> NoWidgetAction
-	returnA -< response
+	returnA -< (response, cxtnp1)
 	where
 		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()
@@ -311,8 +311,8 @@ isSelectable :: Widget id -> Bool
 isSelectable (ButtonWidget {}) = True
 isSelectable _                 = False
 
-guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Float), M.Map id (Widget id), [id], Float) ()
-guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t) -> do
+guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Float), M.Map id (Widget id), [id], Float, IBStateContext) IBStateContext
+guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, cxtn) -> do
 	_dt <- differentiate -< t
 	rec
 		(widgetLastFocusLast :: M.Map id Float) <- delay M.empty -< widgetLastFocus
@@ -333,7 +333,7 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t) 
 			return $ pure ()
 	() <- monadic -< liftIBIO $ forM_ widgets paintWidget
 
-	returnA -< ()
+	returnA -< cxtn
 
 -- Optionally this could be moved to static config.
 focusDecayTime :: Float

@@ -10,12 +10,19 @@
 module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
-			ibSDLGLContext, ibSDLFont,
+			ibSDLGLContext, ibSDLFont, ibGLTextureNames,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
+		requireFont,
+		requireGLTextureNames,
+		requireMisc,
 		requireBasics,
-		finishFrame
+		finishFrame,
+
+		-- * Utils
+		newTextureName,
+		freeTextureName
 	) where
 
 import Prelude ()
@@ -23,10 +30,14 @@ import Immutaball.Prelude
 
 import Control.Arrow
 import Data.Bits
+import Data.Maybe
 
 import Control.Lens
+import Control.Concurrent.STM.TVar
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Graphics.GL.Core45
+import Graphics.GL.Types
 import qualified SDL.Font as SDL.Font  -- (sdl2-ttf)
 import SDL.Vect as SDL
 import SDL.Video as SDL
@@ -54,7 +65,10 @@ data IBStateContext = IBStateContext {
 
 	_ibSDLWindow :: Maybe (SDL.Window),
 	_ibSDLGLContext :: Maybe (SDL.GLContext),
-	_ibSDLFont :: Maybe (SDL.Font.Font)
+	_ibSDLFont :: Maybe (SDL.Font.Font),
+
+	-- | Used, freed.
+	_ibGLTextureNames :: Maybe (TVar (S.Set GLuint, S.Set GLuint))
 }
 makeLenses ''IBStateContext
 
@@ -64,9 +78,10 @@ initialStateCxt cxt = IBStateContext {
 
 	_ibNeverballrc = cxt^.ibNeverballrc0,
 
-	_ibSDLWindow = Nothing,
-	_ibSDLGLContext = Nothing,
-	_ibSDLFont = Nothing
+	_ibSDLWindow      = Nothing,
+	_ibSDLGLContext   = Nothing,
+	_ibSDLFont        = Nothing,
+	_ibGLTextureNames = Nothing
 }
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
@@ -110,10 +125,22 @@ requireFont = proc cxt0 -> do
 			() <- monadic -< if' (not condition) (pure ()) . liftIBIO . BasicIBIOF $ PutStrLn msg ()
 			returnA -< ()
 
+requireGLTextureNames :: Wire ImmutaballM IBStateContext (TVar (S.Set GLuint, S.Set GLuint), IBStateContext)
+requireGLTextureNames = proc cxt0 -> do
+	case (cxt0^.ibGLTextureNames) of
+		Just glTextureNames -> returnA -< (glTextureNames, cxt0)
+		Nothing -> do
+			glTextureNames <- monadic -< liftIBIO $ Atomically (newTVar (S.empty, S.empty)) id
+			let cxt1 = cxt0 & (ibGLTextureNames.~Just glTextureNames)
+			returnA -< (glTextureNames, cxt1)
+
+requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
+requireMisc = snd <$> requireGLTextureNames <<< id
+
 -- | Also handles common set-up tasks like clearing the color for rendering.
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
 requireBasics = proc (cxt0, _request) -> do
-	cxt <- requireFont <<< requireVideo -< cxt0
+	cxt <- requireMisc <<< requireFont <<< requireVideo -< cxt0
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClearColor 0.1 0.1 0.9 1.0 ()
 	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) ()
 	returnA -< cxt
@@ -123,3 +150,36 @@ finishFrame :: Wire ImmutaballM IBStateContext ()
 finishFrame = proc cxt -> do
 	() <- monadic -< maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
 	returnA -< ()
+
+-- * Utils
+
+newTextureName :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
+newTextureName = proc cxtn -> do
+	(glTextureNames, cxtnp1) <- requireGLTextureNames -< cxtn
+	(name, err) <- monadic -< liftIBIO . flip Atomically id $ do
+		(used, freed) <- readTVar glTextureNames
+		let defaultName = fromMaybe 0 $ (+1) <$> S.lookupMax used
+		let name = fromMaybe defaultName $ S.lookupMin freed
+		let (used', freed') = (S.insert name used, S.delete name freed)
+		writeTVar glTextureNames (used', freed')
+		let err = if' (not $ name `S.member` used) Nothing $ Just ("Error: newTextureName: created texture name already in use!: " ++ show name)
+		return (name, err)
+	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
+	returnA -< (name, cxtnp1)
+
+freeTextureName :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
+freeTextureName = proc (name, cxtn) -> do
+	(glTextureNames, cxtnp1) <- requireGLTextureNames -< cxtn
+	err <- monadic -< liftIBIO . flip Atomically id $ do
+		(used, freed) <- readTVar glTextureNames
+		let (used', freed') = (S.delete name used, S.insert name freed)
+		writeTVar glTextureNames (used', freed')
+		let err =
+			if' (name `S.member` freed)       (Just ("Error: freeTextureName: double free of texture name!: " ++ show name)) .
+			if' (not $ name `S.member` used)  (Just ("Error: freeTextureName: free of unallocated texture name!: " ++ show name)) $
+			Nothing
+		return err
+	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
+	returnA -< cxtnp1
+
+-- TODO: create and delete texture utils (they combine new/free and GL calls).

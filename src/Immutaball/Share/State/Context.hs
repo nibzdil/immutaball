@@ -20,6 +20,7 @@ module Immutaball.Share.State.Context
 		requireMisc,
 		requireBasics,
 		finishFrame,
+		glErrType,
 
 		-- * Utils
 		newTextureNameWithoutGenText,
@@ -193,7 +194,25 @@ requireBasics = proc (cxt0, _request) -> do
 finishFrame :: Wire ImmutaballM IBStateContext ()
 finishFrame = proc cxt -> do
 	() <- monadic -< maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
-	returnA -< ()
+	error_ <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLGetError id
+	case error_ of
+		GL_NO_ERROR -> returnA -< ()
+		err -> do
+			() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("Error: an OpenGL error occurred (" ++ show err ++ "): " ++ glErrType err) ()
+			() <- monadic -< liftIBIO . BasicIBIOF $ ExitFailureBasicIOF
+			returnA -< ()
+	where
+
+glErrType :: GLenum -> String
+glErrType GL_NO_ERROR                      = "GL_NO_ERROR"
+glErrType GL_INVALID_ENUM                  = "GL_INVALID_ENUM"
+glErrType GL_INVALID_VALUE                 = "GL_INVALID_VALUE"
+glErrType GL_INVALID_OPERATION             = "GL_INVALID_OPERATION"
+glErrType GL_INVALID_FRAMEBUFFER_OPERATION = "GL_INVALID_FRAMEBUFFER_OPERATION"
+glErrType GL_OUT_OF_MEMORY                 = "GL_OUT_OF_MEMORY"
+glErrType GL_STACK_OVERFLOW                = "GL_STACK_OVERFLOW"
+glErrType GL_STACK_UNDERFLOW               = "GL_STACK_UNDERLOW"
+glErrType _                                = "unknown error type"
 
 -- * Utils
 

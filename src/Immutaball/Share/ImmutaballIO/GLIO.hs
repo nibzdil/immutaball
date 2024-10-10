@@ -35,7 +35,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLTexImage2D,
 		mkGLGenTextures,
 		mkGLBindTexture,
-		mkGLDeleteTextures
+		mkGLDeleteTextures,
+		mkGLGetError
 	) where
 
 import Prelude ()
@@ -75,6 +76,7 @@ data GLIOF me =
 	| GLBindTexture GLenum GLuint me
 	-- | Delete a texture.
 	| GLDeleteTextures [GLuint] me
+	| GLGetError (GLenum -> me)
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -84,6 +86,7 @@ instance Functor GLIOF where
 	fmap f (GLGenTextures    numNames       withNames) = GLGenTextures    numNames       (f . withNames)
 	fmap f (GLBindTexture    target texture withUnit)  = GLBindTexture    target texture (f withUnit)
 	fmap f (GLDeleteTextures textures       withUnit)  = GLDeleteTextures textures       (f withUnit)
+	fmap f (GLGetError                      withError) = GLGetError                      (f . withError)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -151,6 +154,7 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGenTextures    numNames         withNames) -> return $ GLGenTextures numNames ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
 		y@( GLBindTexture    _target _texture me)        -> putMVar mme me >> return y
 		y@( GLDeleteTextures _textures        me)        -> putMVar mme me >> return y
+		_y@(GLGetError                        withError) -> return $ GLGetError             ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withError)
 
 -- * Runners
 
@@ -161,6 +165,7 @@ runGLIOIO (GLTexImage2D     target level internalformat width height border form
 runGLIOIO (GLGenTextures    numNames             withNames) = hglGenTextures numNames       >>= withNames
 runGLIOIO (GLBindTexture    target texture       glio) = glBindTexture target texture       >> glio
 runGLIOIO (GLDeleteTextures textures             glio) = hglDeleteTextures textures         >> glio
+runGLIOIO (GLGetError                            withError) = glGetError                    >>= withError
 
 hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> IO ()
 hglTexImage2D target level internalformat width height border format type_ data_ = do
@@ -200,3 +205,6 @@ mkGLBindTexture target texture glio = Fixed $ GLBindTexture target texture glio
 
 mkGLDeleteTextures :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteTextures textures glio = Fixed $ GLDeleteTextures textures glio
+
+mkGLGetError :: (GLenum -> GLIO) -> GLIO
+mkGLGetError withError = Fixed $ GLGetError withError

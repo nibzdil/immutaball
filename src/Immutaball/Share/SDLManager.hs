@@ -46,6 +46,14 @@ import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.SDLManager.Types
 
+-- TODO: reomve this debugging.  Basically I've written a lot without being
+-- able to see anything, and I just want to test our GUI before I write more advanced OpenGL.
+import System.IO.Unsafe (unsafePerformIO)
+import Graphics.GL.Internal.Shared as GL
+import Immutaball.Share.Utils
+import Data.Bits
+import Immutaball.Share.ImmutaballIO.GLIO
+
 -- * High level
 
 withSDLManager :: (SDLManagerHandle -> ImmutaballIO) -> ImmutaballIO
@@ -88,8 +96,26 @@ quitSDLManager sdlMgr =
 	mkAtomically (do
 		readTVar (sdlMgr^.sdlmh_doneReceived) >>= check) (const mempty)
 
+-- TODO: remove debugging once GL commands work.
+{-# NOINLINE fff #-}
+fff :: a -> a
+fff =
+	unsafePerformIO (do
+		GL.glColor4f 0.3 0.7 0.3 1.0
+		GL.glBegin GL.GL_QUADS
+		GL.glVertex2f (-9.0) (-9.0)
+		GL.glVertex2f (-9.0) ( 9.0)
+		GL.glVertex2f ( 9.0) ( 9.0)
+		GL.glVertex2f ( 9.0) (-9.0)
+		GL.glEnd
+		return id
+	)
+
 sdlManagerThread :: SDLManagerHandle -> ImmutaballIO
 sdlManagerThread sdlMgr =
+	fff .
+	mkBIO . GLIO . GLClearColor 0.1 0.7 0.2 1.0 .
+	mkBIO . GLIO . GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) .
 	mkAtomically (
 		readTVar (sdlMgr^.sdlmh_done) >>= \done ->
 		(check done $> Left done) `orElse` (Right <$> readTChan (sdlMgr^.sdlmh_commands))

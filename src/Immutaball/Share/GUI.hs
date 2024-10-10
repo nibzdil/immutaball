@@ -330,7 +330,8 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 	-- TODO test
 	case widget of
 		(ButtonWidget button) -> do
-			(((w, h), name), cxtnp1) <- cachingRenderText -< (T.pack $ button^.text, cxtn)
+			--(((w, h), name), cxtnp1) <- cachingRenderText -< (T.pack $ button^.text, cxtn)
+			cxtnp1 <- returnA -< cxtn
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 			() <- monadic -< unsafePerformIO $ do

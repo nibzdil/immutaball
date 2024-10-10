@@ -13,16 +13,19 @@ module Immutaball.Share.Math
 		pv2,
 		sv2,
 		mv2,
+		d2,
 		r2,
 		t2,
 		Vec3(..), x3, y3, z3,
 		pv3,
 		sv3,
 		mv3,
+		d3,
 		Vec4(..), x4, y4, z4, w4,
 		pv4,
 		sv4,
 		mv4,
+		d4,
 		Mat3(..), getMat3,
 		Mat4(..), getMat4,
 		r0_3,
@@ -34,6 +37,8 @@ module Immutaball.Share.Math
 		r3_4,
 		transposeMat3,
 		transposeMat4,
+		mm3,
+		mm4,
 		c0_3,
 		c1_3,
 		c2_3,
@@ -119,6 +124,9 @@ t2 = lens getter (flip setter)
 			where
 				r = v^.r2
 
+d2 :: (Num a) => Vec2 a -> Vec2 a -> a
+d2 (Vec2 ax ay) (Vec2 bx by) = ax*bx + ay*by
+
 data Vec3 a = Vec3 {
 	_x3 :: a,
 	_y3 :: a,
@@ -135,6 +143,9 @@ sv3 s (Vec3 x y z) = Vec3 (s*x) (s*y) (s*z)
 
 mv3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
 mv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax - bx) (ay - by) (az - bz)
+
+d3 :: (Num a) => Vec3 a -> Vec3 a -> a
+d3 (Vec3 ax ay az) (Vec3 bx by bz) = ax*bx + ay*by + az*bz
 
 data Vec4 a = Vec4 {
 	_x4 :: a,
@@ -153,6 +164,9 @@ sv4 s (Vec4 x y z w) = Vec4 (s*x) (s*y) (s*z) (s*w)
 
 mv4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
 mv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax - bx) (ay - by) (az - bz) (aw - bw)
+
+d4 :: (Num a) => Vec4 a -> Vec4 a -> a
+d4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = ax*bx + ay*by + az*bz + aw*bw
 
 -- | Row-major, like C.
 newtype Mat3 a = Mat3 { _getMat3 :: Vec3 (Vec3 a) }
@@ -244,6 +258,27 @@ transposeM4 = lens getter (flip setter)
 		getter m = transposeMat4 m
 		setter :: Mat4 a -> Mat4 a -> Mat4 a
 		setter m _ = transposeMat4 m
+
+-- | Matrix multiplication.
+--
+-- This is not commutative.
+mm3 :: (Num a) => Mat3 a -> Mat3 a -> Mat3 a
+mm3 a b = (Mat3 (Vec3
+		(Vec3 (d3 (a^.r0_3) (b^.c0_3))  (d3 (a^.r0_3) (b^.c1_3))  (d3 (a^.r0_3) (b^.c2_3)))
+		(Vec3 (d3 (a^.r1_3) (b^.c0_3))  (d3 (a^.r1_3) (b^.c1_3))  (d3 (a^.r1_3) (b^.c2_3)))
+		(Vec3 (d3 (a^.r2_3) (b^.c0_3))  (d3 (a^.r2_3) (b^.c1_3))  (d3 (a^.r2_3) (b^.c2_3)))
+	))
+
+-- | Matrix multiplication.
+--
+-- This is not commutative.
+mm4 :: (Num a) => Mat4 a -> Mat4 a -> Mat4 a
+mm4 a b = (Mat4 (Vec4
+		(Vec4 (d4 (a^.r0_4) (b^.c0_4))  (d4 (a^.r0_4) (b^.c1_4))  (d4 (a^.r0_4) (b^.c2_4))  (d4 (a^.r0_4) (b^.c3_4)))
+		(Vec4 (d4 (a^.r1_4) (b^.c0_4))  (d4 (a^.r1_4) (b^.c1_4))  (d4 (a^.r1_4) (b^.c2_4))  (d4 (a^.r1_4) (b^.c3_4)))
+		(Vec4 (d4 (a^.r2_4) (b^.c0_4))  (d4 (a^.r2_4) (b^.c1_4))  (d4 (a^.r2_4) (b^.c2_4))  (d4 (a^.r2_4) (b^.c3_4)))
+		(Vec4 (d4 (a^.r3_4) (b^.c0_4))  (d4 (a^.r3_4) (b^.c1_4))  (d4 (a^.r3_4) (b^.c2_4))  (d4 (a^.r3_4) (b^.c3_4)))
+	))
 
 data Rect a = Rect {
 	_rectp1 :: Vec2 a,

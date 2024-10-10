@@ -14,12 +14,13 @@ module Immutaball.Share.GUI
 		HasWparent(..),
 		HasFill(..),
 		HasText(..),
+		HasRect(..),
 		Root(..), rootWid,
 		Space(..), spaceWid, spaceWparent, spaceFill,
 		Vstack(..), vstackWid, vstackWparent,
 		Hstack(..), hstackWid, hstackWparent,
-		Label(..), labelWid, labelWparent, labelText,
-		Button(..), buttonWid, buttonWparent, buttonText,
+		Label(..), labelWid, labelWparent, labelText, labelRect,
+		Button(..), buttonWid, buttonWparent, buttonText, buttonRect,
 		Widget(..), AsWidget(..),
 
 		-- * wires
@@ -31,6 +32,7 @@ module Immutaball.Share.GUI
 		mkWidgetIdx,
 		mkWidgetToIdx,
 		mkGetChildren,
+		mkGeometry,
 		nextWidgetDirect,
 		prevWidgetDirect,
 		nextWidgetHier,
@@ -43,6 +45,7 @@ import Immutaball.Prelude
 
 import Control.Arrow
 --import Data.Functor.Identity
+import Data.Maybe
 
 import Control.Lens
 import qualified Data.Map.Lazy as M
@@ -50,6 +53,7 @@ import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
+import Immutaball.Share.Math
 import Immutaball.Share.State
 --import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
@@ -97,7 +101,8 @@ data Label id = Label {
 	_labelWid     :: id,
 	_labelWparent :: id,
 
-	_labelText    :: String
+	_labelText    :: String,
+	_labelRect    :: Maybe (Rect Float)
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Label
@@ -107,7 +112,8 @@ data Button id = Button {
 	_buttonWid     :: id,
 	_buttonWparent :: id,
 
-	_buttonText    :: String
+	_buttonText    :: String,
+	_buttonRect    :: Maybe (Rect Float)
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Button
@@ -169,6 +175,7 @@ mkGUI initialWidgets = proc request -> do
 	widgetIdx   <- mkWidgetsAnalysis' mkWidgetIdx   -< widgetsReq
 	widgetToIdx <- mkWidgetsAnalysis' mkWidgetToIdx -< widgetsReq
 	getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
+	_geometry   <- mkWidgetsAnalysis' mkGeometry    -< widgetsReq
 
 	nextWidgetHier' <- returnA -< nextWidgetHier widgetBy getChildren
 	prevWidgetHier' <- returnA -< prevWidgetHier widgetBy getChildren
@@ -214,6 +221,15 @@ mkWidgetToIdx widgets = M.fromList $ zip widgets [0..]
 
 mkGetChildren :: (Eq id) => [Widget id] -> id -> [Widget id]
 mkGetChildren widgets wid_ = filter (\w -> (w^.wid) == wid_) widgets
+
+-- TODO: make a more sophisticated geometry.
+-- For now I'll just specify the rect by hand.
+mkGeometry :: forall id. (Eq id, Ord id) => [Widget id] -> M.Map id (Rect Float)
+--mkGeometry widgets = M.fromList . flip mapMaybe widgets . (\(a,b)->(a,)<$>b) . (id &&&) $ \w -> case w of
+mkGeometry widgets = M.fromList . map (first (^.wid)) . flip mapMaybe widgets . (uncurry fmap .) . ((,) &&&) $ \w -> case w of
+	(LabelWidget label) -> label^.labelRect
+	(ButtonWidget button) -> button^.buttonRect
+	_ -> Nothing
 
 -- | The order is the order reflected in the input widgets.
 nextWidgetDirect :: (Eq id, Ord id) => M.Map Integer (Widget id) -> Integer -> Integer

@@ -21,6 +21,7 @@ import Control.Arrow
 import Data.Functor.Identity
 
 import Immutaball.Share.GUI
+import Immutaball.Share.Math
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
@@ -54,7 +55,7 @@ titleGui =
 		RootWidget   $ Root   { _rootWid   = TitleRoot                               },
 		VstackWidget $ Vstack { _vstackWid = MenuVstack, _vstackWparent = TitleRoot  },
 		ButtonWidget $ Button { _buttonWid = PlayButton, _buttonWparent = MenuVstack,
-			_buttonText = "Play" },
+			_buttonText = "Play", _buttonRect = Just $ Rect (Vec2 0.45 0.48) (Vec2 0.55 0.52) },
 		ButtonWidget $ Button { _buttonWid = QuitButton, _buttonWparent = MenuVstack,
-			_buttonText = "Quit" }
+			_buttonText = "Quit", _buttonRect = Just $ Rect (Vec2 0.45 0.44) (Vec2 0.55 0.48) }
 	]

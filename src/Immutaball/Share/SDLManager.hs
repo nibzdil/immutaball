@@ -58,8 +58,8 @@ withSDLManager withHandle =
 -- SDLManagerHandle
 -- SDLManagerCommand
 
-issueSDLCommand :: SDLManagerHandle -> SDLManagerCommand -> ImmutaballIO -> ImmutaballIO
-issueSDLCommand sdlMgr cmd withUnit = mkAtomically (writeTChan (sdlMgr^.sdlmh_commands) cmd) (const withUnit)
+issueSDLCommand :: SDLManagerHandle -> SDLManagerCommand -> me -> ImmutaballIOF me
+issueSDLCommand sdlMgr cmd withUnit = Atomically (writeTChan (sdlMgr^.sdlmh_commands) cmd) (\() -> withUnit)
 
 -- * Low level
 

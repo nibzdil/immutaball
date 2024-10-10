@@ -39,6 +39,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.GLManager.Types
+
 -- * High level
 
 withGLManager :: (GLManagerHandle -> ImmutaballIO) -> ImmutaballIO
@@ -51,10 +52,10 @@ withGLManager withHandle =
 -- GLManagerHandle
 -- GLManagerCommand
 
-issueGLCommand :: GLManagerHandle -> GLManagerCommand -> ImmutaballIO -> ImmutaballIO
-issueGLCommand glMgr cmd withUnit = mkAtomically (writeTChan (glMgr^.glmh_commands) cmd) (const withUnit)
+issueGLCommand :: GLManagerHandle -> GLManagerCommand -> me -> ImmutaballIOF me
+issueGLCommand glMgr cmd withUnit = Atomically (writeTChan (glMgr^.glmh_commands) cmd) (\() -> withUnit)
 
-glQueueValueless :: GLManagerHandle -> [GLIOF ()] -> ImmutaballIO -> ImmutaballIO
+glQueueValueless :: GLManagerHandle -> [GLIOF ()] -> me -> ImmutaballIOF me
 glQueueValueless glMgr orderedGLCommands withUnit =
 	issueGLCommand glMgr (GLQueueValueless orderedGLCommands) withUnit
 

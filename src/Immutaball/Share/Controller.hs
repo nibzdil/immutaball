@@ -81,7 +81,7 @@ takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
 takeAllSDLEvents cxt withEvents =
 	mkAtomically newEmptyTMVar $ \eventStorage ->
 	flip fix [] $ \me events ->
-	issueSDLCommand (cxt^.ibSDLManagerHandle) (PollEvent eventStorage) .
+	Fixed . issueSDLCommand (cxt^.ibSDLManagerHandle) (PollEvent eventStorage) .
 	mkAtomically (takeTMVar eventStorage) $ \mevent ->
 	case mevent of
 		Nothing -> withEvents $ reverse events

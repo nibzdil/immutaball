@@ -70,6 +70,9 @@ import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
+import Debug.Trace as D -------------------------- TODO
+import Text.Printf
+
 -- * widgets
 
 data Root id = Root {
@@ -328,6 +331,8 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 	_dt <- differentiate -< t
 	dt <- differentiate -< t
 	offset <- integrate 0 -< 1 * dt
+	-- TODO: remove debugging.
+	() <- returnA -< D.trace (printf "DEBUG0: t is %21f; offset is %21f; dt is %21f" t offset dt) ()
 	sdlGL' <- returnA -< liftIBIO . sdlGL (cxtn^.ibContext.ibSDLManagerHandle)
 	-- TODO: clean up textures; just debugging for now to test what I have so far.
 	-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.

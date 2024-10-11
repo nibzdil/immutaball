@@ -29,6 +29,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglTexImage2D,
 		hglGenTextures,
 		hglDeleteTextures,
+		hglTexEnvfv,
+		hglTexEnviv,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkGLClear,
@@ -48,7 +50,11 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDisable,
 		mkGLEnablei,
 		mkGLDisablei,
-		mkGLTexCoord2d
+		mkGLTexCoord2d,
+		mkGLTexEnvf,
+		mkGLTexEnvi,
+		mkGLTexEnvfv,
+		mkGLTexEnviv
 	) where
 
 import Prelude ()
@@ -102,6 +108,10 @@ data GLIOF me =
 	| GLEnablei GLenum GLuint me
 	| GLDisablei GLenum GLuint me
 	| GLTexCoord2d GLdouble GLdouble me
+	| GLTexEnvf GLenum GLenum GLfloat me
+	| GLTexEnvi GLenum GLenum GLint me
+	| GLTexEnvfv GLenum GLenum [GLfloat] me
+	| GLTexEnviv GLenum GLenum [GLint] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -124,6 +134,10 @@ instance Functor GLIOF where
 	fmap f (GLEnablei cap index_            withUnit) = GLEnablei cap index_            (f withUnit)
 	fmap f (GLDisablei cap index_           withUnit) = GLDisablei cap index_           (f withUnit)
 	fmap f (GLTexCoord2d s t                withUnit) = GLTexCoord2d s t                (f withUnit)
+	fmap f (GLTexEnvf target pname param    withUnit) = GLTexEnvf target pname param    (f withUnit)
+	fmap f (GLTexEnvi target pname param    withUnit) = GLTexEnvi target pname param    (f withUnit)
+	fmap f (GLTexEnvfv target pname params  withUnit) = GLTexEnvfv target pname params  (f withUnit)
+	fmap f (GLTexEnviv target pname params  withUnit) = GLTexEnviv target pname params  (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -204,6 +218,10 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLEnablei _cap _index               me) -> putMVar mme me >> return y
 		y@( GLDisablei _cap _index              me) -> putMVar mme me >> return y
 		y@( GLTexCoord2d _s _t                  me) -> putMVar mme me >> return y
+		y@( GLTexEnvf _target _pname _param     me) -> putMVar mme me >> return y
+		y@( GLTexEnvi _target _pname _param     me) -> putMVar mme me >> return y
+		y@( GLTexEnvfv _target _pname _params   me) -> putMVar mme me >> return y
+		y@( GLTexEnviv _target _pname _params   me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -227,6 +245,10 @@ runGLIOIO (GLDisable cap                   glio) = glDisable cap                
 runGLIOIO (GLEnablei cap index_            glio) = glEnablei cap index_            >> glio
 runGLIOIO (GLDisablei cap index_           glio) = glDisablei cap index_           >> glio
 runGLIOIO (GLTexCoord2d s t                glio) = glTexCoord2d s t                >> glio
+runGLIOIO (GLTexEnvf target pname param    glio) = glTexEnvf target pname param    >> glio
+runGLIOIO (GLTexEnvi target pname param    glio) = glTexEnvi target pname param    >> glio
+runGLIOIO (GLTexEnvfv target pname params  glio) = hglTexEnvfv target pname params >> glio
+runGLIOIO (GLTexEnviv target pname params  glio) = hglTexEnviv target pname params >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -249,6 +271,18 @@ hglDeleteTextures textures = do
 	array_ <- newListArray (0 :: Integer, genericLength textures - 1) textures
 	len    <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glDeleteTextures (fromIntegral len) (castPtr ptr)
+
+hglTexEnvfv :: GLenum -> GLenum -> [GLfloat] -> IO ()
+hglTexEnvfv target pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTexEnvfv target pname (castPtr ptr)
+
+hglTexEnviv :: GLenum -> GLenum -> [GLint] -> IO ()
+hglTexEnviv target pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTexEnviv target pname (castPtr ptr)
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -305,3 +339,15 @@ mkGLDisablei cap index_ glio = Fixed $ GLDisablei cap index_ glio
 
 mkGLTexCoord2d :: GLdouble -> GLdouble -> GLIO -> GLIO
 mkGLTexCoord2d s t glio = Fixed $ GLTexCoord2d s t glio
+
+mkGLTexEnvf :: GLenum -> GLenum -> GLfloat -> GLIO -> GLIO
+mkGLTexEnvf target pname param glio = Fixed $ GLTexEnvf target pname param glio
+
+mkGLTexEnvi :: GLenum -> GLenum -> GLint -> GLIO -> GLIO
+mkGLTexEnvi target pname param glio = Fixed $ GLTexEnvi target pname param glio
+
+mkGLTexEnvfv :: GLenum -> GLenum -> [GLfloat] -> GLIO -> GLIO
+mkGLTexEnvfv target pname params glio = Fixed $ GLTexEnvfv target pname params glio
+
+mkGLTexEnviv :: GLenum -> GLenum -> [GLint] -> GLIO -> GLIO
+mkGLTexEnviv target pname params glio = Fixed $ GLTexEnviv target pname params glio

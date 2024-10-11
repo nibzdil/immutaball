@@ -353,6 +353,8 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 
 			-- {-
 			() <- monadic -< sdlGL' $ GLEnable GL_TEXTURE_2D ()
+			--() <- monadic -< sdlGL' $ GLActiveTexture GL_TEXTURE0 ()
+			--() <- monadic -< sdlGL' $ GLClientActiveTexture GL_TEXTURE0 ()
 
 			() <- monadic -< sdlGL' $ GLColor4d 0.1 0.1 0.9 1.0 ()
 			() <- monadic -< sdlGL' $ GLBindTexture GL_TEXTURE_2D name ()

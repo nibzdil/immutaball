@@ -92,7 +92,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDetachShader,
 		mkGLLinkProgram,
 		mkGLUseProgram,
-		mkGLBindProgramPipeline
+		mkGLBindProgramPipeline,
+		mkGLUseProgramStages
 	) where
 
 import Prelude ()
@@ -185,6 +186,8 @@ data GLIOF me =
 	| GLLinkProgram GLuint me
 	| GLUseProgram GLuint me
 	| GLBindProgramPipeline GLuint me
+
+	| GLUseProgramStages GLuint GLbitfield GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -244,6 +247,8 @@ instance Functor GLIOF where
 	fmap f (GLLinkProgram program         withUnit) = GLLinkProgram program         (f withUnit)
 	fmap f (GLUseProgram id_              withUnit) = GLUseProgram id_              (f withUnit)
 	fmap f (GLBindProgramPipeline id_     withUnit) = GLBindProgramPipeline id_     (f withUnit)
+
+	fmap f (GLUseProgramStages pipeline stages program withUnit) = GLUseProgramStages pipeline stages program (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -363,6 +368,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLUseProgram _id                me) -> putMVar mme me >> return y
 		y@( GLBindProgramPipeline _id       me) -> putMVar mme me >> return y
 
+		y@( GLUseProgramStages _pipeline _stages _program me) -> putMVar mme me >> return y
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
@@ -423,6 +430,8 @@ runGLIOIO (GLDetachShader program shader glio) = glDetachShader program shader  
 runGLIOIO (GLLinkProgram program         glio) = glLinkProgram program          >> glio
 runGLIOIO (GLUseProgram id_              glio) = glUseProgram id_               >> glio
 runGLIOIO (GLBindProgramPipeline id_     glio) = glBindProgramPipeline id_      >> glio
+
+runGLIOIO (GLUseProgramStages pipeline stages program glio) = glUseProgramStages pipeline stages program >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -683,3 +692,6 @@ mkGLUseProgram id_ glio = Fixed $ GLUseProgram id_ glio
 
 mkGLBindProgramPipeline :: GLuint -> GLIO -> GLIO
 mkGLBindProgramPipeline id_ glio = Fixed $ GLBindProgramPipeline id_ glio
+
+mkGLUseProgramStages :: GLuint -> GLbitfield -> GLuint -> GLIO -> GLIO
+mkGLUseProgramStages pipeline stages program glio = Fixed $ GLUseProgramStages pipeline stages program glio

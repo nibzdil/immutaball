@@ -154,6 +154,8 @@ data GLIOF me =
 
 	| GLBlendEquationSeparate GLenum GLenum me
 	| GLBlendEquationSeparatei GLuint GLenum GLenum me
+	| GLBlendFuncSeparate GLenum GLenum GLenum GLenum me
+	| GLBlendFuncSeparatei GLuint GLenum GLenum GLenum GLenum me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -196,8 +198,10 @@ instance Functor GLIOF where
 	fmap f (GLDepthMask flag   withUnit) = GLDepthMask flag   (f withUnit)
 	fmap f (GLDepthFunc mask_2 withUnit) = GLDepthFunc mask_2 (f withUnit)
 
-	fmap f (GLBlendEquationSeparate modeRGB modeAlpha      withUnit) = GLBlendEquationSeparate modeRGB modeAlpha      (f withUnit)
-	fmap f (GLBlendEquationSeparatei buf modeRGB modeAlpha withUnit) = GLBlendEquationSeparatei buf modeRGB modeAlpha (f withUnit)
+	fmap f (GLBlendEquationSeparate modeRGB modeAlpha                withUnit) = GLBlendEquationSeparate modeRGB modeAlpha                (f withUnit)
+	fmap f (GLBlendEquationSeparatei buf modeRGB modeAlpha           withUnit) = GLBlendEquationSeparatei buf modeRGB modeAlpha           (f withUnit)
+	fmap f (GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      withUnit) = GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      (f withUnit)
+	fmap f (GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha withUnit) = GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -301,6 +305,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLBlendEquationSeparate _modeRGB _modeAlpha me)       -> putMVar mme me >> return y
 		y@( GLBlendEquationSeparatei _buf _modeRGB _modeAlpha me) -> putMVar mme me >> return y
 
+		y@( GLBlendFuncSeparate _srcRGB _dstRGB _srcAlpha _dstAlpha me)       -> putMVar mme me >> return y
+		y@( GLBlendFuncSeparatei _buf _srcRGB _dstRGB _srcAlpha _dstAlpha me) -> putMVar mme me >> return y
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
@@ -345,6 +352,9 @@ runGLIOIO (GLDepthFunc func glio) = glDepthFunc func >> glio
 
 runGLIOIO (GLBlendEquationSeparate modeRGB modeAlpha      glio) = glBlendEquationSeparate modeRGB modeAlpha      >> glio
 runGLIOIO (GLBlendEquationSeparatei buf modeRGB modeAlpha glio) = glBlendEquationSeparatei buf modeRGB modeAlpha >> glio
+
+runGLIOIO (GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      glio) = glBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      >> glio
+runGLIOIO (GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha glio) = glBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -543,3 +553,9 @@ mkGLBlendEquationSeparate modeRGB modeAlpha glio = Fixed $ GLBlendEquationSepara
 
 mkGLBlendEquationSeparatei :: GLuint -> GLenum -> GLenum -> GLIO -> GLIO
 mkGLBlendEquationSeparatei buf modeRGB modeAlpha glio = Fixed $ GLBlendEquationSeparatei buf modeRGB modeAlpha glio
+
+mkGLBlendFuncSeparate :: GLenum -> GLenum -> GLenum -> GLenum -> GLIO -> GLIO
+mkGLBlendFuncSeparate srcRGB dstRGB srcALpha dstAlpha glio = Fixed $ GLBlendFuncSeparate srcRGB dstRGB srcALpha dstAlpha glio
+
+mkGLBlendFuncSeparatei :: GLuint -> GLenum -> GLenum -> GLenum -> GLenum -> GLIO -> GLIO
+mkGLBlendFuncSeparatei buf srcRGB dstRGB srcALpha dstAlpha glio = Fixed $ GLBlendFuncSeparatei buf srcRGB dstRGB srcALpha dstAlpha glio

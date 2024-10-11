@@ -87,7 +87,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLCreateShader,
 		mkGLDeleteShader,
 		mkGLShaderSource,
-		mkGLCompileShader
+		mkGLCompileShader,
+		mkGLAttachShader,
+		mkGLDetachShader
 	) where
 
 import Prelude ()
@@ -175,6 +177,8 @@ data GLIOF me =
 
 	| GLShaderSource GLuint [String] me
 	| GLCompileShader GLuint me
+	| GLAttachShader GLuint GLuint me
+	| GLDetachShader GLuint GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -229,6 +233,8 @@ instance Functor GLIOF where
 
 	fmap f (GLShaderSource shader strings withUnit) = GLShaderSource shader strings (f withUnit)
 	fmap f (GLCompileShader id_           withUnit) = GLCompileShader id_           (f withUnit)
+	fmap f (GLAttachShader program shader withUnit) = GLAttachShader program shader (f withUnit)
+	fmap f (GLDetachShader program shader withUnit) = GLDetachShader program shader (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -342,6 +348,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		y@( GLShaderSource _shader _strings me) -> putMVar mme me >> return y
 		y@( GLCompileShader _id             me) -> putMVar mme me >> return y
+		y@( GLAttachShader _program _shader me) -> putMVar mme me >> return y
+		y@( GLDetachShader _program _shader me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -398,6 +406,8 @@ runGLIOIO (GLDeleteShader id_        glio)   = glDeleteShader id_        >> glio
 
 runGLIOIO (GLShaderSource shader strings glio) = hglShaderSource shader strings >> glio
 runGLIOIO (GLCompileShader id_           glio) = glCompileShader id_            >> glio
+runGLIOIO (GLAttachShader program shader glio) = glAttachShader program shader  >> glio
+runGLIOIO (GLDetachShader program shader glio) = glDetachShader program shader  >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -643,3 +653,9 @@ mkGLShaderSource shader strings glio = Fixed $ GLShaderSource shader strings gli
 
 mkGLCompileShader :: GLuint -> GLIO -> GLIO
 mkGLCompileShader id_ glio = Fixed $ GLCompileShader id_ glio
+
+mkGLAttachShader :: GLuint -> GLuint -> GLIO -> GLIO
+mkGLAttachShader program shader glio = Fixed $ GLAttachShader program shader glio
+
+mkGLDetachShader :: GLuint -> GLuint -> GLIO -> GLIO
+mkGLDetachShader program shader glio = Fixed $ GLDetachShader program shader glio

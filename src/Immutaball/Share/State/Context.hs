@@ -21,6 +21,7 @@ module Immutaball.Share.State.Context
 		requireBasics,
 		finishFrame,
 		finishFramePaint,
+		checkGLErrors,
 		glErrType,
 
 		-- * Utils
@@ -207,6 +208,14 @@ finishFramePaint = proc cxt -> do
 		if' (not sdlNeedsSpecialThread)
 			(maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow))
 			(maybe (pure ()) (liftIBIO . flip (sdlGLSwapWindow (cxt^.ibContext.ibSDLManagerHandle)) ()) $ (cxt^.ibSDLWindow))
+	() <- checkGLErrors -< ()
+	returnA -< ()
+	where
+		sdlNeedsSpecialThread :: Bool
+		sdlNeedsSpecialThread = True
+
+checkGLErrors :: Wire ImmutaballM () ()
+checkGLErrors = proc () -> do
 	error_ <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLGetError id
 	case error_ of
 		GL_NO_ERROR -> returnA -< ()
@@ -214,9 +223,6 @@ finishFramePaint = proc cxt -> do
 			() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("Error: an OpenGL error occurred (" ++ show err ++ "): " ++ glErrType err) ()
 			() <- monadic -< liftIBIO . BasicIBIOF $ ExitFailureBasicIOF
 			returnA -< ()
-	where
-		sdlNeedsSpecialThread :: Bool
-		sdlNeedsSpecialThread = True
 
 glErrType :: GLenum -> String
 glErrType GL_NO_ERROR                      = "GL_NO_ERROR"

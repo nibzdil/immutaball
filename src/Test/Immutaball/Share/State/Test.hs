@@ -24,6 +24,7 @@ module Test.Immutaball.Share.State.Test
 import Control.Arrow
 
 import Control.Concurrent.STM.TMVar
+import SDL.Init
 import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
@@ -121,9 +122,15 @@ tenTimesCounterImmutaball mout _cxt0 = proc _requests -> do
 	delayNI 9 (pure ContinueResponse) -< pure DoneResponse
 
 glImmutaball :: (Applicative t) => TMVar () -> IBContext -> Wire ImmutaballM (t Request) (t Response)
-glImmutaball mout cxt0 = proc _requests -> do
+glImmutaball mout baseCxt0 = proc _requests -> do
 	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout ()) id
 	rec
-		cxtnp1 <- delay (initialStateCxt cxt0) -< cxtn
-		cxtn <- stateContextStorage (initialStateCxt cxt0) <<< Just <$> requireVideo -< cxtnp1
+		--cxtnp1 <- delay (initialStateCxt cxt0) -< cxtn
+		--cxtn <- stateContextStorage (initialStateCxt cxt0) <<< Just <$> requireVideo -< cxtnp1
+
+		-- TODO: this tests fails on my platform.
+		cxtLast <- delay cxt0 -< cxt
+		cxtn <- requireVideo -< cxtLast
+		cxt <- returnA -< cxtn
 	delayNI 9 (pure ContinueResponse) -< pure DoneResponse
+	where cxt0 = initialStateCxt baseCxt0

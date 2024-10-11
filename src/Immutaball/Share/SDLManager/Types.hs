@@ -36,6 +36,7 @@ data SDLManagerCommand =
 	-- thread which set the video mode, which is why SDLManager solely manages
 	-- this.
 	| PollEvent (TMVar (Maybe Event))
+	| PollEvents (TMVar ([Event]))
 	| WithWindow T.Text WindowConfig (TMVar Window)
 	| WithGLContext Window (TMVar GLContext)
 	| GLSwapWindow Window (TMVar ())

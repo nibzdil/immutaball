@@ -32,6 +32,8 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		mkSDLWithTTFInit,
 		mkSDLPollEvent,
 		mkSDLPollEventSync,
+		mkSDLPollEvents,
+		mkSDLPollEventsSync,
 		mkSDLWithWindow,
 		mkSDLWithGLContext,
 		mkSDLGLSwapWindow,
@@ -86,6 +88,8 @@ data SDLIOF me =
 	-- SDLManager can handle this.
 	| SDLPollEvent (Async (Maybe SDL.Event.Event) -> me)
 	| SDLPollEventSync (Maybe SDL.Event.Event -> me)
+	| SDLPollEvents (Async [SDL.Event.Event] -> me)
+	| SDLPollEventsSync ([SDL.Event.Event] -> me)
 	-- | Automatically handles destruction after lifetime.
 	| SDLWithWindow T.Text SDL.Video.WindowConfig (SDL.Video.Window -> me)
 	-- _| SDLDestroyWindow SDL.Video.Window  -- We can already manage the lifetime with WithCreate.
@@ -106,6 +110,8 @@ instance Functor SDLIOF where
 	fmap f (SDLWithTTFInit sdlio)                 = SDLWithTTFInit (f sdlio)
 	fmap f (SDLPollEvent withMEvent)              = SDLPollEvent (f . withMEvent)
 	fmap f (SDLPollEventSync withMEvent)          = SDLPollEventSync (f . withMEvent)
+	fmap f (SDLPollEvents withEvents)             = SDLPollEvents (f . withEvents)
+	fmap f (SDLPollEventsSync withEvents)         = SDLPollEventsSync (f .  withEvents)
 	fmap f (SDLWithWindow title cfg withWindow  ) = SDLWithWindow title cfg (f . withWindow)
 	fmap f (SDLWithGLContext window withCxt)      = SDLWithGLContext window (f . withCxt)
 	fmap f (SDLGLSwapWindow window withUnit)      = SDLGLSwapWindow window (f withUnit)
@@ -176,6 +182,8 @@ unsafeFixSDLIOFTo mme f = unsafePerformIO $ do
 		y@( SDLWithTTFInit me)                    -> putMVar mme me >> return y
 		_y@(SDLPollEvent withMEvent)              -> return $ SDLPollEvent               ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMEvent)
 		_y@(SDLPollEventSync withMEvent)          -> return $ SDLPollEventSync           ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMEvent)
+		_y@(SDLPollEvents withEvents)             -> return $ SDLPollEvents              ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withEvents)
+		_y@(SDLPollEventsSync withEvents)         -> return $ SDLPollEventsSync          ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withEvents)
 		_y@(SDLWithWindow title cfg withWindow)   -> return $ SDLWithWindow    title cfg ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withWindow)
 		_y@(SDLWithGLContext window withCxt)      -> return $ SDLWithGLContext window    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withCxt)
 		y@( SDLGLSwapWindow _window me)           -> putMVar mme me >> return y
@@ -196,6 +204,8 @@ runSDLIOIO (SDLWithTTFInit sdlioio) = do
 	SDL.Font.quit
 runSDLIOIO (SDLPollEvent withMEvent) = withAsync SDL.Event.pollEvent withMEvent
 runSDLIOIO (SDLPollEventSync withMEvent) = SDL.Event.pollEvent >>= withMEvent
+runSDLIOIO (SDLPollEvents withEvents) = withAsync SDL.Event.pollEvents withEvents
+runSDLIOIO (SDLPollEventsSync withEvents) = SDL.Event.pollEvents >>= withEvents
 runSDLIOIO (SDLWithWindow title cfg withWindow) = do
 	window <- SDL.Video.createWindow title cfg
 	withWindow window
@@ -280,6 +290,12 @@ mkSDLPollEvent withMEvent = Fixed $ SDLPollEvent withMEvent
 
 mkSDLPollEventSync :: (Maybe SDL.Event.Event -> SDLIO) -> SDLIO
 mkSDLPollEventSync withMEvent = Fixed $ SDLPollEventSync withMEvent
+
+mkSDLPollEvents :: (Async [SDL.Event.Event] -> SDLIO) -> SDLIO
+mkSDLPollEvents withEvents = Fixed $ SDLPollEvents withEvents
+
+mkSDLPollEventsSync :: ([SDL.Event.Event] -> SDLIO) -> SDLIO
+mkSDLPollEventsSync withEvents = Fixed $ SDLPollEventsSync withEvents
 
 mkSDLWithWindow :: T.Text -> SDL.Video.WindowConfig -> (SDL.Video.Window -> SDLIO) -> SDLIO
 mkSDLWithWindow title cfg withWindow = Fixed $ SDLWithWindow title cfg withWindow

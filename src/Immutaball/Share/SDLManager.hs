@@ -130,6 +130,7 @@ sdlManagerThread sdlMgr =
 			QuitSDLManager -> quit
 			NopSDLManager -> sdlManagerThread sdlMgr
 			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr
+			PollEvents to_ -> (mkBIO . SDLIO . SDLPollEventsSync $ \events -> mkAtomically (writeTMVar to_ events) (\() -> mempty)) <>> sdlManagerThread sdlMgr
 			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $   \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
 			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $   \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
 			GLSwapWindow window  to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $              mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThread sdlMgr

@@ -57,7 +57,7 @@ tests headless = testGroup "Immutaball.Share.State" $
 			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13)
 	] ++ (if' headless [] $
 	[
-		testCase "can hold a video context" $
+		testCase "can hold a video context" . exclusively $
 			withImmutaball' False glImmutaball [] >>= (@?= ())
 	]) ++
 	[
@@ -92,7 +92,7 @@ withFrameManager headless prefix frameManager =
 				withImmutaball ((frameManager .) . tenTimesCounterImmutaball) [] >>= (@?= 13)
 		] ++ (if' headless [] $
 		[
-			testCase "can hold a video context" $
+			testCase "can hold a video context" . exclusively $
 				withImmutaball' False ((frameManager .) . glImmutaball) [] >>= (@?= ())
 		])
 

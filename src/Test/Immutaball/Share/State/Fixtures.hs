@@ -9,8 +9,15 @@
 module Test.Immutaball.Share.State.Fixtures
 	(
 		withImmutaball,
-		withImmutaball'
+		withImmutaball',
+		exclusively,
+		exclusivelyUnsafeMutex
 	) where
+
+import Prelude ()
+import Immutaball.Prelude
+
+import Control.Exception
 
 import Control.Concurrent.STM.TMVar
 import Control.Lens
@@ -21,6 +28,8 @@ import Immutaball.Share.Config
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.State
 import Immutaball.Share.Utils
+
+import System.IO.Unsafe (unsafePerformIO)
 
 withImmutaball :: (TMVar a -> IBContext -> Immutaball) -> [String] -> IO a
 withImmutaball = withImmutaball' True
@@ -34,3 +43,19 @@ withImmutaball' headless immutaball extraArgs = do
 	runImmutaballIO $ CLI.immutaballWithArgs x'cfg args
 	out <- atomically $ takeTMVar mout
 	return out
+
+-- | Tasty provides no feature for mutually exclusive tests, but we only want
+-- one SDL instance running at a time.
+--
+-- We would create a TMVar in a setup IO, but tasty does not seem to provide
+-- this feature either unfortunately.
+-- So just do it in the static context with unsafePerformIO.
+exclusively :: IO a -> IO a
+exclusively m = do
+	() <- atomically $ takeTMVar exclusivelyUnsafeMutex
+	m `finally` do
+		atomically $ putTMVar exclusivelyUnsafeMutex ()
+
+{-# NOINLINE exclusivelyUnsafeMutex #-}
+exclusivelyUnsafeMutex :: TMVar ()
+exclusivelyUnsafeMutex = unsafePerformIO $ newTMVarIO ()

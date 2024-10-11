@@ -26,9 +26,13 @@ import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 
+import Debug.Trace as D -------------------------- TODO
+import Text.Printf
+
 -- TODO: go to next play state
 mkTitleState :: Either IBContext IBStateContext -> Immutaball
 mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
+	() <- returnA -< D.trace (printf "DEBUG mkTitleState step: request: %s" (show request)) ()
 	rec
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
@@ -38,7 +42,10 @@ mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 		NoWidgetAction          -> ContinueResponse
 		WidgetAction QuitButton -> DoneResponse
 		_                       -> ContinueResponse
-	() <- finishFrame -< cxtn
+	--() <- finishFrame -< cxtn
+	case request of
+		Paint _ -> finishFrame -< cxtn
+		_ -> returnA -< ()
 	returnA -< Identity response
 	where cxt0 = either initialStateCxt id baseCxt0
 

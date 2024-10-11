@@ -10,6 +10,7 @@ module Immutaball.Share.Controller
 	(
 		controlImmutaball,
 		takeAllSDLEventsIndividually,
+		takeAllSDLEventsList,
 		takeAllSDLEvents,
 		stepFrameNoMaxClockPeriod,
 		stepFrame,
@@ -88,12 +89,15 @@ takeAllSDLEventsIndividually cxt withEvents =
 		Nothing -> withEvents $ reverse events
 		Just event -> me (event:events)
 
-takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
-takeAllSDLEvents cxt withEvents =
+takeAllSDLEventsList :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
+takeAllSDLEventsList cxt withEvents =
 	mkAtomically newEmptyTMVar $ \eventsStorage ->
 	Fixed . issueSDLCommand (cxt^.ibSDLManagerHandle) (PollEvents eventsStorage) .
 	mkAtomically (takeTMVar eventsStorage) $ \events ->
 	withEvents events
+
+takeAllSDLEvents :: IBContext -> ([Event] -> ImmutaballIO) -> ImmutaballIO
+takeAllSDLEvents = takeAllSDLEventsIndividually
 
 -- | Step each event then clock.
 stepFrameNoMaxClockPeriod :: IBContext -> Double -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO

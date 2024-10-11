@@ -58,6 +58,7 @@ common all-components
 		-- Disable tab warner.
 		-- It's a better style: https://dmitryfrank.com/articles/indent_with_tabs_align_with_spaces
 		ghc-options: -Wall -Wno-tabs
+		ghc-options: -O2
 
 	build-depends:
 		base             >= 4.9      && < 9.5,

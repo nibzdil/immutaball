@@ -47,17 +47,22 @@ testsMain = defaultMain (tests False)
 tests :: Bool -> TestTree
 tests headless = testGroup "Immutaball.Share.State" $
 	[
-		testCase "trivial is 3 (SDL)" . syncGLSDL $
+		testCase "init SDL (tinitSDL)" $ do
+			_ <- immutaballFixture' sharedSDLManager headless
+			return ()
+	] ++
+	[
+		afterInit . testCase "trivial is 3 (tSDLheadless)" . syncGLSDL $
 			withImmutaball trivialImmutaball [] >>= (@?= 3),
-		testCase "tenTimes is 4 (SDL)" . syncGLSDL $
+		afterInit . testCase "tenTimes is 4 (tSDLheadless)" . syncGLSDL $
 			withImmutaball tenTimesImmutaball [] >>= (@?= 4),
-		testCase "holding is 5 (SDL)" . syncGLSDL $
+		afterInit . testCase "holding is 5 (tSDLheadless)" . syncGLSDL $
 			withImmutaball holdingImmutaball [] >>= (@?= 5),
-		testCase "tenTimesCounter is 13 (SDL)" . syncGLSDL $
+		afterInit . testCase "tenTimesCounter is 13 (tSDLheadless)" . syncGLSDL $
 			withImmutaball tenTimesCounterImmutaball [] >>= (@?= 13)
 	] ++ (if' headless [] $
 	[
-		after AllFinish "$NF ~ /SDL/" . testCase "can hold a video context" . exclusively $
+		after AllFinish "$NF ~ /tSDLheadless/" . afterInit . testCase "can hold a video context (SDLgl)" . exclusively' $
 			withImmutaball' False glImmutaball [] >>= (@?= ())
 	]) ++
 	[
@@ -69,9 +74,17 @@ tests headless = testGroup "Immutaball.Share.State" $
 			[
 				withFrameManager headless "loopWire . first: " (loopWire . first)
 			]
+	] ++
+	[
+		after AllFinish "$NF ~ /tSDL/" . testCase "clean up SDL (tfinishSDL)" $
+			immutaballFixture headless >>= freeImmutaballFixture
 	]
 	where
-		syncGLSDL = if' headless id exclusively
+		sharedSDLManager :: Bool
+		sharedSDLManager = True
+		syncGLSDL = if' sharedSDLManager id (if' headless id exclusively')
+		afterInit = after AllFinish "$NF ~ /tinitSDL/"
+		exclusively' = if' sharedSDLManager id exclusively
 
 withFrameManager :: (Applicative t) =>
 	Bool ->
@@ -84,21 +97,25 @@ withFrameManager :: (Applicative t) =>
 withFrameManager headless prefix frameManager =
 	testGroup (prefix ++ " immutaball wire tests with frame manager") $
 		[
-			testCase (prefix ++ "trivial is 3 (SDL)") . syncGLSDL $
+			afterInit . testCase (prefix ++ "trivial is 3 (tSDLheadless)") . syncGLSDL $
 				withImmutaball ((frameManager .) . trivialImmutaball) [] >>= (@?= 3),
-			testCase (prefix ++ "tenTimes is 4 (SDL)") . syncGLSDL $
+			afterInit . testCase (prefix ++ "tenTimes is 4 (tSDLheadless)") . syncGLSDL $
 				withImmutaball ((frameManager .) . tenTimesImmutaball) [] >>= (@?= 4),
-			testCase (prefix ++ "holding is 5 (SDL)") . syncGLSDL $
+			afterInit . testCase (prefix ++ "holding is 5 (tSDLheadless)") . syncGLSDL $
 				withImmutaball ((frameManager .) . holdingImmutaball) [] >>= (@?= 5),
-			testCase (prefix ++ "tenTimesCounter is 13 (SDL)") . syncGLSDL $
+			afterInit . testCase (prefix ++ "tenTimesCounter is 13 (tSDLheadless)") . syncGLSDL $
 				withImmutaball ((frameManager .) . tenTimesCounterImmutaball) [] >>= (@?= 13)
 		] ++ (if' headless [] $
 		[
-			after AllFinish "$NF ~ /SDL/" . testCase "can hold a video context" . exclusively $
+			after AllFinish "$NF ~ /tSDLheadless/" . afterInit . testCase "can hold a video context (SDLgl)" . exclusively' $
 				withImmutaball' False ((frameManager .) . glImmutaball) [] >>= (@?= ())
 		])
 	where
-		syncGLSDL = if' headless id exclusively
+		sharedSDLManager :: Bool
+		sharedSDLManager = True
+		syncGLSDL = if' sharedSDLManager id (if' headless id exclusively')
+		afterInit = after AllFinish "$NF ~ /tinitSDL/"
+		exclusively' = if' sharedSDLManager id exclusively
 
 --trivialImmutaball :: TMVar Integer -> IBContext -> Immutaball
 trivialImmutaball :: (Applicative t) => TMVar Integer -> IBContext -> Wire ImmutaballM (t Request) (t Response)

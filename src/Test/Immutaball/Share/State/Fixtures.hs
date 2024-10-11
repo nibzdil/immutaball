@@ -5,19 +5,29 @@
 -- Test.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Test.Immutaball.Share.State.Fixtures
 	(
 		withImmutaball,
 		withImmutaball',
 		exclusively,
-		exclusivelyUnsafeMutex
+		exclusivelyUnsafeMutex,
+		ImmutaballFixture(..), ibfSDLManager,
+		unsafeGlobalImmutaballFixture,
+		unsafeGlobalImmutaballFixtureInitializerMutex,
+		immutaballFixture,
+		immutaballFixture',
+		initializeImmutaballFixture,
+		freeImmutaballFixture
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
 import Control.Exception
+import Control.Monad
+import Data.Maybe
 
 import Control.Concurrent.STM.TMVar
 import Control.Lens
@@ -26,10 +36,17 @@ import Control.Monad.STM
 import qualified Immutaball.Ball.CLI as CLI
 import Immutaball.Share.Config
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.Utils
 
 import System.IO.Unsafe (unsafePerformIO)
+
+-- ImmutaballFixture moved to fix TH errors.
+data ImmutaballFixture = ImmutaballFixture {
+	_ibfSDLManager :: Maybe SDLManagerHandle
+}
+makeLenses ''ImmutaballFixture
 
 withImmutaball :: (TMVar a -> IBContext -> Immutaball) -> [String] -> IO a
 withImmutaball = withImmutaball' True
@@ -37,8 +54,10 @@ withImmutaball = withImmutaball' True
 withImmutaball' :: Bool -> (TMVar a -> IBContext -> Immutaball) -> [String] -> IO a
 withImmutaball' headless immutaball extraArgs = do
 	mout <- atomically $ newEmptyTMVar
+	ibf <- immutaballFixture headless
 	let x'cfg = defaultStaticConfig &
-		x'cfgInitialWireWithCxt .~ Just (\cxt -> Just $ immutaball mout cxt)
+		x'cfgInitialWireWithCxt .~ Just (\cxt -> Just $ immutaball mout cxt) &
+		x'cfgUseExistingSDLManager .~ (ibf^.ibfSDLManager)
 	let args = if' headless ["--headless"] [] ++ extraArgs
 	runImmutaballIO $ CLI.immutaballWithArgs x'cfg args
 	out <- atomically $ takeTMVar mout
@@ -59,3 +78,47 @@ exclusively m = do
 {-# NOINLINE exclusivelyUnsafeMutex #-}
 exclusivelyUnsafeMutex :: TMVar ()
 exclusivelyUnsafeMutex = unsafePerformIO $ newTMVarIO ()
+
+-- ImmutaballFixture moved to fix TH errors.
+
+{-# NOINLINE unsafeGlobalImmutaballFixture #-}
+unsafeGlobalImmutaballFixture :: TMVar ImmutaballFixture
+unsafeGlobalImmutaballFixture = unsafePerformIO $ newEmptyTMVarIO
+{-# NOINLINE unsafeGlobalImmutaballFixtureInitializerMutex #-}
+unsafeGlobalImmutaballFixtureInitializerMutex :: TMVar ()
+unsafeGlobalImmutaballFixtureInitializerMutex = unsafePerformIO $ newTMVarIO ()
+
+immutaballFixture :: Bool -> IO ImmutaballFixture
+immutaballFixture = immutaballFixture' True
+
+immutaballFixture' :: Bool -> Bool -> IO ImmutaballFixture
+immutaballFixture' sharedSDLManager headless = do
+	mibf <- atomically $ do
+		() <- takeTMVar unsafeGlobalImmutaballFixtureInitializerMutex
+		mibf <- tryReadTMVar unsafeGlobalImmutaballFixture
+		when (isJust mibf) $ do
+			putTMVar unsafeGlobalImmutaballFixtureInitializerMutex ()
+		return mibf
+	case mibf of
+		Just ibf -> return ibf
+		Nothing -> do
+			ibf <- initializeImmutaballFixture sharedSDLManager headless
+			atomically $ do
+				writeTMVar unsafeGlobalImmutaballFixture ibf
+				putTMVar unsafeGlobalImmutaballFixtureInitializerMutex ()
+			return ibf
+
+initializeImmutaballFixture :: Bool -> Bool -> IO ImmutaballFixture
+initializeImmutaballFixture sharedSDLManager headless = do
+	mhandle <- atomically $ newEmptyTMVar
+	msdlManager <- if' (not sharedSDLManager) (return Nothing) $ do
+		runImmutaballIO . initSDLManager headless $ \h -> mkAtomically (putTMVar mhandle h) $ \() -> mkEmptyIBIO
+		atomically $ Just <$> takeTMVar mhandle
+	return $ ImmutaballFixture {
+		_ibfSDLManager = msdlManager
+	}
+
+freeImmutaballFixture :: ImmutaballFixture -> IO ()
+freeImmutaballFixture ibf = do
+	maybe (return ()) (runImmutaballIO . quitSDLManager) (ibf^.ibfSDLManager)
+	return ()

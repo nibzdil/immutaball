@@ -33,7 +33,8 @@ module Immutaball.Share.SDLManager
 		-- * Low level
 		initSDLManager,
 		quitSDLManager,
-		sdlManagerThread
+		sdlManagerThread,
+		sdlManagerThreadContinue
 	) where
 
 import Prelude ()
@@ -104,9 +105,6 @@ sdlGL sdlMgr glio =
 -- need to manage the lifetime.
 initSDLManager :: Bool -> (SDLManagerHandle -> ImmutaballIO) -> ImmutaballIO
 initSDLManager headless withSdlMgr =
-	let initFlags = if' headless [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
-	mkBIO . SDLIO . SDLWithInit initFlags .
-	mkBIO . SDLIO . SDLWithTTFInit .
 	mkAtomically (newTVar False) $ \done ->
 	mkAtomically (newTVar False) $ \doneReceived ->
 	mkAtomically newTChan $ \commands ->
@@ -115,7 +113,7 @@ initSDLManager headless withSdlMgr =
 		_sdlmh_doneReceived = doneReceived,
 		_sdlmh_commands     = commands
 	}
-	in mkBIO . ForkOS (sdlManagerThread sdlMgr) $ withSdlMgr sdlMgr
+	in mkBIO . ForkOS (sdlManagerThread headless sdlMgr) $ withSdlMgr sdlMgr
 
 -- | Manually close the SDLManager thread low-level.  High-level
 -- 'withSDLManager' automatically manages the lifetime.
@@ -128,23 +126,32 @@ quitSDLManager sdlMgr =
 	mkAtomically (do
 		readTVar (sdlMgr^.sdlmh_doneReceived) >>= check) (const mempty)
 
-sdlManagerThread :: SDLManagerHandle -> ImmutaballIO
-sdlManagerThread sdlMgr =
+-- | The thread with initialization.
+sdlManagerThread :: Bool -> SDLManagerHandle -> ImmutaballIO
+sdlManagerThread headless sdlMgr =
+	let initFlags = if' headless [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
+	mkBIO . SDLIO . SDLWithInit initFlags .
+	mkBIO . SDLIO . SDLWithTTFInit $
+	sdlManagerThreadContinue sdlMgr
+
+-- | The thread after initialization.
+sdlManagerThreadContinue :: SDLManagerHandle -> ImmutaballIO
+sdlManagerThreadContinue sdlMgr =
 	mkAtomically (
 		readTVar (sdlMgr^.sdlmh_done) >>= \done ->
 		(check done $> Left done) `orElse` (Right <$> readTChan (sdlMgr^.sdlmh_commands))
 	) $ \doneOrCmd ->
 	case doneOrCmd of
-		Left done -> if not done then sdlManagerThread sdlMgr else quit
+		Left done -> if not done then sdlManagerThreadContinue sdlMgr else quit
 		Right cmd -> case cmd of
 			QuitSDLManager -> quit
-			NopSDLManager -> sdlManagerThread sdlMgr
-			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr
-			PollEvents to_ -> (mkBIO . SDLIO . SDLPollEventsSync $ \events -> mkAtomically (writeTMVar to_ events) (\() -> mempty)) <>> sdlManagerThread sdlMgr
-			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $   \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
-			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $   \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
-			GLSwapWindow window  to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $              mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThread sdlMgr
-			GLSequence glio      to_ -> Fixed $ (BasicIBIOF $ GLIO glio)        >>= \me     ->   Atomically (writeTMVar to_ me)     $ \() -> sdlManagerThread sdlMgr
+			NopSDLManager -> sdlManagerThreadContinue sdlMgr
+			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThreadContinue sdlMgr
+			PollEvents to_ -> (mkBIO . SDLIO . SDLPollEventsSync $ \events -> mkAtomically (writeTMVar to_ events) (\() -> mempty)) <>> sdlManagerThreadContinue sdlMgr
+			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $   \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThreadContinue sdlMgr
+			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $   \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThreadContinue sdlMgr
+			GLSwapWindow window  to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $              mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThreadContinue sdlMgr
+			GLSequence glio      to_ -> Fixed $ (BasicIBIOF $ GLIO glio)        >>= \me     ->   Atomically (writeTMVar to_ me)     $ \() -> sdlManagerThreadContinue sdlMgr
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

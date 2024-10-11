@@ -24,7 +24,6 @@ module Test.Immutaball.Share.State.Test
 import Control.Arrow
 
 import Control.Concurrent.STM.TMVar
-import SDL.Init
 import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty

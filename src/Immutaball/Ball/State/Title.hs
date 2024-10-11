@@ -24,7 +24,6 @@ import Immutaball.Share.GUI
 import Immutaball.Share.Math
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
-import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
 import Debug.Trace as D -------------------------- TODO

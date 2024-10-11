@@ -39,6 +39,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglTextureParameteriv,
 		hglTextureParameterIiv,
 		hglTextureParameterIuiv,
+		hglShaderSource,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkGLClear,
@@ -84,13 +85,16 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLCreateProgram,
 		mkGLDeleteProgram,
 		mkGLCreateShader,
-		mkGLDeleteShader
+		mkGLDeleteShader,
+		mkGLShaderSource
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
 import Data.List
+import Data.Word
+import Foreign.C.Types
 import Foreign.Ptr
 
 import Graphics.GL.Compatibility45
@@ -167,6 +171,8 @@ data GLIOF me =
 	| GLDeleteProgram GLuint me
 	| GLCreateShader GLenum (GLuint -> me)
 	| GLDeleteShader GLuint me
+
+	| GLShaderSource GLuint [String] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -218,6 +224,8 @@ instance Functor GLIOF where
 	fmap f (GLDeleteProgram id_ withUnit)     = GLDeleteProgram id_       (f withUnit)
 	fmap f (GLCreateShader shaderType withId) = GLCreateShader shaderType (f . withId)
 	fmap f (GLDeleteShader id_ withUnit)      = GLDeleteShader id_        (f withUnit)
+
+	fmap f (GLShaderSource shader strings withUnit) = GLShaderSource shader strings (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -329,6 +337,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLCreateShader shaderType withId) -> return $ GLCreateShader shaderType ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withId)
 		y@( GLDeleteShader _id        me)     -> putMVar mme me >> return y
 
+		y@( GLShaderSource _shader _strings me) -> putMVar mme me >> return y
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
@@ -381,6 +391,8 @@ runGLIOIO (GLCreateProgram           withId) = glCreateProgram           >>= wit
 runGLIOIO (GLDeleteProgram id_       glio)   = glDeleteProgram id_       >> glio
 runGLIOIO (GLCreateShader shaderType withId) = glCreateShader shaderType >>= withId
 runGLIOIO (GLDeleteShader id_        glio)   = glDeleteShader id_        >> glio
+
+runGLIOIO (GLShaderSource shader strings glio) = hglShaderSource shader strings >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -463,6 +475,29 @@ hglTextureParameterIuiv texture pname params = do
 	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
 	_len   <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glTextureParameterIuiv texture pname (castPtr ptr)
+
+hglShaderSource :: GLuint -> [String] -> IO ()
+hglShaderSource shader strings0 = do
+	let bstrings = numStrings `seq` map (BS.pack . map truncateChar) strings0
+	foldr reduce reduction0 bstrings []
+	where
+		numStrings = genericLength strings0
+		reduce :: BS.ByteString -> ([(Ptr CChar, Int)] -> IO ()) -> ([(Ptr CChar, Int)] -> IO ())
+		reduce bstring withStrings = \strings -> BS.useAsCString bstring $ \cstring -> withStrings ((cstring, BS.length bstring):strings)
+		reduction0 :: [(Ptr CChar, Int)] -> IO ()
+		reduction0 reversedStrings = do
+			let strings  = reverse reversedStrings
+			let cstrings = map fst strings
+			let lens     = map snd strings
+			cstrArray <- newListArray (0 :: Integer, genericLength cstrings - 1) cstrings
+			_cstrLen  <- getNumElements cstrArray
+			lensArray <- newListArray (0 :: Integer, genericLength lens - 1) lens
+			_lensLen  <- getNumElements lensArray
+			withStorableArray cstrArray $ \cstrPtr -> withStorableArray lensArray $ \lensPtr ->
+				glShaderSource shader numStrings (castPtr cstrPtr) (castPtr lensPtr)
+		-- bytestring could really use a .UTF8 module, rather than just .Char8.
+		truncateChar :: Char -> Word8
+		truncateChar = toEnum . fromEnum
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -597,3 +632,6 @@ mkGLCreateShader shaderType withId = Fixed $ GLCreateShader shaderType withId
 
 mkGLDeleteShader :: GLuint -> GLIO -> GLIO
 mkGLDeleteShader id_ glio = Fixed $ GLDeleteShader id_ glio
+
+mkGLShaderSource :: GLuint -> [String] -> GLIO -> GLIO
+mkGLShaderSource shader strings glio = Fixed $ GLShaderSource shader strings glio

@@ -74,7 +74,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLTextureParameterfv,
 		mkGLTextureParameteriv,
 		mkGLTextureParameterIiv,
-		mkGLTextureParameterIuiv
+		mkGLTextureParameterIuiv,
+		mkGLDepthMask,
+		mkGLDepthFunc
 	) where
 
 import Prelude ()
@@ -144,6 +146,9 @@ data GLIOF me =
 	| GLTextureParameteriv GLenum GLenum [GLint] me
 	| GLTextureParameterIiv GLenum GLenum [GLint] me
 	| GLTextureParameterIuiv GLenum GLenum [GLuint] me
+
+	| GLDepthMask GLboolean me
+	| GLDepthFunc GLenum me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -182,6 +187,9 @@ instance Functor GLIOF where
 	fmap f (GLTextureParameteriv texture pname params       withUnit) = GLTextureParameteriv texture pname params       (f withUnit)
 	fmap f (GLTextureParameterIiv texture pname params      withUnit) = GLTextureParameterIiv texture pname params      (f withUnit)
 	fmap f (GLTextureParameterIuiv texture pname params     withUnit) = GLTextureParameterIuiv texture pname params     (f withUnit)
+
+	fmap f (GLDepthMask flag  withUnit) = GLDepthMask flag  (f withUnit)
+	fmap f (GLDepthFunc mask_ withUnit) = GLDepthFunc mask_ (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -279,6 +287,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLTextureParameterIiv _texture _pname _params  me) -> putMVar mme me >> return y
 		y@( GLTextureParameterIuiv _texture _pname _params me) -> putMVar mme me >> return y
 
+		y@( GLDepthMask _flag me) -> putMVar mme me >> return y
+		y@( GLDepthFunc _func me) -> putMVar mme me >> return y
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
@@ -290,33 +301,36 @@ runGLIOIO (GLBindTexture    target texture       glio) = glBindTexture target te
 runGLIOIO (GLDeleteTextures textures             glio) = hglDeleteTextures textures         >> glio
 runGLIOIO (GLGetError                            withError) = glGetError                    >>= withError
 
-runGLIOIO (GLColor4d  red green blue alpha              glio) = glColor4d  red green blue alpha              >> glio
-runGLIOIO (GLBegin    mode                              glio) = glBegin    mode                              >> glio
-runGLIOIO (GLVertex2d x y                               glio) = glVertex2d x y                               >> glio
-runGLIOIO (GLEnd                                        glio) = glEnd                                        >> glio
-runGLIOIO (GLActiveTexture texture                      glio) = glActiveTexture texture                      >> glio
-runGLIOIO (GLClientActiveTexture texture                glio) = glClientActiveTexture texture                >> glio
-runGLIOIO (GLEnable cap                                 glio) = glEnable cap                                 >> glio
-runGLIOIO (GLDisable cap                                glio) = glDisable cap                                >> glio
-runGLIOIO (GLEnablei cap index_                         glio) = glEnablei cap index_                         >> glio
-runGLIOIO (GLDisablei cap index_                        glio) = glDisablei cap index_                        >> glio
-runGLIOIO (GLTexCoord2d s t                             glio) = glTexCoord2d s t                             >> glio
-runGLIOIO (GLTexEnvf target pname param                 glio) = glTexEnvf target pname param                 >> glio
-runGLIOIO (GLTexEnvi target pname param                 glio) = glTexEnvi target pname param                 >> glio
-runGLIOIO (GLTexEnvfv target pname params               glio) = hglTexEnvfv target pname params              >> glio
-runGLIOIO (GLTexEnviv target pname params               glio) = hglTexEnviv target pname params              >> glio
-runGLIOIO (GLTexParameterf target pname param           glio) = glTexParameterf target pname param           >> glio
-runGLIOIO (GLTexParameteri target pname param           glio) = glTexParameteri target pname param           >> glio
-runGLIOIO (GLTextureParameterf texture pname param      glio) = glTextureParameterf texture pname param      >> glio
-runGLIOIO (GLTextureParameteri texture pname param      glio) = glTextureParameteri texture pname param      >> glio
-runGLIOIO (GLTexParameterfv target pname params         glio) = hglTexParameterfv target pname params        >> glio
-runGLIOIO (GLTexParameteriv target pname params         glio) = hglTexParameteriv target pname params        >> glio
-runGLIOIO (GLTexParameterIiv target pname params        glio) = hglTexParameterIiv target pname params       >> glio
-runGLIOIO (GLTexParameterIuiv target pname params       glio) = hglTexParameterIuiv target pname params      >> glio
-runGLIOIO (GLTextureParameterfv texture pname params    glio) = hglTextureParameterfv texture pname params   >> glio
-runGLIOIO (GLTextureParameteriv texture pname params    glio) = hglTextureParameteriv texture pname params   >> glio
-runGLIOIO (GLTextureParameterIiv texture pname params   glio) = hglTextureParameterIiv texture pname params  >> glio
-runGLIOIO (GLTextureParameterIuiv texture pname params  glio) = hglTextureParameterIuiv texture pname params >> glio
+runGLIOIO (GLColor4d  red green blue alpha             glio) = glColor4d  red green blue alpha              >> glio
+runGLIOIO (GLBegin    mode                             glio) = glBegin    mode                              >> glio
+runGLIOIO (GLVertex2d x y                              glio) = glVertex2d x y                               >> glio
+runGLIOIO (GLEnd                                       glio) = glEnd                                        >> glio
+runGLIOIO (GLActiveTexture texture                     glio) = glActiveTexture texture                      >> glio
+runGLIOIO (GLClientActiveTexture texture               glio) = glClientActiveTexture texture                >> glio
+runGLIOIO (GLEnable cap                                glio) = glEnable cap                                 >> glio
+runGLIOIO (GLDisable cap                               glio) = glDisable cap                                >> glio
+runGLIOIO (GLEnablei cap index_                        glio) = glEnablei cap index_                         >> glio
+runGLIOIO (GLDisablei cap index_                       glio) = glDisablei cap index_                        >> glio
+runGLIOIO (GLTexCoord2d s t                            glio) = glTexCoord2d s t                             >> glio
+runGLIOIO (GLTexEnvf target pname param                glio) = glTexEnvf target pname param                 >> glio
+runGLIOIO (GLTexEnvi target pname param                glio) = glTexEnvi target pname param                 >> glio
+runGLIOIO (GLTexEnvfv target pname params              glio) = hglTexEnvfv target pname params              >> glio
+runGLIOIO (GLTexEnviv target pname params              glio) = hglTexEnviv target pname params              >> glio
+runGLIOIO (GLTexParameterf target pname param          glio) = glTexParameterf target pname param           >> glio
+runGLIOIO (GLTexParameteri target pname param          glio) = glTexParameteri target pname param           >> glio
+runGLIOIO (GLTextureParameterf texture pname param     glio) = glTextureParameterf texture pname param      >> glio
+runGLIOIO (GLTextureParameteri texture pname param     glio) = glTextureParameteri texture pname param      >> glio
+runGLIOIO (GLTexParameterfv target pname params        glio) = hglTexParameterfv target pname params        >> glio
+runGLIOIO (GLTexParameteriv target pname params        glio) = hglTexParameteriv target pname params        >> glio
+runGLIOIO (GLTexParameterIiv target pname params       glio) = hglTexParameterIiv target pname params       >> glio
+runGLIOIO (GLTexParameterIuiv target pname params      glio) = hglTexParameterIuiv target pname params      >> glio
+runGLIOIO (GLTextureParameterfv texture pname params   glio) = hglTextureParameterfv texture pname params   >> glio
+runGLIOIO (GLTextureParameteriv texture pname params   glio) = hglTextureParameteriv texture pname params   >> glio
+runGLIOIO (GLTextureParameterIiv texture pname params  glio) = hglTextureParameterIiv texture pname params  >> glio
+runGLIOIO (GLTextureParameterIuiv texture pname params glio) = hglTextureParameterIuiv texture pname params >> glio
+
+runGLIOIO (GLDepthMask flag glio) = glDepthMask flag >> glio
+runGLIOIO (GLDepthFunc func glio) = glDepthFunc func >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -503,3 +517,9 @@ mkGLTextureParameterIiv texture pname params glio = Fixed $ GLTextureParameterIi
 
 mkGLTextureParameterIuiv :: GLenum -> GLenum -> [GLuint] -> GLIO -> GLIO
 mkGLTextureParameterIuiv texture pname params glio = Fixed $ GLTextureParameterIuiv texture pname params glio
+
+mkGLDepthMask :: GLboolean -> GLIO -> GLIO
+mkGLDepthMask flag glio = Fixed $ GLDepthMask flag glio
+
+mkGLDepthFunc :: GLenum -> GLIO -> GLIO
+mkGLDepthFunc func glio = Fixed $ GLDepthFunc func glio

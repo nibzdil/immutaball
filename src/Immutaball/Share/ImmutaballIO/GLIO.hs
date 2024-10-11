@@ -78,7 +78,11 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDepthMask,
 		mkGLDepthFunc,
 		mkGLBlendEquationSeparate,
-		mkGLBlendEquationSeparatei
+		mkGLBlendEquationSeparatei,
+		mkGLBlendFuncSeparate,
+		mkGLBlendFuncSeparatei,
+		mkGLCreateProgram,
+		mkGLDeleteProgram
 	) where
 
 import Prelude ()
@@ -156,6 +160,9 @@ data GLIOF me =
 	| GLBlendEquationSeparatei GLuint GLenum GLenum me
 	| GLBlendFuncSeparate GLenum GLenum GLenum GLenum me
 	| GLBlendFuncSeparatei GLuint GLenum GLenum GLenum GLenum me
+
+	| GLCreateProgram (GLuint -> me)
+	| GLDeleteProgram GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -202,6 +209,9 @@ instance Functor GLIOF where
 	fmap f (GLBlendEquationSeparatei buf modeRGB modeAlpha           withUnit) = GLBlendEquationSeparatei buf modeRGB modeAlpha           (f withUnit)
 	fmap f (GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      withUnit) = GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      (f withUnit)
 	fmap f (GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha withUnit) = GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha (f withUnit)
+
+	fmap f (GLCreateProgram withId)       = GLCreateProgram     (f . withId)
+	fmap f (GLDeleteProgram id_ withUnit) = GLDeleteProgram id_ (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -308,6 +318,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLBlendFuncSeparate _srcRGB _dstRGB _srcAlpha _dstAlpha me)       -> putMVar mme me >> return y
 		y@( GLBlendFuncSeparatei _buf _srcRGB _dstRGB _srcAlpha _dstAlpha me) -> putMVar mme me >> return y
 
+		_y@(GLCreateProgram     withId) -> return $ GLCreateProgram ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withId)
+		y@( GLDeleteProgram _id me)     -> putMVar mme me >> return y
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
@@ -355,6 +368,9 @@ runGLIOIO (GLBlendEquationSeparatei buf modeRGB modeAlpha glio) = glBlendEquatio
 
 runGLIOIO (GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      glio) = glBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      >> glio
 runGLIOIO (GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha glio) = glBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha >> glio
+
+runGLIOIO (GLCreateProgram     withId) = glCreateProgram     >>= withId
+runGLIOIO (GLDeleteProgram id_ glio)   = glDeleteProgram id_ >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -559,3 +575,9 @@ mkGLBlendFuncSeparate srcRGB dstRGB srcALpha dstAlpha glio = Fixed $ GLBlendFunc
 
 mkGLBlendFuncSeparatei :: GLuint -> GLenum -> GLenum -> GLenum -> GLenum -> GLIO -> GLIO
 mkGLBlendFuncSeparatei buf srcRGB dstRGB srcALpha dstAlpha glio = Fixed $ GLBlendFuncSeparatei buf srcRGB dstRGB srcALpha dstAlpha glio
+
+mkGLCreateProgram :: (GLuint -> GLIO) -> GLIO
+mkGLCreateProgram withId = Fixed $ GLCreateProgram withId
+
+mkGLDeleteProgram :: GLuint -> GLIO -> GLIO
+mkGLDeleteProgram id_ glio = Fixed $ GLDeleteProgram id_ glio

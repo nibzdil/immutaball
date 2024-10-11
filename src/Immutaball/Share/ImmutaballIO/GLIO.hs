@@ -42,7 +42,11 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLVertex2f,
 		mkGLEnd,
 		mkGLActiveTexture,
-		mkGLClientActiveTexture
+		mkGLClientActiveTexture,
+		mkGLEnable,
+		mkGLDisable,
+		mkGLEnablei,
+		mkGLDisablei
 	) where
 
 import Prelude ()
@@ -91,6 +95,10 @@ data GLIOF me =
 	| GLEnd me
 	| GLActiveTexture GLenum me
 	| GLClientActiveTexture GLenum me
+	| GLEnable GLenum me
+	| GLDisable GLenum me
+	| GLEnablei GLenum GLuint me
+	| GLDisablei GLenum GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -108,6 +116,10 @@ instance Functor GLIOF where
 	fmap f (GLEnd                           withUnit) = GLEnd                           (f withUnit)
 	fmap f (GLActiveTexture texture         withUnit) = GLActiveTexture texture         (f withUnit)
 	fmap f (GLClientActiveTexture texture   withUnit) = GLClientActiveTexture texture   (f withUnit)
+	fmap f (GLEnable cap                    withUnit) = GLEnable cap                    (f withUnit)
+	fmap f (GLDisable cap                   withUnit) = GLDisable cap                   (f withUnit)
+	fmap f (GLEnablei cap index             withUnit) = GLEnablei cap index             (f withUnit)
+	fmap f (GLDisablei cap index            withUnit) = GLDisablei cap index            (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -183,6 +195,10 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLEnd                               me) -> putMVar mme me >> return y
 		y@( GLActiveTexture _texture            me) -> putMVar mme me >> return y
 		y@( GLClientActiveTexture _texture      me) -> putMVar mme me >> return y
+		y@( GLEnable _cap                       me) -> putMVar mme me >> return y
+		y@( GLDisable _cap                      me) -> putMVar mme me >> return y
+		y@( GLEnablei _cap _index               me) -> putMVar mme me >> return y
+		y@( GLDisablei _cap _index              me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -201,6 +217,10 @@ runGLIOIO (GLVertex2f x y                  glio) = glVertex2f x y               
 runGLIOIO (GLEnd                           glio) = glEnd                           >> glio
 runGLIOIO (GLActiveTexture texture         glio) = glActiveTexture texture         >> glio
 runGLIOIO (GLClientActiveTexture texture   glio) = glClientActiveTexture texture   >> glio
+runGLIOIO (GLEnable cap                    glio) = glEnable cap                    >> glio
+runGLIOIO (GLDisable cap                   glio) = glDisable cap                   >> glio
+runGLIOIO (GLEnablei cap index             glio) = glEnablei cap index             >> glio
+runGLIOIO (GLDisablei cap index            glio) = glDisablei cap index            >> glio
 
 hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> IO ()
 hglTexImage2D target level internalformat width height border format type_ data_ = do
@@ -261,3 +281,15 @@ mkGLActiveTexture texture glio = Fixed $ GLActiveTexture texture glio
 
 mkGLClientActiveTexture :: GLenum -> GLIO -> GLIO
 mkGLClientActiveTexture texture glio = Fixed $ GLClientActiveTexture texture glio
+
+mkGLEnable :: GLenum -> GLIO -> GLIO
+mkGLEnable cap glio = Fixed $ GLEnable cap glio
+
+mkGLDisable :: GLenum -> GLIO -> GLIO
+mkGLDisable cap glio = Fixed $ GLDisable cap glio
+
+mkGLEnablei :: GLenum -> GLuint -> GLIO -> GLIO
+mkGLEnablei cap index glio = Fixed $ GLEnablei cap index glio
+
+mkGLDisablei :: GLenum -> GLuint -> GLIO -> GLIO
+mkGLDisablei cap index glio = Fixed $ GLDisablei cap index glio

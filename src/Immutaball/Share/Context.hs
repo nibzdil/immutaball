@@ -22,11 +22,8 @@ import Control.Lens
 import Immutaball.Share.Config
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.ImmutaballIO.BasicIO
-import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.GLManager
 import Immutaball.Share.SDLManager
-import Immutaball.Share.Utils
 
 -- | An Immutaball context instance.
 --

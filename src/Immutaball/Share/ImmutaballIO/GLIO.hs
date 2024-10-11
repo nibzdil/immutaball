@@ -40,7 +40,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLColor4f,
 		mkGLBegin,
 		mkGLVertex2f,
-		mkGLEnd
+		mkGLEnd,
+		mkGLActiveTexture,
+		mkGLClientActiveTexture
 	) where
 
 import Prelude ()
@@ -87,6 +89,8 @@ data GLIOF me =
 	| GLBegin GLenum me
 	| GLVertex2f GLfloat GLfloat me
 	| GLEnd me
+	| GLActiveTexture GLenum me
+	| GLClientActiveTexture GLenum me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -102,6 +106,8 @@ instance Functor GLIOF where
 	fmap f (GLBegin    mode                 withUnit) = GLBegin    mode                 (f withUnit)
 	fmap f (GLVertex2f x y                  withUnit) = GLVertex2f x y                  (f withUnit)
 	fmap f (GLEnd                           withUnit) = GLEnd                           (f withUnit)
+	fmap f (GLActiveTexture texture         withUnit) = GLActiveTexture texture         (f withUnit)
+	fmap f (GLClientActiveTexture texture   withUnit) = GLClientActiveTexture texture   (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -175,6 +181,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLBegin    _mode                    me) -> putMVar mme me >> return y
 		y@( GLVertex2f _ _                      me) -> putMVar mme me >> return y
 		y@( GLEnd                               me) -> putMVar mme me >> return y
+		y@( GLActiveTexture _texture            me) -> putMVar mme me >> return y
+		y@( GLClientActiveTexture _texture      me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -191,6 +199,8 @@ runGLIOIO (GLColor4f  red green blue alpha glio) = glColor4f  red green blue alp
 runGLIOIO (GLBegin    mode                 glio) = glBegin    mode                 >> glio
 runGLIOIO (GLVertex2f x y                  glio) = glVertex2f x y                  >> glio
 runGLIOIO (GLEnd                           glio) = glEnd                           >> glio
+runGLIOIO (GLActiveTexture texture         glio) = glActiveTexture texture         >> glio
+runGLIOIO (GLClientActiveTexture texture   glio) = glClientActiveTexture texture   >> glio
 
 hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> IO ()
 hglTexImage2D target level internalformat width height border format type_ data_ = do
@@ -245,3 +255,9 @@ mkGLVertex2f x y glio = Fixed $ GLVertex2f x y glio
 
 mkGLEnd :: GLIO -> GLIO
 mkGLEnd glio = Fixed $ GLEnd glio
+
+mkGLActiveTexture :: GLenum -> GLIO -> GLIO
+mkGLActiveTexture texture glio = Fixed $ GLActiveTexture texture glio
+
+mkGLClientActiveTexture :: GLenum -> GLIO -> GLIO
+mkGLClientActiveTexture texture glio = Fixed $ GLClientActiveTexture texture glio

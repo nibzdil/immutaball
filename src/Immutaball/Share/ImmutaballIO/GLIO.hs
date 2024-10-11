@@ -47,7 +47,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLEnable,
 		mkGLDisable,
 		mkGLEnablei,
-		mkGLDisablei
+		mkGLDisablei,
+		mkGLTexCoord2d
 	) where
 
 import Prelude ()
@@ -100,6 +101,7 @@ data GLIOF me =
 	| GLDisable GLenum me
 	| GLEnablei GLenum GLuint me
 	| GLDisablei GLenum GLuint me
+	| GLTexCoord2d GLdouble GLdouble me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -119,8 +121,9 @@ instance Functor GLIOF where
 	fmap f (GLClientActiveTexture texture   withUnit) = GLClientActiveTexture texture   (f withUnit)
 	fmap f (GLEnable cap                    withUnit) = GLEnable cap                    (f withUnit)
 	fmap f (GLDisable cap                   withUnit) = GLDisable cap                   (f withUnit)
-	fmap f (GLEnablei cap index             withUnit) = GLEnablei cap index             (f withUnit)
-	fmap f (GLDisablei cap index            withUnit) = GLDisablei cap index            (f withUnit)
+	fmap f (GLEnablei cap index_            withUnit) = GLEnablei cap index_            (f withUnit)
+	fmap f (GLDisablei cap index_           withUnit) = GLDisablei cap index_           (f withUnit)
+	fmap f (GLTexCoord2d s t                withUnit) = GLTexCoord2d s t                (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -200,6 +203,7 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDisable _cap                      me) -> putMVar mme me >> return y
 		y@( GLEnablei _cap _index               me) -> putMVar mme me >> return y
 		y@( GLDisablei _cap _index              me) -> putMVar mme me >> return y
+		y@( GLTexCoord2d _s _t                  me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -220,8 +224,9 @@ runGLIOIO (GLActiveTexture texture         glio) = glActiveTexture texture      
 runGLIOIO (GLClientActiveTexture texture   glio) = glClientActiveTexture texture   >> glio
 runGLIOIO (GLEnable cap                    glio) = glEnable cap                    >> glio
 runGLIOIO (GLDisable cap                   glio) = glDisable cap                   >> glio
-runGLIOIO (GLEnablei cap index             glio) = glEnablei cap index             >> glio
-runGLIOIO (GLDisablei cap index            glio) = glDisablei cap index            >> glio
+runGLIOIO (GLEnablei cap index_            glio) = glEnablei cap index_            >> glio
+runGLIOIO (GLDisablei cap index_           glio) = glDisablei cap index_           >> glio
+runGLIOIO (GLTexCoord2d s t                glio) = glTexCoord2d s t                >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -293,7 +298,10 @@ mkGLDisable :: GLenum -> GLIO -> GLIO
 mkGLDisable cap glio = Fixed $ GLDisable cap glio
 
 mkGLEnablei :: GLenum -> GLuint -> GLIO -> GLIO
-mkGLEnablei cap index glio = Fixed $ GLEnablei cap index glio
+mkGLEnablei cap index_ glio = Fixed $ GLEnablei cap index_ glio
 
 mkGLDisablei :: GLenum -> GLuint -> GLIO -> GLIO
-mkGLDisablei cap index glio = Fixed $ GLDisablei cap index glio
+mkGLDisablei cap index_ glio = Fixed $ GLDisablei cap index_ glio
+
+mkGLTexCoord2d :: GLdouble -> GLdouble -> GLIO -> GLIO
+mkGLTexCoord2d s t glio = Fixed $ GLTexCoord2d s t glio

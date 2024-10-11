@@ -24,6 +24,7 @@ import Immutaball.Share.GUI
 import Immutaball.Share.Math
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
+import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
 import Debug.Trace as D -------------------------- TODO
@@ -37,15 +38,12 @@ mkTitleState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
 		(guiResponse, cxtnp1) <- mkGUI titleGui -< (GUIDrive request, cxtn)
+		response <- returnA -< case guiResponse of
+			NoWidgetAction          -> ContinueResponse
+			WidgetAction QuitButton -> DoneResponse
+			_                       -> ContinueResponse
+		() <- finishFrame -< (request, cxtnp1)
 		cxt <- returnA -< cxtnp1
-	response <- returnA -< case guiResponse of
-		NoWidgetAction          -> ContinueResponse
-		WidgetAction QuitButton -> DoneResponse
-		_                       -> ContinueResponse
-	--() <- finishFrame -< cxtn
-	case request of
-		Paint _ -> finishFrame -< cxtn
-		_ -> returnA -< ()
 	returnA -< Identity response
 	where cxt0 = either initialStateCxt id baseCxt0
 

@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, TemplateHaskell #-}
 
 module Immutaball.Share.State
 	(
@@ -15,11 +15,11 @@ module Immutaball.Share.State
 		RequestFrameMulti,
 		RequestFrameSingle,
 		RequestFrame,
-		Request(..),
+		Request(..), AsRequest(..),
 		ResponseFrameMulti,
 		ResponseFrameSingle,
 		ResponseFrame,
-		Response(..),
+		Response(..), AsResponse(..),
 		{-
 		closeFork,
 		closeFork',
@@ -83,6 +83,7 @@ data Request =
 	| Buttn Int Bool         -- ^ button button down
 	| Touch Int Int Double Double Double Double Double  -- ^ finger-touch device finger x y dx dy pressure
 	deriving (Eq, Ord, Show)
+--makeClassyPrisms ''Request
 
 type ResponseFrameMulti = [Response]
 type ResponseFrameSingle = Identity Response
@@ -107,6 +108,7 @@ data Response =
 	-- | Request the controller fork the wire; requires the context enable forking.
 	| ImmutaballIOFork (ImmutaballIOF Immutaball)
 	-- | AnythingElseToTellTheController NewIBContextIfNeeded SomeOtherData
+--makeClassyPrisms ''Response
 
 -- The controller now manages forking and closing more fully.
 {-
@@ -177,3 +179,7 @@ immutaballMultiQueueFrames cxt w = proc requests -> do
 	responses <- w -< requestChunk
 	responseChunk <- maybe returnA queueN (cxt^.ibStaticConfig.maxResponseFrameSize) -< responses
 	returnA -< responseChunk
+
+-- Lenses at end of file to avoid TH errors.
+makeClassyPrisms ''Request
+makeClassyPrisms ''Response

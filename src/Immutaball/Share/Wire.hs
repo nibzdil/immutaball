@@ -47,7 +47,9 @@ module Immutaball.Share.Wire
 		constWire,
 		multistep,
 		foldrA,
-		foldrListA
+		foldrListA,
+		constA,
+		nopA
 	) where
 
 import Prelude ()
@@ -299,3 +301,9 @@ foldrListA reduce = proc (reduction0, xs) -> do
 	case xs of
 		[] -> returnA -< reduction0
 		(x:rest) -> reduce <<< second (foldrListA reduce) -< (x, (reduction0, rest))
+
+constA :: (Arrow a) => c -> a b c
+constA c = arr (const c)
+
+nopA :: (Arrow a) => a () ()
+nopA = arr $ \() -> ()

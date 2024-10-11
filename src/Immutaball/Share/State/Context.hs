@@ -20,6 +20,7 @@ module Immutaball.Share.State.Context
 		requireMisc,
 		requireBasics,
 		finishFrame,
+		finishFramePaint,
 		glErrType,
 
 		-- * Utils
@@ -191,12 +192,21 @@ requireBasics = proc (cxt0, _request) -> do
 	returnA -< cxt
 
 -- | Handles common frame finishing like swapping the scene on paint.
-finishFrame :: Wire ImmutaballM IBStateContext ()
-finishFrame = proc cxt -> do
+--
+-- Currently does not update the state context, so it outputs ().
+finishFrame :: Wire ImmutaballM (Request, IBStateContext) ()
+finishFrame = proc (request, cxt) -> do
+	() <- nopA ||| finishFramePaint -< const () +++ const cxt $ matching _Paint request
+	returnA -< ()
+
+finishFramePaint :: Wire ImmutaballM IBStateContext ()
+finishFramePaint = proc cxt -> do
 	-- Swapping outside the SDL Manager thread on my platform didn't work.  So
 	-- we'll have the SDL Manager thread do it.
-	--() <- monadic -< maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow)
-	() <- monadic -< maybe (pure ()) (liftIBIO . flip (sdlGLSwapWindow (cxt^.ibContext.ibSDLManagerHandle)) ()) $ (cxt^.ibSDLWindow)
+	() <- monadic -<
+		if' (not sdlNeedsSpecialThread)
+			(maybe (pure ()) (liftIBIO . BasicIBIOF . SDLIO . flip SDLGLSwapWindow ()) $ (cxt^.ibSDLWindow))
+			(maybe (pure ()) (liftIBIO . flip (sdlGLSwapWindow (cxt^.ibContext.ibSDLManagerHandle)) ()) $ (cxt^.ibSDLWindow))
 	error_ <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLGetError id
 	case error_ of
 		GL_NO_ERROR -> returnA -< ()
@@ -205,6 +215,8 @@ finishFrame = proc cxt -> do
 			() <- monadic -< liftIBIO . BasicIBIOF $ ExitFailureBasicIOF
 			returnA -< ()
 	where
+		sdlNeedsSpecialThread :: Bool
+		sdlNeedsSpecialThread = True
 
 glErrType :: GLenum -> String
 glErrType GL_NO_ERROR                      = "GL_NO_ERROR"

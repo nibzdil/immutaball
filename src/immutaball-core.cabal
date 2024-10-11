@@ -129,6 +129,7 @@ common executable-components
 		Immutaball.Share.State
 		Immutaball.Share.State.Context
 		Immutaball.Share.Utils
+		Immutaball.Share.Video
 		Immutaball.Share.Wire
 
 executable immutaball
@@ -179,6 +180,7 @@ library
 		Immutaball.Share.State
 		Immutaball.Share.State.Context
 		Immutaball.Share.Utils
+		Immutaball.Share.Video
 		Immutaball.Share.Wire
 
 test-suite test-immutaball

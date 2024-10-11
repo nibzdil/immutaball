@@ -150,8 +150,8 @@ integrate y0 = proc x -> do
 
 differentiate :: (Num a, Monad m, MonadFix m) => Wire m a a
 differentiate = proc x -> do
-	rec output <- delay 0 -< x - output
-	returnA -< output
+	lastX <- delayWith -< (x, x)
+	returnA -< x - lastX
 
 -- | Output the last available input.
 hold :: (Monad m, MonadFix m) => a -> Wire m (Maybe a) a

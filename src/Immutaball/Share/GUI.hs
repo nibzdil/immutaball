@@ -365,7 +365,7 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			() <- monadic -< sdlGL' $ GLTexCoord2d 0.0 0.0 ()
 			() <- monadic -< sdlGL' $ GLVertex2d ax ay ()
 
-			() <- monadic -< sdlGL' $ GLTexCoord2d 0.0 0.0 ()
+			() <- monadic -< sdlGL' $ GLTexCoord2d 0.0 1.0 ()
 			() <- monadic -< sdlGL' $ GLVertex2d ax by ()
 
 			--() <- monadic -< sdlGL' $ GLVertex2d bx by ()

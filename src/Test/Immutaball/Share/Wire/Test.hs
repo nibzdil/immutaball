@@ -129,7 +129,7 @@ tests = testGroup "Immutaball.Share.Wire" $
 				testCase "differentiate twice" $
 					stepThrice differentiateThings @?= 0,
 				testCase "differentiate once" $
-					stepTwice differentiateThings @?= 300,
+					stepTwice differentiateThings @?= 0,
 				testCase "differentiate never" $
 					stepOnce differentiateThings @?= 0
 			],

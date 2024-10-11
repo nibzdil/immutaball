@@ -18,7 +18,6 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Lens
-import qualified SDL.Init
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context.Config
@@ -50,10 +49,11 @@ makeLenses ''IBContext'
 -- Does not create a window or set up OpenGL.
 withSDL :: ContextConfig' (IBContext' initialWire) initialWire -> (IBContext' initialWire -> ImmutaballIO) -> ImmutaballIO
 withSDL cxtCfg withCxt =
-	let initFlags = if' (cxtCfg^.cxtCfgHeadless) [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
-	mkBIO . SDLIO . SDLWithInit initFlags .
-	mkBIO . SDLIO . SDLWithTTFInit .
-	withSDLManager $ \sdlManagerHandle ->
+	-- We used to SDL.Init here, but in case initializing in a different thread
+	-- causes issue (as was the case for SDL GL swapping), I moved it to the
+	-- SDL Manager thread.
+	let headless = (cxtCfg^.cxtCfgHeadless) in
+	withSDLManager' headless $ \sdlManagerHandle ->
 	withGLManager $ \glManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,

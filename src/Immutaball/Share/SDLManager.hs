@@ -21,6 +21,7 @@ module Immutaball.Share.SDLManager
 	(
 		-- * High level
 		withSDLManager,
+		withSDLManager',
 		SDLManagerHandle(..), sdlmh_done, sdlmh_doneReceived, sdlmh_commands,
 		SDLManagerCommand(..),
 		issueSDLCommand,
@@ -45,6 +46,7 @@ import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
 import Control.Lens
 import Control.Monad.STM
+import qualified SDL.Init
 import qualified SDL.Video
 
 import Immutaball.Share.ImmutaballIO
@@ -56,9 +58,14 @@ import Immutaball.Share.Utils
 
 -- * High level
 
+-- | Create an SDL manager and manage its lifetime.
 withSDLManager :: (SDLManagerHandle -> ImmutaballIO) -> ImmutaballIO
-withSDLManager withHandle =
-	initSDLManager $ \sdlManagerHandle ->
+withSDLManager = withSDLManager' False
+
+-- | Adds a headless setting.
+withSDLManager' :: Bool -> (SDLManagerHandle -> ImmutaballIO) -> ImmutaballIO
+withSDLManager' headless withHandle =
+	initSDLManager headless $ \sdlManagerHandle ->
 	withHandle sdlManagerHandle <>>
 	quitSDLManager sdlManagerHandle
 
@@ -95,8 +102,11 @@ sdlGL sdlMgr glio =
 
 -- | Manually start the lifetime of the SDLManager OS thread; the caller will
 -- need to manage the lifetime.
-initSDLManager :: (SDLManagerHandle -> ImmutaballIO) -> ImmutaballIO
-initSDLManager withSdlMgr =
+initSDLManager :: Bool -> (SDLManagerHandle -> ImmutaballIO) -> ImmutaballIO
+initSDLManager headless withSdlMgr =
+	let initFlags = if' headless [] [SDL.Init.InitVideo, SDL.Init.InitAudio] ++ [SDL.Init.InitJoystick] in
+	mkBIO . SDLIO . SDLWithInit initFlags .
+	mkBIO . SDLIO . SDLWithTTFInit .
 	mkAtomically (newTVar False) $ \done ->
 	mkAtomically (newTVar False) $ \doneReceived ->
 	mkAtomically newTChan $ \commands ->

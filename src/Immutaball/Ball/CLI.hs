@@ -226,7 +226,10 @@ immutaballWithNeverballrc x'cfg cliCfg ibDirs_ nrcCfg =
 			_cxtCfgDirs         = ibDirs_,
 			_cxtCfgNeverballrc  = nrcCfg,
 			_cxtCfgInitialWire  = joinMaybeResult $ (x'cfg^.x'cfgInitialWireWithCxt),
-			_cxtCfgHeadless     = (cliCfg^.cliCfgHeadless)
+			_cxtCfgHeadless     = (cliCfg^.cliCfgHeadless),
+
+			_cxtCfgUseExistingSDLManager = (x'cfg^.x'cfgUseExistingSDLManager),
+			_cxtCfgUseExistingGLManager  = (x'cfg^.x'cfgUseExistingGLManager)
 		}
 
 --- | Run immutaball after setting up an initial immutaball context.

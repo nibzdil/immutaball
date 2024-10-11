@@ -50,8 +50,8 @@ withSDL cxtCfg withCxt =
 	-- causes issue (as was the case for SDL GL swapping), I moved it to the
 	-- SDL Manager thread.
 	let headless = (cxtCfg^.cxtCfgHeadless) in
-	withSDLManager' headless $ \sdlManagerHandle ->
-	withGLManager $ \glManagerHandle ->
+	maybe (withSDLManager' headless) (&) (cxtCfg^.cxtCfgUseExistingSDLManager) $ \sdlManagerHandle ->
+	maybe (withGLManager)            (&) (cxtCfg^.cxtCfgUseExistingGLManager)  $ \glManagerHandle ->
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,
 		_ibDirs         = cxtCfg^.cxtCfgDirs,

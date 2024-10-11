@@ -13,7 +13,8 @@ module Immutaball.Share.Config
 			allowWireForks, maxStepFrameSize, maxResponseFrameSize,
 			defaultStaticDataDir, defaultUserDataDir, defaultUserConfigDir,
 			configFilename, x'cfgInitialWireWithCxt, immutaballFont,
-			immutaballFontSize,
+			immutaballFontSize, sdlManagerStaticConfig, glManagerStaticConfig,
+			x'cfgUseExistingSDLManager, x'cfgUseExistingGLManager,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -45,6 +46,10 @@ import Immutaball.Prelude
 import Control.Lens
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
+import Immutaball.Share.GLManager
+import Immutaball.Share.GLManager.Config
+import Immutaball.Share.SDLManager
+import Immutaball.Share.SDLManager.Config
 
 data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- | Maximum FPS, including non-clock SDL events.
@@ -77,7 +82,16 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 
 	-- | Relative to the static data dir.
 	_immutaballFont     :: FilePath,
-	_immutaballFontSize :: Integer
+	_immutaballFontSize :: Integer,
+
+	-- | Use separate records to allow these modules to have their own static
+	-- config.
+	_sdlManagerStaticConfig :: SDLManagerStaticConfig,
+	_glManagerStaticConfig  :: GLManagerStaticConfig,
+
+	-- | Allow tests to share a single manager.
+	_x'cfgUseExistingSDLManager :: Maybe SDLManagerHandle,
+	_x'cfgUseExistingGLManager  :: Maybe GLManagerHandle
 }
 makeLenses ''StaticConfig'
 
@@ -99,7 +113,13 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgInitialWireWithCxt = Nothing,
 
 	_immutaballFont     = "ttf/DejaVuSans-Bold.ttf",
-	_immutaballFontSize = 12
+	_immutaballFontSize = 12,
+
+	_sdlManagerStaticConfig = defaultSDLManagerStaticConfig,
+	_glManagerStaticConfig  = defaultGLManagerStaticConfig,
+
+	_x'cfgUseExistingSDLManager = Nothing,
+	_x'cfgUseExistingGLManager  = Nothing
 }
 
 type Neverballrc = Config

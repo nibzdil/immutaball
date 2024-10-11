@@ -11,7 +11,8 @@ module Immutaball.Share.Context.Config
 	(
 		IBDirs(..), ibStaticDataDir, ibUserDataDir, ibUserConfigDir,
 		ContextConfig'(..), cxtCfgStaticConfig, cxtCfgDirs, cxtCfgNeverballrc,
-			cxtCfgInitialWire, cxtCfgHeadless
+			cxtCfgInitialWire, cxtCfgHeadless, cxtCfgUseExistingSDLManager,
+			cxtCfgUseExistingGLManager
 	) where
 
 import Prelude ()
@@ -20,6 +21,8 @@ import Immutaball.Prelude
 import Control.Lens
 
 import Immutaball.Share.Config
+import Immutaball.Share.GLManager
+import Immutaball.Share.SDLManager
 
 data IBDirs = IBDirs {
 	_ibStaticDataDir :: FilePath,
@@ -34,6 +37,10 @@ data ContextConfig' cxt initialWire = ContextConfig {
 	_cxtCfgDirs         :: IBDirs,
 	_cxtCfgNeverballrc  :: Neverballrc,
 	_cxtCfgInitialWire  :: cxt -> Maybe initialWire,
-	_cxtCfgHeadless     :: Bool
+	_cxtCfgHeadless     :: Bool,
+
+	-- | Allow tests to share a single manager.
+	_cxtCfgUseExistingSDLManager :: Maybe SDLManagerHandle,
+	_cxtCfgUseExistingGLManager  :: Maybe GLManagerHandle
 }
 makeLenses ''ContextConfig'

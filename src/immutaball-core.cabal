@@ -114,6 +114,7 @@ common executable-components
 		Immutaball.Share.Context.Config
 		Immutaball.Share.Controller
 		Immutaball.Share.GLManager
+		Immutaball.Share.GLManager.Config
 		Immutaball.Share.GLManager.Types
 		Immutaball.Share.GUI
 		Immutaball.Share.ImmutaballIO
@@ -123,6 +124,7 @@ common executable-components
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.Math
 		Immutaball.Share.SDLManager
+		Immutaball.Share.SDLManager.Config
 		Immutaball.Share.SDLManager.Types
 		Immutaball.Share.State
 		Immutaball.Share.State.Context
@@ -162,6 +164,7 @@ library
 		Immutaball.Share.Context.Config
 		Immutaball.Share.Controller
 		Immutaball.Share.GLManager
+		Immutaball.Share.GLManager.Config
 		Immutaball.Share.GLManager.Types
 		Immutaball.Share.GUI
 		Immutaball.Share.ImmutaballIO
@@ -171,6 +174,7 @@ library
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.Math
 		Immutaball.Share.SDLManager
+		Immutaball.Share.SDLManager.Config
 		Immutaball.Share.SDLManager.Types
 		Immutaball.Share.State
 		Immutaball.Share.State.Context

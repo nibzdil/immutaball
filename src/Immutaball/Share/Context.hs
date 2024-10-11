@@ -55,8 +55,6 @@ withSDL cxtCfg withCxt =
 	mkBIO . SDLIO . SDLWithTTFInit .
 	withSDLManager $ \sdlManagerHandle ->
 	withGLManager $ \glManagerHandle ->
-	(<>> quitSDLManager sdlManagerHandle) .
-	(<>> quitGLManager glManagerHandle) .
 	withCxt $ IBContext {
 		_ibStaticConfig = cxtCfg^.cxtCfgStaticConfig,
 		_ibDirs         = cxtCfg^.cxtCfgDirs,

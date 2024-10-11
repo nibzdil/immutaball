@@ -86,7 +86,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDeleteProgram,
 		mkGLCreateShader,
 		mkGLDeleteShader,
-		mkGLShaderSource
+		mkGLShaderSource,
+		mkGLCompileShader
 	) where
 
 import Prelude ()
@@ -173,6 +174,7 @@ data GLIOF me =
 	| GLDeleteShader GLuint me
 
 	| GLShaderSource GLuint [String] me
+	| GLCompileShader GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -226,6 +228,7 @@ instance Functor GLIOF where
 	fmap f (GLDeleteShader id_ withUnit)      = GLDeleteShader id_        (f withUnit)
 
 	fmap f (GLShaderSource shader strings withUnit) = GLShaderSource shader strings (f withUnit)
+	fmap f (GLCompileShader id_           withUnit) = GLCompileShader id_           (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -338,6 +341,7 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDeleteShader _id        me)     -> putMVar mme me >> return y
 
 		y@( GLShaderSource _shader _strings me) -> putMVar mme me >> return y
+		y@( GLCompileShader _id             me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -393,6 +397,7 @@ runGLIOIO (GLCreateShader shaderType withId) = glCreateShader shaderType >>= wit
 runGLIOIO (GLDeleteShader id_        glio)   = glDeleteShader id_        >> glio
 
 runGLIOIO (GLShaderSource shader strings glio) = hglShaderSource shader strings >> glio
+runGLIOIO (GLCompileShader id_           glio) = glCompileShader id_            >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -635,3 +640,6 @@ mkGLDeleteShader id_ glio = Fixed $ GLDeleteShader id_ glio
 
 mkGLShaderSource :: GLuint -> [String] -> GLIO -> GLIO
 mkGLShaderSource shader strings glio = Fixed $ GLShaderSource shader strings glio
+
+mkGLCompileShader :: GLuint -> GLIO -> GLIO
+mkGLCompileShader id_ glio = Fixed $ GLCompileShader id_ glio

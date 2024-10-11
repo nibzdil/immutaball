@@ -54,20 +54,21 @@ import Data.Maybe
 import Control.Lens
 import qualified Data.Map.Lazy as M
 import qualified Data.Text as T
+import Graphics.GL.Compatibility45
+--import Graphics.GL.Core45
+import Graphics.GL.Types
 import qualified SDL.Raw.Enum as Raw
 
+import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
+import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.Math
+import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
-
--- TODO: reomve this debugging.  Basically I've written a lot without being
--- able to see anything, and I just want to test our GUI before I write more advanced OpenGL.
-import System.IO.Unsafe (unsafePerformIO)
-import Graphics.GL.Internal.Shared as GL
 
 -- * widgets
 
@@ -325,6 +326,9 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, 
 guiPaintWidget :: Wire ImmutaballM ((Widget id, M.Map id Float, M.Map id (Rect Float), M.Map id (Widget id), Float), IBStateContext) IBStateContext
 guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
 	_dt <- differentiate -< t
+	dt <- differentiate -< t
+	offset <- integrate 0 -< 0.001 * 0.001 * 0.001 * 0.001 * dt  -- FIXME: do I have an inverted division or something?
+	sdlGL' <- returnA -< liftIBIO . sdlGL (cxtn^.ibContext.ibSDLManagerHandle)
 	-- TODO: clean up textures; just debugging for now to test what I have so far.
 	-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 	-- TODO test
@@ -334,23 +338,27 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			cxtnp1 <- returnA -< cxtn
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
-			() <- monadic -< unsafePerformIO $ do
-				GL.glColor4f 0.7 0.1 0.3 1.0
-				GL.glBegin GL.GL_QUADS
-				GL.glVertex2f (-9.0) (-9.0)
-				GL.glVertex2f (-9.0) ( 9.0)
-				GL.glVertex2f ( 9.0) ( 9.0)
-				GL.glVertex2f ( 9.0) (-9.0)
-				GL.glEnd
+			{-
+			() <- monadic -< sdlGL' $ GLColor4f 0.7 0.1 0.3 1.0 ()
+			() <- monadic -< sdlGL' $ GLBegin GL_QUADS ()
+			() <- monadic -< sdlGL' $ GLVertex2f (-9.0) (-9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2f (-9.0) ( 9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2f ( 9.0) ( 9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2f ( 9.0) (-9.0) ()
+			() <- monadic -< sdlGL' $ GLEnd ()
+			-}
 
-				GL.glColor4f 0.1 0.1 0.9 1.0
-				GL.glBegin GL.GL_QUADS
-				GL.glVertex2f ax ay
-				GL.glVertex2f ax by
-				GL.glVertex2f bx by
-				GL.glVertex2f bx ay
-				GL.glEnd
-				return $ pure ()
+			-- {-
+			() <- monadic -< sdlGL' $ GLColor4f 0.1 0.1 0.9 1.0 ()
+			() <- monadic -< sdlGL' $ GLBegin GL_QUADS ()
+			() <- monadic -< sdlGL' $ GLVertex2f ax ay ()
+			() <- monadic -< sdlGL' $ GLVertex2f ax by ()
+			--() <- monadic -< sdlGL' $ GLVertex2f bx by ()
+			--() <- monadic -< sdlGL' $ GLVertex2f bx ay ()
+			() <- monadic -< sdlGL' $ GLVertex2f (bx + offset) by ()
+			() <- monadic -< sdlGL' $ GLVertex2f (bx + offset) ay ()
+			() <- monadic -< sdlGL' $ GLEnd ()
+			-- -}
 			returnA -< cxtnp1
 		_ -> returnA -< cxtn
 

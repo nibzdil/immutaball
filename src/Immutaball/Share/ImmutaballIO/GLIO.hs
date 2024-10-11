@@ -31,6 +31,14 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglDeleteTextures,
 		hglTexEnvfv,
 		hglTexEnviv,
+		hglTexParameterfv,
+		hglTexParameteriv,
+		hglTexParameterIiv,
+		hglTexParameterIuiv,
+		hglTextureParameterfv,
+		hglTextureParameteriv,
+		hglTextureParameterIiv,
+		hglTextureParameterIuiv,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkGLClear,
@@ -54,7 +62,19 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLTexEnvf,
 		mkGLTexEnvi,
 		mkGLTexEnvfv,
-		mkGLTexEnviv
+		mkGLTexEnviv,
+		mkGLTexParameterf,
+		mkGLTexParameteri,
+		mkGLTextureParameterf,
+		mkGLTextureParameteri,
+		mkGLTexParameterfv,
+		mkGLTexParameteriv,
+		mkGLTexParameterIiv,
+		mkGLTexParameterIuiv,
+		mkGLTextureParameterfv,
+		mkGLTextureParameteriv,
+		mkGLTextureParameterIiv,
+		mkGLTextureParameterIuiv
 	) where
 
 import Prelude ()
@@ -112,6 +132,18 @@ data GLIOF me =
 	| GLTexEnvi GLenum GLenum GLint me
 	| GLTexEnvfv GLenum GLenum [GLfloat] me
 	| GLTexEnviv GLenum GLenum [GLint] me
+	| GLTexParameterf GLenum GLenum GLfloat me
+	| GLTexParameteri GLenum GLenum GLint me
+	| GLTextureParameterf GLenum GLenum GLfloat me
+	| GLTextureParameteri GLenum GLenum GLint me
+	| GLTexParameterfv GLenum GLenum [GLfloat] me
+	| GLTexParameteriv GLenum GLenum [GLint] me
+	| GLTexParameterIiv GLenum GLenum [GLint] me
+	| GLTexParameterIuiv GLenum GLenum [GLuint] me
+	| GLTextureParameterfv GLenum GLenum [GLfloat] me
+	| GLTextureParameteriv GLenum GLenum [GLint] me
+	| GLTextureParameterIiv GLenum GLenum [GLint] me
+	| GLTextureParameterIuiv GLenum GLenum [GLuint] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -123,21 +155,33 @@ instance Functor GLIOF where
 	fmap f (GLDeleteTextures textures       withUnit)  = GLDeleteTextures textures       (f withUnit)
 	fmap f (GLGetError                      withError) = GLGetError                      (f . withError)
 
-	fmap f (GLColor4d  red green blue alpha withUnit) = GLColor4d  red green blue alpha (f withUnit)
-	fmap f (GLBegin    mode                 withUnit) = GLBegin    mode                 (f withUnit)
-	fmap f (GLVertex2d x y                  withUnit) = GLVertex2d x y                  (f withUnit)
-	fmap f (GLEnd                           withUnit) = GLEnd                           (f withUnit)
-	fmap f (GLActiveTexture texture         withUnit) = GLActiveTexture texture         (f withUnit)
-	fmap f (GLClientActiveTexture texture   withUnit) = GLClientActiveTexture texture   (f withUnit)
-	fmap f (GLEnable cap                    withUnit) = GLEnable cap                    (f withUnit)
-	fmap f (GLDisable cap                   withUnit) = GLDisable cap                   (f withUnit)
-	fmap f (GLEnablei cap index_            withUnit) = GLEnablei cap index_            (f withUnit)
-	fmap f (GLDisablei cap index_           withUnit) = GLDisablei cap index_           (f withUnit)
-	fmap f (GLTexCoord2d s t                withUnit) = GLTexCoord2d s t                (f withUnit)
-	fmap f (GLTexEnvf target pname param    withUnit) = GLTexEnvf target pname param    (f withUnit)
-	fmap f (GLTexEnvi target pname param    withUnit) = GLTexEnvi target pname param    (f withUnit)
-	fmap f (GLTexEnvfv target pname params  withUnit) = GLTexEnvfv target pname params  (f withUnit)
-	fmap f (GLTexEnviv target pname params  withUnit) = GLTexEnviv target pname params  (f withUnit)
+	fmap f (GLColor4d  red green blue alpha                 withUnit) = GLColor4d  red green blue alpha                 (f withUnit)
+	fmap f (GLBegin    mode                                 withUnit) = GLBegin    mode                                 (f withUnit)
+	fmap f (GLVertex2d x y                                  withUnit) = GLVertex2d x y                                  (f withUnit)
+	fmap f (GLEnd                                           withUnit) = GLEnd                                           (f withUnit)
+	fmap f (GLActiveTexture texture                         withUnit) = GLActiveTexture texture                         (f withUnit)
+	fmap f (GLClientActiveTexture texture                   withUnit) = GLClientActiveTexture texture                   (f withUnit)
+	fmap f (GLEnable cap                                    withUnit) = GLEnable cap                                    (f withUnit)
+	fmap f (GLDisable cap                                   withUnit) = GLDisable cap                                   (f withUnit)
+	fmap f (GLEnablei cap index_                            withUnit) = GLEnablei cap index_                            (f withUnit)
+	fmap f (GLDisablei cap index_                           withUnit) = GLDisablei cap index_                           (f withUnit)
+	fmap f (GLTexCoord2d s t                                withUnit) = GLTexCoord2d s t                                (f withUnit)
+	fmap f (GLTexEnvf target pname param                    withUnit) = GLTexEnvf target pname param                    (f withUnit)
+	fmap f (GLTexEnvi target pname param                    withUnit) = GLTexEnvi target pname param                    (f withUnit)
+	fmap f (GLTexEnvfv target pname params                  withUnit) = GLTexEnvfv target pname params                  (f withUnit)
+	fmap f (GLTexEnviv target pname params                  withUnit) = GLTexEnviv target pname params                  (f withUnit)
+	fmap f (GLTexParameterf target pname param              withUnit) = GLTexParameterf target pname param              (f withUnit)
+	fmap f (GLTexParameteri target pname param              withUnit) = GLTexParameteri target pname param              (f withUnit)
+	fmap f (GLTextureParameterf texture pname param         withUnit) = GLTextureParameterf texture pname param         (f withUnit)
+	fmap f (GLTextureParameteri texture pname param         withUnit) = GLTextureParameteri texture pname param         (f withUnit)
+	fmap f (GLTexParameterfv target pname params            withUnit) = GLTexParameterfv target pname params            (f withUnit)
+	fmap f (GLTexParameteriv target pname params            withUnit) = GLTexParameteriv target pname params            (f withUnit)
+	fmap f (GLTexParameterIiv target pname params           withUnit) = GLTexParameterIiv target pname params           (f withUnit)
+	fmap f (GLTexParameterIuiv target pname params          withUnit) = GLTexParameterIuiv target pname params          (f withUnit)
+	fmap f (GLTextureParameterfv texture pname params       withUnit) = GLTextureParameterfv texture pname params       (f withUnit)
+	fmap f (GLTextureParameteriv texture pname params       withUnit) = GLTextureParameteriv texture pname params       (f withUnit)
+	fmap f (GLTextureParameterIiv texture pname params      withUnit) = GLTextureParameterIiv texture pname params      (f withUnit)
+	fmap f (GLTextureParameterIuiv texture pname params     withUnit) = GLTextureParameterIuiv texture pname params     (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -207,21 +251,33 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDeleteTextures _textures        me)        -> putMVar mme me >> return y
 		_y@(GLGetError                        withError) -> return $ GLGetError             ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withError)
 
-		y@( GLColor4d  _red _green _blue _alpha me) -> putMVar mme me >> return y
-		y@( GLBegin    _mode                    me) -> putMVar mme me >> return y
-		y@( GLVertex2d _ _                      me) -> putMVar mme me >> return y
-		y@( GLEnd                               me) -> putMVar mme me >> return y
-		y@( GLActiveTexture _texture            me) -> putMVar mme me >> return y
-		y@( GLClientActiveTexture _texture      me) -> putMVar mme me >> return y
-		y@( GLEnable _cap                       me) -> putMVar mme me >> return y
-		y@( GLDisable _cap                      me) -> putMVar mme me >> return y
-		y@( GLEnablei _cap _index               me) -> putMVar mme me >> return y
-		y@( GLDisablei _cap _index              me) -> putMVar mme me >> return y
-		y@( GLTexCoord2d _s _t                  me) -> putMVar mme me >> return y
-		y@( GLTexEnvf _target _pname _param     me) -> putMVar mme me >> return y
-		y@( GLTexEnvi _target _pname _param     me) -> putMVar mme me >> return y
-		y@( GLTexEnvfv _target _pname _params   me) -> putMVar mme me >> return y
-		y@( GLTexEnviv _target _pname _params   me) -> putMVar mme me >> return y
+		y@( GLColor4d  _red _green _blue _alpha            me) -> putMVar mme me >> return y
+		y@( GLBegin    _mode                               me) -> putMVar mme me >> return y
+		y@( GLVertex2d _ _                                 me) -> putMVar mme me >> return y
+		y@( GLEnd                                          me) -> putMVar mme me >> return y
+		y@( GLActiveTexture _texture                       me) -> putMVar mme me >> return y
+		y@( GLClientActiveTexture _texture                 me) -> putMVar mme me >> return y
+		y@( GLEnable _cap                                  me) -> putMVar mme me >> return y
+		y@( GLDisable _cap                                 me) -> putMVar mme me >> return y
+		y@( GLEnablei _cap _index                          me) -> putMVar mme me >> return y
+		y@( GLDisablei _cap _index                         me) -> putMVar mme me >> return y
+		y@( GLTexCoord2d _s _t                             me) -> putMVar mme me >> return y
+		y@( GLTexEnvf _target _pname _param                me) -> putMVar mme me >> return y
+		y@( GLTexEnvi _target _pname _param                me) -> putMVar mme me >> return y
+		y@( GLTexEnvfv _target _pname _params              me) -> putMVar mme me >> return y
+		y@( GLTexEnviv _target _pname _params              me) -> putMVar mme me >> return y
+		y@( GLTexParameterf _target _pname _param          me) -> putMVar mme me >> return y
+		y@( GLTexParameteri _target _pname _param          me) -> putMVar mme me >> return y
+		y@( GLTextureParameterf _texture _pname _param     me) -> putMVar mme me >> return y
+		y@( GLTextureParameteri _texture _pname _param     me) -> putMVar mme me >> return y
+		y@( GLTexParameterfv _target _pname _params        me) -> putMVar mme me >> return y
+		y@( GLTexParameteriv _target _pname _params        me) -> putMVar mme me >> return y
+		y@( GLTexParameterIiv _target _pname _params       me) -> putMVar mme me >> return y
+		y@( GLTexParameterIuiv _target _pname _params      me) -> putMVar mme me >> return y
+		y@( GLTextureParameterfv _texture _pname _params   me) -> putMVar mme me >> return y
+		y@( GLTextureParameteriv _texture _pname _params   me) -> putMVar mme me >> return y
+		y@( GLTextureParameterIiv _texture _pname _params  me) -> putMVar mme me >> return y
+		y@( GLTextureParameterIuiv _texture _pname _params me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -234,21 +290,33 @@ runGLIOIO (GLBindTexture    target texture       glio) = glBindTexture target te
 runGLIOIO (GLDeleteTextures textures             glio) = hglDeleteTextures textures         >> glio
 runGLIOIO (GLGetError                            withError) = glGetError                    >>= withError
 
-runGLIOIO (GLColor4d  red green blue alpha glio) = glColor4d  red green blue alpha >> glio
-runGLIOIO (GLBegin    mode                 glio) = glBegin    mode                 >> glio
-runGLIOIO (GLVertex2d x y                  glio) = glVertex2d x y                  >> glio
-runGLIOIO (GLEnd                           glio) = glEnd                           >> glio
-runGLIOIO (GLActiveTexture texture         glio) = glActiveTexture texture         >> glio
-runGLIOIO (GLClientActiveTexture texture   glio) = glClientActiveTexture texture   >> glio
-runGLIOIO (GLEnable cap                    glio) = glEnable cap                    >> glio
-runGLIOIO (GLDisable cap                   glio) = glDisable cap                   >> glio
-runGLIOIO (GLEnablei cap index_            glio) = glEnablei cap index_            >> glio
-runGLIOIO (GLDisablei cap index_           glio) = glDisablei cap index_           >> glio
-runGLIOIO (GLTexCoord2d s t                glio) = glTexCoord2d s t                >> glio
-runGLIOIO (GLTexEnvf target pname param    glio) = glTexEnvf target pname param    >> glio
-runGLIOIO (GLTexEnvi target pname param    glio) = glTexEnvi target pname param    >> glio
-runGLIOIO (GLTexEnvfv target pname params  glio) = hglTexEnvfv target pname params >> glio
-runGLIOIO (GLTexEnviv target pname params  glio) = hglTexEnviv target pname params >> glio
+runGLIOIO (GLColor4d  red green blue alpha              glio) = glColor4d  red green blue alpha              >> glio
+runGLIOIO (GLBegin    mode                              glio) = glBegin    mode                              >> glio
+runGLIOIO (GLVertex2d x y                               glio) = glVertex2d x y                               >> glio
+runGLIOIO (GLEnd                                        glio) = glEnd                                        >> glio
+runGLIOIO (GLActiveTexture texture                      glio) = glActiveTexture texture                      >> glio
+runGLIOIO (GLClientActiveTexture texture                glio) = glClientActiveTexture texture                >> glio
+runGLIOIO (GLEnable cap                                 glio) = glEnable cap                                 >> glio
+runGLIOIO (GLDisable cap                                glio) = glDisable cap                                >> glio
+runGLIOIO (GLEnablei cap index_                         glio) = glEnablei cap index_                         >> glio
+runGLIOIO (GLDisablei cap index_                        glio) = glDisablei cap index_                        >> glio
+runGLIOIO (GLTexCoord2d s t                             glio) = glTexCoord2d s t                             >> glio
+runGLIOIO (GLTexEnvf target pname param                 glio) = glTexEnvf target pname param                 >> glio
+runGLIOIO (GLTexEnvi target pname param                 glio) = glTexEnvi target pname param                 >> glio
+runGLIOIO (GLTexEnvfv target pname params               glio) = hglTexEnvfv target pname params              >> glio
+runGLIOIO (GLTexEnviv target pname params               glio) = hglTexEnviv target pname params              >> glio
+runGLIOIO (GLTexParameterf target pname param           glio) = glTexParameterf target pname param           >> glio
+runGLIOIO (GLTexParameteri target pname param           glio) = glTexParameteri target pname param           >> glio
+runGLIOIO (GLTextureParameterf texture pname param      glio) = glTextureParameterf texture pname param      >> glio
+runGLIOIO (GLTextureParameteri texture pname param      glio) = glTextureParameteri texture pname param      >> glio
+runGLIOIO (GLTexParameterfv target pname params         glio) = hglTexParameterfv target pname params        >> glio
+runGLIOIO (GLTexParameteriv target pname params         glio) = hglTexParameteriv target pname params        >> glio
+runGLIOIO (GLTexParameterIiv target pname params        glio) = hglTexParameterIiv target pname params       >> glio
+runGLIOIO (GLTexParameterIuiv target pname params       glio) = hglTexParameterIuiv target pname params      >> glio
+runGLIOIO (GLTextureParameterfv texture pname params    glio) = hglTextureParameterfv texture pname params   >> glio
+runGLIOIO (GLTextureParameteriv texture pname params    glio) = hglTextureParameteriv texture pname params   >> glio
+runGLIOIO (GLTextureParameterIiv texture pname params   glio) = hglTextureParameterIiv texture pname params  >> glio
+runGLIOIO (GLTextureParameterIuiv texture pname params  glio) = hglTextureParameterIuiv texture pname params >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -283,6 +351,54 @@ hglTexEnviv target pname params = do
 	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
 	_len   <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glTexEnviv target pname (castPtr ptr)
+
+hglTexParameterfv :: GLenum -> GLenum -> [GLfloat] -> IO ()
+hglTexParameterfv target pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTexParameterfv target pname (castPtr ptr)
+
+hglTexParameteriv :: GLenum -> GLenum -> [GLint] -> IO ()
+hglTexParameteriv target pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTexParameteriv target pname (castPtr ptr)
+
+hglTexParameterIiv :: GLenum -> GLenum -> [GLint] -> IO ()
+hglTexParameterIiv target pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTexParameterIiv target pname (castPtr ptr)
+
+hglTexParameterIuiv :: GLenum -> GLenum -> [GLuint] -> IO ()
+hglTexParameterIuiv target pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTexParameterIuiv target pname (castPtr ptr)
+
+hglTextureParameterfv :: GLenum -> GLenum -> [GLfloat] -> IO ()
+hglTextureParameterfv texture pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTextureParameterfv texture pname (castPtr ptr)
+
+hglTextureParameteriv :: GLenum -> GLenum -> [GLint] -> IO ()
+hglTextureParameteriv texture pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTextureParameteriv texture pname (castPtr ptr)
+
+hglTextureParameterIiv :: GLenum -> GLenum -> [GLint] -> IO ()
+hglTextureParameterIiv texture pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTextureParameterIiv texture pname (castPtr ptr)
+
+hglTextureParameterIuiv :: GLenum -> GLenum -> [GLuint] -> IO ()
+hglTextureParameterIuiv texture pname params = do
+	array_ <- newListArray (0 :: Integer, genericLength params - 1) params
+	_len   <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glTextureParameterIuiv texture pname (castPtr ptr)
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -351,3 +467,39 @@ mkGLTexEnvfv target pname params glio = Fixed $ GLTexEnvfv target pname params g
 
 mkGLTexEnviv :: GLenum -> GLenum -> [GLint] -> GLIO -> GLIO
 mkGLTexEnviv target pname params glio = Fixed $ GLTexEnviv target pname params glio
+
+mkGLTexParameterf :: GLenum -> GLenum -> GLfloat -> GLIO -> GLIO
+mkGLTexParameterf target pname param glio = Fixed $ GLTexParameterf target pname param glio
+
+mkGLTexParameteri :: GLenum -> GLenum -> GLint -> GLIO -> GLIO
+mkGLTexParameteri target pname param glio = Fixed $ GLTexParameteri target pname param glio
+
+mkGLTextureParameterf :: GLenum -> GLenum -> GLfloat -> GLIO -> GLIO
+mkGLTextureParameterf texture pname param glio = Fixed $ GLTextureParameterf texture pname param glio
+
+mkGLTextureParameteri :: GLenum -> GLenum -> GLint -> GLIO -> GLIO
+mkGLTextureParameteri texture pname param glio = Fixed $ GLTextureParameteri texture pname param glio
+
+mkGLTexParameterfv :: GLenum -> GLenum -> [GLfloat] -> GLIO -> GLIO
+mkGLTexParameterfv target pname params glio = Fixed $ GLTexParameterfv target pname params glio
+
+mkGLTexParameteriv :: GLenum -> GLenum -> [GLint] -> GLIO -> GLIO
+mkGLTexParameteriv target pname params glio = Fixed $ GLTexParameteriv target pname params glio
+
+mkGLTexParameterIiv :: GLenum -> GLenum -> [GLint] -> GLIO -> GLIO
+mkGLTexParameterIiv target pname params glio = Fixed $ GLTexParameterIiv target pname params glio
+
+mkGLTexParameterIuiv :: GLenum -> GLenum -> [GLuint] -> GLIO -> GLIO
+mkGLTexParameterIuiv target pname params glio = Fixed $ GLTexParameterIuiv target pname params glio
+
+mkGLTextureParameterfv :: GLenum -> GLenum -> [GLfloat] -> GLIO -> GLIO
+mkGLTextureParameterfv texture pname params glio = Fixed $ GLTextureParameterfv texture pname params glio
+
+mkGLTextureParameteriv :: GLenum -> GLenum -> [GLint] -> GLIO -> GLIO
+mkGLTextureParameteriv texture pname params glio = Fixed $ GLTextureParameteriv texture pname params glio
+
+mkGLTextureParameterIiv :: GLenum -> GLenum -> [GLint] -> GLIO -> GLIO
+mkGLTextureParameterIiv texture pname params glio = Fixed $ GLTextureParameterIiv texture pname params glio
+
+mkGLTextureParameterIuiv :: GLenum -> GLenum -> [GLuint] -> GLIO -> GLIO
+mkGLTextureParameterIuiv texture pname params glio = Fixed $ GLTextureParameterIuiv texture pname params glio

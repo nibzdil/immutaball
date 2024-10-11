@@ -27,6 +27,7 @@ module Immutaball.Share.SDLManager
 
 		-- * Utils
 		sdlGLSwapWindow,
+		sdlGL,
 
 		-- * Low level
 		initSDLManager,
@@ -48,8 +49,10 @@ import qualified SDL.Video
 
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
+import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.SDLManager.Types
+import Immutaball.Share.Utils
 
 -- * High level
 
@@ -76,6 +79,18 @@ sdlGLSwapWindow sdlMgr window withUnit =
 	issueSDLCommand sdlMgr (GLSwapWindow window mdone) $
 	Atomically (takeTMVar mdone) $ \() ->
 	withUnit
+
+-- | Run a GLIO in the SDL manager thread.
+--
+-- This might be needed to avoid issues with multi-threaded SDL & OpenGL on
+-- some platforms.
+sdlGL :: SDLManagerHandle -> GLIOF me -> (me -> ImmutaballIOF me) -> ImmutaballIOF me
+sdlGL sdlMgr glio withMe =
+	JoinIBIOF . JoinIBIOF . JoinIBIOF .
+	Atomically (newEmptyTMVar) $ \mme ->
+	issueSDLCommand sdlMgr (GLSequence glio mme) $
+	Atomically (takeTMVar mme) $ \me ->
+	withMe me
 
 -- * Low level
 
@@ -116,9 +131,10 @@ sdlManagerThread sdlMgr =
 			QuitSDLManager -> quit
 			NopSDLManager -> sdlManagerThread sdlMgr
 			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThread sdlMgr
-			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $ \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
-			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $ \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
-			GLSwapWindow window  to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $            mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThread sdlMgr
+			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $   \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThread sdlMgr
+			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $   \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThread sdlMgr
+			GLSwapWindow window  to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $              mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThread sdlMgr
+			GLSequence glio      to_ -> Fixed $ (BasicIBIOF $ GLIO glio)        >>= \me     ->   Atomically (writeTMVar to_ me)     $ \() -> sdlManagerThread sdlMgr
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

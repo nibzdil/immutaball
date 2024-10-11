@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, ExistentialQuantification #-}
 
 -- | Moved into another module to avoid Template Haskell errors.
 module Immutaball.Share.SDLManager.Types
@@ -25,6 +25,8 @@ import qualified Data.Text as T
 import SDL.Event
 import SDL.Video
 
+import Immutaball.Share.ImmutaballIO.GLIO
+
 -- Moved from later to fix Template Haskell errors.
 data SDLManagerCommand =
 	-- | Close the manager; it's done.
@@ -37,7 +39,7 @@ data SDLManagerCommand =
 	| WithWindow T.Text WindowConfig (TMVar Window)
 	| WithGLContext Window (TMVar GLContext)
 	| GLSwapWindow Window (TMVar ())
-	deriving (Eq)
+	| forall me. GLSequence (GLIOF me) (TMVar me)
 
 -- | The inner fields and lenses are internal (low-level).
 data SDLManagerHandle = SDLManagerHandle {

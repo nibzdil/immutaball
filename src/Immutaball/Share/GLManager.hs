@@ -10,6 +10,11 @@
 --
 -- When GL commands need to be in order to be correct, this thread can be
 -- useful for this end.
+--
+-- Having a GL thread issuing OpenGL separate from the SDL manager thread
+-- seemed to have issues on my platform, so I switched to having the SDL
+-- manager thread execute GL commands.  I might remove this module in the
+-- future.
 module Immutaball.Share.GLManager
 	(
 		-- * High level

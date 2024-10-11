@@ -40,6 +40,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglTextureParameterIiv,
 		hglTextureParameterIuiv,
 		hglShaderSource,
+		hglGenProgramPipelines,
+		hglDeleteProgramPipelines,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkGLClear,
@@ -93,7 +95,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLLinkProgram,
 		mkGLUseProgram,
 		mkGLBindProgramPipeline,
-		mkGLUseProgramStages
+		mkGLUseProgramStages,
+		mkGLGenProgramPipelines,
+		mkGLDeleteProgramPipelines
 	) where
 
 import Prelude ()
@@ -188,6 +192,8 @@ data GLIOF me =
 	| GLBindProgramPipeline GLuint me
 
 	| GLUseProgramStages GLuint GLbitfield GLuint me
+	| GLGenProgramPipelines GLsizei ([GLuint] -> me)
+	| GLDeleteProgramPipelines [GLuint] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -248,7 +254,9 @@ instance Functor GLIOF where
 	fmap f (GLUseProgram id_              withUnit) = GLUseProgram id_              (f withUnit)
 	fmap f (GLBindProgramPipeline id_     withUnit) = GLBindProgramPipeline id_     (f withUnit)
 
-	fmap f (GLUseProgramStages pipeline stages program withUnit) = GLUseProgramStages pipeline stages program (f withUnit)
+	fmap f (GLUseProgramStages pipeline stages program withUnit)  = GLUseProgramStages pipeline stages program (f withUnit)
+	fmap f (GLGenProgramPipelines    numNames          withNames) = GLGenProgramPipelines    numNames             (f . withNames)
+	fmap f (GLDeleteProgramPipelines pipelines         withUnit)  = GLDeleteProgramPipelines pipelines            (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -368,7 +376,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLUseProgram _id                me) -> putMVar mme me >> return y
 		y@( GLBindProgramPipeline _id       me) -> putMVar mme me >> return y
 
-		y@( GLUseProgramStages _pipeline _stages _program me) -> putMVar mme me >> return y
+		y@( GLUseProgramStages _pipeline _stages _program me)        -> putMVar mme me >> return y
+		_y@(GLGenProgramPipelines numNames                withNames) -> return $ GLGenProgramPipelines numNames ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
+		y@( GLDeleteProgramPipelines _pipelines           me)        -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -431,7 +441,9 @@ runGLIOIO (GLLinkProgram program         glio) = glLinkProgram program          
 runGLIOIO (GLUseProgram id_              glio) = glUseProgram id_               >> glio
 runGLIOIO (GLBindProgramPipeline id_     glio) = glBindProgramPipeline id_      >> glio
 
-runGLIOIO (GLUseProgramStages pipeline stages program glio) = glUseProgramStages pipeline stages program >> glio
+runGLIOIO (GLUseProgramStages pipeline stages program glio)      = glUseProgramStages pipeline stages program >> glio
+runGLIOIO (GLGenProgramPipelines    numNames          withNames) = hglGenTextures numNames                    >>= withNames
+runGLIOIO (GLDeleteProgramPipelines pipelines         glio)      = hglDeleteTextures pipelines                >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -537,6 +549,20 @@ hglShaderSource shader strings0 = do
 		-- bytestring could really use a .UTF8 module, rather than just .Char8.
 		truncateChar :: Char -> Word8
 		truncateChar = toEnum . fromEnum
+
+hglGenProgramPipelines :: GLsizei -> IO [GLuint]
+hglGenProgramPipelines numNames = do
+	let len = fromIntegral numNames  :: Integer
+	array_ <- newArray_ (0, numNames - 1)
+	withStorableArray array_ $ \ptr -> glGenProgramPipelines (fromIntegral len) ptr
+	names <- getElems array_
+	return names
+
+hglDeleteProgramPipelines :: [GLuint] -> IO ()
+hglDeleteProgramPipelines pipelines = do
+	array_ <- newListArray (0 :: Integer, genericLength pipelines - 1) pipelines
+	len    <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glDeleteProgramPipelines (fromIntegral len) (castPtr ptr)
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -695,3 +721,9 @@ mkGLBindProgramPipeline id_ glio = Fixed $ GLBindProgramPipeline id_ glio
 
 mkGLUseProgramStages :: GLuint -> GLbitfield -> GLuint -> GLIO -> GLIO
 mkGLUseProgramStages pipeline stages program glio = Fixed $ GLUseProgramStages pipeline stages program glio
+
+mkGLGenProgramPipelines :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
+mkGLGenProgramPipelines numNames withNames = Fixed $ GLGenProgramPipelines numNames withNames
+
+mkGLDeleteProgramPipelines :: [GLuint] -> GLIO -> GLIO
+mkGLDeleteProgramPipelines pipelines glio = Fixed $ GLDeleteProgramPipelines pipelines glio

@@ -337,8 +337,8 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 	-- TODO test
 	case widget of
 		(ButtonWidget button) -> do
-			--(((w, h), name), cxtnp1) <- cachingRenderText -< (T.pack $ button^.text, cxtn)
-			cxtnp1 <- returnA -< cxtn
+			(((w, h), name), cxtnp1) <- cachingRenderText -< (T.pack $ button^.text, cxtn)
+			--cxtnp1 <- returnA -< cxtn
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 			{-
@@ -352,14 +352,27 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			-}
 
 			-- {-
+			() <- monadic -< sdlGL' $ GLEnable GL_TEXTURE_2D ()
+
 			() <- monadic -< sdlGL' $ GLColor4d 0.1 0.1 0.9 1.0 ()
+			() <- monadic -< sdlGL' $ GLBindTexture GL_TEXTURE_2D name ()
 			() <- monadic -< sdlGL' $ GLBegin GL_QUADS ()
+
+			() <- monadic -< sdlGL' $ GLTexCoord2d 0.0 0.0 ()
 			() <- monadic -< sdlGL' $ GLVertex2d ax ay ()
+
+			() <- monadic -< sdlGL' $ GLTexCoord2d 0.0 0.0 ()
 			() <- monadic -< sdlGL' $ GLVertex2d ax by ()
+
 			--() <- monadic -< sdlGL' $ GLVertex2d bx by ()
 			--() <- monadic -< sdlGL' $ GLVertex2d bx ay ()
+
+			() <- monadic -< sdlGL' $ GLTexCoord2d 1.0 1.0 ()
 			() <- monadic -< sdlGL' $ GLVertex2d (bx + offset) by ()
+
+			() <- monadic -< sdlGL' $ GLTexCoord2d 1.0 0.0 ()
 			() <- monadic -< sdlGL' $ GLVertex2d (bx + offset) ay ()
+
 			() <- monadic -< sdlGL' $ GLEnd ()
 			-- -}
 			returnA -< cxtnp1

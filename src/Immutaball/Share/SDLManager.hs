@@ -84,13 +84,12 @@ sdlGLSwapWindow sdlMgr window withUnit =
 --
 -- This might be needed to avoid issues with multi-threaded SDL & OpenGL on
 -- some platforms.
-sdlGL :: SDLManagerHandle -> GLIOF me -> (me -> ImmutaballIOF me) -> ImmutaballIOF me
-sdlGL sdlMgr glio withMe =
-	JoinIBIOF . JoinIBIOF . JoinIBIOF .
+sdlGL :: SDLManagerHandle -> GLIOF me -> ImmutaballIOF me
+sdlGL sdlMgr glio =
+	JoinIBIOF . JoinIBIOF .
 	Atomically (newEmptyTMVar) $ \mme ->
 	issueSDLCommand sdlMgr (GLSequence glio mme) $
-	Atomically (takeTMVar mme) $ \me ->
-	withMe me
+	Atomically (takeTMVar mme) id
 
 -- * Low level
 

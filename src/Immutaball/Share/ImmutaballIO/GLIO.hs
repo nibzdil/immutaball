@@ -76,7 +76,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLTextureParameterIiv,
 		mkGLTextureParameterIuiv,
 		mkGLDepthMask,
-		mkGLDepthFunc
+		mkGLDepthFunc,
+		mkGLBlendEquationSeparate,
+		mkGLBlendEquationSeparatei
 	) where
 
 import Prelude ()
@@ -149,6 +151,9 @@ data GLIOF me =
 
 	| GLDepthMask GLboolean me
 	| GLDepthFunc GLenum me
+
+	| GLBlendEquationSeparate GLenum GLenum me
+	| GLBlendEquationSeparatei GLuint GLenum GLenum me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -188,8 +193,11 @@ instance Functor GLIOF where
 	fmap f (GLTextureParameterIiv texture pname params      withUnit) = GLTextureParameterIiv texture pname params      (f withUnit)
 	fmap f (GLTextureParameterIuiv texture pname params     withUnit) = GLTextureParameterIuiv texture pname params     (f withUnit)
 
-	fmap f (GLDepthMask flag  withUnit) = GLDepthMask flag  (f withUnit)
-	fmap f (GLDepthFunc mask_ withUnit) = GLDepthFunc mask_ (f withUnit)
+	fmap f (GLDepthMask flag   withUnit) = GLDepthMask flag   (f withUnit)
+	fmap f (GLDepthFunc mask_2 withUnit) = GLDepthFunc mask_2 (f withUnit)
+
+	fmap f (GLBlendEquationSeparate modeRGB modeAlpha      withUnit) = GLBlendEquationSeparate modeRGB modeAlpha      (f withUnit)
+	fmap f (GLBlendEquationSeparatei buf modeRGB modeAlpha withUnit) = GLBlendEquationSeparatei buf modeRGB modeAlpha (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -290,6 +298,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDepthMask _flag me) -> putMVar mme me >> return y
 		y@( GLDepthFunc _func me) -> putMVar mme me >> return y
 
+		y@( GLBlendEquationSeparate _modeRGB _modeAlpha me)       -> putMVar mme me >> return y
+		y@( GLBlendEquationSeparatei _buf _modeRGB _modeAlpha me) -> putMVar mme me >> return y
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
@@ -331,6 +342,9 @@ runGLIOIO (GLTextureParameterIuiv texture pname params glio) = hglTextureParamet
 
 runGLIOIO (GLDepthMask flag glio) = glDepthMask flag >> glio
 runGLIOIO (GLDepthFunc func glio) = glDepthFunc func >> glio
+
+runGLIOIO (GLBlendEquationSeparate modeRGB modeAlpha      glio) = glBlendEquationSeparate modeRGB modeAlpha      >> glio
+runGLIOIO (GLBlendEquationSeparatei buf modeRGB modeAlpha glio) = glBlendEquationSeparatei buf modeRGB modeAlpha >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -523,3 +537,9 @@ mkGLDepthMask flag glio = Fixed $ GLDepthMask flag glio
 
 mkGLDepthFunc :: GLenum -> GLIO -> GLIO
 mkGLDepthFunc func glio = Fixed $ GLDepthFunc func glio
+
+mkGLBlendEquationSeparate :: GLenum -> GLenum -> GLIO -> GLIO
+mkGLBlendEquationSeparate modeRGB modeAlpha glio = Fixed $ GLBlendEquationSeparate modeRGB modeAlpha glio
+
+mkGLBlendEquationSeparatei :: GLuint -> GLenum -> GLenum -> GLIO -> GLIO
+mkGLBlendEquationSeparatei buf modeRGB modeAlpha glio = Fixed $ GLBlendEquationSeparatei buf modeRGB modeAlpha glio

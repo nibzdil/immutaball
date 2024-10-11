@@ -82,7 +82,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLBlendFuncSeparate,
 		mkGLBlendFuncSeparatei,
 		mkGLCreateProgram,
-		mkGLDeleteProgram
+		mkGLDeleteProgram,
+		mkGLCreateShader,
+		mkGLDeleteShader
 	) where
 
 import Prelude ()
@@ -163,6 +165,8 @@ data GLIOF me =
 
 	| GLCreateProgram (GLuint -> me)
 	| GLDeleteProgram GLuint me
+	| GLCreateShader GLenum (GLuint -> me)
+	| GLDeleteShader GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -210,8 +214,10 @@ instance Functor GLIOF where
 	fmap f (GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      withUnit) = GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      (f withUnit)
 	fmap f (GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha withUnit) = GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha (f withUnit)
 
-	fmap f (GLCreateProgram withId)       = GLCreateProgram     (f . withId)
-	fmap f (GLDeleteProgram id_ withUnit) = GLDeleteProgram id_ (f withUnit)
+	fmap f (GLCreateProgram withId)           = GLCreateProgram           (f . withId)
+	fmap f (GLDeleteProgram id_ withUnit)     = GLDeleteProgram id_       (f withUnit)
+	fmap f (GLCreateShader shaderType withId) = GLCreateShader shaderType (f . withId)
+	fmap f (GLDeleteShader id_ withUnit)      = GLDeleteShader id_        (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -318,8 +324,10 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLBlendFuncSeparate _srcRGB _dstRGB _srcAlpha _dstAlpha me)       -> putMVar mme me >> return y
 		y@( GLBlendFuncSeparatei _buf _srcRGB _dstRGB _srcAlpha _dstAlpha me) -> putMVar mme me >> return y
 
-		_y@(GLCreateProgram     withId) -> return $ GLCreateProgram ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withId)
-		y@( GLDeleteProgram _id me)     -> putMVar mme me >> return y
+		_y@(GLCreateProgram           withId) -> return $ GLCreateProgram           ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withId)
+		y@( GLDeleteProgram _id       me)     -> putMVar mme me >> return y
+		_y@(GLCreateShader shaderType withId) -> return $ GLCreateShader shaderType ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withId)
+		y@( GLDeleteShader _id        me)     -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -369,8 +377,10 @@ runGLIOIO (GLBlendEquationSeparatei buf modeRGB modeAlpha glio) = glBlendEquatio
 runGLIOIO (GLBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      glio) = glBlendFuncSeparate srcRGB dstRGB srcAlpha dstAlpha      >> glio
 runGLIOIO (GLBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha glio) = glBlendFuncSeparatei buf srcRGB dstRGB srcAlpha dstAlpha >> glio
 
-runGLIOIO (GLCreateProgram     withId) = glCreateProgram     >>= withId
-runGLIOIO (GLDeleteProgram id_ glio)   = glDeleteProgram id_ >> glio
+runGLIOIO (GLCreateProgram           withId) = glCreateProgram           >>= withId
+runGLIOIO (GLDeleteProgram id_       glio)   = glDeleteProgram id_       >> glio
+runGLIOIO (GLCreateShader shaderType withId) = glCreateShader shaderType >>= withId
+runGLIOIO (GLDeleteShader id_        glio)   = glDeleteShader id_        >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -581,3 +591,9 @@ mkGLCreateProgram withId = Fixed $ GLCreateProgram withId
 
 mkGLDeleteProgram :: GLuint -> GLIO -> GLIO
 mkGLDeleteProgram id_ glio = Fixed $ GLDeleteProgram id_ glio
+
+mkGLCreateShader :: GLenum -> (GLuint -> GLIO) -> GLIO
+mkGLCreateShader shaderType withId = Fixed $ GLCreateShader shaderType withId
+
+mkGLDeleteShader :: GLuint -> GLIO -> GLIO
+mkGLDeleteShader id_ glio = Fixed $ GLDeleteShader id_ glio

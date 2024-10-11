@@ -113,7 +113,7 @@ data Label id = Label {
 	_labelWparent :: id,
 
 	_labelText    :: String,
-	_labelRect    :: Maybe (Rect Float)
+	_labelRect    :: Maybe (Rect Double)
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Label
@@ -124,7 +124,7 @@ data Button id = Button {
 	_buttonWparent :: id,
 
 	_buttonText    :: String,
-	_buttonRect    :: Maybe (Rect Float)
+	_buttonRect    :: Maybe (Rect Double)
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Button
@@ -253,7 +253,7 @@ mkGetChildren widgets wid_ = filter (\w -> (w^.wid) == wid_) widgets
 
 -- TODO: make a more sophisticated geometry.
 -- For now I'll just specify the rect by hand.
-mkGeometry :: forall id. (Eq id, Ord id) => [Widget id] -> M.Map id (Rect Float)
+mkGeometry :: forall id. (Eq id, Ord id) => [Widget id] -> M.Map id (Rect Double)
 --mkGeometry widgets = M.fromList . flip mapMaybe widgets . (\(a,b)->(a,)<$>b) . (id &&&) $ \w -> case w of
 mkGeometry widgets = M.fromList . map (first (^.wid)) . flip mapMaybe widgets . (uncurry fmap .) . ((,) &&&) $ \w -> case w of
 	(LabelWidget label) -> label^.labelRect
@@ -313,17 +313,17 @@ isSelectable :: Widget id -> Bool
 isSelectable (ButtonWidget {}) = True
 isSelectable _                 = False
 
-guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Float), M.Map id (Widget id), [id], Float, IBStateContext) IBStateContext
+guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Double), M.Map id (Widget id), [id], Double, IBStateContext) IBStateContext
 guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, cxtn) -> do
 	_dt <- differentiate -< t
 	rec
-		(widgetLastFocusLast :: M.Map id Float) <- delay M.empty -< widgetLastFocus
+		(widgetLastFocusLast :: M.Map id Double) <- delay M.empty -< widgetLastFocus
 		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
 
 	cxtnp1 <- foldrA guiPaintWidget -< (cxtn, flip map widgets $ \w -> (w, widgetLastFocus, geometry, widgetIdx, t))
 	returnA -< cxtnp1
 
-guiPaintWidget :: Wire ImmutaballM ((Widget id, M.Map id Float, M.Map id (Rect Float), M.Map id (Widget id), Float), IBStateContext) IBStateContext
+guiPaintWidget :: Wire ImmutaballM ((Widget id, M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Double), IBStateContext) IBStateContext
 guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
 	_dt <- differentiate -< t
 	dt <- differentiate -< t
@@ -339,32 +339,32 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 			{-
-			() <- monadic -< sdlGL' $ GLColor4f 0.7 0.1 0.3 1.0 ()
+			() <- monadic -< sdlGL' $ GLColor4d 0.7 0.1 0.3 1.0 ()
 			() <- monadic -< sdlGL' $ GLBegin GL_QUADS ()
-			() <- monadic -< sdlGL' $ GLVertex2f (-9.0) (-9.0) ()
-			() <- monadic -< sdlGL' $ GLVertex2f (-9.0) ( 9.0) ()
-			() <- monadic -< sdlGL' $ GLVertex2f ( 9.0) ( 9.0) ()
-			() <- monadic -< sdlGL' $ GLVertex2f ( 9.0) (-9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2d (-9.0) (-9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2d (-9.0) ( 9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2d ( 9.0) ( 9.0) ()
+			() <- monadic -< sdlGL' $ GLVertex2d ( 9.0) (-9.0) ()
 			() <- monadic -< sdlGL' $ GLEnd ()
 			-}
 
 			-- {-
-			() <- monadic -< sdlGL' $ GLColor4f 0.1 0.1 0.9 1.0 ()
+			() <- monadic -< sdlGL' $ GLColor4d 0.1 0.1 0.9 1.0 ()
 			() <- monadic -< sdlGL' $ GLBegin GL_QUADS ()
-			() <- monadic -< sdlGL' $ GLVertex2f ax ay ()
-			() <- monadic -< sdlGL' $ GLVertex2f ax by ()
-			--() <- monadic -< sdlGL' $ GLVertex2f bx by ()
-			--() <- monadic -< sdlGL' $ GLVertex2f bx ay ()
-			() <- monadic -< sdlGL' $ GLVertex2f (bx + offset) by ()
-			() <- monadic -< sdlGL' $ GLVertex2f (bx + offset) ay ()
+			() <- monadic -< sdlGL' $ GLVertex2d ax ay ()
+			() <- monadic -< sdlGL' $ GLVertex2d ax by ()
+			--() <- monadic -< sdlGL' $ GLVertex2d bx by ()
+			--() <- monadic -< sdlGL' $ GLVertex2d bx ay ()
+			() <- monadic -< sdlGL' $ GLVertex2d (bx + offset) by ()
+			() <- monadic -< sdlGL' $ GLVertex2d (bx + offset) ay ()
 			() <- monadic -< sdlGL' $ GLEnd ()
 			-- -}
 			returnA -< cxtnp1
 		_ -> returnA -< cxtn
 
 -- Optionally this could be moved to static config.
-focusDecayTime :: Float
+focusDecayTime :: Double
 focusDecayTime = 0.25
 
-focusScale :: Float
+focusScale :: Double
 focusScale = 1.20

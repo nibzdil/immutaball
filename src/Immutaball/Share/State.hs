@@ -73,15 +73,15 @@ type RequestFrameMulti = [Request]
 type RequestFrameSingle = Identity Request
 type RequestFrame = RequestFrameMulti
 data Request =
-	  Clock Float            -- ^ timer dt
-	| Paint Float            -- ^ paint t
+	  Clock Double           -- ^ timer dt
+	| Paint Double           -- ^ paint t
 	| Point Int Int Int Int  -- ^ mouse movement x y dx dy
-	| Stick Int Float        -- ^ stick axis value
-	| Angle Float Float      -- ^ angle x z
+	| Stick Int Double       -- ^ stick axis value
+	| Angle Double Double    -- ^ angle x z
 	| Click Int Bool         -- ^ click button down
 	| Keybd Int Bool         -- ^ keyboard char down
 	| Buttn Int Bool         -- ^ button button down
-	| Touch Int Int Float Float Float Float Float  -- ^ finger-touch device finger x y dx dy pressure
+	| Touch Int Int Double Double Double Double Double  -- ^ finger-touch device finger x y dx dy pressure
 	deriving (Eq, Ord, Show)
 
 type ResponseFrameMulti = [Response]

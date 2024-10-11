@@ -25,6 +25,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 
 		-- * Runners
 		runGLIOIO,
+		hglClearColor,
 		hglTexImage2D,
 		hglGenTextures,
 		hglDeleteTextures,
@@ -37,9 +38,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLBindTexture,
 		mkGLDeleteTextures,
 		mkGLGetError,
-		mkGLColor4f,
+		mkGLColor4d,
 		mkGLBegin,
-		mkGLVertex2f,
+		mkGLVertex2d,
 		mkGLEnd,
 		mkGLActiveTexture,
 		mkGLClientActiveTexture,
@@ -77,7 +78,7 @@ import System.IO.Unsafe (unsafePerformIO)
 type GLIO = Fixed GLIOF
 data GLIOF me =
 	  GLClear GLbitfield me
-	| GLClearColor GLfloat GLfloat GLfloat GLfloat me
+	| GLClearColor GLdouble GLdouble GLdouble GLdouble me
 
 	-- | Set a texture.
 	| GLTexImage2D GLenum GLint GLint GLsizei GLsizei GLint GLenum GLenum BL.ByteString me
@@ -89,9 +90,9 @@ data GLIOF me =
 	| GLDeleteTextures [GLuint] me
 	| GLGetError (GLenum -> me)
 
-	| GLColor4f GLfloat GLfloat GLfloat GLfloat me
+	| GLColor4d GLdouble GLdouble GLdouble GLdouble me
 	| GLBegin GLenum me
-	| GLVertex2f GLfloat GLfloat me
+	| GLVertex2d GLdouble GLdouble me
 	| GLEnd me
 	| GLActiveTexture GLenum me
 	| GLClientActiveTexture GLenum me
@@ -110,9 +111,9 @@ instance Functor GLIOF where
 	fmap f (GLDeleteTextures textures       withUnit)  = GLDeleteTextures textures       (f withUnit)
 	fmap f (GLGetError                      withError) = GLGetError                      (f . withError)
 
-	fmap f (GLColor4f  red green blue alpha withUnit) = GLColor4f  red green blue alpha (f withUnit)
+	fmap f (GLColor4d  red green blue alpha withUnit) = GLColor4d  red green blue alpha (f withUnit)
 	fmap f (GLBegin    mode                 withUnit) = GLBegin    mode                 (f withUnit)
-	fmap f (GLVertex2f x y                  withUnit) = GLVertex2f x y                  (f withUnit)
+	fmap f (GLVertex2d x y                  withUnit) = GLVertex2d x y                  (f withUnit)
 	fmap f (GLEnd                           withUnit) = GLEnd                           (f withUnit)
 	fmap f (GLActiveTexture texture         withUnit) = GLActiveTexture texture         (f withUnit)
 	fmap f (GLClientActiveTexture texture   withUnit) = GLClientActiveTexture texture   (f withUnit)
@@ -189,9 +190,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDeleteTextures _textures        me)        -> putMVar mme me >> return y
 		_y@(GLGetError                        withError) -> return $ GLGetError             ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withError)
 
-		y@( GLColor4f  _red _green _blue _alpha me) -> putMVar mme me >> return y
+		y@( GLColor4d  _red _green _blue _alpha me) -> putMVar mme me >> return y
 		y@( GLBegin    _mode                    me) -> putMVar mme me >> return y
-		y@( GLVertex2f _ _                      me) -> putMVar mme me >> return y
+		y@( GLVertex2d _ _                      me) -> putMVar mme me >> return y
 		y@( GLEnd                               me) -> putMVar mme me >> return y
 		y@( GLActiveTexture _texture            me) -> putMVar mme me >> return y
 		y@( GLClientActiveTexture _texture      me) -> putMVar mme me >> return y
@@ -204,16 +205,16 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
 runGLIOIO (GLClear          mask_2               glio) = glClear       mask_2               >> glio
-runGLIOIO (GLClearColor     red green blue alpha glio) = glClearColor  red green blue alpha >> glio
+runGLIOIO (GLClearColor     red green blue alpha glio) = hglClearColor red green blue alpha >> glio
 runGLIOIO (GLTexImage2D     target level internalformat width height border format type_ data_ glio) = hglTexImage2D target level internalformat width height border format type_ data_ >> glio
 runGLIOIO (GLGenTextures    numNames             withNames) = hglGenTextures numNames       >>= withNames
 runGLIOIO (GLBindTexture    target texture       glio) = glBindTexture target texture       >> glio
 runGLIOIO (GLDeleteTextures textures             glio) = hglDeleteTextures textures         >> glio
 runGLIOIO (GLGetError                            withError) = glGetError                    >>= withError
 
-runGLIOIO (GLColor4f  red green blue alpha glio) = glColor4f  red green blue alpha >> glio
+runGLIOIO (GLColor4d  red green blue alpha glio) = glColor4d  red green blue alpha >> glio
 runGLIOIO (GLBegin    mode                 glio) = glBegin    mode                 >> glio
-runGLIOIO (GLVertex2f x y                  glio) = glVertex2f x y                  >> glio
+runGLIOIO (GLVertex2d x y                  glio) = glVertex2d x y                  >> glio
 runGLIOIO (GLEnd                           glio) = glEnd                           >> glio
 runGLIOIO (GLActiveTexture texture         glio) = glActiveTexture texture         >> glio
 runGLIOIO (GLClientActiveTexture texture   glio) = glClientActiveTexture texture   >> glio
@@ -221,6 +222,9 @@ runGLIOIO (GLEnable cap                    glio) = glEnable cap                 
 runGLIOIO (GLDisable cap                   glio) = glDisable cap                   >> glio
 runGLIOIO (GLEnablei cap index             glio) = glEnablei cap index             >> glio
 runGLIOIO (GLDisablei cap index            glio) = glDisablei cap index            >> glio
+
+hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
+hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
 
 hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> IO ()
 hglTexImage2D target level internalformat width height border format type_ data_ = do
@@ -246,7 +250,7 @@ hglDeleteTextures textures = do
 mkGLClear :: GLbitfield -> GLIO -> GLIO
 mkGLClear mask_2 glio = Fixed $ GLClear mask_2 glio
 
-mkGLClearColor :: GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLIO -> GLIO
+mkGLClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> GLIO -> GLIO
 mkGLClearColor red green blue alpha glio = Fixed $ GLClearColor red green blue alpha glio
 
 mkGLTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> GLIO -> GLIO
@@ -264,14 +268,14 @@ mkGLDeleteTextures textures glio = Fixed $ GLDeleteTextures textures glio
 mkGLGetError :: (GLenum -> GLIO) -> GLIO
 mkGLGetError withError = Fixed $ GLGetError withError
 
-mkGLColor4f :: GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLIO -> GLIO
-mkGLColor4f red green blue alpha glio = Fixed $ GLColor4f red green blue alpha glio
+mkGLColor4d :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> GLIO -> GLIO
+mkGLColor4d red green blue alpha glio = Fixed $ GLColor4d red green blue alpha glio
 
 mkGLBegin :: GLenum -> GLIO -> GLIO
 mkGLBegin mode glio = Fixed $ GLBegin mode glio
 
-mkGLVertex2f :: GLfloat -> GLfloat -> GLIO -> GLIO
-mkGLVertex2f x y glio = Fixed $ GLVertex2f x y glio
+mkGLVertex2d :: GLdouble -> GLdouble -> GLIO -> GLIO
+mkGLVertex2d x y glio = Fixed $ GLVertex2d x y glio
 
 mkGLEnd :: GLIO -> GLIO
 mkGLEnd glio = Fixed $ GLEnd glio

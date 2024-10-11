@@ -48,12 +48,12 @@ import Immutaball.Share.ImmutaballIO.DirectoryIO
 
 data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- | Maximum FPS, including non-clock SDL events.
-	_minClockPeriod :: Maybe Float,
+	_minClockPeriod :: Maybe Double,
 	-- | If at least one non-clock event has been stepped, if more SDL
 	-- events are available, delay processing those events if at least this
 	-- much time has passed.  This might also be known as ‘maxEventPeriod’ with
 	-- respect to clock steps.
-	_maxClockPeriod :: Maybe Float,
+	_maxClockPeriod :: Maybe Double,
 	-- | If a single frame has more than this limit events, drop all after the
 	-- first limit tunmber.
 	_maxFrameEvents :: Maybe Integer,

@@ -64,7 +64,7 @@ controlImmutaball cxt0 immutaball0 =
 		nextFrame usNm1 queuedEvents immutaballN =
 			mkBIO . GetUs $ \usN ->
 			let dus = max 0 $ usNm1 - usN in
-			let ds = (fromInteger dus / 1000000.0)  :: Float in
+			let ds = (fromInteger dus / 1000000.0)  :: Double in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
 			if' (usN < usNm1pMinClockPeriod) (mkBIO . DelayUs (usNm1pMinClockPeriod - usN)) id .
 			takeAllSDLEvents cxt0 $ \events ->
@@ -88,7 +88,7 @@ takeAllSDLEvents cxt withEvents =
 		Just event -> me (event:events)
 
 -- | Step each event then clock.
-stepFrameNoMaxClockPeriod :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepFrameNoMaxClockPeriod :: IBContext -> Double -> Integer -> [Event] -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepFrameNoMaxClockPeriod cxt ds us events immutaball withImmutaball =
 	foldr
 		(\event withImmutaballNp1 -> \immutaballN -> stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1)
@@ -102,7 +102,7 @@ stepFrameNoMaxClockPeriod cxt ds us events immutaball withImmutaball =
 -- It ensures that if 'maxClockPeriod' amount of time has passed since any
 -- clock step, a clock step is inserted before processing the next event,
 -- if at least one event has been processed.
-stepFrame :: IBContext -> Float -> Integer -> [Event] -> Immutaball -> ([Event] -> Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepFrame :: IBContext -> Double -> Integer -> [Event] -> Immutaball -> ([Event] -> Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepFrame cxt ds us events immutaball withImmutaball =
 	let z = (\queued _mclockAtUs _noClock immutaballN -> stepClock cxt ds us immutaballN (withImmutaball queued)) in
 	let defer = \queued -> z queued Nothing False in
@@ -162,7 +162,7 @@ stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 			-- Ignore all unhandled events.
 			withImmutaballNp1 immutaballN
 
-stepClock :: IBContext -> Float -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
+stepClock :: IBContext -> Double -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
 stepClock cxt du us immutaballN withImmutaballNp1 =
 	let mresponse = stepWire immutaballN (pure $ Clock du) in
 	processStepResult cxt mresponse $ \immutaballNp1 ->

@@ -91,7 +91,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLAttachShader,
 		mkGLDetachShader,
 		mkGLLinkProgram,
-		mkGLUseProgram
+		mkGLUseProgram,
+		mkGLBindProgramPipeline
 	) where
 
 import Prelude ()
@@ -183,6 +184,7 @@ data GLIOF me =
 	| GLDetachShader GLuint GLuint me
 	| GLLinkProgram GLuint me
 	| GLUseProgram GLuint me
+	| GLBindProgramPipeline GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
@@ -241,6 +243,7 @@ instance Functor GLIOF where
 	fmap f (GLDetachShader program shader withUnit) = GLDetachShader program shader (f withUnit)
 	fmap f (GLLinkProgram program         withUnit) = GLLinkProgram program         (f withUnit)
 	fmap f (GLUseProgram id_              withUnit) = GLUseProgram id_              (f withUnit)
+	fmap f (GLBindProgramPipeline id_     withUnit) = GLBindProgramPipeline id_     (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -358,6 +361,7 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDetachShader _program _shader me) -> putMVar mme me >> return y
 		y@( GLLinkProgram _program          me) -> putMVar mme me >> return y
 		y@( GLUseProgram _id                me) -> putMVar mme me >> return y
+		y@( GLBindProgramPipeline _id       me) -> putMVar mme me >> return y
 
 -- * Runners
 
@@ -418,6 +422,7 @@ runGLIOIO (GLAttachShader program shader glio) = glAttachShader program shader  
 runGLIOIO (GLDetachShader program shader glio) = glDetachShader program shader  >> glio
 runGLIOIO (GLLinkProgram program         glio) = glLinkProgram program          >> glio
 runGLIOIO (GLUseProgram id_              glio) = glUseProgram id_               >> glio
+runGLIOIO (GLBindProgramPipeline id_     glio) = glBindProgramPipeline id_      >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -675,3 +680,6 @@ mkGLLinkProgram program glio = Fixed $ GLLinkProgram program glio
 
 mkGLUseProgram :: GLuint -> GLIO -> GLIO
 mkGLUseProgram id_ glio = Fixed $ GLUseProgram id_ glio
+
+mkGLBindProgramPipeline :: GLuint -> GLIO -> GLIO
+mkGLBindProgramPipeline id_ glio = Fixed $ GLBindProgramPipeline id_ glio

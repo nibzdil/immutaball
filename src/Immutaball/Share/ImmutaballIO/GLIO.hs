@@ -57,6 +57,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglNamedBufferSubData,
 		hglGenVertexArrays,
 		hglDeleteVertexArrays,
+		hglVertexAttribPointer,
+		hglVertexAttribIPointer,
+		hglVertexAttribLPointer,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -148,7 +151,10 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDeleteVertexArrays,
 		mkGLBindBufferBase,
 		mkGLBindBufferRange,
-		mkGLBindVertexArray
+		mkGLBindVertexArray,
+		mkGLVertexAttribPointer,
+		mkGLVertexAttribIPointer,
+		mkGLVertexAttribLPointer
 	) where
 
 import Prelude ()
@@ -296,6 +302,10 @@ data GLIOF me =
 	| GLBindBufferRange GLenum GLuint GLuint GLintptr GLsizeiptr me
 
 	| GLBindVertexArray GLuint me
+
+	| GLVertexAttribPointer  GLuint GLint GLenum GLboolean GLsizei Integer me
+	| GLVertexAttribIPointer GLuint GLint GLenum           GLsizei Integer me
+	| GLVertexAttribLPointer GLuint GLint GLenum           GLsizei Integer me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -403,10 +413,14 @@ instance Functor GLIOF where
 	fmap f (GLGenVertexArrays    num   withNames) = GLGenVertexArrays    num   (f . withNames)
 	fmap f (GLDeleteVertexArrays names withUnit)  = GLDeleteVertexArrays names (f withUnit)
 
-	fmap f (GLBindBufferBase  target index buffer             withUnit) = GLBindBufferBase  target index buffer             (f withUnit)
-	fmap f (GLBindBufferRange target index buffer offset size withUnit) = GLBindBufferRange target index buffer offset size (f withUnit)
+	fmap f (GLBindBufferBase  target index_ buffer             withUnit) = GLBindBufferBase  target index_ buffer             (f withUnit)
+	fmap f (GLBindBufferRange target index_ buffer offset size withUnit) = GLBindBufferRange target index_ buffer offset size (f withUnit)
 
-	fmap f (GLBindVertexArray array withUnit) = GLBindVertexArray array (f withUnit)
+	fmap f (GLBindVertexArray array_ withUnit) = GLBindVertexArray array_ (f withUnit)
+
+	fmap f (GLVertexAttribPointer  index_ size type_ normalized stride offset withUnit) = GLVertexAttribPointer  index_ size type_ normalized stride offset (f withUnit)
+	fmap f (GLVertexAttribIPointer index_ size type_            stride offset withUnit) = GLVertexAttribIPointer index_ size type_            stride offset (f withUnit)
+	fmap f (GLVertexAttribLPointer index_ size type_            stride offset withUnit) = GLVertexAttribLPointer index_ size type_            stride offset (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -580,6 +594,10 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		y@( GLBindVertexArray _array me) -> putMVar mme me >> return y
 
+		y@( GLVertexAttribPointer  _index _size _type _normalized _stride _offset me) -> putMVar mme me >> return y
+		y@( GLVertexAttribIPointer _index _size _type             _stride _offset me) -> putMVar mme me >> return y
+		y@( GLVertexAttribLPointer _index _size _type             _stride _offset me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -698,10 +716,14 @@ runGLIOIO (GLNamedBufferSubData buffer offset data_       glio) = hglNamedBuffer
 runGLIOIO (GLGenVertexArrays    num   withNames) = hglGenVertexArrays    num   >>= withNames
 runGLIOIO (GLDeleteVertexArrays names glio)      = hglDeleteVertexArrays names >> glio
 
-runGLIOIO (GLBindBufferBase  target index buffer             glio) = glBindBufferBase  target index buffer             >> glio
-runGLIOIO (GLBindBufferRange target index buffer offset size glio) = glBindBufferRange target index buffer offset size >> glio
+runGLIOIO (GLBindBufferBase  target index_ buffer             glio) = glBindBufferBase  target index_ buffer             >> glio
+runGLIOIO (GLBindBufferRange target index_ buffer offset size glio) = glBindBufferRange target index_ buffer offset size >> glio
 
-runGLIOIO (GLBindVertexArray array glio) = glBindVertexArray array >> glio
+runGLIOIO (GLBindVertexArray array_ glio) = glBindVertexArray array_ >> glio
+
+runGLIOIO (GLVertexAttribPointer  index_ size type_ normalized stride offset glio) = hglVertexAttribPointer  index_ size type_ normalized stride offset >> glio
+runGLIOIO (GLVertexAttribIPointer index_ size type_            stride offset glio) = hglVertexAttribIPointer index_ size type_            stride offset >> glio
+runGLIOIO (GLVertexAttribLPointer index_ size type_            stride offset glio) = hglVertexAttribLPointer index_ size type_            stride offset >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -1019,6 +1041,21 @@ hglDeleteVertexArrays names = do
 	len    <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glDeleteVertexArrays (fromIntegral len) (castPtr ptr)
 
+hglVertexAttribPointer :: GLuint -> GLint -> GLenum -> GLboolean -> GLsizei -> Integer -> IO ()
+hglVertexAttribPointer index_ size type_ normalized stride offset_ = do
+	let offset = castPtr $ nullPtr `plusPtr` (fromIntegral offset_)
+	glVertexAttribPointer index_ size type_ normalized stride offset
+
+hglVertexAttribIPointer :: GLuint -> GLint -> GLenum -> GLsizei -> Integer -> IO ()
+hglVertexAttribIPointer index_ size type_ stride offset_ = do
+	let offset = castPtr $ nullPtr `plusPtr` (fromIntegral offset_)
+	glVertexAttribIPointer index_ size type_ stride offset
+
+hglVertexAttribLPointer :: GLuint -> GLint -> GLenum -> GLsizei -> Integer -> IO ()
+hglVertexAttribLPointer index_ size type_ stride offset_ = do
+	let offset = castPtr $ nullPtr `plusPtr` (fromIntegral offset_)
+	glVertexAttribLPointer index_ size type_ stride offset
+
 -- * GLIO aliases that apply the Fixed wrapper
 
 mkEmptyGLIO :: GLIO
@@ -1283,10 +1320,19 @@ mkGLDeleteVertexArrays :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteVertexArrays names glio = Fixed $ GLDeleteVertexArrays names glio
 
 mkGLBindBufferBase :: GLenum -> GLuint -> GLuint -> GLIO -> GLIO
-mkGLBindBufferBase target index buffer glio = Fixed $ GLBindBufferBase target index buffer glio
+mkGLBindBufferBase target index_ buffer glio = Fixed $ GLBindBufferBase target index_ buffer glio
 
 mkGLBindBufferRange :: GLenum -> GLuint -> GLuint -> GLintptr -> GLsizeiptr -> GLIO -> GLIO
-mkGLBindBufferRange target index buffer offset size glio = Fixed $ GLBindBufferRange target index buffer offset size glio
+mkGLBindBufferRange target index_ buffer offset size glio = Fixed $ GLBindBufferRange target index_ buffer offset size glio
 
 mkGLBindVertexArray :: GLuint -> GLIO -> GLIO
-mkGLBindVertexArray array glio = Fixed $ GLBindVertexArray array glio
+mkGLBindVertexArray array_ glio = Fixed $ GLBindVertexArray array_ glio
+
+mkGLVertexAttribPointer :: GLuint -> GLint -> GLenum -> GLboolean -> GLsizei -> Integer -> GLIO -> GLIO
+mkGLVertexAttribPointer index_ size type_ normalized stride offset glio = Fixed $ GLVertexAttribPointer index_ size type_ normalized stride offset glio
+
+mkGLVertexAttribIPointer :: GLuint -> GLint -> GLenum -> GLsizei -> Integer -> GLIO -> GLIO
+mkGLVertexAttribIPointer index_ size type_ stride offset glio = Fixed $ GLVertexAttribIPointer index_ size type_ stride offset glio
+
+mkGLVertexAttribLPointer :: GLuint -> GLint -> GLenum -> GLsizei -> Integer -> GLIO -> GLIO
+mkGLVertexAttribLPointer index_ size type_ stride offset glio = Fixed $ GLVertexAttribLPointer index_ size type_ stride offset glio

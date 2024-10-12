@@ -44,6 +44,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglDeleteProgramPipelines,
 		hglGetMaxVertexTextureImageUnits,
 		hglGetShaderiv,
+		hglGetProgramiv,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -107,7 +108,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGenerateMipmap,
 		mkGLGenerateTextureMipmap,
 		mkGLGetMaxVertexTextureImageUnits,
-		mkGLGetShaderiv
+		mkGLGetShaderiv,
+		mkGLGetProgramiv
 	) where
 
 import Prelude ()
@@ -218,7 +220,8 @@ data GLIOF me =
 	-- types, we'll just provide specific specializations of glGet.
 	| GLGetMaxVertexTextureImageUnits (GLint64 -> me)
 
-	| GLGetShaderiv GLuint GLenum (GLint -> me)
+	| GLGetShaderiv  GLuint GLenum (GLint -> me)
+	| GLGetProgramiv GLuint GLenum (GLint -> me)
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -294,7 +297,8 @@ instance Functor GLIOF where
 
 	fmap f (GLGetMaxVertexTextureImageUnits withNum) = GLGetMaxVertexTextureImageUnits (f . withNum)
 
-	fmap f (GLGetShaderiv shader pname withOut) = GLGetShaderiv shader pname (f . withOut)
+	fmap f (GLGetShaderiv  shader  pname withOut) = GLGetShaderiv  shader  pname (f . withOut)
+	fmap f (GLGetProgramiv program pname withOut) = GLGetProgramiv program pname (f . withOut)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -431,7 +435,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		_y@(GLGetMaxVertexTextureImageUnits withNum) -> return $ GLGetMaxVertexTextureImageUnits ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNum)
 
-		_y@(GLGetShaderiv shader pname withOut) -> return $ GLGetShaderiv shader pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
+		_y@(GLGetShaderiv  shader  pname withOut) -> return $ GLGetShaderiv  shader  pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
+		_y@(GLGetProgramiv program pname withOut) -> return $ GLGetProgramiv program pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
 
 instance Applicative GLIOF where
 	pure = PureGLIOF
@@ -519,7 +524,8 @@ runGLIOIO (GLGenerateTextureMipmap texture glio) = glGenerateTextureMipmap textu
 
 runGLIOIO (GLGetMaxVertexTextureImageUnits withNum) = hglGetMaxVertexTextureImageUnits >>= withNum
 
-runGLIOIO (GLGetShaderiv shader pname withOut) = hglGetShaderiv shader pname >>= withOut
+runGLIOIO (GLGetShaderiv  shader  pname withOut) = hglGetShaderiv  shader  pname >>= withOut
+runGLIOIO (GLGetProgramiv program pname withOut) = hglGetProgramiv program pname >>= withOut
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -664,6 +670,20 @@ hglGetShaderiv shader pname = do
 	outs <- getElems array_
 	let out = case outs of
 		([])  -> error "Internal error: hglGetShaderiv: empty array result."
+		(x:_) -> x
+	return out
+
+-- | Currently the docs seem ot only specify single-param calls.
+hglGetProgramiv :: GLuint -> GLenum -> IO GLint
+hglGetProgramiv program pname = do
+	let numOuts = 1  :: Integer
+	let safetyBuffer = 64
+	let _len = fromIntegral (1 :: Integer)  :: Integer
+	array_ <- newArray_ (0, numOuts - 1 + safetyBuffer)
+	withStorableArray array_ $ \ptr -> glGetProgramiv program pname ptr
+	outs <- getElems array_
+	let out = case outs of
+		([])  -> error "Internal error: hglGetProgramiv: empty array result."
 		(x:_) -> x
 	return out
 
@@ -854,3 +874,6 @@ mkGLGetMaxVertexTextureImageUnits withNum = Fixed $ GLGetMaxVertexTextureImageUn
 
 mkGLGetShaderiv :: GLuint -> GLenum -> (GLint -> GLIO) -> GLIO
 mkGLGetShaderiv shader pname withOut = Fixed $ GLGetShaderiv shader pname withOut
+
+mkGLGetProgramiv :: GLuint -> GLenum -> (GLint -> GLIO) -> GLIO
+mkGLGetProgramiv program pname withOut = Fixed $ GLGetProgramiv program pname withOut

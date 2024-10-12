@@ -331,7 +331,7 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 	_dt <- differentiate -< t
 	dt <- differentiate -< t
 	offset <- integrate 0 -< 0.01 * dt
-	sdlGL_' <- returnA -< liftIBIO . sdlGL_ (cxtn^.ibContext.ibSDLManagerHandle)
+	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 	-- TODO: clean up textures; just debugging for now to test what I have so far.
 	-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
 	-- TODO test
@@ -341,44 +341,45 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			--cxtnp1 <- returnA -< cxtn
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
-			{-
-			() <- monadic -< sdlGL_' $ [GLColor4d 0.7 0.1 0.3 1.0 ()]
-			() <- monadic -< sdlGL_' $ [GLBegin GL_QUADS ()         ]
-			() <- monadic -< sdlGL_' $ [GLVertex2d (-9.0) (-9.0) () ]
-			() <- monadic -< sdlGL_' $ [GLVertex2d (-9.0) ( 9.0) () ]
-			() <- monadic -< sdlGL_' $ [GLVertex2d ( 9.0) ( 9.0) () ]
-			() <- monadic -< sdlGL_' $ [GLVertex2d ( 9.0) (-9.0) () ]
-			() <- monadic -< sdlGL_' $ [GLEnd ()                    ]
-			-}
+			() <- monadic -< sdlGL1' $ do
+				{-
+				GLColor4d 0.7 0.1 0.3 1.0 ()
+				GLBegin GL_QUADS ()
+				GLVertex2d (-9.0) (-9.0) ()
+				GLVertex2d (-9.0) ( 9.0) ()
+				GLVertex2d ( 9.0) ( 9.0) ()
+				GLVertex2d ( 9.0) (-9.0) ()
+				GLEnd ()
+				-}
 
-			-- {-
-			() <- monadic -< sdlGL_' $ [GLEnable GL_TEXTURE_2D ()]
-			() <- monadic -< sdlGL_' $ [GLTexEnvfv GL_TEXTURE_ENV GL_TEXTURE_ENV_COLOR [0.7, 0.3, 0.3, 1.0] ()]
-			() <- monadic -< sdlGL_' $ [GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_MODULATE ()]
-			--() <- monadic -< sdlGL_' $ [GLActiveTexture GL_TEXTURE0 ()]
-			--() <- monadic -< sdlGL_' $ [GLClientActiveTexture GL_TEXTURE0 ()]
+				-- {-
+				GLEnable GL_TEXTURE_2D ()
+				GLTexEnvfv GL_TEXTURE_ENV GL_TEXTURE_ENV_COLOR [0.7, 0.3, 0.3, 1.0] ()
+				GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_MODULATE ()
+				--GLActiveTexture GL_TEXTURE0 ()
+				--GLClientActiveTexture GL_TEXTURE0 ()
 
-			() <- monadic -< sdlGL_' $ [GLColor4d 0.1 0.1 0.9 1.0 ()]
-			() <- monadic -< sdlGL_' $ [GLBindTexture GL_TEXTURE_2D name ()]
-			() <- monadic -< sdlGL_' $ [GLBegin GL_QUADS ()]
+				GLColor4d 0.1 0.1 0.9 1.0 ()
+				GLBindTexture GL_TEXTURE_2D name ()
+				GLBegin GL_QUADS ()
 
-			() <- monadic -< sdlGL_' $ [GLTexCoord2d 0.0 0.0 ()]
-			() <- monadic -< sdlGL_' $ [GLVertex2d ax ay ()]
+				GLTexCoord2d 0.0 0.0 ()
+				GLVertex2d ax ay ()
 
-			() <- monadic -< sdlGL_' $ [GLTexCoord2d 0.0 1.0 ()]
-			() <- monadic -< sdlGL_' $ [GLVertex2d ax by ()]
+				GLTexCoord2d 0.0 1.0 ()
+				GLVertex2d ax by ()
 
-			--() <- monadic -< sdlGL_' $ [GLVertex2d bx by ()
-			--() <- monadic -< sdlGL_' $ [GLVertex2d bx ay ()
+				--GLVertex2d bx by ()
+				--GLVertex2d bx ay ()
 
-			() <- monadic -< sdlGL_' $ [GLTexCoord2d 1.0 1.0 ()]
-			() <- monadic -< sdlGL_' $ [GLVertex2d (bx + offset) by ()]
+				GLTexCoord2d 1.0 1.0 ()
+				GLVertex2d (bx + offset) by ()
 
-			() <- monadic -< sdlGL_' $ [GLTexCoord2d 1.0 0.0 ()]
-			() <- monadic -< sdlGL_' $ [GLVertex2d (bx + offset) ay ()]
+				GLTexCoord2d 1.0 0.0 ()
+				GLVertex2d (bx + offset) ay ()
 
-			() <- monadic -< sdlGL_' $ [GLEnd ()]
-			-- -}
+				GLEnd ()
+				-- -}
 			returnA -< cxtnp1
 		_ -> returnA -< cxtn
 

@@ -354,10 +354,11 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 
 				-- {-
 				GLEnable GL_TEXTURE_2D ()
-				GLTexEnvfv GL_TEXTURE_ENV GL_TEXTURE_ENV_COLOR [0.7, 0.3, 0.3, 1.0] ()
-				GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_MODULATE ()
 				--GLActiveTexture GL_TEXTURE0 ()
 				--GLClientActiveTexture GL_TEXTURE0 ()
+				GLTexEnvfv GL_TEXTURE_ENV GL_TEXTURE_ENV_COLOR [0.7, 0.3, 0.3, 1.0] ()
+				--GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_MODULATE ()
+				GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_REPLACE ()
 
 				GLColor4d 0.1 0.1 0.9 1.0 ()
 				GLBindTexture GL_TEXTURE_2D name ()

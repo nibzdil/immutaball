@@ -284,6 +284,9 @@ createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn
 	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
 	() <- monadic -< sdlGL1' $ do
+		GLEnable GL_TEXTURE_2D ()
+		GLActiveTexture GL_TEXTURE0 ()
+		GLClientActiveTexture GL_TEXTURE0 ()
 		GLBindTexture GL_TEXTURE_2D name ()
 		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
 	returnA -< (name, cxtnp1)

@@ -278,6 +278,7 @@ freeTextureName = proc (_name, cxtn) -> do
 	returnA -< cxtn
 
 -- | Tight RGBA.
+-- TODO: SDL thread.
 createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn

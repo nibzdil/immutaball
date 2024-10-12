@@ -5,6 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Some SDL functions that some functions can only be called in the OS thread
 -- that set up video.
@@ -29,6 +30,9 @@ module Immutaball.Share.SDLManager
 		-- * Utils
 		sdlGLSwapWindow,
 		sdlGL,
+		sdlGL1,
+		sdlGLHomogeneous,
+		sdlGL_,
 
 		-- * Low level
 		initSDLManager,
@@ -88,16 +92,63 @@ sdlGLSwapWindow sdlMgr window withUnit =
 	Atomically (takeTMVar mdone) $ \() ->
 	withUnit
 
--- | Run a GLIO in the SDL manager thread.
+-- | Run an ordered GLIO sequence in the SDL manager thread.
 --
 -- This might be needed to avoid issues with multi-threaded SDL & OpenGL on
 -- some platforms.
-sdlGL :: SDLManagerHandle -> GLIOF me -> ImmutaballIOF me
-sdlGL sdlMgr glio =
+sdlGL :: SDLManagerHandle -> [GLIOFTo] -> ImmutaballIOF ()
+sdlGL sdlMgr glioTos =
 	JoinIBIOF . JoinIBIOF .
-	Atomically (newEmptyTMVar) $ \mme ->
-	issueSDLCommand sdlMgr (GLSequence glio mme) $
-	Atomically (takeTMVar mme) id
+	Atomically (newEmptyTMVar) $ \hasDone ->
+	issueSDLCommand sdlMgr (GLSequence glioTos hasDone) $
+	Atomically (takeTMVar hasDone) id
+
+-- TODO
+-- | 'sdlGL' variant specialized to a single GLIO.
+sdlGL1 :: SDLManagerHandle -> GLIOF me -> ImmutaballIOF me
+sdlGL1 = error "TODO: unimplemented."
+
+-- | Run an ordered GLIO sequence in the SDL manager thread.
+--
+-- This might be needed to avoid issues with multi-threaded SDL & OpenGL on
+-- some platforms.
+--
+-- This version handles reading the results but only supports it when the types
+-- are all the same.
+sdlGLHomogeneous :: forall me. SDLManagerHandle -> [GLIOF me] -> ImmutaballIOF [me]
+sdlGLHomogeneous sdlMgr glios = foldr reduce reduction0 glios []
+	where
+		reduce :: GLIOF me -> ([(GLIOF me, TMVar me)] -> ImmutaballIOF [me]) -> ([(GLIOF me, TMVar me)] -> ImmutaballIOF [me])
+		reduce glio withGlioTos = \glioTos -> JoinIBIOF . Atomically (newEmptyTMVar) $ \to_ -> withGlioTos ((glio, to_):glioTos)
+		reduction0 :: [(GLIOF me, TMVar me)] -> ImmutaballIOF [me]
+		reduction0 reversedGlioTos =
+			let glioTos  = reverse reversedGlioTos in
+			let glioTos' = map GLIOFTo $ glioTos in
+			let tos      = map snd glioTos in
+			JoinIBIOF . JoinIBIOF .
+			Atomically (newEmptyTMVar) $ \hasDone ->
+			issueSDLCommand sdlMgr (GLSequence glioTos' hasDone) .
+			JoinIBIOF .
+			Atomically (takeTMVar hasDone) $ \() ->
+			foldr readReduce readReduction0 $ tos
+
+		readReduce :: TMVar me -> ImmutaballIOF [me] -> ImmutaballIOF [me]
+		readReduce to_ then_ =
+			JoinIBIOF . Atomically (takeTMVar to_) $ \me -> (me:) <$> then_
+		readReduction0 :: ImmutaballIOF [me]
+		readReduction0 = PureIBIOF []
+
+-- | An 'sdlGL' variant that only handles valueless sequences.
+--
+-- Additionally it only waits for the signal that all are done.  (The caller
+-- can fork off a GL call if desired while it does other things in the
+-- background; only the SDL thread would be blocked here.)
+sdlGL_ :: SDLManagerHandle -> [GLIOF ()] -> ImmutaballIOF ()
+sdlGL_ sdlMgr glios =
+	JoinIBIOF . JoinIBIOF .
+	Atomically (newEmptyTMVar) $ \hasDone ->
+	issueSDLCommand sdlMgr (GLSequenceValueless glios hasDone) $
+	Atomically (takeTMVar hasDone) id
 
 -- * Low level
 
@@ -148,10 +199,13 @@ sdlManagerThreadContinue sdlMgr =
 			NopSDLManager -> sdlManagerThreadContinue sdlMgr
 			PollEvent to_ -> (mkBIO . SDLIO . SDLPollEventSync $ \mevent -> mkAtomically (writeTMVar to_ mevent) (\() -> mempty)) <>> sdlManagerThreadContinue sdlMgr
 			PollEvents to_ -> (mkBIO . SDLIO . SDLPollEventsSync $ \events -> mkAtomically (writeTMVar to_ events) (\() -> mempty)) <>> sdlManagerThreadContinue sdlMgr
-			WithWindow title cfg to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $   \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThreadContinue sdlMgr
-			WithGLContext window to_ -> mkBIO . SDLIO . SDLWithGLContext window $   \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThreadContinue sdlMgr
-			GLSwapWindow window  to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $              mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThreadContinue sdlMgr
-			GLSequence glio      to_ -> Fixed $ (BasicIBIOF $ GLIO glio)        >>= \me     ->   Atomically (writeTMVar to_ me)     $ \() -> sdlManagerThreadContinue sdlMgr
+			WithWindow title cfg      to_ -> mkBIO . SDLIO . SDLWithWindow title cfg $   \window -> mkAtomically (writeTMVar to_ window) $ \() -> sdlManagerThreadContinue sdlMgr
+			WithGLContext window      to_ -> mkBIO . SDLIO . SDLWithGLContext window $   \cxt    -> mkAtomically (writeTMVar to_ cxt)    $ \() -> sdlManagerThreadContinue sdlMgr
+			GLSwapWindow window       to_ -> mkBIO . SDLIO . SDLGLSwapWindow window  $              mkAtomically (writeTMVar to_ ())     $ \() -> sdlManagerThreadContinue sdlMgr
+			--GLSequence glios          tos -> Fixed $ (BasicIBIOF $ GLIO glio)        >>= \me     ->   Atomically (writeTMVar to_ me)     $ \() -> sdlManagerThreadContinue sdlMgr
+			--GLSequence glios          tos -> Fixed $ foldr (\(glio, to_) then_ -> (BasicIBIOF . GLIO $ glio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> Fixed then_) (getFixed $ sdlManagerThreadContinue sdlMgr) (zip glios tos)
+			GLSequence glioTos   hasDone_ -> Fixed $ foldr (\(GLIOFTo (glio, to_)) then_ -> (BasicIBIOF . GLIO $ glio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> Fixed then_) (Atomically (writeTMVar hasDone_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glioTos
+			GLSequenceValueless glios to_ -> Fixed $ foldr (\glio then_ -> (BasicIBIOF . GLIO $ glio) >>= \() -> then_) (Atomically (writeTMVar to_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glios
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

@@ -12,6 +12,7 @@ module Immutaball.Share.SDLManager.Types
 	(
 		SDLManagerHandle(..), sdlmh_done, sdlmh_doneReceived, sdlmh_commands,
 		SDLManagerCommand(..),
+		GLIOFTo(..)
 	) where
 
 import Prelude ()
@@ -40,7 +41,10 @@ data SDLManagerCommand =
 	| WithWindow T.Text WindowConfig (TMVar Window)
 	| WithGLContext Window (TMVar GLContext)
 	| GLSwapWindow Window (TMVar ())
-	| forall me. GLSequence (GLIOF me) (TMVar me)
+	| GLSequence [GLIOFTo] (TMVar ())
+	| GLSequenceValueless [GLIOF ()] (TMVar ())
+
+data GLIOFTo = forall me. GLIOFTo { _gliofTo :: (GLIOF me, TMVar me) }
 
 -- | The inner fields and lenses are internal (low-level).
 data SDLManagerHandle = SDLManagerHandle {

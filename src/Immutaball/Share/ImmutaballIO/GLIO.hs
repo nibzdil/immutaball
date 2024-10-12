@@ -101,7 +101,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLBindProgramPipeline,
 		mkGLUseProgramStages,
 		mkGLGenProgramPipelines,
-		mkGLDeleteProgramPipelines
+		mkGLDeleteProgramPipelines,
+		mkGLGenerateMipmap,
+		mkGLGenerateTextureMipmap
 	) where
 
 import Prelude ()
@@ -204,6 +206,9 @@ data GLIOF me =
 	| GLUseProgramStages GLuint GLbitfield GLuint me
 	| GLGenProgramPipelines GLsizei ([GLuint] -> me)
 	| GLDeleteProgramPipelines [GLuint] me
+
+	| GLGenerateMipmap GLenum me
+	| GLGenerateTextureMipmap GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -273,6 +278,9 @@ instance Functor GLIOF where
 	fmap f (GLUseProgramStages pipeline stages program withUnit)  = GLUseProgramStages pipeline stages program (f withUnit)
 	fmap f (GLGenProgramPipelines    numNames          withNames) = GLGenProgramPipelines    numNames             (f . withNames)
 	fmap f (GLDeleteProgramPipelines pipelines         withUnit)  = GLDeleteProgramPipelines pipelines            (f withUnit)
+
+	fmap f (GLGenerateMipmap        target  withUnit) = GLGenerateMipmap        target  (f withUnit)
+	fmap f (GLGenerateTextureMipmap texture withUnit) = GLGenerateTextureMipmap texture (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -404,6 +412,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGenProgramPipelines numNames                withNames) -> return $ GLGenProgramPipelines numNames ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
 		y@( GLDeleteProgramPipelines _pipelines           me)        -> putMVar mme me >> return y
 
+		y@( GLGenerateMipmap        _target  me) -> putMVar mme me >> return y
+		y@( GLGenerateTextureMipmap _texture me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -484,6 +495,9 @@ runGLIOIO (GLBindProgramPipeline id_     glio) = glBindProgramPipeline id_      
 runGLIOIO (GLUseProgramStages pipeline stages program glio)      = glUseProgramStages pipeline stages program >> glio
 runGLIOIO (GLGenProgramPipelines    numNames          withNames) = hglGenTextures numNames                    >>= withNames
 runGLIOIO (GLDeleteProgramPipelines pipelines         glio)      = hglDeleteTextures pipelines                >> glio
+
+runGLIOIO (GLGenerateMipmap        target  glio) = glGenerateMipmap        target  >> glio
+runGLIOIO (GLGenerateTextureMipmap texture glio) = glGenerateTextureMipmap texture >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -779,3 +793,9 @@ mkGLGenProgramPipelines numNames withNames = Fixed $ GLGenProgramPipelines numNa
 
 mkGLDeleteProgramPipelines :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteProgramPipelines pipelines glio = Fixed $ GLDeleteProgramPipelines pipelines glio
+
+mkGLGenerateMipmap :: GLenum -> GLIO -> GLIO
+mkGLGenerateMipmap target glio = Fixed $ GLGenerateMipmap target glio
+
+mkGLGenerateTextureMipmap :: GLuint -> GLIO -> GLIO
+mkGLGenerateTextureMipmap texture glio = Fixed $ GLGenerateTextureMipmap texture glio

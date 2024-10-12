@@ -303,13 +303,17 @@ freeTexture = proc (name, cxtn) -> do
 cachingRenderText :: Wire ImmutaballM (T.Text, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)
 cachingRenderText = proc (text, cxtn) -> do
 	(mglTextTextures, cxtnp1) <- requireGLTextTextures -< cxtn
+	(sdl' :: SDLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdl (cxtnp1^.ibContext.ibSDLManagerHandle)
 	glTextTextures <- monadic -< liftIBIO $ Atomically (readTVar mglTextTextures) id
 	case M.lookup text glTextTextures of
 		Just ((w, h), name) -> do
 			returnA -< (((w, h), name), cxtnp1)
 		Nothing -> do
 			(font, cxtnp2) <- requireFont -< cxtnp1
-			((w, h), image) <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLTTFRenderSync font text id
+			-- We were doing it ourselves, but it's unclear if it's designed to
+			-- work outside the SDL thread.
+			--((w, h), image) <- monadic -< liftIBIO . BasicIBIOF . SDLIO $ SDLTTFRenderSync font text id
+			((w, h), image) <- monadic -< sdl' $ SDLTTFRenderSync font text id
 			(name, cxtnp3) <- createTexture -< (((w, h), image), cxtnp2)
 			-- Also see if somebody already cached our text while we were
 			-- creating the texture.

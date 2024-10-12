@@ -53,6 +53,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglGetlUniformdv,
 		hglGenBuffers,
 		hglDeleteBuffers,
+		hglNamedBufferData,
+		hglNamedBufferSubData,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -137,7 +139,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGetlUniformuiv,
 		mkGLGetlUniformdv,
 		mkGLGenBuffers,
-		mkGLDeleteBuffers
+		mkGLDeleteBuffers,
+		mkGLNamedBufferData,
+		mkGLNamedBufferSubData
 	) where
 
 import Prelude ()
@@ -274,6 +278,9 @@ data GLIOF me =
 
 	| GLGenBuffers    GLsizei  ([GLuint] -> me)
 	| GLDeleteBuffers [GLuint] me
+
+	| GLNamedBufferData    GLuint         BL.ByteString GLenum me
+	| GLNamedBufferSubData GLuint Integer BL.ByteString        me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -374,6 +381,9 @@ instance Functor GLIOF where
 
 	fmap f (GLGenBuffers    num   withNames) = GLGenBuffers    num   (f . withNames)
 	fmap f (GLDeleteBuffers names withUnit)  = GLDeleteBuffers names (f withUnit)
+
+	fmap f (GLNamedBufferData    buffer        data_ usage withUnit) = GLNamedBufferData    buffer        data_ usage (f withUnit)
+	fmap f (GLNamedBufferSubData buffer offset data_       withUnit) = GLNamedBufferSubData buffer offset data_       (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -536,6 +546,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGenBuffers    num    withNames) -> return $ GLGenBuffers num ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
 		y@( GLDeleteBuffers _names me)        -> putMVar mme me >> return y
 
+		y@( GLNamedBufferData    _buffer         _data _usage me) -> putMVar mme me >> return y
+		y@( GLNamedBufferSubData _buffer _offset _data        me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -647,6 +660,9 @@ runGLIOIO (GLGetlUniformdv  program location len withOuts) = hglGetlUniformdv  p
 
 runGLIOIO (GLGenBuffers    num   withNames) = hglGenBuffers    num   >>= withNames
 runGLIOIO (GLDeleteBuffers names glio)      = hglDeleteBuffers names >> glio
+
+runGLIOIO (GLNamedBufferData    buffer        data_ usage glio) = hglNamedBufferData    buffer        data_ usage >> glio
+runGLIOIO (GLNamedBufferSubData buffer offset data_       glio) = hglNamedBufferSubData buffer offset data_       >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -938,6 +954,18 @@ hglDeleteBuffers names = do
 	len    <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glDeleteBuffers (fromIntegral len) (castPtr ptr)
 
+hglNamedBufferData :: GLuint -> BL.ByteString -> GLenum -> IO ()
+hglNamedBufferData buffer data_ usage = do
+	let strictCopy = BL.toStrict data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCStringLen strictCopy $ \(ptr, len) -> do
+		glNamedBufferData buffer (fromIntegral len) (castPtr ptr) usage
+
+hglNamedBufferSubData :: GLuint -> Integer -> BL.ByteString -> IO ()
+hglNamedBufferSubData buffer offset data_ = do
+	let strictCopy = BL.toStrict data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCStringLen strictCopy $ \(ptr, len) -> do
+		glNamedBufferSubData buffer (fromIntegral offset) (fromIntegral len) (castPtr ptr)
+
 -- * GLIO aliases that apply the Fixed wrapper
 
 mkEmptyGLIO :: GLIO
@@ -1188,3 +1216,9 @@ mkGLGenBuffers num withNames = Fixed $ GLGenBuffers num withNames
 
 mkGLDeleteBuffers :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteBuffers names glio = Fixed $ GLDeleteBuffers names glio
+
+mkGLNamedBufferData :: GLuint -> BL.ByteString -> GLenum -> GLIO -> GLIO
+mkGLNamedBufferData buffer data_ usage glio = Fixed $ GLNamedBufferData buffer data_ usage glio
+
+mkGLNamedBufferSubData :: GLuint -> Integer -> BL.ByteString -> GLIO -> GLIO
+mkGLNamedBufferSubData buffer offset data_ glio = Fixed $ GLNamedBufferSubData buffer offset data_ glio

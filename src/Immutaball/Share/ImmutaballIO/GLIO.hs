@@ -43,6 +43,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglGenProgramPipelines,
 		hglDeleteProgramPipelines,
 		hglGetMaxVertexTextureImageUnits,
+		hglGetShaderiv,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -105,7 +106,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDeleteProgramPipelines,
 		mkGLGenerateMipmap,
 		mkGLGenerateTextureMipmap,
-		mkGLGetMaxVertexTextureImageUnits
+		mkGLGetMaxVertexTextureImageUnits,
+		mkGLGetShaderiv
 	) where
 
 import Prelude ()
@@ -215,6 +217,8 @@ data GLIOF me =
 	-- GL_Get is polymorphic in its output size, so since we lack dependent
 	-- types, we'll just provide specific specializations of glGet.
 	| GLGetMaxVertexTextureImageUnits (GLint64 -> me)
+
+	| GLGetShaderiv GLuint GLenum (GLint -> me)
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -289,6 +293,8 @@ instance Functor GLIOF where
 	fmap f (GLGenerateTextureMipmap texture withUnit) = GLGenerateTextureMipmap texture (f withUnit)
 
 	fmap f (GLGetMaxVertexTextureImageUnits withNum) = GLGetMaxVertexTextureImageUnits (f . withNum)
+
+	fmap f (GLGetShaderiv shader pname withOut) = GLGetShaderiv shader pname (f . withOut)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -425,6 +431,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		_y@(GLGetMaxVertexTextureImageUnits withNum) -> return $ GLGetMaxVertexTextureImageUnits ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNum)
 
+		_y@(GLGetShaderiv shader pname withOut) -> return $ GLGetShaderiv shader pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -510,6 +518,8 @@ runGLIOIO (GLGenerateMipmap        target  glio) = glGenerateMipmap        targe
 runGLIOIO (GLGenerateTextureMipmap texture glio) = glGenerateTextureMipmap texture >> glio
 
 runGLIOIO (GLGetMaxVertexTextureImageUnits withNum) = hglGetMaxVertexTextureImageUnits >>= withNum
+
+runGLIOIO (GLGetShaderiv shader pname withOut) = hglGetShaderiv shader pname >>= withOut
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -642,6 +652,20 @@ hglGetMaxVertexTextureImageUnits = do
 		([])  -> error "Internal error: hglGetMaxVertexTextureImageUnits: empty array result."
 		(x:_) -> x
 	return num
+
+-- | Currently the docs seem ot only specify single-param calls.
+hglGetShaderiv :: GLuint -> GLenum -> IO GLint
+hglGetShaderiv shader pname = do
+	let numOuts = 1  :: Integer
+	let safetyBuffer = 64
+	let _len = fromIntegral (1 :: Integer)  :: Integer
+	array_ <- newArray_ (0, numOuts - 1 + safetyBuffer)
+	withStorableArray array_ $ \ptr -> glGetShaderiv shader pname ptr
+	outs <- getElems array_
+	let out = case outs of
+		([])  -> error "Internal error: hglGetShaderiv: empty array result."
+		(x:_) -> x
+	return out
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -827,3 +851,6 @@ mkGLGenerateTextureMipmap texture glio = Fixed $ GLGenerateTextureMipmap texture
 
 mkGLGetMaxVertexTextureImageUnits :: (GLint64 -> GLIO) -> GLIO
 mkGLGetMaxVertexTextureImageUnits withNum = Fixed $ GLGetMaxVertexTextureImageUnits withNum
+
+mkGLGetShaderiv :: GLuint -> GLenum -> (GLint -> GLIO) -> GLIO
+mkGLGetShaderiv shader pname withOut = Fixed $ GLGetShaderiv shader pname withOut

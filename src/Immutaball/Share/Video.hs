@@ -15,9 +15,11 @@ module Immutaball.Share.Video
 		withImmutaballShader,
 
 		-- * Shader: low level
-		ImmutaballShaderHandle(..),
+		ImmutaballShaderHandle(..), _ibshVertexShader, _ibshFragmentShader,
+			_ibshProgram, _ibshPipeline,
 		initImmutaballShader,
 		freeImmutaballShader
+
 	) where
 
 import Prelude ()
@@ -29,6 +31,7 @@ import Data.List
 import Data.Word
 
 import Control.Lens
+import Graphics.GL.Types
 
 import Immutaball.Share.Math
 import Immutaball.Share.ImmutaballIO
@@ -56,6 +59,10 @@ reverseRowsImage ((w, _h), image) = glImage
 -- Moved to avoid Template Haskell errors.
 
 data ImmutaballShaderHandle = ImmutaballShaderHandle {
+	_ibshVertexShader   :: GLuint,
+	_ibshFragmentShader :: GLuint,
+	_ibshProgram        :: GLuint,
+	_ibshPipeline       :: GLuint
 }
 makeLenses ''ImmutaballShaderHandle
 

@@ -45,6 +45,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglGetMaxVertexTextureImageUnits,
 		hglGetShaderiv,
 		hglGetProgramiv,
+		hglGetShaderInfoLog,
+		hglGetProgramInfoLog,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -109,7 +111,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGenerateTextureMipmap,
 		mkGLGetMaxVertexTextureImageUnits,
 		mkGLGetShaderiv,
-		mkGLGetProgramiv
+		mkGLGetProgramiv,
+		mkGLGetShaderInfoLog,
+		mkGLGetProgramInfoLog
 	) where
 
 import Prelude ()
@@ -220,8 +224,10 @@ data GLIOF me =
 	-- types, we'll just provide specific specializations of glGet.
 	| GLGetMaxVertexTextureImageUnits (GLint64 -> me)
 
-	| GLGetShaderiv  GLuint GLenum (GLint -> me)
-	| GLGetProgramiv GLuint GLenum (GLint -> me)
+	| GLGetShaderiv       GLuint GLenum (GLint  -> me)
+	| GLGetProgramiv      GLuint GLenum (GLint  -> me)
+	| GLGetShaderInfoLog  GLuint        (String -> me)
+	| GLGetProgramInfoLog GLuint        (String -> me)
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -297,8 +303,10 @@ instance Functor GLIOF where
 
 	fmap f (GLGetMaxVertexTextureImageUnits withNum) = GLGetMaxVertexTextureImageUnits (f . withNum)
 
-	fmap f (GLGetShaderiv  shader  pname withOut) = GLGetShaderiv  shader  pname (f . withOut)
-	fmap f (GLGetProgramiv program pname withOut) = GLGetProgramiv program pname (f . withOut)
+	fmap f (GLGetShaderiv       shader  pname withOut) = GLGetShaderiv       shader  pname (f . withOut)
+	fmap f (GLGetProgramiv      program pname withOut) = GLGetProgramiv      program pname (f . withOut)
+	fmap f (GLGetShaderInfoLog  shader        withLog) = GLGetShaderInfoLog  shader        (f . withLog)
+	fmap f (GLGetProgramInfoLog program       withLog) = GLGetProgramInfoLog program       (f . withLog)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -435,8 +443,10 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		_y@(GLGetMaxVertexTextureImageUnits withNum) -> return $ GLGetMaxVertexTextureImageUnits ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNum)
 
-		_y@(GLGetShaderiv  shader  pname withOut) -> return $ GLGetShaderiv  shader  pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
-		_y@(GLGetProgramiv program pname withOut) -> return $ GLGetProgramiv program pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
+		_y@(GLGetShaderiv       shader  pname withOut) -> return $ GLGetShaderiv       shader  pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
+		_y@(GLGetProgramiv      program pname withOut) -> return $ GLGetProgramiv      program pname ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOut)
+		_y@(GLGetShaderInfoLog  shader        withLog) -> return $ GLGetShaderInfoLog  shader        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withLog)
+		_y@(GLGetProgramInfoLog program       withLog) -> return $ GLGetProgramInfoLog program       ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withLog)
 
 instance Applicative GLIOF where
 	pure = PureGLIOF
@@ -524,8 +534,10 @@ runGLIOIO (GLGenerateTextureMipmap texture glio) = glGenerateTextureMipmap textu
 
 runGLIOIO (GLGetMaxVertexTextureImageUnits withNum) = hglGetMaxVertexTextureImageUnits >>= withNum
 
-runGLIOIO (GLGetShaderiv  shader  pname withOut) = hglGetShaderiv  shader  pname >>= withOut
-runGLIOIO (GLGetProgramiv program pname withOut) = hglGetProgramiv program pname >>= withOut
+runGLIOIO (GLGetShaderiv       shader  pname withOut) = hglGetShaderiv       shader  pname >>= withOut
+runGLIOIO (GLGetProgramiv      program pname withOut) = hglGetProgramiv      program pname >>= withOut
+runGLIOIO (GLGetShaderInfoLog  shader        withLog) = hglGetShaderInfoLog  shader        >>= withLog
+runGLIOIO (GLGetProgramInfoLog program       withLog) = hglGetProgramInfoLog program       >>= withLog
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -686,6 +698,82 @@ hglGetProgramiv program pname = do
 		([])  -> error "Internal error: hglGetProgramiv: empty array result."
 		(x:_) -> x
 	return out
+
+-- | glGetShaderInfoLog.
+--
+-- We don't know the size of the log without adding extra arguments,
+-- so to make it length agnostic we attempt a length, but if the result is too
+-- close in length, double the length and try again, up to a fixed limit, after
+-- which we leave the truncation.
+hglGetShaderInfoLog :: GLuint -> IO String
+hglGetShaderInfoLog shader = trySize initialSize
+	where
+		initialSize :: Integer
+		initialSize = 4096
+		threshold :: Integer
+		threshold = flip const 3 8
+		safetyBuffer :: Integer
+		safetyBuffer = 64
+		maxSize :: Integer
+		maxSize = 100 * 1024 * 1024
+		trySize :: Integer -> IO String
+		trySize size_ = do
+			let size = min maxSize size_
+
+			let lenLen = 1 :: Integer
+			let z = fromIntegral 0
+			lenArray <- newArray  (0, max 1 $ lenLen - 1 + safetyBuffer) z
+			logArray <- newArray_ (0, max 1 $ size - 1 + safetyBuffer)
+			withStorableArray lenArray $ \lenPtr ->
+				withStorableArray logArray $ \logPtr ->
+					glGetShaderInfoLog shader (fromIntegral size) lenPtr logPtr
+			-- Also specifies the array value types.
+			(len   :: GLsizei) <- readArray lenArray 0
+			(_char :: GLchar ) <- readArray logArray 0
+			if size < maxSize && (fromIntegral len) + threshold >= size
+				then trySize (2 * size)
+				else do
+					log <- withStorableArray logArray $ \logPtr -> BS.packCStringLen (logPtr, fromIntegral len)
+					let logStr = map asciiChar . BS.unpack $ log
+					return logStr
+		-- bytestring could really use a .UTF8 module, rather than just .Char8.
+		asciiChar :: Word8 -> Char
+		asciiChar = toEnum . fromEnum
+
+hglGetProgramInfoLog :: GLuint -> IO String
+hglGetProgramInfoLog program = trySize initialSize
+	where
+		initialSize :: Integer
+		initialSize = 4096
+		threshold :: Integer
+		threshold = flip const 3 8
+		safetyBuffer :: Integer
+		safetyBuffer = 64
+		maxSize :: Integer
+		maxSize = 100 * 1024 * 1024
+		trySize :: Integer -> IO String
+		trySize size_ = do
+			let size = min maxSize size_
+
+			let lenLen = 1 :: Integer
+			let z = fromIntegral 0
+			lenArray <- newArray  (0, max 1 $ lenLen - 1 + safetyBuffer) z
+			logArray <- newArray_ (0, max 1 $ size - 1 + safetyBuffer)
+			withStorableArray lenArray $ \lenPtr ->
+				withStorableArray logArray $ \logPtr ->
+					glGetProgramInfoLog program (fromIntegral size) lenPtr logPtr
+			-- Also specifies the array value types.
+			(len   :: GLsizei) <- readArray lenArray 0
+			(_char :: GLchar ) <- readArray logArray 0
+			if size < maxSize && (fromIntegral len) + threshold >= size
+				then trySize (2 * size)
+				else do
+					log <- withStorableArray logArray $ \logPtr -> BS.packCStringLen (logPtr, fromIntegral len)
+					let logStr = map asciiChar . BS.unpack $ log
+					return logStr
+		-- bytestring could really use a .UTF8 module, rather than just .Char8.
+		asciiChar :: Word8 -> Char
+		asciiChar = toEnum . fromEnum
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -877,3 +965,9 @@ mkGLGetShaderiv shader pname withOut = Fixed $ GLGetShaderiv shader pname withOu
 
 mkGLGetProgramiv :: GLuint -> GLenum -> (GLint -> GLIO) -> GLIO
 mkGLGetProgramiv program pname withOut = Fixed $ GLGetProgramiv program pname withOut
+
+mkGLGetShaderInfoLog :: GLuint -> (String -> GLIO) -> GLIO
+mkGLGetShaderInfoLog shader withLog = Fixed $ GLGetShaderInfoLog shader withLog
+
+mkGLGetProgramInfoLog :: GLuint -> (String -> GLIO) -> GLIO
+mkGLGetProgramInfoLog program withLog = Fixed $ GLGetProgramInfoLog program withLog

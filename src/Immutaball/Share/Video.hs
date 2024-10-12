@@ -23,7 +23,8 @@ module Immutaball.Share.Video
 import Prelude ()
 import Immutaball.Prelude
 
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as BS
+--import qualified Data.ByteString.Lazy as BL
 import Data.List
 import Data.Word
 
@@ -35,12 +36,12 @@ import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
 
 -- TODO: learn the new bytestring builders and probably use them.
-reverseRowsImage :: (WidthHeightI, BL.ByteString) -> BL.ByteString
+reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 reverseRowsImage ((w, _h), image) = glImage
 	where
-		glImage = BL.pack glBytes
+		glImage = BS.pack glBytes
 		bytes :: [Word8]
-		bytes = BL.unpack image
+		bytes = BS.unpack image
 		glBytes :: [Word8]
 		glBytes = concat glRows
 		glRows :: [[Word8]]

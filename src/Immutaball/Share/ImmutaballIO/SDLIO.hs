@@ -39,7 +39,14 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		mkSDLGLSwapWindow,
 		mkSDLTTFLoad,
 		mkSDLTTFRender,
-		mkSDLTTFRenderSync
+		mkSDLTTFRenderSync,
+
+		-- * types
+		SDLData,
+		sdlDataToBS,
+		sdlDataToBL,
+		bsToSDLData,
+		blToSDLData
 	) where
 
 import Prelude ()
@@ -102,8 +109,8 @@ data SDLIOF me =
 	| SDLGLSwapWindow SDL.Video.Window me
 	| SDLTTFLoad FilePath SDL.Font.PointSize (SDL.Font.Font -> me)
 	-- | Tight RGBA encoding.  Caching recommended.
-	| SDLTTFRender SDL.Font.Font T.Text (Async (WidthHeightI, BL.ByteString) -> me)
-	| SDLTTFRenderSync SDL.Font.Font T.Text ((WidthHeightI, BL.ByteString) -> me)
+	| SDLTTFRender SDL.Font.Font T.Text (Async (WidthHeightI, SDLData) -> me)
+	| SDLTTFRenderSync SDL.Font.Font T.Text ((WidthHeightI, SDLData) -> me)
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
 	fmap f (SDLWithInit subsystems sdlio)         = SDLWithInit subsystems (f sdlio)
@@ -228,7 +235,7 @@ runSDLIOIO (SDLTTFRenderSync font text withImage) = hsdlttfRender font text >>= 
 --
 -- We need some low-level C-like processing to interface with the SDL
 -- libraries.
-hsdlttfRender :: SDL.Font.Font -> T.Text -> IO (WidthHeightI, BL.ByteString)
+hsdlttfRender :: SDL.Font.Font -> T.Text -> IO (WidthHeightI, SDLData)
 hsdlttfRender font text = do
 	let maxColorComponent = 255  :: Word8
 	let mcc = maxColorComponent
@@ -269,8 +276,9 @@ hsdlttfRender font text = do
 	let (w, h) = (fromIntegral w', fromIntegral h')
 	w `seq` h `seq` pixels' `seq` return ()
 	pixelsBs <- BS.packCStringLen $ (castPtr pixels', fromIntegral $ 4*w*h)
-	let pixelsBl = BL.fromStrict pixelsBs
-	let pixels = pixelsBl `seq` pixelsBl
+	--let pixelsBl = BL.fromStrict pixelsBs
+	--let pixels = pixelsBl `seq` pixelsBl
+	let pixels = pixelsBs `seq` pixelsBs
 	let result = w `seq` h `seq` pixels `seq` ((w, h), pixels)
 	result `seq` return ()
 	SDL.Video.Renderer.freeSurface fmt0Surface
@@ -309,8 +317,24 @@ mkSDLGLSwapWindow window withUnit = Fixed $ SDLGLSwapWindow window withUnit
 mkSDLTTFLoad :: FilePath -> SDL.Font.PointSize -> (SDL.Font.Font -> SDLIO) -> SDLIO
 mkSDLTTFLoad path size withFont = Fixed $ SDLTTFLoad path size withFont
 
-mkSDLTTFRender :: SDL.Font.Font -> T.Text -> (Async (WidthHeightI, BL.ByteString) -> SDLIO) -> SDLIO
+mkSDLTTFRender :: SDL.Font.Font -> T.Text -> (Async (WidthHeightI, SDLData) -> SDLIO) -> SDLIO
 mkSDLTTFRender font text withImage = Fixed $ SDLTTFRender font text withImage
 
-mkSDLTTFRenderSync :: SDL.Font.Font -> T.Text -> ((WidthHeightI, BL.ByteString) -> SDLIO) -> SDLIO
+mkSDLTTFRenderSync :: SDL.Font.Font -> T.Text -> ((WidthHeightI, SDLData) -> SDLIO) -> SDLIO
 mkSDLTTFRenderSync font text withImage = Fixed $ SDLTTFRenderSync font text withImage
+
+-- * types
+
+type SDLData = BS.ByteString
+
+sdlDataToBS :: SDLData -> BS.ByteString
+sdlDataToBS = id
+
+sdlDataToBL :: SDLData -> BL.ByteString
+sdlDataToBL = BL.fromStrict
+
+bsToSDLData :: BS.ByteString -> SDLData
+bsToSDLData = id
+
+blToSDLData :: BL.ByteString -> SDLData
+blToSDLData = BL.toStrict

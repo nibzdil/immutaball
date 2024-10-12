@@ -41,14 +41,14 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
-import Control.Monad
 import Data.Bits
 import Data.Maybe
 
 import Control.Lens
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
-import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as BS
+--import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Lazy as M
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -280,7 +280,7 @@ freeTextureName = proc (_name, cxtn) -> do
 	returnA -< cxtn
 
 -- | Tight RGBA.
-createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
+createTexture :: Wire ImmutaballM ((WidthHeightI, BS.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn
 	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)

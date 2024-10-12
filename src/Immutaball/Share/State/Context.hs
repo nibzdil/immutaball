@@ -62,7 +62,6 @@ import System.FilePath
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
-import Immutaball.Share.GLManager
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
@@ -270,7 +269,8 @@ freeTextureNameWithoutGenText = proc (name, cxtn) -> do
 
 newTextureName :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
 newTextureName = proc cxtn -> do
-	[name] <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLGenTextures 1 id
+	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+	[name] <- monadic -< sdlGL1' $ GLGenTextures 1 id
 	returnA -< (name, cxtn)
 
 freeTextureName :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
@@ -282,19 +282,18 @@ freeTextureName = proc (_name, cxtn) -> do
 createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn
-	() <- monadic -< liftIBIO . flip (glQueueValueless (cxtnp1^.ibContext.ibGLManagerHandle)) () $
-		[
-			GLBindTexture GL_TEXTURE_2D name (),
-			GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
-			-- TODO: mipmap.
-		]
+	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
+	() <- monadic -< sdlGL1' $ do
+		GLBindTexture GL_TEXTURE_2D name ()
+		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
 	returnA -< (name, cxtnp1)
 
 -- | This also frees the texture, not just the name.
 freeTexture :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
 freeTexture = proc (name, cxtn) -> do
 	cxtnp1 <- freeTextureName -< (name, cxtn)
-	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLDeleteTextures [name] ()
+	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
+	() <- monadic -< sdlGL1' $ GLDeleteTextures [name] ()
 	returnA -< cxtnp1
 
 -- | Render a text.

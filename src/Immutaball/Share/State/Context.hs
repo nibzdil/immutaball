@@ -72,6 +72,7 @@ import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
+import Immutaball.Share.Video
 
 -- | A running Immutaball context instance.
 --
@@ -279,7 +280,6 @@ freeTextureName = proc (_name, cxtn) -> do
 	returnA -< cxtn
 
 -- | Tight RGBA.
--- TODO: SDL thread.
 createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext) (GLuint, IBStateContext)
 createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn
@@ -293,8 +293,9 @@ createTexture = proc (((w, h), image), cxtn) -> do
 		GLActiveTexture GL_TEXTURE0 ()
 		GLClientActiveTexture GL_TEXTURE0 ()
 		GLBindTexture GL_TEXTURE_2D name ()
-		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
-		-- TODO: re-enable after debugging.
+		let glImage = reverseRowsImage ((w, h), image)
+		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE glImage ()
+		-- TODO: re-enable after mipmap is fixed.
 		--when (cxtnp1^.ibNeverballrc.mipmap) $ do
 		--	GLGenerateMipmap name ()
 	returnA -< (name, cxtnp1)

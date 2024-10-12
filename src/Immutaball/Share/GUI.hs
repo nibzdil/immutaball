@@ -59,6 +59,7 @@ import Graphics.GL.Compatibility45
 import Graphics.GL.Types
 import qualified SDL.Raw.Enum as Raw
 
+import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
@@ -363,10 +364,16 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 
 				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_S     GL_REPEAT ()
 				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_T     GL_REPEAT ()
-				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR ()
-				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR ()
-				--GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR_MIPMAP_LINEAR ()
-				--GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR_MIPMAP_LINEAR ()
+				-- TODO: re-enable after mipmap is fixed.
+				{-
+				when (      cxtnp1^.ibNeverballrc.mipmap) $ do
+					GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR_MIPMAP_LINEAR ()
+					GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR_MIPMAP_LINEAR ()
+				when (not $ cxtnp1^.ibNeverballrc.mipmap) $ do
+				-}
+				do
+					GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR ()
+					GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR ()
 
 				GLColor4d 0.1 0.1 0.9 1.0 ()
 				GLBindTexture GL_TEXTURE_2D name ()

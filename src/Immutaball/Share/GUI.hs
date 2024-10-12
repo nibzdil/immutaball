@@ -360,6 +360,11 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 				--GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_MODULATE ()
 				GLTexEnvi GL_TEXTURE_ENV GL_TEXTURE_ENV_MODE GL_REPLACE ()
 
+				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_S     GL_REPEAT ()
+				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_T     GL_REPEAT ()
+				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR ()
+				GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR ()
+
 				GLColor4d 0.1 0.1 0.9 1.0 ()
 				GLBindTexture GL_TEXTURE_2D name ()
 				GLBegin GL_QUADS ()

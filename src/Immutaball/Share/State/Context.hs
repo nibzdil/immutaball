@@ -289,7 +289,7 @@ createTexture = proc (((w, h), image), cxtn) -> do
 		GLActiveTexture GL_TEXTURE0 ()
 		GLClientActiveTexture GL_TEXTURE0 ()
 		GLBindTexture GL_TEXTURE_2D name ()
-		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
+		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (50) (50) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
 		when (cxtnp1^.ibNeverballrc.mipmap) $ do
 			GLGenerateMipmap name ()
 	returnA -< (name, cxtnp1)

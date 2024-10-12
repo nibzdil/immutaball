@@ -154,7 +154,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLBindVertexArray,
 		mkGLVertexAttribPointer,
 		mkGLVertexAttribIPointer,
-		mkGLVertexAttribLPointer
+		mkGLVertexAttribLPointer,
+		mkGLEnableVertexArrayAttrib,
+		mkGLDisableVertexArrayAttrib
 	) where
 
 import Prelude ()
@@ -306,6 +308,10 @@ data GLIOF me =
 	| GLVertexAttribPointer  GLuint GLint GLenum GLboolean GLsizei Integer me
 	| GLVertexAttribIPointer GLuint GLint GLenum           GLsizei Integer me
 	| GLVertexAttribLPointer GLuint GLint GLenum           GLsizei Integer me
+
+	| GLEnableVertexArrayAttrib  GLuint GLuint me
+	| GLDisableVertexArrayAttrib GLuint GLuint me
+
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -421,6 +427,9 @@ instance Functor GLIOF where
 	fmap f (GLVertexAttribPointer  index_ size type_ normalized stride offset withUnit) = GLVertexAttribPointer  index_ size type_ normalized stride offset (f withUnit)
 	fmap f (GLVertexAttribIPointer index_ size type_            stride offset withUnit) = GLVertexAttribIPointer index_ size type_            stride offset (f withUnit)
 	fmap f (GLVertexAttribLPointer index_ size type_            stride offset withUnit) = GLVertexAttribLPointer index_ size type_            stride offset (f withUnit)
+
+	fmap f (GLEnableVertexArrayAttrib  vaobj index_ withUnit) = GLEnableVertexArrayAttrib  vaobj index_ (f withUnit)
+	fmap f (GLDisableVertexArrayAttrib vaobj index_ withUnit) = GLDisableVertexArrayAttrib vaobj index_ (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -598,6 +607,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLVertexAttribIPointer _index _size _type             _stride _offset me) -> putMVar mme me >> return y
 		y@( GLVertexAttribLPointer _index _size _type             _stride _offset me) -> putMVar mme me >> return y
 
+		y@( GLEnableVertexArrayAttrib  _vaobj _index me) -> putMVar mme me >> return y
+		y@( GLDisableVertexArrayAttrib _vaobj _index me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -724,6 +736,9 @@ runGLIOIO (GLBindVertexArray array_ glio) = glBindVertexArray array_ >> glio
 runGLIOIO (GLVertexAttribPointer  index_ size type_ normalized stride offset glio) = hglVertexAttribPointer  index_ size type_ normalized stride offset >> glio
 runGLIOIO (GLVertexAttribIPointer index_ size type_            stride offset glio) = hglVertexAttribIPointer index_ size type_            stride offset >> glio
 runGLIOIO (GLVertexAttribLPointer index_ size type_            stride offset glio) = hglVertexAttribLPointer index_ size type_            stride offset >> glio
+
+runGLIOIO (GLEnableVertexArrayAttrib  vaobj index_ glio) = glEnableVertexArrayAttrib  vaobj index_ >> glio
+runGLIOIO (GLDisableVertexArrayAttrib vaobj index_ glio) = glDisableVertexArrayAttrib vaobj index_ >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -937,7 +952,7 @@ hglGetShaderInfoLog shader = trySize initialSize
 		initialSize :: Integer
 		initialSize = 4096
 		threshold :: Integer
-		threshold = flip const 3 8
+		threshold = flip const (3 :: Integer) 8
 		safetyBuffer :: Integer
 		safetyBuffer = 64
 		maxSize :: Integer
@@ -947,7 +962,7 @@ hglGetShaderInfoLog shader = trySize initialSize
 			let size = min maxSize size_
 
 			let lenLen = 1 :: Integer
-			let z = fromIntegral 0
+			let z = fromIntegral (0 :: Integer)
 			lenArray <- newArray  (0, max 1 $ lenLen - 1 + safetyBuffer) z
 			logArray <- newArray_ (0, max 1 $ size - 1 + safetyBuffer)
 			withStorableArray lenArray $ \lenPtr ->
@@ -959,8 +974,8 @@ hglGetShaderInfoLog shader = trySize initialSize
 			if size < maxSize && (fromIntegral len) + threshold >= size
 				then trySize (2 * size)
 				else do
-					log <- withStorableArray logArray $ \logPtr -> BS.packCStringLen (logPtr, fromIntegral len)
-					let logStr = map asciiChar . BS.unpack $ log
+					log_ <- withStorableArray logArray $ \logPtr -> BS.packCStringLen (logPtr, fromIntegral len)
+					let logStr = map asciiChar . BS.unpack $ log_
 					return logStr
 		-- bytestring could really use a .UTF8 module, rather than just .Char8.
 		asciiChar :: Word8 -> Char
@@ -972,7 +987,7 @@ hglGetProgramInfoLog program = trySize initialSize
 		initialSize :: Integer
 		initialSize = 4096
 		threshold :: Integer
-		threshold = flip const 3 8
+		threshold = flip const (3 :: Integer) 8
 		safetyBuffer :: Integer
 		safetyBuffer = 64
 		maxSize :: Integer
@@ -982,7 +997,7 @@ hglGetProgramInfoLog program = trySize initialSize
 			let size = min maxSize size_
 
 			let lenLen = 1 :: Integer
-			let z = fromIntegral 0
+			let z = fromIntegral (0 :: Integer)
 			lenArray <- newArray  (0, max 1 $ lenLen - 1 + safetyBuffer) z
 			logArray <- newArray_ (0, max 1 $ size - 1 + safetyBuffer)
 			withStorableArray lenArray $ \lenPtr ->
@@ -994,8 +1009,8 @@ hglGetProgramInfoLog program = trySize initialSize
 			if size < maxSize && (fromIntegral len) + threshold >= size
 				then trySize (2 * size)
 				else do
-					log <- withStorableArray logArray $ \logPtr -> BS.packCStringLen (logPtr, fromIntegral len)
-					let logStr = map asciiChar . BS.unpack $ log
+					log_ <- withStorableArray logArray $ \logPtr -> BS.packCStringLen (logPtr, fromIntegral len)
+					let logStr = map asciiChar . BS.unpack $ log_
 					return logStr
 		-- bytestring could really use a .UTF8 module, rather than just .Char8.
 		asciiChar :: Word8 -> Char
@@ -1336,3 +1351,9 @@ mkGLVertexAttribIPointer index_ size type_ stride offset glio = Fixed $ GLVertex
 
 mkGLVertexAttribLPointer :: GLuint -> GLint -> GLenum -> GLsizei -> Integer -> GLIO -> GLIO
 mkGLVertexAttribLPointer index_ size type_ stride offset glio = Fixed $ GLVertexAttribLPointer index_ size type_ stride offset glio
+
+mkGLEnableVertexArrayAttrib :: GLuint -> GLuint -> GLIO -> GLIO
+mkGLEnableVertexArrayAttrib vaobj index_ glio = Fixed $ GLEnableVertexArrayAttrib vaobj index_ glio
+
+mkGLDisableVertexArrayAttrib :: GLuint -> GLuint -> GLIO -> GLIO
+mkGLDisableVertexArrayAttrib vaobj index_ glio = Fixed $ GLDisableVertexArrayAttrib vaobj index_ glio

@@ -55,6 +55,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglDeleteBuffers,
 		hglNamedBufferData,
 		hglNamedBufferSubData,
+		hglGenVertexArrays,
+		hglDeleteVertexArrays,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -141,7 +143,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGenBuffers,
 		mkGLDeleteBuffers,
 		mkGLNamedBufferData,
-		mkGLNamedBufferSubData
+		mkGLNamedBufferSubData,
+		mkGLGenVertexArrays,
+		mkGLDeleteVertexArrays
 	) where
 
 import Prelude ()
@@ -281,6 +285,9 @@ data GLIOF me =
 
 	| GLNamedBufferData    GLuint         BL.ByteString GLenum me
 	| GLNamedBufferSubData GLuint Integer BL.ByteString        me
+
+	| GLGenVertexArrays    GLsizei  ([GLuint] -> me)
+	| GLDeleteVertexArrays [GLuint] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -384,6 +391,9 @@ instance Functor GLIOF where
 
 	fmap f (GLNamedBufferData    buffer        data_ usage withUnit) = GLNamedBufferData    buffer        data_ usage (f withUnit)
 	fmap f (GLNamedBufferSubData buffer offset data_       withUnit) = GLNamedBufferSubData buffer offset data_       (f withUnit)
+
+	fmap f (GLGenVertexArrays    num   withNames) = GLGenVertexArrays    num   (f . withNames)
+	fmap f (GLDeleteVertexArrays names withUnit)  = GLDeleteVertexArrays names (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -549,6 +559,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLNamedBufferData    _buffer         _data _usage me) -> putMVar mme me >> return y
 		y@( GLNamedBufferSubData _buffer _offset _data        me) -> putMVar mme me >> return y
 
+		_y@(GLGenVertexArrays    num    withNames) -> return $ GLGenVertexArrays num ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
+		y@( GLDeleteVertexArrays _names me)        -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -663,6 +676,9 @@ runGLIOIO (GLDeleteBuffers names glio)      = hglDeleteBuffers names >> glio
 
 runGLIOIO (GLNamedBufferData    buffer        data_ usage glio) = hglNamedBufferData    buffer        data_ usage >> glio
 runGLIOIO (GLNamedBufferSubData buffer offset data_       glio) = hglNamedBufferSubData buffer offset data_       >> glio
+
+runGLIOIO (GLGenVertexArrays    num   withNames) = hglGenVertexArrays    num   >>= withNames
+runGLIOIO (GLDeleteVertexArrays names glio)      = hglDeleteVertexArrays names >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -966,6 +982,20 @@ hglNamedBufferSubData buffer offset data_ = do
 	BS.useAsCStringLen strictCopy $ \(ptr, len) -> do
 		glNamedBufferSubData buffer (fromIntegral offset) (fromIntegral len) (castPtr ptr)
 
+hglGenVertexArrays :: GLsizei -> IO [GLuint]
+hglGenVertexArrays num = do
+	let len = fromIntegral num  :: Integer
+	array_ <- newArray_ (0, num - 1)
+	withStorableArray array_ $ \ptr -> glGenVertexArrays (fromIntegral len) ptr
+	names <- getElems array_
+	return names
+
+hglDeleteVertexArrays :: [GLuint] -> IO ()
+hglDeleteVertexArrays names = do
+	array_ <- newListArray (0 :: Integer, genericLength names - 1) names
+	len    <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glDeleteVertexArrays (fromIntegral len) (castPtr ptr)
+
 -- * GLIO aliases that apply the Fixed wrapper
 
 mkEmptyGLIO :: GLIO
@@ -1222,3 +1252,9 @@ mkGLNamedBufferData buffer data_ usage glio = Fixed $ GLNamedBufferData buffer d
 
 mkGLNamedBufferSubData :: GLuint -> Integer -> BL.ByteString -> GLIO -> GLIO
 mkGLNamedBufferSubData buffer offset data_ glio = Fixed $ GLNamedBufferSubData buffer offset data_ glio
+
+mkGLGenVertexArrays :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
+mkGLGenVertexArrays num withNames = Fixed $ GLGenVertexArrays num withNames
+
+mkGLDeleteVertexArrays :: [GLuint] -> GLIO -> GLIO
+mkGLDeleteVertexArrays names glio = Fixed $ GLDeleteVertexArrays names glio

@@ -145,7 +145,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLNamedBufferData,
 		mkGLNamedBufferSubData,
 		mkGLGenVertexArrays,
-		mkGLDeleteVertexArrays
+		mkGLDeleteVertexArrays,
+		mkGLBindBufferBase,
+		mkGLBindBufferRange
 	) where
 
 import Prelude ()
@@ -288,6 +290,9 @@ data GLIOF me =
 
 	| GLGenVertexArrays    GLsizei  ([GLuint] -> me)
 	| GLDeleteVertexArrays [GLuint] me
+
+	| GLBindBufferBase  GLenum GLuint GLuint                     me
+	| GLBindBufferRange GLenum GLuint GLuint GLintptr GLsizeiptr me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -394,6 +399,9 @@ instance Functor GLIOF where
 
 	fmap f (GLGenVertexArrays    num   withNames) = GLGenVertexArrays    num   (f . withNames)
 	fmap f (GLDeleteVertexArrays names withUnit)  = GLDeleteVertexArrays names (f withUnit)
+
+	fmap f (GLBindBufferBase  target index buffer             withUnit) = GLBindBufferBase  target index buffer             (f withUnit)
+	fmap f (GLBindBufferRange target index buffer offset size withUnit) = GLBindBufferRange target index buffer offset size (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -562,6 +570,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGenVertexArrays    num    withNames) -> return $ GLGenVertexArrays num ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
 		y@( GLDeleteVertexArrays _names me)        -> putMVar mme me >> return y
 
+		y@( GLBindBufferBase  _target _index _buffer               me) -> putMVar mme me >> return y
+		y@( GLBindBufferRange _target _index _buffer _offset _size me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -679,6 +690,9 @@ runGLIOIO (GLNamedBufferSubData buffer offset data_       glio) = hglNamedBuffer
 
 runGLIOIO (GLGenVertexArrays    num   withNames) = hglGenVertexArrays    num   >>= withNames
 runGLIOIO (GLDeleteVertexArrays names glio)      = hglDeleteVertexArrays names >> glio
+
+runGLIOIO (GLBindBufferBase  target index buffer             glio) = glBindBufferBase  target index buffer             >> glio
+runGLIOIO (GLBindBufferRange target index buffer offset size glio) = glBindBufferRange target index buffer offset size >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -1258,3 +1272,9 @@ mkGLGenVertexArrays num withNames = Fixed $ GLGenVertexArrays num withNames
 
 mkGLDeleteVertexArrays :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteVertexArrays names glio = Fixed $ GLDeleteVertexArrays names glio
+
+mkGLBindBufferBase :: GLenum -> GLuint -> GLuint -> GLIO -> GLIO
+mkGLBindBufferBase target index buffer glio = Fixed $ GLBindBufferBase target index buffer glio
+
+mkGLBindBufferRange :: GLenum -> GLuint -> GLuint -> GLintptr -> GLsizeiptr -> GLIO -> GLIO
+mkGLBindBufferRange target index buffer offset size glio = Fixed $ GLBindBufferRange target index buffer offset size glio

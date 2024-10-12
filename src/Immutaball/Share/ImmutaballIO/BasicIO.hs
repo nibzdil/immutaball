@@ -289,7 +289,8 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		_y@(ReadText          path mwithErr withContents) -> return $ ReadText          path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		_y@(ReadTextSync      path mwithErr withContents) -> return $ ReadTextSync      path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		y@( CreateDirectoryIfMissing _path me)            -> putMVar mme me >> return y
-		y@( ForkOS            _os me)                     -> putMVar mme me >> return y
+		--y@( ForkOS            _os me)                     -> putMVar mme me >> return y
+		_y@(ForkOS            os me)                      -> putMVar mme me >> return (JoinBasicIOF $ ForkOS (f os) (PureBasicIOF me))
 
 		_y@(SDLIO sdlio) -> return . SDLIO . unsafeFixSDLIOFTo mme $ const sdlio
 		_y@(GLIO  glio)  -> return . GLIO  . unsafeFixGLIOFTo  mme $ const glio

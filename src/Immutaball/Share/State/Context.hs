@@ -286,6 +286,9 @@ createTexture = proc (((w, h), image), cxtn) -> do
 	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: createTexture: w, h is " ++ show (w, h, image)) ()
 	() <- monadic -< sdlGL1' $ do
+		GLBlendEquationSeparate GL_FUNC_ADD GL_FUNC_ADD ()
+		GLBlendFuncSeparate GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA GL_ONE GL_ZERO ()
+
 		GLEnable GL_TEXTURE_2D ()
 		GLActiveTexture GL_TEXTURE0 ()
 		GLClientActiveTexture GL_TEXTURE0 ()

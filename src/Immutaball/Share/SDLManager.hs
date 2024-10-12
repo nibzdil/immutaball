@@ -103,10 +103,12 @@ sdlGL sdlMgr glioTos =
 	issueSDLCommand sdlMgr (GLSequence glioTos hasDone) $
 	Atomically (takeTMVar hasDone) id
 
--- TODO
 -- | 'sdlGL' variant specialized to a single GLIO.
 sdlGL1 :: SDLManagerHandle -> GLIOF me -> ImmutaballIOF me
-sdlGL1 = error "TODO: unimplemented."
+sdlGL1 sdlMgr glio = unSingleton <$> sdlGLHomogeneous sdlMgr [glio]
+	where
+		unSingleton [me] = me
+		unSingleton _    = error "Internal error: sdlGL1 expected a single result."
 
 -- | Run an ordered GLIO sequence in the SDL manager thread.
 --

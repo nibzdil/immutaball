@@ -51,6 +51,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglGetlUniformiv,
 		hglGetlUniformuiv,
 		hglGetlUniformdv,
+		hglGenBuffers,
+		hglDeleteBuffers,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -133,7 +135,9 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGetlUniformfv,
 		mkGLGetlUniformiv,
 		mkGLGetlUniformuiv,
-		mkGLGetlUniformdv
+		mkGLGetlUniformdv,
+		mkGLGenBuffers,
+		mkGLDeleteBuffers
 	) where
 
 import Prelude ()
@@ -267,6 +271,9 @@ data GLIOF me =
 	| GLGetlUniformiv  GLuint GLint Integer ([GLint]    -> me)
 	| GLGetlUniformuiv GLuint GLint Integer ([GLuint]   -> me)
 	| GLGetlUniformdv  GLuint GLint Integer ([GLdouble] -> me)
+
+	| GLGenBuffers    GLsizei  ([GLuint] -> me)
+	| GLDeleteBuffers [GLuint] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -364,6 +371,9 @@ instance Functor GLIOF where
 	fmap f (GLGetlUniformiv  program location len withOuts) = GLGetlUniformiv  program location len (f . withOuts)
 	fmap f (GLGetlUniformuiv program location len withOuts) = GLGetlUniformuiv program location len (f . withOuts)
 	fmap f (GLGetlUniformdv  program location len withOuts) = GLGetlUniformdv  program location len (f . withOuts)
+
+	fmap f (GLGenBuffers    num   withNames) = GLGenBuffers    num   (f . withNames)
+	fmap f (GLDeleteBuffers names withUnit)  = GLDeleteBuffers names (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -523,6 +533,9 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGetlUniformuiv program location len withOuts) -> return $ GLGetlUniformuiv program location len ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOuts)
 		_y@(GLGetlUniformdv  program location len withOuts) -> return $ GLGetlUniformdv  program location len ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOuts)
 
+		_y@(GLGenBuffers    num    withNames) -> return $ GLGenBuffers num ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
+		y@( GLDeleteBuffers _names me)        -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -631,6 +644,9 @@ runGLIOIO (GLGetlUniformfv  program location len withOuts) = hglGetlUniformfv  p
 runGLIOIO (GLGetlUniformiv  program location len withOuts) = hglGetlUniformiv  program location len >>= withOuts
 runGLIOIO (GLGetlUniformuiv program location len withOuts) = hglGetlUniformuiv program location len >>= withOuts
 runGLIOIO (GLGetlUniformdv  program location len withOuts) = hglGetlUniformdv  program location len >>= withOuts
+
+runGLIOIO (GLGenBuffers    num   withNames) = hglGenBuffers    num   >>= withNames
+runGLIOIO (GLDeleteBuffers names glio)      = hglDeleteBuffers names >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -908,6 +924,20 @@ hglGetProgramInfoLog program = trySize initialSize
 		asciiChar :: Word8 -> Char
 		asciiChar = toEnum . fromEnum
 
+hglGenBuffers :: GLsizei -> IO [GLuint]
+hglGenBuffers num = do
+	let len = fromIntegral num  :: Integer
+	array_ <- newArray_ (0, num - 1)
+	withStorableArray array_ $ \ptr -> glGenBuffers (fromIntegral len) ptr
+	names <- getElems array_
+	return names
+
+hglDeleteBuffers :: [GLuint] -> IO ()
+hglDeleteBuffers names = do
+	array_ <- newListArray (0 :: Integer, genericLength names - 1) names
+	len    <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glDeleteBuffers (fromIntegral len) (castPtr ptr)
+
 -- * GLIO aliases that apply the Fixed wrapper
 
 mkEmptyGLIO :: GLIO
@@ -1152,3 +1182,9 @@ mkGLGetlUniformuiv program location len withOuts = Fixed $ GLGetlUniformuiv prog
 
 mkGLGetlUniformdv :: GLuint -> GLint -> Integer -> ([GLdouble] -> GLIO) -> GLIO
 mkGLGetlUniformdv program location len withOuts = Fixed $ GLGetlUniformdv program location len withOuts
+
+mkGLGenBuffers :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
+mkGLGenBuffers num withNames = Fixed $ GLGenBuffers num withNames
+
+mkGLDeleteBuffers :: [GLuint] -> GLIO -> GLIO
+mkGLDeleteBuffers names glio = Fixed $ GLDeleteBuffers names glio

@@ -27,6 +27,7 @@ import SDL.Event
 import SDL.Video
 
 import Immutaball.Share.ImmutaballIO.GLIO
+import Immutaball.Share.ImmutaballIO.SDLIO
 
 -- Moved from later to fix Template Haskell errors.
 data SDLManagerCommand =
@@ -43,6 +44,7 @@ data SDLManagerCommand =
 	| GLSwapWindow Window (TMVar ())
 	| GLSequence [GLIOFTo] (TMVar ())
 	| GLSequenceValueless [GLIOF ()] (TMVar ())
+	| forall me. GenSDL (SDLIOF me) (TMVar me)
 
 data GLIOFTo = forall me. GLIOFTo { _gliofTo :: (GLIOF me, TMVar me) }
 

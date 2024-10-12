@@ -33,6 +33,7 @@ module Immutaball.Share.SDLManager
 		sdlGL1,
 		sdlGLHomogeneous,
 		sdlGL_,
+		sdl,
 
 		-- * Low level
 		initSDLManager,
@@ -152,6 +153,14 @@ sdlGL_ sdlMgr glios =
 	issueSDLCommand sdlMgr (GLSequenceValueless glios hasDone) $
 	Atomically (takeTMVar hasDone) id
 
+-- | Run an general SDL command in the SDL Manager thread.
+sdl :: SDLManagerHandle -> SDLIOF me -> ImmutaballIOF me
+sdl sdlMgr sdlio =
+	JoinIBIOF . JoinIBIOF .
+	Atomically (newEmptyTMVar) $ \to_ ->
+	issueSDLCommand sdlMgr (GenSDL sdlio to_) $
+	Atomically (takeTMVar to_) id
+
 -- * Low level
 
 -- | Manually start the lifetime of the SDLManager OS thread; the caller will
@@ -208,6 +217,7 @@ sdlManagerThreadContinue sdlMgr =
 			--GLSequence glios          tos -> Fixed $ foldr (\(glio, to_) then_ -> (BasicIBIOF . GLIO $ glio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> Fixed then_) (getFixed $ sdlManagerThreadContinue sdlMgr) (zip glios tos)
 			GLSequence glioTos   hasDone_ -> Fixed $ foldr (\(GLIOFTo (glio, to_)) then_ -> (BasicIBIOF . GLIO $ glio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> Fixed then_) (Atomically (writeTMVar hasDone_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glioTos
 			GLSequenceValueless glios to_ -> Fixed $ foldr (\glio then_ -> (BasicIBIOF . GLIO $ glio) >>= \() -> then_) (Atomically (writeTMVar to_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glios
+			GenSDL sdlio              to_ -> Fixed $ (BasicIBIOF . SDLIO $ sdlio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> sdlManagerThreadContinue sdlMgr
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty

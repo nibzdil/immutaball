@@ -63,7 +63,8 @@ titleGui =
 			_buttonText = "Quit", _buttonRect = Just $ Rect (Vec2 0.45 0.42) (Vec2 0.55 0.46) }
 		-}
 		ButtonWidget $ Button { _buttonWid = PlayButton, _buttonWparent = MenuVstack,
-			_buttonText = "Play", _buttonRect = Just $ Rect (Vec2 (-0.95) (-0.95)) (Vec2 0.95 0.95) }
+			--_buttonText = "Play", _buttonRect = Just $ Rect (Vec2 (-0.95) (-0.95)) (Vec2 0.95 0.95) }
+			_buttonText = "Play", _buttonRect = Just $ Rect (Vec2 (-0.95) (-0.45)) (Vec2 0.95 0.95) }
 		--ButtonWidget $ Button { _buttonWid = QuitButton, _buttonWparent = MenuVstack,
 		--	_buttonText = "Quit", _buttonRect = Just $ Rect (Vec2 0.45 0.42) (Vec2 0.55 0.46) }
 	]

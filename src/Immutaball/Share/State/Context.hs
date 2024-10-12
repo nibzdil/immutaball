@@ -284,7 +284,6 @@ createTexture :: Wire ImmutaballM ((WidthHeightI, BL.ByteString), IBStateContext
 createTexture = proc (((w, h), image), cxtn) -> do
 	(name, cxtnp1) <- newTextureName -< cxtn
 	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: createTexture: w, h is " ++ show (w, h, image)) ()
 	() <- monadic -< sdlGL1' $ do
 		GLEnable GL_BLEND ()
 		GLBlendEquationSeparate GL_FUNC_ADD GL_FUNC_ADD ()

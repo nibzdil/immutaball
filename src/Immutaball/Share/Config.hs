@@ -113,7 +113,7 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgInitialWireWithCxt = Nothing,
 
 	_immutaballFont     = "ttf/DejaVuSans-Bold.ttf",
-	_immutaballFontSize = 12,
+	_immutaballFontSize = 256,
 
 	_sdlManagerStaticConfig = defaultSDLManagerStaticConfig,
 	_glManagerStaticConfig  = defaultGLManagerStaticConfig,

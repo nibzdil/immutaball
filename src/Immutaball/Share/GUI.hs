@@ -330,7 +330,8 @@ guiPaintWidget :: Wire ImmutaballM ((Widget id, M.Map id Double, M.Map id (Rect 
 guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
 	_dt <- differentiate -< t
 	dt <- differentiate -< t
-	offset <- integrate 0 -< 0.01 * dt
+	--offset <- integrate 0 -< 0.01 * dt
+	offset <- ((0.05*) . sin) <$> integrate 0 -< 0.01 * dt
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 	-- TODO: clean up textures; just debugging for now to test what I have so far.
 	-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.

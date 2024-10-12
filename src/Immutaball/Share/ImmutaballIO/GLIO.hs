@@ -158,7 +158,14 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLVertexAttribLPointer,
 		mkGLEnableVertexArrayAttrib,
 		mkGLDisableVertexArrayAttrib,
-		mkGLDrawElements
+		mkGLDrawElements,
+
+		-- * types
+		GLData,
+		glDataToBS,
+		glDataToBL,
+		bsToGLData,
+		blToGLData
 	) where
 
 import Prelude ()
@@ -201,7 +208,7 @@ data GLIOF me =
 	| GLClearColor GLdouble GLdouble GLdouble GLdouble me
 
 	-- | Set a texture.
-	| GLTexImage2D GLenum GLint GLint GLsizei GLsizei GLint GLenum GLenum BL.ByteString me
+	| GLTexImage2D GLenum GLint GLint GLsizei GLsizei GLint GLenum GLenum GLData me
 	-- | Create a texture.
 	| GLGenTextures GLsizei ([GLuint] -> me)
 	-- | Set OpenGL current texture.
@@ -296,8 +303,8 @@ data GLIOF me =
 	| GLGenBuffers    GLsizei  ([GLuint] -> me)
 	| GLDeleteBuffers [GLuint] me
 
-	| GLNamedBufferData    GLuint         BL.ByteString GLenum me
-	| GLNamedBufferSubData GLuint Integer BL.ByteString        me
+	| GLNamedBufferData    GLuint         GLData GLenum me
+	| GLNamedBufferSubData GLuint Integer GLData        me
 
 	| GLGenVertexArrays    GLsizei  ([GLuint] -> me)
 	| GLDeleteVertexArrays [GLuint] me
@@ -753,10 +760,10 @@ runGLIOIO (GLDrawElements mode count indices glio) = hglDrawElements mode count 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
 
-hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> IO ()
+hglTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> GLData -> IO ()
 hglTexImage2D target level internalformat width height border format type_ data_ = do
-	let strictCopy = BL.toStrict data_  -- bytestrings only provides a CString interface to strict.
-	BS.useAsCString strictCopy $ \ptr -> glTexImage2D target level internalformat width height border format type_ (castPtr ptr)
+	let strict = glDataToBS data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCString strict $ \ptr -> glTexImage2D target level internalformat width height border format type_ (castPtr ptr)
 
 hglGenTextures :: GLsizei -> IO [GLuint]
 hglGenTextures numNames = do
@@ -1040,16 +1047,16 @@ hglDeleteBuffers names = do
 	len    <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glDeleteBuffers (fromIntegral len) (castPtr ptr)
 
-hglNamedBufferData :: GLuint -> BL.ByteString -> GLenum -> IO ()
+hglNamedBufferData :: GLuint -> GLData -> GLenum -> IO ()
 hglNamedBufferData buffer data_ usage = do
-	let strictCopy = BL.toStrict data_  -- bytestrings only provides a CString interface for strict.
-	BS.useAsCStringLen strictCopy $ \(ptr, len) -> do
+	let strict = glDataToBS data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCStringLen strict $ \(ptr, len) -> do
 		glNamedBufferData buffer (fromIntegral len) (castPtr ptr) usage
 
-hglNamedBufferSubData :: GLuint -> Integer -> BL.ByteString -> IO ()
+hglNamedBufferSubData :: GLuint -> Integer -> GLData -> IO ()
 hglNamedBufferSubData buffer offset data_ = do
-	let strictCopy = BL.toStrict data_  -- bytestrings only provides a CString interface for strict.
-	BS.useAsCStringLen strictCopy $ \(ptr, len) -> do
+	let strict = glDataToBS data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCStringLen strict $ \(ptr, len) -> do
 		glNamedBufferSubData buffer (fromIntegral offset) (fromIntegral len) (castPtr ptr)
 
 hglGenVertexArrays :: GLsizei -> IO [GLuint]
@@ -1107,7 +1114,7 @@ mkGLClear mask_2 glio = Fixed $ GLClear mask_2 glio
 mkGLClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> GLIO -> GLIO
 mkGLClearColor red green blue alpha glio = Fixed $ GLClearColor red green blue alpha glio
 
-mkGLTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> BL.ByteString -> GLIO -> GLIO
+mkGLTexImage2D :: GLenum -> GLint -> GLint -> GLsizei -> GLsizei -> GLint -> GLenum -> GLenum -> GLData -> GLIO -> GLIO
 mkGLTexImage2D target level internalformat width height border format type_ data_ glio = Fixed $ GLTexImage2D target level internalformat width height border format type_ data_ glio
 
 mkGLGenTextures :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
@@ -1338,10 +1345,10 @@ mkGLGenBuffers num withNames = Fixed $ GLGenBuffers num withNames
 mkGLDeleteBuffers :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteBuffers names glio = Fixed $ GLDeleteBuffers names glio
 
-mkGLNamedBufferData :: GLuint -> BL.ByteString -> GLenum -> GLIO -> GLIO
+mkGLNamedBufferData :: GLuint -> GLData -> GLenum -> GLIO -> GLIO
 mkGLNamedBufferData buffer data_ usage glio = Fixed $ GLNamedBufferData buffer data_ usage glio
 
-mkGLNamedBufferSubData :: GLuint -> Integer -> BL.ByteString -> GLIO -> GLIO
+mkGLNamedBufferSubData :: GLuint -> Integer -> GLData -> GLIO -> GLIO
 mkGLNamedBufferSubData buffer offset data_ glio = Fixed $ GLNamedBufferSubData buffer offset data_ glio
 
 mkGLGenVertexArrays :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
@@ -1376,3 +1383,19 @@ mkGLDisableVertexArrayAttrib vaobj index_ glio = Fixed $ GLDisableVertexArrayAtt
 
 mkGLDrawElements :: GLenum -> GLsizei -> [GLuint] -> GLIO -> GLIO
 mkGLDrawElements mode count indices glio = Fixed $ GLDrawElements mode count indices glio
+
+-- * types
+
+type GLData = BS.ByteString
+
+glDataToBS :: GLData -> BS.ByteString
+glDataToBS = id
+
+glDataToBL :: GLData -> BL.ByteString
+glDataToBL = BL.fromStrict
+
+bsToGLData :: BS.ByteString -> GLData
+bsToGLData = id
+
+blToGLData :: BL.ByteString -> GLData
+blToGLData = BL.toStrict

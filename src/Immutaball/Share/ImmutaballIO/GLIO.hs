@@ -113,7 +113,19 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGetShaderiv,
 		mkGLGetProgramiv,
 		mkGLGetShaderInfoLog,
-		mkGLGetProgramInfoLog
+		mkGLGetProgramInfoLog,
+		mkGLUniform1f,
+		mkGLUniform2f,
+		mkGLUniform3f,
+		mkGLUniform4f,
+		mkGLUniform1i,
+		mkGLUniform2i,
+		mkGLUniform3i,
+		mkGLUniform4i,
+		mkGLUniform1ui,
+		mkGLUniform2ui,
+		mkGLUniform3ui,
+		mkGLUniform4ui
 	) where
 
 import Prelude ()
@@ -228,6 +240,19 @@ data GLIOF me =
 	| GLGetProgramiv      GLuint GLenum (GLint  -> me)
 	| GLGetShaderInfoLog  GLuint        (String -> me)
 	| GLGetProgramInfoLog GLuint        (String -> me)
+
+	| GLUniform1f  GLint GLfloat                                me
+	| GLUniform2f  GLint GLfloat GLfloat                        me
+	| GLUniform3f  GLint GLfloat GLfloat GLfloat                me
+	| GLUniform4f  GLint GLfloat GLfloat GLfloat GLfloat        me
+	| GLUniform1i  GLint GLint                                  me
+	| GLUniform2i  GLint GLint   GLint                          me
+	| GLUniform3i  GLint GLint   GLint   GLint                  me
+	| GLUniform4i  GLint GLint   GLint   GLint   GLint          me
+	| GLUniform1ui GLint GLuint                                 me
+	| GLUniform2ui GLint GLuint  GLuint                         me
+	| GLUniform3ui GLint GLuint  GLuint  GLuint                 me
+	| GLUniform4ui GLint GLuint  GLuint  GLuint  GLuint         me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -307,6 +332,19 @@ instance Functor GLIOF where
 	fmap f (GLGetProgramiv      program pname withOut) = GLGetProgramiv      program pname (f . withOut)
 	fmap f (GLGetShaderInfoLog  shader        withLog) = GLGetShaderInfoLog  shader        (f . withLog)
 	fmap f (GLGetProgramInfoLog program       withLog) = GLGetProgramInfoLog program       (f . withLog)
+
+	fmap f (GLUniform1f  location v0          withUnit) = GLUniform1f  location v0          (f withUnit)
+	fmap f (GLUniform2f  location v0 v1       withUnit) = GLUniform2f  location v0 v1       (f withUnit)
+	fmap f (GLUniform3f  location v0 v1 v2    withUnit) = GLUniform3f  location v0 v1 v2    (f withUnit)
+	fmap f (GLUniform4f  location v0 v1 v2 v3 withUnit) = GLUniform4f  location v0 v1 v2 v3 (f withUnit)
+	fmap f (GLUniform1i  location v0          withUnit) = GLUniform1i  location v0          (f withUnit)
+	fmap f (GLUniform2i  location v0 v1       withUnit) = GLUniform2i  location v0 v1       (f withUnit)
+	fmap f (GLUniform3i  location v0 v1 v2    withUnit) = GLUniform3i  location v0 v1 v2    (f withUnit)
+	fmap f (GLUniform4i  location v0 v1 v2 v3 withUnit) = GLUniform4i  location v0 v1 v2 v3 (f withUnit)
+	fmap f (GLUniform1ui location v0          withUnit) = GLUniform1ui location v0          (f withUnit)
+	fmap f (GLUniform2ui location v0 v1       withUnit) = GLUniform2ui location v0 v1       (f withUnit)
+	fmap f (GLUniform3ui location v0 v1 v2    withUnit) = GLUniform3ui location v0 v1 v2    (f withUnit)
+	fmap f (GLUniform4ui location v0 v1 v2 v3 withUnit) = GLUniform4ui location v0 v1 v2 v3 (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -448,6 +486,19 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGetShaderInfoLog  shader        withLog) -> return $ GLGetShaderInfoLog  shader        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withLog)
 		_y@(GLGetProgramInfoLog program       withLog) -> return $ GLGetProgramInfoLog program       ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withLog)
 
+		y@( GLUniform1f  _location _v0             me) -> putMVar mme me >> return y
+		y@( GLUniform2f  _location _v0 _v1         me) -> putMVar mme me >> return y
+		y@( GLUniform3f  _location _v0 _v1 _v2     me) -> putMVar mme me >> return y
+		y@( GLUniform4f  _location _v0 _v1 _v2 _v3 me) -> putMVar mme me >> return y
+		y@( GLUniform1i  _location _v0             me) -> putMVar mme me >> return y
+		y@( GLUniform2i  _location _v0 _v1         me) -> putMVar mme me >> return y
+		y@( GLUniform3i  _location _v0 _v1 _v2     me) -> putMVar mme me >> return y
+		y@( GLUniform4i  _location _v0 _v1 _v2 _v3 me) -> putMVar mme me >> return y
+		y@( GLUniform1ui _location _v0             me) -> putMVar mme me >> return y
+		y@( GLUniform2ui _location _v0 _v1         me) -> putMVar mme me >> return y
+		y@( GLUniform3ui _location _v0 _v1 _v2     me) -> putMVar mme me >> return y
+		y@( GLUniform4ui _location _v0 _v1 _v2 _v3 me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -538,6 +589,19 @@ runGLIOIO (GLGetShaderiv       shader  pname withOut) = hglGetShaderiv       sha
 runGLIOIO (GLGetProgramiv      program pname withOut) = hglGetProgramiv      program pname >>= withOut
 runGLIOIO (GLGetShaderInfoLog  shader        withLog) = hglGetShaderInfoLog  shader        >>= withLog
 runGLIOIO (GLGetProgramInfoLog program       withLog) = hglGetProgramInfoLog program       >>= withLog
+
+runGLIOIO (GLUniform1f  location v0          glio) = glUniform1f  location v0          >> glio
+runGLIOIO (GLUniform2f  location v0 v1       glio) = glUniform2f  location v0 v1       >> glio
+runGLIOIO (GLUniform3f  location v0 v1 v2    glio) = glUniform3f  location v0 v1 v2    >> glio
+runGLIOIO (GLUniform4f  location v0 v1 v2 v3 glio) = glUniform4f  location v0 v1 v2 v3 >> glio
+runGLIOIO (GLUniform1i  location v0          glio) = glUniform1i  location v0          >> glio
+runGLIOIO (GLUniform2i  location v0 v1       glio) = glUniform2i  location v0 v1       >> glio
+runGLIOIO (GLUniform3i  location v0 v1 v2    glio) = glUniform3i  location v0 v1 v2    >> glio
+runGLIOIO (GLUniform4i  location v0 v1 v2 v3 glio) = glUniform4i  location v0 v1 v2 v3 >> glio
+runGLIOIO (GLUniform1ui location v0          glio) = glUniform1ui location v0          >> glio
+runGLIOIO (GLUniform2ui location v0 v1       glio) = glUniform2ui location v0 v1       >> glio
+runGLIOIO (GLUniform3ui location v0 v1 v2    glio) = glUniform3ui location v0 v1 v2    >> glio
+runGLIOIO (GLUniform4ui location v0 v1 v2 v3 glio) = glUniform4ui location v0 v1 v2 v3 >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -971,3 +1035,39 @@ mkGLGetShaderInfoLog shader withLog = Fixed $ GLGetShaderInfoLog shader withLog
 
 mkGLGetProgramInfoLog :: GLuint -> (String -> GLIO) -> GLIO
 mkGLGetProgramInfoLog program withLog = Fixed $ GLGetProgramInfoLog program withLog
+
+mkGLUniform1f :: GLint -> GLfloat -> GLIO -> GLIO
+mkGLUniform1f location v0 glio = Fixed $ GLUniform1f location v0 glio
+
+mkGLUniform2f :: GLint -> GLfloat -> GLfloat -> GLIO -> GLIO
+mkGLUniform2f location v0 v1 glio = Fixed $ GLUniform2f location v0 v1 glio
+
+mkGLUniform3f :: GLint -> GLfloat -> GLfloat -> GLfloat -> GLIO -> GLIO
+mkGLUniform3f location v0 v1 v2 glio = Fixed $ GLUniform3f location v0 v1 v2 glio
+
+mkGLUniform4f :: GLint -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLIO -> GLIO
+mkGLUniform4f location v0 v1 v2 v3 glio = Fixed $ GLUniform4f location v0 v1 v2 v3 glio
+
+mkGLUniform1i :: GLint -> GLint -> GLIO -> GLIO
+mkGLUniform1i location v0 glio = Fixed $ GLUniform1i location v0 glio
+
+mkGLUniform2i :: GLint -> GLint -> GLint -> GLIO -> GLIO
+mkGLUniform2i location v0 v1 glio = Fixed $ GLUniform2i location v0 v1 glio
+
+mkGLUniform3i :: GLint -> GLint -> GLint -> GLint -> GLIO -> GLIO
+mkGLUniform3i location v0 v1 v2 glio = Fixed $ GLUniform3i location v0 v1 v2 glio
+
+mkGLUniform4i :: GLint -> GLint -> GLint -> GLint -> GLint -> GLIO -> GLIO
+mkGLUniform4i location v0 v1 v2 v3 glio = Fixed $ GLUniform4i location v0 v1 v2 v3 glio
+
+mkGLUniform1ui :: GLint -> GLuint -> GLIO -> GLIO
+mkGLUniform1ui location v0 glio = Fixed $ GLUniform1ui location v0 glio
+
+mkGLUniform2ui :: GLint -> GLuint -> GLuint -> GLIO -> GLIO
+mkGLUniform2ui location v0 v1 glio = Fixed $ GLUniform2ui location v0 v1 glio
+
+mkGLUniform3ui :: GLint -> GLuint -> GLuint -> GLuint -> GLIO -> GLIO
+mkGLUniform3ui location v0 v1 v2 glio = Fixed $ GLUniform3ui location v0 v1 v2 glio
+
+mkGLUniform4ui :: GLint -> GLuint -> GLuint -> GLuint -> GLuint -> GLIO -> GLIO
+mkGLUniform4ui location v0 v1 v2 v3 glio = Fixed $ GLUniform4ui location v0 v1 v2 v3 glio

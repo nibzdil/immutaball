@@ -60,6 +60,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglVertexAttribPointer,
 		hglVertexAttribIPointer,
 		hglVertexAttribLPointer,
+		hglDrawElements,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -156,7 +157,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLVertexAttribIPointer,
 		mkGLVertexAttribLPointer,
 		mkGLEnableVertexArrayAttrib,
-		mkGLDisableVertexArrayAttrib
+		mkGLDisableVertexArrayAttrib,
+		mkGLDrawElements
 	) where
 
 import Prelude ()
@@ -312,6 +314,8 @@ data GLIOF me =
 	| GLEnableVertexArrayAttrib  GLuint GLuint me
 	| GLDisableVertexArrayAttrib GLuint GLuint me
 
+	| GLDrawElements GLenum GLsizei [GLuint] me
+
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -430,6 +434,8 @@ instance Functor GLIOF where
 
 	fmap f (GLEnableVertexArrayAttrib  vaobj index_ withUnit) = GLEnableVertexArrayAttrib  vaobj index_ (f withUnit)
 	fmap f (GLDisableVertexArrayAttrib vaobj index_ withUnit) = GLDisableVertexArrayAttrib vaobj index_ (f withUnit)
+
+	fmap f (GLDrawElements mode count indices withUnit) = GLDrawElements mode count indices (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -610,6 +616,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLEnableVertexArrayAttrib  _vaobj _index me) -> putMVar mme me >> return y
 		y@( GLDisableVertexArrayAttrib _vaobj _index me) -> putMVar mme me >> return y
 
+		y@( GLDrawElements _mode _count _indices me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -739,6 +747,8 @@ runGLIOIO (GLVertexAttribLPointer index_ size type_            stride offset gli
 
 runGLIOIO (GLEnableVertexArrayAttrib  vaobj index_ glio) = glEnableVertexArrayAttrib  vaobj index_ >> glio
 runGLIOIO (GLDisableVertexArrayAttrib vaobj index_ glio) = glDisableVertexArrayAttrib vaobj index_ >> glio
+
+runGLIOIO (GLDrawElements mode count indices glio) = hglDrawElements mode count indices >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -1071,6 +1081,12 @@ hglVertexAttribLPointer index_ size type_ stride offset_ = do
 	let offset = castPtr $ nullPtr `plusPtr` (fromIntegral offset_)
 	glVertexAttribLPointer index_ size type_ stride offset
 
+hglDrawElements :: GLenum -> GLsizei -> [GLuint] -> IO ()
+hglDrawElements mode count indices = do
+	array_ <- newListArray (0 :: Integer, genericLength indices - 1) indices
+	len    <- getNumElements array_
+	withStorableArray array_ $ \ptr -> glDrawElements mode (fromIntegral len) GL_UNSIGNED_INT (castPtr ptr)
+
 -- * GLIO aliases that apply the Fixed wrapper
 
 mkEmptyGLIO :: GLIO
@@ -1357,3 +1373,6 @@ mkGLEnableVertexArrayAttrib vaobj index_ glio = Fixed $ GLEnableVertexArrayAttri
 
 mkGLDisableVertexArrayAttrib :: GLuint -> GLuint -> GLIO -> GLIO
 mkGLDisableVertexArrayAttrib vaobj index_ glio = Fixed $ GLDisableVertexArrayAttrib vaobj index_ glio
+
+mkGLDrawElements :: GLenum -> GLsizei -> [GLuint] -> GLIO -> GLIO
+mkGLDrawElements mode count indices glio = Fixed $ GLDrawElements mode count indices glio

@@ -47,6 +47,10 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglGetProgramiv,
 		hglGetShaderInfoLog,
 		hglGetProgramInfoLog,
+		hglGetlUniformfv,
+		hglGetlUniformiv,
+		hglGetlUniformuiv,
+		hglGetlUniformdv,
 
 		-- * GLIO aliases that apply the Fixed wrapper
 		mkEmptyGLIO,
@@ -125,7 +129,11 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLUniform1ui,
 		mkGLUniform2ui,
 		mkGLUniform3ui,
-		mkGLUniform4ui
+		mkGLUniform4ui,
+		mkGLGetlUniformfv,
+		mkGLGetlUniformiv,
+		mkGLGetlUniformuiv,
+		mkGLGetlUniformdv
 	) where
 
 import Prelude ()
@@ -136,6 +144,7 @@ import Data.List
 import Data.Word
 import Foreign.C.Types
 import Foreign.Ptr
+import Foreign.Storable (sizeOf)
 
 import Graphics.GL.Compatibility45
 --import Graphics.GL.Core45
@@ -253,6 +262,11 @@ data GLIOF me =
 	| GLUniform2ui GLint GLuint  GLuint                         me
 	| GLUniform3ui GLint GLuint  GLuint  GLuint                 me
 	| GLUniform4ui GLint GLuint  GLuint  GLuint  GLuint         me
+
+	| GLGetlUniformfv  GLuint GLint Integer ([GLfloat]  -> me)
+	| GLGetlUniformiv  GLuint GLint Integer ([GLint]    -> me)
+	| GLGetlUniformuiv GLuint GLint Integer ([GLuint]   -> me)
+	| GLGetlUniformdv  GLuint GLint Integer ([GLdouble] -> me)
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -345,6 +359,11 @@ instance Functor GLIOF where
 	fmap f (GLUniform2ui location v0 v1       withUnit) = GLUniform2ui location v0 v1       (f withUnit)
 	fmap f (GLUniform3ui location v0 v1 v2    withUnit) = GLUniform3ui location v0 v1 v2    (f withUnit)
 	fmap f (GLUniform4ui location v0 v1 v2 v3 withUnit) = GLUniform4ui location v0 v1 v2 v3 (f withUnit)
+
+	fmap f (GLGetlUniformfv  program location len withOuts) = GLGetlUniformfv  program location len (f . withOuts)
+	fmap f (GLGetlUniformiv  program location len withOuts) = GLGetlUniformiv  program location len (f . withOuts)
+	fmap f (GLGetlUniformuiv program location len withOuts) = GLGetlUniformuiv program location len (f . withOuts)
+	fmap f (GLGetlUniformdv  program location len withOuts) = GLGetlUniformdv  program location len (f . withOuts)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -499,6 +518,11 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLUniform3ui _location _v0 _v1 _v2     me) -> putMVar mme me >> return y
 		y@( GLUniform4ui _location _v0 _v1 _v2 _v3 me) -> putMVar mme me >> return y
 
+		_y@(GLGetlUniformfv  program location len withOuts) -> return $ GLGetlUniformfv  program location len ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOuts)
+		_y@(GLGetlUniformiv  program location len withOuts) -> return $ GLGetlUniformiv  program location len ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOuts)
+		_y@(GLGetlUniformuiv program location len withOuts) -> return $ GLGetlUniformuiv program location len ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOuts)
+		_y@(GLGetlUniformdv  program location len withOuts) -> return $ GLGetlUniformdv  program location len ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withOuts)
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -602,6 +626,11 @@ runGLIOIO (GLUniform1ui location v0          glio) = glUniform1ui location v0   
 runGLIOIO (GLUniform2ui location v0 v1       glio) = glUniform2ui location v0 v1       >> glio
 runGLIOIO (GLUniform3ui location v0 v1 v2    glio) = glUniform3ui location v0 v1 v2    >> glio
 runGLIOIO (GLUniform4ui location v0 v1 v2 v3 glio) = glUniform4ui location v0 v1 v2 v3 >> glio
+
+runGLIOIO (GLGetlUniformfv  program location len withOuts) = hglGetlUniformfv  program location len >>= withOuts
+runGLIOIO (GLGetlUniformiv  program location len withOuts) = hglGetlUniformiv  program location len >>= withOuts
+runGLIOIO (GLGetlUniformuiv program location len withOuts) = hglGetlUniformuiv program location len >>= withOuts
+runGLIOIO (GLGetlUniformdv  program location len withOuts) = hglGetlUniformdv  program location len >>= withOuts
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -762,6 +791,46 @@ hglGetProgramiv program pname = do
 		([])  -> error "Internal error: hglGetProgramiv: empty array result."
 		(x:_) -> x
 	return out
+
+hglGetlUniformfv :: GLuint -> GLint -> Integer -> IO [GLfloat]
+hglGetlUniformfv program location len_ = do
+	let len = max 0 $ len_
+	let safetyBuffer = 16
+	let z = 0.0 :: GLfloat  -- Also specifies the array value type.
+	outsArray <- newArray (0, len - 1 + safetyBuffer) z
+	withStorableArray outsArray $ \outsPtr -> glGetnUniformfv program location (fromIntegral $ len * (fromIntegral $ sizeOf z)) outsPtr
+	outs <- genericTake len <$> getElems outsArray
+	return outs
+
+hglGetlUniformiv :: GLuint -> GLint -> Integer -> IO [GLint]
+hglGetlUniformiv program location len_ = do
+	let len = max 0 $ len_
+	let safetyBuffer = 16
+	let z = 0 :: GLint  -- Also specifies the array value type.
+	outsArray <- newArray (0, len - 1 + safetyBuffer) z
+	withStorableArray outsArray $ \outsPtr -> glGetnUniformiv program location (fromIntegral $ len * (fromIntegral $ sizeOf z)) outsPtr
+	outs <- genericTake len <$> getElems outsArray
+	return outs
+
+hglGetlUniformuiv :: GLuint -> GLint -> Integer -> IO [GLuint]
+hglGetlUniformuiv program location len_ = do
+	let len = max 0 $ len_
+	let safetyBuffer = 16
+	let z = 0 :: GLuint  -- Also specifies the array value type.
+	outsArray <- newArray (0, len - 1 + safetyBuffer) z
+	withStorableArray outsArray $ \outsPtr -> glGetnUniformuiv program location (fromIntegral $ len * (fromIntegral $ sizeOf z)) outsPtr
+	outs <- genericTake len <$> getElems outsArray
+	return outs
+
+hglGetlUniformdv :: GLuint -> GLint -> Integer -> IO [GLdouble]
+hglGetlUniformdv program location len_ = do
+	let len = max 0 $ len_
+	let safetyBuffer = 16
+	let z = 0.0 :: GLdouble  -- Also specifies the array value type.
+	outsArray <- newArray (0, len - 1 + safetyBuffer) z
+	withStorableArray outsArray $ \outsPtr -> glGetnUniformdv program location (fromIntegral $ len * (fromIntegral $ sizeOf z)) outsPtr
+	outs <- genericTake len <$> getElems outsArray
+	return outs
 
 -- | glGetShaderInfoLog.
 --
@@ -1071,3 +1140,15 @@ mkGLUniform3ui location v0 v1 v2 glio = Fixed $ GLUniform3ui location v0 v1 v2 g
 
 mkGLUniform4ui :: GLint -> GLuint -> GLuint -> GLuint -> GLuint -> GLIO -> GLIO
 mkGLUniform4ui location v0 v1 v2 v3 glio = Fixed $ GLUniform4ui location v0 v1 v2 v3 glio
+
+mkGLGetlUniformfv :: GLuint -> GLint -> Integer -> ([GLfloat] -> GLIO) -> GLIO
+mkGLGetlUniformfv program location len withOuts = Fixed $ GLGetlUniformfv program location len withOuts
+
+mkGLGetlUniformiv :: GLuint -> GLint -> Integer -> ([GLint] -> GLIO) -> GLIO
+mkGLGetlUniformiv program location len withOuts = Fixed $ GLGetlUniformiv program location len withOuts
+
+mkGLGetlUniformuiv :: GLuint -> GLint -> Integer -> ([GLuint] -> GLIO) -> GLIO
+mkGLGetlUniformuiv program location len withOuts = Fixed $ GLGetlUniformuiv program location len withOuts
+
+mkGLGetlUniformdv :: GLuint -> GLint -> Integer -> ([GLdouble] -> GLIO) -> GLIO
+mkGLGetlUniformdv program location len withOuts = Fixed $ GLGetlUniformdv program location len withOuts

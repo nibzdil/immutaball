@@ -41,6 +41,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
+import Control.Monad
 import Data.Bits
 import Data.Maybe
 
@@ -289,6 +290,8 @@ createTexture = proc (((w, h), image), cxtn) -> do
 		GLClientActiveTexture GL_TEXTURE0 ()
 		GLBindTexture GL_TEXTURE_2D name ()
 		GLTexImage2D GL_TEXTURE_2D 0 GL_RGBA (fromIntegral w) (fromIntegral h) 0 GL_RGBA GL_UNSIGNED_BYTE image ()
+		when (cxtnp1^.ibNeverballrc.mipmap) $ do
+			GLGenerateMipmap name ()
 	returnA -< (name, cxtnp1)
 
 -- | This also frees the texture, not just the name.

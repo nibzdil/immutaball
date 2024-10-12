@@ -34,6 +34,8 @@ data GLManagerCommand =
 	-- Note: individual valueless queue commands are not required to run in
 	-- parallel.
 	| GLQueueValueless [GLIOF ()]
+	-- TODO: support general GLIOs like SDLManager does.  If I'm not using this
+	-- right now because of SDL limitations, I might not bother at the moment.
 
 -- | The inner fields and lenses are internal (low-level).
 data GLManagerHandle = GLManagerHandle {

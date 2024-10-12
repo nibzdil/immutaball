@@ -147,7 +147,8 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGenVertexArrays,
 		mkGLDeleteVertexArrays,
 		mkGLBindBufferBase,
-		mkGLBindBufferRange
+		mkGLBindBufferRange,
+		mkGLBindVertexArray
 	) where
 
 import Prelude ()
@@ -293,6 +294,8 @@ data GLIOF me =
 
 	| GLBindBufferBase  GLenum GLuint GLuint                     me
 	| GLBindBufferRange GLenum GLuint GLuint GLintptr GLsizeiptr me
+
+	| GLBindVertexArray GLuint me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -402,6 +405,8 @@ instance Functor GLIOF where
 
 	fmap f (GLBindBufferBase  target index buffer             withUnit) = GLBindBufferBase  target index buffer             (f withUnit)
 	fmap f (GLBindBufferRange target index buffer offset size withUnit) = GLBindBufferRange target index buffer offset size (f withUnit)
+
+	fmap f (GLBindVertexArray array withUnit) = GLBindVertexArray array (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -573,6 +578,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLBindBufferBase  _target _index _buffer               me) -> putMVar mme me >> return y
 		y@( GLBindBufferRange _target _index _buffer _offset _size me) -> putMVar mme me >> return y
 
+		y@( GLBindVertexArray _array me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -693,6 +700,8 @@ runGLIOIO (GLDeleteVertexArrays names glio)      = hglDeleteVertexArrays names >
 
 runGLIOIO (GLBindBufferBase  target index buffer             glio) = glBindBufferBase  target index buffer             >> glio
 runGLIOIO (GLBindBufferRange target index buffer offset size glio) = glBindBufferRange target index buffer offset size >> glio
+
+runGLIOIO (GLBindVertexArray array glio) = glBindVertexArray array >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -1278,3 +1287,6 @@ mkGLBindBufferBase target index buffer glio = Fixed $ GLBindBufferBase target in
 
 mkGLBindBufferRange :: GLenum -> GLuint -> GLuint -> GLintptr -> GLsizeiptr -> GLIO -> GLIO
 mkGLBindBufferRange target index buffer offset size glio = Fixed $ GLBindBufferRange target index buffer offset size glio
+
+mkGLBindVertexArray :: GLuint -> GLIO -> GLIO
+mkGLBindVertexArray array glio = Fixed $ GLBindVertexArray array glio

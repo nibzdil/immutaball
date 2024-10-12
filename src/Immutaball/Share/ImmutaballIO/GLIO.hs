@@ -44,6 +44,10 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglDeleteProgramPipelines,
 
 		-- * GLIO aliases that apply the Fixed wrapper
+		mkEmptyGLIO,
+		mkPureGLIO,
+		mkUnfixGLIO,
+		mkJoinGLIO,
 		mkGLClear,
 		mkGLClearColor,
 		mkGLTexImage2D,
@@ -103,6 +107,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Monad.Fix
 import Data.List
 import Data.Word
 import Foreign.C.Types
@@ -129,7 +134,12 @@ import System.IO.Unsafe (unsafePerformIO)
 
 type GLIO = Fixed GLIOF
 data GLIOF me =
-	  GLClear GLbitfield me
+	  EmptyGLIOF
+	| PureGLIOF me
+	| UnfixGLIOF (GLIOF me)
+	| JoinGLIOF (GLIOF (GLIOF me))
+
+	| GLClear GLbitfield me
 	| GLClearColor GLdouble GLdouble GLdouble GLdouble me
 
 	-- | Set a texture.
@@ -196,6 +206,12 @@ data GLIOF me =
 	| GLDeleteProgramPipelines [GLuint] me
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
+
+	fmap _f   (EmptyGLIOF)      = EmptyGLIOF
+	fmap  f   (PureGLIOF a)     = PureGLIOF (f a)
+	fmap  f   (UnfixGLIOF glio) = UnfixGLIOF (f <$> glio)
+	fmap  f   (JoinGLIOF glio)  = JoinGLIOF (fmap f <$> glio)
+
 	fmap f (GLClear      mask_2               withUnit) = GLClear      mask_2               (f withUnit)
 	fmap f (GLClearColor red green blue alpha withUnit) = GLClearColor red green blue alpha (f withUnit)
 
@@ -271,6 +287,7 @@ instance Traversable SDLIOF where
 	traverse traversal (SDLWithInit subsystems sdlio) = pure SDLWithInit <*> pure subsystems <*> traversal sdlio
 -}
 
+
 -- * mfix
 
 data FixGLIOException = forall e. Exception e => FixGLIOException e
@@ -317,6 +334,13 @@ unsafeFixGLIOFTo :: MVar me -> (me -> GLIOF me) -> GLIOF me
 unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixGLIOException)
 	case f me_ of
+		_y@(EmptyGLIOF)        -> throwIO EmptyFixGLIOException
+		y@(PureGLIOF a)        -> putMVar mme a >> return y
+		_y@(UnfixGLIOF glio)   -> return . UnfixGLIOF . unsafeFixGLIOFTo mme $ const glio
+		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.
+		-- (No branching GLIOFs currently.  So proceed to the final JoinGLIOF case.)
+		_y@(JoinGLIOF glio)    -> return $ JoinGLIOF (unsafeFixGLIOFTo mme . const <$> glio)
+
 		y@( GLClear      _mask                    me) -> putMVar mme me >> return y
 		y@( GLClearColor _red _green _blue _alpha me) -> putMVar mme me >> return y
 
@@ -380,9 +404,25 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGenProgramPipelines numNames                withNames) -> return $ GLGenProgramPipelines numNames ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
 		y@( GLDeleteProgramPipelines _pipelines           me)        -> putMVar mme me >> return y
 
+instance Applicative GLIOF where
+	pure = PureGLIOF
+	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
+instance Monad GLIOF where
+	return = pure
+	m >>= f = JoinGLIOF $ f <$> m
+instance MonadFix GLIOF where
+	mfix :: (a -> GLIOF a) -> GLIOF a
+	mfix = fixGLIOF
+
 -- * Runners
 
 runGLIOIO :: GLIOF (IO ()) -> IO ()
+
+runGLIOIO (EmptyGLIOF)      = return ()
+runGLIOIO (PureGLIOF a)     = a
+runGLIOIO (UnfixGLIOF glio) = runGLIOIO glio
+runGLIOIO (JoinGLIOF glio)  = runGLIOIO $ runGLIOIO <$> glio
+
 runGLIOIO (GLClear          mask_2               glio) = glClear       mask_2               >> glio
 runGLIOIO (GLClearColor     red green blue alpha glio) = hglClearColor red green blue alpha >> glio
 runGLIOIO (GLTexImage2D     target level internalformat width height border format type_ data_ glio) = hglTexImage2D target level internalformat width height border format type_ data_ >> glio
@@ -565,6 +605,18 @@ hglDeleteProgramPipelines pipelines = do
 	withStorableArray array_ $ \ptr -> glDeleteProgramPipelines (fromIntegral len) (castPtr ptr)
 
 -- * GLIO aliases that apply the Fixed wrapper
+
+mkEmptyGLIO :: GLIO
+mkEmptyGLIO = Fixed $ EmptyGLIOF
+
+mkPureGLIO :: GLIO -> GLIO
+mkPureGLIO glio = Fixed $ PureGLIOF glio
+
+mkUnfixGLIO :: GLIO -> GLIO
+mkUnfixGLIO glio = Fixed $ UnfixGLIOF (getFixed glio)
+
+mkJoinGLIO :: GLIO -> GLIO
+mkJoinGLIO glio = Fixed $ JoinGLIOF (getFixed <$> getFixed glio)
 
 mkGLClear :: GLbitfield -> GLIO -> GLIO
 mkGLClear mask_2 glio = Fixed $ GLClear mask_2 glio

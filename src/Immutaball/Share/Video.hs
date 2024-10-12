@@ -35,4 +35,5 @@ reverseRowsImage ((w, _h), image) = glImage
 		rows = withRemaining bytes
 		withRemaining :: [Word8] -> [[Word8]]
 		withRemaining [] = []
-		withRemaining xs = genericTake w xs : withRemaining (genericDrop w xs)
+		withRemaining xs = genericTake row xs : withRemaining (genericDrop row xs)
+		row = 4 * w

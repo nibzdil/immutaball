@@ -10,10 +10,12 @@
 module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
-			ibSDLGLContext, ibSDLFont, ibGLTextureNames, ibGLTextTextures,
+			ibSDLGLContext, ibSDLFont, ibShader, ibGLTextureNames,
+			ibGLTextTextures,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
+		requireShader,
 		requireFont,
 		requireGLTextureNames,
 		requireGLTextTextures,
@@ -85,6 +87,7 @@ data IBStateContext = IBStateContext {
 	_ibSDLWindow :: Maybe (SDL.Window),
 	_ibSDLGLContext :: Maybe (SDL.GLContext),
 	_ibSDLFont :: Maybe (SDL.Font.Font),
+	_ibShader :: Maybe (TMVar ImmutaballShaderHandle),
 
 	-- | Used, freed.
 	_ibGLTextureNames :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
@@ -101,6 +104,7 @@ initialStateCxt cxt = IBStateContext {
 	_ibSDLWindow      = Nothing,
 	_ibSDLGLContext   = Nothing,
 	_ibSDLFont        = Nothing,
+	_ibShader         = Nothing,
 	_ibGLTextureNames = Nothing,
 	_ibGLTextTextures = Nothing
 }
@@ -143,6 +147,16 @@ requireVideo = proc cxt0 -> do
 		sdlNeedsSpecialThread :: Bool
 		sdlNeedsSpecialThread = True
 
+requireShader :: Wire ImmutaballM IBStateContext (ImmutaballShaderHandle, IBStateContext)
+requireShader = proc cxt0 -> do
+	case (cxt0^.ibShader) of
+		Just mshader -> monadic *** id -< (liftIBIO $ Atomically (readTMVar mshader) id, cxt0)
+		Nothing -> do
+			mshader <- monadic -< liftIBIO $ sdlCreateImmutaballShader (cxt0^.ibContext.ibSDLManagerHandle)
+			let cxt1 = cxt0 & (ibShader.~Just mshader)
+			shader <- monadic -< liftIBIO $ Atomically (readTMVar mshader) id
+			returnA -< (shader, cxt1)
+
 requireFont :: Wire ImmutaballM IBStateContext (SDL.Font.Font, IBStateContext)
 requireFont = proc cxt0 -> do
 	case (cxt0^.ibSDLFont) of
@@ -183,7 +197,7 @@ requireGLTextTextures = proc cxt0 -> do
 			returnA -< (glTextTextures, cxt1)
 
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
-requireMisc = snd <$> requireGLTextTextures <<< snd <$> requireGLTextureNames <<< snd <$> requireFont <<< id
+requireMisc = snd <$> requireShader <<< snd <$> requireGLTextTextures <<< snd <$> requireGLTextureNames <<< snd <$> requireFont <<< id
 
 -- | Also handles common set-up tasks like clearing the color for rendering.
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext

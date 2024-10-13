@@ -14,6 +14,7 @@ module Immutaball.Share.Video
 		-- * Shader: high level
 		withImmutaballShader,
 		sdlCreateImmutaballShader,
+		sdlCreateImmutaballShaderWith,
 
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
@@ -103,6 +104,11 @@ sdlCreateImmutaballShader sdlMgr =
 	JoinIBIOF .
 	Atomically (newEmptyTMVar) $ \to_ ->
 	attachLifetime sdlMgr (initImmutaballShader sdlMgr) (freeImmutaballShader sdlMgr) to_ to_
+
+-- | 'sdlCreateImmutaballShader' variant that uses a supplied TMVar for storage.
+sdlCreateImmutaballShaderWith :: SDLManagerHandle -> TMVar ImmutaballShaderHandle -> ImmutaballIOF ()
+sdlCreateImmutaballShaderWith sdlMgr to_ =
+	attachLifetime sdlMgr (initImmutaballShader sdlMgr) (freeImmutaballShader sdlMgr) to_ ()
 
 -- * Shader: low level
 

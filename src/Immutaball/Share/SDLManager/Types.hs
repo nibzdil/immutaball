@@ -51,6 +51,7 @@ data SDLManagerCommand =
 	-- | Attach a resource to the lifetime of the SDL Manager thread.
 	| AttachLifetime ResourceAllocationTo
 	| forall me. GenSDL (SDLIOF me) (TMVar me)
+	| forall me. GenIBIO (ImmutaballIOF me) (TMVar me)
 
 data GLIOFTo = forall me. GLIOFTo { _gliofTo :: (GLIOF me, TMVar me) }
 

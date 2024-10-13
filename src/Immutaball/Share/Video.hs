@@ -13,13 +13,17 @@ module Immutaball.Share.Video
 
 		-- * Shader: high level
 		withImmutaballShader,
+		sdlCreateImmutaballShader,
 
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
 			ibshProgram, ibshPipeline,
 		initImmutaballShader,
-		freeImmutaballShader
+		freeImmutaballShader,
 
+		-- * Utils
+		checkGLErrorsIB,
+		glErrType
 	) where
 
 import Prelude ()
@@ -30,7 +34,10 @@ import qualified Data.ByteString as BS
 import Data.List
 import Data.Word
 
+import Control.Concurrent.STM.TMVar
 import Control.Lens
+import Graphics.GL.Compatibility45
+--import Graphics.GL.Core45
 import Graphics.GL.Types
 
 import Immutaball.Share.Math
@@ -69,30 +76,69 @@ makeLenses ''ImmutaballShaderHandle
 
 -- * Shader: high level
 
+-- | Directly initialize the shader, attaching the lifetime to the caller; does
+-- not asynchronously attach the lifetime to the SDL manager thread, which can be done with
+-- 'sdlCreateImmutaballShader'.
 withImmutaballShader :: SDLManagerHandle -> (ImmutaballShaderHandle -> ImmutaballIOF me) -> ImmutaballIOF me
 withImmutaballShader sdlMgr withShader = do
-	shader <- BasicIBIOF . GLIO $ initImmutaballShader sdlMgr
+	shader <- initImmutaballShader sdlMgr
 	me <- withShader shader
-	BasicIBIOF . GLIO $ freeImmutaballShader sdlMgr shader
+	freeImmutaballShader sdlMgr shader
 	return me
-{-
-withImmutaballShaderConc sdlMgr withShader = do
-	shader <- BasicIBIOF . GLIO $ initImmutaballShader
-	me <- withShader shader
-	BasicIBIOF . GLIO $ freeImmutaballShader sdlMgr shader
-	return me
--}
+
+-- | Use the SDL Manager thread to manage the immutaball shader resource.
+--
+-- When the SDL Manager thread exits, it will deallocate the resource.
+--
+-- The TMVar is set with the resource once the initializer is done.
+--
+-- The SDLManager initializes this resource concurrently, so it does not block
+-- the SDLManager thread.
+sdlCreateImmutaballShader :: SDLManagerHandle -> ImmutaballIOF (TMVar ImmutaballShaderHandle)
+sdlCreateImmutaballShader sdlMgr =
+	JoinIBIOF .
+	Atomically (newEmptyTMVar) $ \to_ ->
+	attachLifetime sdlMgr (initImmutaballShader sdlMgr) (freeImmutaballShader sdlMgr) to_ to_
 
 -- * Shader: low level
 
 -- ImmutaballShaderHandle moved to avoid Template Haskell errors.
 
-initImmutaballShader :: SDLManagerHandle -> GLIOF ImmutaballShaderHandle
+-- | Allocate an immutaball shader.
+initImmutaballShader :: SDLManagerHandle -> ImmutaballIOF ImmutaballShaderHandle
 initImmutaballShader _sdlMgr =
 	--_
 	error "TODO: unimplemented."
 
-freeImmutaballShader :: SDLManagerHandle -> ImmutaballShaderHandle -> GLIOF ()
-freeImmutaballShader _sdlMgr =
-	--_
-	error "TODO: unimplemented."
+-- | Deallocate an immutaball shader.
+freeImmutaballShader :: SDLManagerHandle -> ImmutaballShaderHandle -> ImmutaballIOF ()
+freeImmutaballShader sdlMgr ibsh = do
+	let sdlGL1' = sdlGL1 sdlMgr
+	sdlGL1' $ do
+		GLDeleteProgramPipelines [(ibsh^.ibshPipeline)] ()
+		GLDeleteProgram (ibsh^.ibshProgram) ()
+		GLDeleteShader (ibsh^.ibshFragmentShader) ()
+		GLDeleteShader (ibsh^.ibshVertexShader) ()
+
+-- * Utils
+
+checkGLErrorsIB :: ImmutaballIOF ()
+checkGLErrorsIB = do
+	error_ <- BasicIBIOF . GLIO $ GLGetError id
+	case error_ of
+		GL_NO_ERROR -> return ()
+		err -> do
+			() <- BasicIBIOF $ PutStrLn ("Error: an OpenGL error occurred (" ++ show err ++ "): " ++ glErrType err) ()
+			() <- BasicIBIOF $ ExitFailureBasicIOF
+			return ()
+
+glErrType :: GLenum -> String
+glErrType GL_NO_ERROR                      = "GL_NO_ERROR"
+glErrType GL_INVALID_ENUM                  = "GL_INVALID_ENUM"
+glErrType GL_INVALID_VALUE                 = "GL_INVALID_VALUE"
+glErrType GL_INVALID_OPERATION             = "GL_INVALID_OPERATION"
+glErrType GL_INVALID_FRAMEBUFFER_OPERATION = "GL_INVALID_FRAMEBUFFER_OPERATION"
+glErrType GL_OUT_OF_MEMORY                 = "GL_OUT_OF_MEMORY"
+glErrType GL_STACK_OVERFLOW                = "GL_STACK_OVERFLOW"
+glErrType GL_STACK_UNDERFLOW               = "GL_STACK_UNDERLOW"
+glErrType _                                = "unknown error type"

@@ -225,17 +225,6 @@ checkGLErrors = proc () -> do
 			() <- monadic -< liftIBIO . BasicIBIOF $ ExitFailureBasicIOF
 			returnA -< ()
 
-glErrType :: GLenum -> String
-glErrType GL_NO_ERROR                      = "GL_NO_ERROR"
-glErrType GL_INVALID_ENUM                  = "GL_INVALID_ENUM"
-glErrType GL_INVALID_VALUE                 = "GL_INVALID_VALUE"
-glErrType GL_INVALID_OPERATION             = "GL_INVALID_OPERATION"
-glErrType GL_INVALID_FRAMEBUFFER_OPERATION = "GL_INVALID_FRAMEBUFFER_OPERATION"
-glErrType GL_OUT_OF_MEMORY                 = "GL_OUT_OF_MEMORY"
-glErrType GL_STACK_OVERFLOW                = "GL_STACK_OVERFLOW"
-glErrType GL_STACK_UNDERFLOW               = "GL_STACK_UNDERLOW"
-glErrType _                                = "unknown error type"
-
 -- * Utils
 
 -- Edit: actually we need glGenTextures to create names.

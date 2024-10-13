@@ -20,6 +20,7 @@ module Immutaball.Share.Video
 			ibshProgram, ibshPipeline,
 		initImmutaballShader,
 		freeImmutaballShader,
+		rawInitializeImmutaballShaderContinue,
 
 		-- * Utils
 		checkGLErrorsIB,
@@ -29,13 +30,15 @@ module Immutaball.Share.Video
 import Prelude ()
 import Immutaball.Prelude
 
-import qualified Data.ByteString as BS
---import qualified Data.ByteString.Lazy as BL
+import Control.Monad
+import Data.Bits
 import Data.List
 import Data.Word
 
 import Control.Concurrent.STM.TMVar
 import Control.Lens
+import qualified Data.ByteString as BS
+--import qualified Data.ByteString.Lazy as BL
 import Graphics.GL.Compatibility45
 --import Graphics.GL.Core45
 import Graphics.GL.Types
@@ -45,6 +48,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.SDLManager
+import Immutaball.Share.Video.Shaders
 
 -- TODO: learn the new bytestring builders and probably use them.
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
@@ -105,10 +109,35 @@ sdlCreateImmutaballShader sdlMgr =
 -- ImmutaballShaderHandle moved to avoid Template Haskell errors.
 
 -- | Allocate an immutaball shader.
+--
+-- (The SDLManager runs the initializer concurrently.  If it didn't, it would
+-- deadlock because we also dispatch to the SDL Manager to run commands.)
 initImmutaballShader :: SDLManagerHandle -> ImmutaballIOF ImmutaballShaderHandle
-initImmutaballShader _sdlMgr =
-	--_
-	error "TODO: unimplemented."
+initImmutaballShader sdlMgr =
+	JoinIBIOF .
+	Atomically (newEmptyTMVar) $ \mibsh ->
+	(>>= \() -> Atomically (readTMVar mibsh) id) . sdlIBIO sdlMgr $ do
+		-- We're the only shader manager in this application, so we don't need
+		-- to worry about exclusion here currently.  But regardless, exclusion
+		-- is already present because sdlMgr blocks if we, the caller, don't
+		-- fork a thread for a general IBIO dispatch.
+		vertexShader_   <- BasicIBIOF . GLIO $ GLCreateShader GL_VERTEX_SHADER id
+		fragmentShader_ <- BasicIBIOF . GLIO $ GLCreateShader GL_FRAGMENT_SHADER id
+		program         <- BasicIBIOF . GLIO $ GLCreateProgram id
+		mpipeline       <- BasicIBIOF . GLIO $ GLGenProgramPipelines 1 id
+		let pipeline = unSingleton mpipeline
+		let ibsh = ImmutaballShaderHandle {
+			_ibshVertexShader   = vertexShader_,
+			_ibshFragmentShader = fragmentShader_,
+			_ibshProgram        = program,
+			_ibshPipeline       = pipeline
+		}
+		-- Don't write it until we finish initialization, to keep things synchronized.
+		rawInitializeImmutaballShaderContinue ibsh
+		Atomically (writeTMVar mibsh ibsh) id
+	where
+		unSingleton [me] = me
+		unSingleton _    = error "Internal error: initImmutaballShader expected a single result from GLGenProgramPipelines."
 
 -- | Deallocate an immutaball shader.
 freeImmutaballShader :: SDLManagerHandle -> ImmutaballShaderHandle -> ImmutaballIOF ()
@@ -119,6 +148,61 @@ freeImmutaballShader sdlMgr ibsh = do
 		GLDeleteProgram (ibsh^.ibshProgram) ()
 		GLDeleteShader (ibsh^.ibshFragmentShader) ()
 		GLDeleteShader (ibsh^.ibshVertexShader) ()
+
+-- | (Note: we are already in the SDL Manager thread.)
+rawInitializeImmutaballShaderContinue :: ImmutaballShaderHandle -> ImmutaballIOF ()
+rawInitializeImmutaballShaderContinue ibsh = do
+	BasicIBIOF . GLIO $ GLShaderSource (ibsh^.ibshVertexShader) [vertexShader] ()
+	checkGLErrorsIB
+	BasicIBIOF . GLIO $ GLShaderSource (ibsh^.ibshFragmentShader) [fragmentShader] ()
+	checkGLErrorsIB
+
+	BasicIBIOF . GLIO $ GLCompileShader (ibsh^.ibshVertexShader) ()
+	checkGLErrorsIB
+	successV <- ((/= 0) <$>) . BasicIBIOF . GLIO $ GLGetShaderiv (ibsh^.ibshVertexShader) GL_COMPILE_STATUS id
+	checkGLErrorsIB
+	when (not successV) $ do
+		compileError <- BasicIBIOF . GLIO $ GLGetShaderInfoLog (ibsh^.ibshVertexShader) id
+		() <- BasicIBIOF $ PutStrLn ("Error: the vertex shader failed to compile!  OpenGL error: " ++ compileError) ()
+		() <- BasicIBIOF $ ExitFailureBasicIOF
+		return ()
+
+	BasicIBIOF . GLIO $ GLCompileShader (ibsh^.ibshFragmentShader) ()
+	checkGLErrorsIB
+	successF <- ((/= 0) <$>) . BasicIBIOF . GLIO $ GLGetShaderiv (ibsh^.ibshFragmentShader) GL_COMPILE_STATUS id
+	checkGLErrorsIB
+	when (not successF) $ do
+		compileError <- BasicIBIOF . GLIO $ GLGetShaderInfoLog (ibsh^.ibshFragmentShader) id
+		() <- BasicIBIOF $ PutStrLn ("Error: the fragment shader failed to compile!  OpenGL error: " ++ compileError) ()
+		() <- BasicIBIOF $ ExitFailureBasicIOF
+		return ()
+
+	BasicIBIOF . GLIO $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshVertexShader) ()
+	checkGLErrorsIB
+	BasicIBIOF . GLIO $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshFragmentShader) ()
+	checkGLErrorsIB
+	BasicIBIOF . GLIO $ GLLinkProgram (ibsh^.ibshProgram) ()
+	checkGLErrorsIB
+
+	successL <- ((/= 0) <$>) . BasicIBIOF . GLIO $ GLGetProgramiv (ibsh^.ibshProgram) GL_LINK_STATUS id
+	checkGLErrorsIB
+	when (not successL) $ do
+		linkError <- BasicIBIOF . GLIO $ GLGetProgramInfoLog (ibsh^.ibshProgram) id
+		() <- BasicIBIOF $ PutStrLn ("Error: the OpenGL GLSL shaders failed to link!  OpenGL error: " ++ linkError) ()
+		() <- BasicIBIOF $ ExitFailureBasicIOF
+		return ()
+
+	BasicIBIOF . GLIO $ GLUseProgram (ibsh^.ibshProgram) ()
+	checkGLErrorsIB
+	BasicIBIOF . GLIO $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
+	checkGLErrorsIB
+	let stages = foldr (.|.) 0 $
+		[
+			GL_VERTEX_SHADER_BIT,
+			GL_FRAGMENT_SHADER_BIT
+		]
+	BasicIBIOF . GLIO $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
+	checkGLErrorsIB
 
 -- * Utils
 

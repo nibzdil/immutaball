@@ -169,6 +169,9 @@ attachLifetime :: SDLManagerHandle -> ImmutaballIOF resource -> (resource -> Imm
 attachLifetime sdlMgr init_ free to_ withUnit = issueSDLCommand sdlMgr (AttachLifetime (ResourceAllocationTo ((init_, free), to_))) withUnit
 
 -- | Run an general ImmutaballIOF command in the SDL Manager thread.
+--
+-- Note that the command blocks the SDL Manager thread when it handles it; you
+-- can fork if this is not desired.
 sdlIBIO :: SDLManagerHandle -> ImmutaballIOF me -> ImmutaballIOF me
 sdlIBIO sdlMgr ibio =
 	JoinIBIOF . JoinIBIOF .

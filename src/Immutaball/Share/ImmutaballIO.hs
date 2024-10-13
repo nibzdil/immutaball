@@ -23,6 +23,7 @@ module Immutaball.Share.ImmutaballIO
 		(<>>-),
 		(<>-),
 		joinImmutaballIOF,
+		forkIBIOF,
 
 		-- * mfix
 		FixImmutaballIOException(..),
@@ -127,6 +128,18 @@ instance Functor ImmutaballIOF where
 
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinIBIOF
+
+-- | Fork the first IBIOF, with the result associated with the second IBIOF.
+--
+-- This is represented as a flipped And, since And is normally understood to
+-- have its first _ordinary_ ‘me’ (e.g. not a bound thread like ForkOS) to be
+-- the result.  This mostly pertains to mfix: e.g. fix with And takes the first
+-- argument as the result, but still expands the tree to traverse through the
+-- second too, preserving ‘let ma = ma >>= f’ in a computable manner.  mfix
+-- with forkOS takes the second argument as result first, but still traverses
+-- the tree all the same.
+forkIBIOF :: ImmutaballIOF me -> ImmutaballIOF me -> ImmutaballIOF me
+forkIBIOF fork withUnit = JoinIBIOF $ flip AndIBIOF fork withUnit
 
 -- * mfix
 

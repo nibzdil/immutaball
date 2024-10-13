@@ -34,10 +34,12 @@ module Immutaball.Share.SDLManager
 		sdlGLHomogeneous,
 		sdlGL_,
 		sdl,
+		attachLifetime,
 
 		-- * Low level
 		initSDLManager,
 		quitSDLManager,
+		sdlManagerFreeResources,
 		sdlManagerThread,
 		sdlManagerThreadContinue
 	) where
@@ -161,6 +163,10 @@ sdl sdlMgr sdlio =
 	issueSDLCommand sdlMgr (GenSDL sdlio to_) $
 	Atomically (takeTMVar to_) id
 
+-- | Attach a resource to the lifetime of the SDL Manager thread.
+attachLifetime :: SDLManagerHandle -> ImmutaballIOF me -> (me -> ImmutaballIOF ()) -> TMVar me -> me -> ImmutaballIOF me
+attachLifetime sdlMgr init_ free to_ withUnit = issueSDLCommand sdlMgr (AttachLifetime (ResourceAllocationTo ((init_, free), to_))) withUnit
+
 -- * Low level
 
 -- | Manually start the lifetime of the SDLManager OS thread; the caller will
@@ -170,10 +176,12 @@ initSDLManager headless withSdlMgr =
 	mkAtomically (newTVar False) $ \done ->
 	mkAtomically (newTVar False) $ \doneReceived ->
 	mkAtomically newTChan $ \commands ->
+	mkAtomically (newTVar []) $ \finalizers ->
 	let sdlMgr = SDLManagerHandle {
 		_sdlmh_done         = done,
 		_sdlmh_doneReceived = doneReceived,
-		_sdlmh_commands     = commands
+		_sdlmh_commands     = commands,
+		_sdlmh_finalizers   = finalizers
 	}
 	in mkBIO . ForkOS (sdlManagerThread headless sdlMgr) $ withSdlMgr sdlMgr
 
@@ -181,12 +189,34 @@ initSDLManager headless withSdlMgr =
 -- 'withSDLManager' automatically manages the lifetime.
 quitSDLManager :: SDLManagerHandle -> ImmutaballIO
 quitSDLManager sdlMgr =
+	sdlManagerFreeResources sdlMgr $
 	mkAtomically (do
 		writeTVar (sdlMgr^.sdlmh_done) True) (const mempty) <>
 	mkAtomically (do
 		writeTChan (sdlMgr^.sdlmh_commands) QuitSDLManager) (const mempty) <>>
 	mkAtomically (do
 		readTVar (sdlMgr^.sdlmh_doneReceived) >>= check) (const mempty)
+
+sdlManagerFreeResources :: SDLManagerHandle -> ImmutaballIO -> ImmutaballIO
+sdlManagerFreeResources sdlMgr then_ =
+	-- Take the first finalizer.
+	mkAtomically (do
+		finalizers <- readTVar (sdlMgr^.sdlmh_finalizers)
+		let (mfinalizer, finalizers') = case finalizers of
+			[]               -> (Nothing, [])
+			(finalizer:rest) -> (Just finalizer, rest)
+		writeTVar (sdlMgr^.sdlmh_finalizers) finalizers'
+		return mfinalizer
+	) $ \mfinalizer ->
+	-- Run it, if the resource is still there.
+	case mfinalizer of
+		Nothing        -> then_
+		Just _finalizer@(ResourceAllocationTo ((_init, free), to_)) ->
+			mkAtomically (tryTakeTMVar to_) $ \mresource ->
+			case mresource of
+				Nothing       -> then_
+				Just resource ->
+					Fixed $ free resource >>= \() -> getFixed $ sdlManagerFreeResources sdlMgr then_
 
 -- | The thread with initialization.
 sdlManagerThread :: Bool -> SDLManagerHandle -> ImmutaballIO
@@ -216,8 +246,16 @@ sdlManagerThreadContinue sdlMgr =
 			--GLSequence glios          tos -> Fixed $ (BasicIBIOF $ GLIO glio)        >>= \me     ->   Atomically (writeTMVar to_ me)     $ \() -> sdlManagerThreadContinue sdlMgr
 			--GLSequence glios          tos -> Fixed $ foldr (\(glio, to_) then_ -> (BasicIBIOF . GLIO $ glio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> Fixed then_) (getFixed $ sdlManagerThreadContinue sdlMgr) (zip glios tos)
 			GLSequence glioTos   hasDone_ -> Fixed $ foldr (\(GLIOFTo (glio, to_)) then_ -> (BasicIBIOF . GLIO $ glio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> Fixed then_) (Atomically (writeTMVar hasDone_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glioTos
+			AttachLifetime a@(ResourceAllocationTo ((init_, _free), to_)) ->
+				if waitForResourceInitializers
+					then
+						Fixed $ Atomically (modifyTVar (sdlMgr^.sdlmh_finalizers) (a:)) id >>= \() -> init_ >>= \resource -> Atomically (writeTMVar to_ resource) id >>= \() -> getFixed $ sdlManagerThreadContinue sdlMgr
+					else
+						Fixed $ Atomically (modifyTVar (sdlMgr^.sdlmh_finalizers) (a:)) id >>= \() -> forkIBIOF (init_ >>= \resource -> Atomically (writeTMVar to_ resource) id >>= \() -> mempty) . getFixed $ sdlManagerThreadContinue sdlMgr
 			GLSequenceValueless glios to_ -> Fixed $ foldr (\glio then_ -> (BasicIBIOF . GLIO $ glio) >>= \() -> then_) (Atomically (writeTMVar to_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glios
 			GenSDL sdlio              to_ -> Fixed $ (BasicIBIOF . SDLIO $ sdlio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> sdlManagerThreadContinue sdlMgr
 	where
 		quit :: ImmutaballIO
 		quit = mkAtomically (writeTVar (sdlMgr^.sdlmh_doneReceived) True) mempty <>> mkAtomically (writeTVar (sdlMgr^.sdlmh_done) True) mempty <>> mempty
+		waitForResourceInitializers :: Bool
+		waitForResourceInitializers = False

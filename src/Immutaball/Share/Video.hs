@@ -15,8 +15,8 @@ module Immutaball.Share.Video
 		withImmutaballShader,
 
 		-- * Shader: low level
-		ImmutaballShaderHandle(..), _ibshVertexShader, _ibshFragmentShader,
-			_ibshProgram, _ibshPipeline,
+		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
+			ibshProgram, ibshPipeline,
 		initImmutaballShader,
 		freeImmutaballShader
 
@@ -37,6 +37,7 @@ import Immutaball.Share.Math
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
+import Immutaball.Share.SDLManager
 
 -- TODO: learn the new bytestring builders and probably use them.
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
@@ -68,21 +69,30 @@ makeLenses ''ImmutaballShaderHandle
 
 -- * Shader: high level
 
-withImmutaballShader :: (ImmutaballShaderHandle -> ImmutaballIOF me) -> ImmutaballIOF me
-withImmutaballShader withShader = do
+withImmutaballShader :: SDLManagerHandle -> (ImmutaballShaderHandle -> ImmutaballIOF me) -> ImmutaballIOF me
+withImmutaballShader sdlMgr withShader = do
+	shader <- BasicIBIOF . GLIO $ initImmutaballShader sdlMgr
+	me <- withShader shader
+	BasicIBIOF . GLIO $ freeImmutaballShader sdlMgr shader
+	return me
+{-
+withImmutaballShaderConc sdlMgr withShader = do
 	shader <- BasicIBIOF . GLIO $ initImmutaballShader
 	me <- withShader shader
-	BasicIBIOF . GLIO $ freeImmutaballShader shader
+	BasicIBIOF . GLIO $ freeImmutaballShader sdlMgr shader
 	return me
+-}
 
 -- * Shader: low level
 
 -- ImmutaballShaderHandle moved to avoid Template Haskell errors.
 
-initImmutaballShader :: GLIOF ImmutaballShaderHandle
-initImmutaballShader =
-	_
+initImmutaballShader :: SDLManagerHandle -> GLIOF ImmutaballShaderHandle
+initImmutaballShader _sdlMgr =
+	--_
+	error "TODO: unimplemented."
 
-freeImmutaballShader :: ImmutaballShaderHandle -> GLIOF ()
-freeImmutaballShader =
-	_
+freeImmutaballShader :: SDLManagerHandle -> ImmutaballShaderHandle -> GLIOF ()
+freeImmutaballShader _sdlMgr =
+	--_
+	error "TODO: unimplemented."

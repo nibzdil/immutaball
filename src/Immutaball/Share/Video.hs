@@ -127,10 +127,10 @@ initImmutaballShader sdlMgr =
 		-- to worry about exclusion here currently.  But regardless, exclusion
 		-- is already present because sdlMgr blocks if we, the caller, don't
 		-- fork a thread for a general IBIO dispatch.
-		vertexShader_   <- BasicIBIOF . GLIO $ GLCreateShader GL_VERTEX_SHADER id
-		fragmentShader_ <- BasicIBIOF . GLIO $ GLCreateShader GL_FRAGMENT_SHADER id
-		program         <- BasicIBIOF . GLIO $ GLCreateProgram id
-		mpipeline       <- BasicIBIOF . GLIO $ GLGenProgramPipelines 1 id
+		vertexShader_   <- (BasicIBIOF . GLIO $ GLCreateShader GL_VERTEX_SHADER id  ) <* checkGLErrorsIB
+		fragmentShader_ <- (BasicIBIOF . GLIO $ GLCreateShader GL_FRAGMENT_SHADER id) <* checkGLErrorsIB
+		program         <- (BasicIBIOF . GLIO $ GLCreateProgram id                  ) <* checkGLErrorsIB
+		mpipeline       <- (BasicIBIOF . GLIO $ GLGenProgramPipelines 1 id          ) <* checkGLErrorsIB
 		let pipeline = unSingleton mpipeline
 		let ibsh = ImmutaballShaderHandle {
 			_ibshVertexShader   = vertexShader_,

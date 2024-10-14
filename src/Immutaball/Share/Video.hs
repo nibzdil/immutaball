@@ -61,9 +61,6 @@ import Immutaball.Share.SDLManager
 import Immutaball.Share.Utils
 import Immutaball.Share.Video.Shaders
 
-import Debug.Trace as D------------------- TODO DEBUG
-import Text.Printf
-
 -- TODO: learn the new bytestring builders and probably use them.
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 reverseRowsImage ((w, _h), image) = glImage
@@ -212,22 +209,20 @@ rawInitializeImmutaballShaderContinue ibsh = do
 		() <- BasicIBIOF $ ExitFailureBasicIOF
 		return ()
 
-	flip D.trace (pure ()) $ "DEBUG0"
 	when (not useProgramPipeline) $ do
 		glChecked $ GLUseProgram (ibsh^.ibshProgram) ()
-	flip D.trace (pure ()) $ "DEBUG1"
 	when setupProgramPipeline $ do
 		let stages = foldr (.|.) 0 $
 			[
 				GL_VERTEX_SHADER_BIT,
 				GL_FRAGMENT_SHADER_BIT
 			]
+		-- TODO FIXME: when 'useProgramPipeline' is True, this fails with GL_INVALID_OPERATION for me.
+		-- We're not using it anyway, though, so this isn't particularly urgent.
 		glChecked $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
-	flip D.trace (pure ()) $ "DEBUG2"
 	when useProgramPipeline $ do
 		glChecked $ GLUseProgram 0 ()
 		glChecked $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
-	flip D.trace (pure ()) $ "DEBUG3"
 	where
 		setupProgramPipeline :: Bool
 		setupProgramPipeline = useProgramPipeline

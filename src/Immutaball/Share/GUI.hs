@@ -343,6 +343,7 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			--cxtnp1 <- returnA -< cxtn
 			let (Just r@(Rect (Vec2 ax ay) (Vec2 bx by))) = button^.rect
 			-- TODO: remove debugging.  I just want to test what I have so far before I write more advanced OpenGL.
+			-- {-
 			() <- monadic -< sdlGL1' $ do
 				{-
 				GLColor4d 0.7 0.1 0.3 1.0 ()
@@ -396,6 +397,7 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 
 				GLEnd ()
 				-- -}
+			-- -}
 			returnA -< cxtnp1
 		_ -> returnA -< cxtn
 

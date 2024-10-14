@@ -61,6 +61,9 @@ import Immutaball.Share.SDLManager
 import Immutaball.Share.Utils
 import Immutaball.Share.Video.Shaders
 
+import Debug.Trace as D------------------- TODO DEBUG
+import Text.Printf
+
 -- TODO: learn the new bytestring builders and probably use them.
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 reverseRowsImage ((w, _h), image) = glImage
@@ -206,14 +209,19 @@ rawInitializeImmutaballShaderContinue ibsh = do
 		() <- BasicIBIOF $ ExitFailureBasicIOF
 		return ()
 
+	flip D.trace (pure ()) $ "DEBUG0"
 	glChecked $ GLUseProgram (ibsh^.ibshProgram) ()
+	flip D.trace (pure ()) $ "DEBUG1"
 	glChecked $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
+	flip D.trace (pure ()) $ "DEBUG2"
 	let stages = foldr (.|.) 0 $
 		[
 			GL_VERTEX_SHADER_BIT,
 			GL_FRAGMENT_SHADER_BIT
 		]
+	flip D.trace (pure ()) $ "DEBUG3"
 	glChecked $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
+	flip D.trace (pure ()) $ "DEBUG4"
 
 -- * Errors
 

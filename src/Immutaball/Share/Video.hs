@@ -172,12 +172,6 @@ rawInitializeImmutaballShaderContinue ibsh = do
 	successV <- ((/= 0) <$>) . glChecked $ GLGetShaderiv (ibsh^.ibshVertexShader) GL_COMPILE_STATUS id
 	when (not successV) $ do
 		compileError <- BasicIBIOF . GLIO $ GLGetShaderInfoLog (ibsh^.ibshVertexShader) id
-		when True $ do  -- TODO DEBUG REMOVE
-			debugName <- glChecked $ GLCreateShader GL_VERTEX_SHADER id  -- TODO DEBUG REMOVE
-			() <- BasicIBIOF $ PutStrLn ("DEBUG0: names: " ++ show (ibsh^.ibshVertexShader, ibsh^.ibshFragmentShader, ibsh^.ibshProgram, ibsh^.ibshPipeline, debugName)) () -- TODO DEBUG REMOVE
-			--verBs <- glChecked $ GLGetString GL_VERSION id
-			--() <- BasicIBIOF $ PutStrLn ("DEBUG0: version str: " ++ show verBs) () -- TODO DEBUG REMOVE
-			return ()
 		() <- BasicIBIOF $ PutStrLn ("Error: the vertex shader failed to compile!  OpenGL error: " ++ compileError) ()
 		checkGLErrorsIB
 		() <- BasicIBIOF $ ExitFailureBasicIOF
@@ -219,8 +213,7 @@ checkGLErrorsIB :: ImmutaballIOF ()
 checkGLErrorsIB = do
 	error_ <- BasicIBIOF . GLIO $ GLGetError id
 	case error_ of
-		--GL_NO_ERROR -> return ()
-		GL_NO_ERROR -> BasicIBIOF $ PutStrLn ("DEBUG8: NO GL ERROR") ()
+		GL_NO_ERROR -> return ()
 		err -> do
 			() <- BasicIBIOF $ PutStrLn ("Error: an OpenGL error occurred (" ++ show err ++ "): " ++ glErrType err) ()
 			() <- BasicIBIOF $ ExitFailureBasicIOF

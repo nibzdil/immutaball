@@ -140,14 +140,6 @@ requireVideo = proc cxt0 -> do
 					() <- monadic -< liftIBIO $ issueSDLCommand h (WithGLContext window mcontext) ()
 					context <- monadic -< liftIBIO $ Atomically (readTMVar mcontext) id
 					let cxt1 = cxt0 & (ibSDLWindow.~Just (window :: SDL.Window)) . (ibSDLGLContext.~Just (context :: SDL.GLContext))
-					-- TODO DEBUG
-					--verBs <- monadic -< liftIBIO . glChecked $ GLGetString GL_VERSION id
-					--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: version str: " ++ show verBs) () -- TODO DEBUG REMOVE
-					-- Okay, this works, rather than segfaulting.  I hope the
-					-- segfaulting one is actually run in the SDLManager thread.
-					verBs <- monadic -< liftIBIO . sdlIBIO h . glChecked $ GLGetString GL_VERSION id
-					() <- monadic -< liftIBIO . sdlIBIO h . BasicIBIOF $ PutStrLn ("DEBUG0: version str: " ++ show verBs) () -- TODO DEBUG REMOVE
-					-- TODO DEBUG
 					returnA -< cxt1
 	where
 		sdlNeedsSpecialThread :: Bool

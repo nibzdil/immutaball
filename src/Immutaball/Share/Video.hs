@@ -197,6 +197,9 @@ rawInitializeImmutaballShaderContinue ibsh = do
 		() <- BasicIBIOF $ ExitFailureBasicIOF
 		return ()
 
+	when setupProgramPipeline $ do
+		glChecked $ GLProgramParameteri (ibsh^.ibshProgram) GL_PROGRAM_SEPARABLE GL_TRUE ()
+
 	glChecked $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshVertexShader) ()
 	glChecked $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshFragmentShader) ()
 	glChecked $ GLLinkProgram (ibsh^.ibshProgram) ()

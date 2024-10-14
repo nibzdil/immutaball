@@ -332,15 +332,22 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, 
 	cxtnp1 <- foldrA guiPaintWidgetsChunk -< (cxtn, flip map (chunks' widgets) $ \ws -> (ws, widgetLastFocus, geometry, widgetIdx, t))
 	returnA -< cxtnp1
 
-guiCachingRenderText :: Wire ImmutaballM (Widget id, IBStateContext) (Maybe (WidthHeightI, GLuint), IBStateContext)
-guiCachingRenderText = _
+guiCachingRenderText :: forall id. (Eq id, Ord id) => Wire ImmutaballM (Widget id, IBStateContext) (Maybe (WidthHeightI, GLuint), IBStateContext)
+guiCachingRenderText = proc (widget, cxtn) -> do
+	let mtext = case widget of
+		(ButtonWidget button) -> Just (button^.text)
+		(LabelWidget  label)  -> Just (label^.text)
+		_                     -> Nothing
+	(mdimName, cxtnp1) <- returnA ||| (first Just) <$> cachingRenderText -< maybe (Left (Nothing, cxtn)) (\text -> Right (T.pack $ text, cxtn)) $ mtext
+	returnA -< (mdimName, cxtnp1)
 
 -- | Just process 16 at a time, the number of textures our shader can handle at a time.
-guiPaintWidgetsChunk :: Wire ImmutaballM (([Widget id], M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Double), IBStateContext) IBStateContext
+guiPaintWidgetsChunk :: forall id. (Eq id, Ord id) => Wire ImmutaballM (([Widget id], M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Double), IBStateContext) IBStateContext
 guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
 	-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.
 	--guiCacheRenderText' <- returnA -< guiCacheRenderText …
 	(mdimNames :: [Maybe (WidthHeightI, GLuint)], cxtnp1) <- foldrA guiCacheRenderText' -< (([], cxtn), widgets)
+	let (mRects :: [Maybe (Rect Double)]) = flip map widgets $ \w -> M.lookup (w^.wid) geometry
 	returnA -< _
 	where
 		-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.

@@ -40,6 +40,7 @@ module Immutaball.Share.GUI
 		isSelectable,
 		guiPaint,
 		guiPaintWidgetsChunk,
+		guiPaintWidgets,
 		focusDecayTime,
 		focusScale
 	) where
@@ -348,12 +349,19 @@ guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t),
 	--guiCacheRenderText' <- returnA -< guiCacheRenderText …
 	(mdimNames :: [Maybe (WidthHeightI, GLuint)], cxtnp1) <- foldrA guiCacheRenderText' -< (([], cxtn), widgets)
 	let (mRects :: [Maybe (Rect Double)]) = flip map widgets $ \w -> M.lookup (w^.wid) geometry
-	returnA -< _
+	let paintWidgets = catMaybes $ zipWith (liftA2 (,)) mdimNames mRects
+	cxtnp2 <- guiPaintWidgets -< (paintWidgets, widgetLastFocus, widgetIdx, t, cxtnp1)
+	returnA -< cxtnp2
 	where
 		-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.
 		guiCacheRenderText' = proc (w, (mdimNames, icxtn)) -> do
 			(mdimName, icxtnp1) <- guiCachingRenderText -< (w, icxtn)
 			returnA -< (mdimName : mdimNames, icxtnp1)
+
+guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeightI, GLuint), Rect Double)], M.Map id Double, M.Map id (Widget id), Double, IBStateContext) IBStateContext
+guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
+	returnA -< _
+
 --foldrA :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, t a) b
 --cachingRenderText :: Wire ImmutaballM (T.Text, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)
 

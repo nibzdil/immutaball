@@ -124,7 +124,7 @@ requireVideo = proc cxt0 -> do
 			let windowTitle = T.pack "Immutaball"
 			let windowCfg = SDL.defaultWindow {
 				SDL.windowMode = if' (cxt0^.ibNeverballrc.fullscreen) SDL.Fullscreen SDL.Windowed,
-				SDL.windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL,
+				SDL.windowGraphicsContext = SDL.OpenGLContext (SDL.defaultOpenGL {SDL.glProfile = SDL.Compatibility SDL.Normal 4 5}),
 				SDL.windowInitialSize = V2 (fromIntegral $ (cxt0^.ibNeverballrc.width)) (fromIntegral $ cxt0^.ibNeverballrc.height)
 			}
 			if not sdlNeedsSpecialThread

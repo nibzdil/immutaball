@@ -55,13 +55,16 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		hglDeleteBuffers,
 		hglNamedBufferData,
 		hglNamedBufferSubData,
+		hglBufferData,
+		hglBufferSubData,
 		hglGenVertexArrays,
 		hglDeleteVertexArrays,
 		hglVertexAttribPointer,
 		hglVertexAttribIPointer,
 		hglVertexAttribLPointer,
-		hglDrawElements,
-		hglDrawElementsData,
+		--hglDrawElements,
+		--hglDrawElementsData,
+		hglDrawElementsRaw,
 		hglGetString,
 		hglGetStringi,
 
@@ -152,8 +155,11 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDeleteBuffers,
 		mkGLNamedBufferData,
 		mkGLNamedBufferSubData,
+		mkGLBufferData,
+		mkGLBufferSubData,
 		mkGLGenVertexArrays,
 		mkGLDeleteVertexArrays,
+		mkGLBindBuffer,
 		mkGLBindBufferBase,
 		mkGLBindBufferRange,
 		mkGLBindVertexArray,
@@ -162,8 +168,11 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLVertexAttribLPointer,
 		mkGLEnableVertexArrayAttrib,
 		mkGLDisableVertexArrayAttrib,
-		mkGLDrawElements,
-		mkGLDrawElementsData,
+		mkGLEnableVertexAttribArray,
+		mkGLDisableVertexAttribArray,
+		--mkGLDrawElements,
+		--mkGLDrawElementsData,
+		mkGLDrawElementsRaw,
 		mkGLGetString,
 		mkGLGetStringi,
 
@@ -313,10 +322,13 @@ data GLIOF me =
 
 	| GLNamedBufferData    GLuint         GLData GLenum me
 	| GLNamedBufferSubData GLuint Integer GLData        me
+	| GLBufferData         GLenum         GLData GLenum me
+	| GLBufferSubData      GLenum Integer GLData        me
 
 	| GLGenVertexArrays    GLsizei  ([GLuint] -> me)
 	| GLDeleteVertexArrays [GLuint] me
 
+	| GLBindBuffer      GLenum        GLuint                     me
 	| GLBindBufferBase  GLenum GLuint GLuint                     me
 	| GLBindBufferRange GLenum GLuint GLuint GLintptr GLsizeiptr me
 
@@ -328,9 +340,14 @@ data GLIOF me =
 
 	| GLEnableVertexArrayAttrib  GLuint GLuint me
 	| GLDisableVertexArrayAttrib GLuint GLuint me
+	| GLEnableVertexAttribArray         GLuint me
+	| GLDisableVertexAttribArray        GLuint me
 
-	| GLDrawElements     GLenum [GLuint]              me
-	| GLDrawElementsData GLenum GLsizei GLenum GLData me
+	-- Oops, data is an offset, not an actual pointer.  Disable.
+	-- | GLDrawElements     GLenum [GLuint]              me
+	-- Oops, data is an offset, not an actual pointer.  Disable.
+	-- | GLDrawElementsData GLenum GLsizei GLenum GLData me
+	| GLDrawElementsRaw GLenum GLsizei GLenum Integer me
 
 	| GLGetString  GLenum        (BS.ByteString -> me)
 	| GLGetStringi GLenum GLuint (BS.ByteString -> me)
@@ -439,10 +456,13 @@ instance Functor GLIOF where
 
 	fmap f (GLNamedBufferData    buffer        data_ usage withUnit) = GLNamedBufferData    buffer        data_ usage (f withUnit)
 	fmap f (GLNamedBufferSubData buffer offset data_       withUnit) = GLNamedBufferSubData buffer offset data_       (f withUnit)
+	fmap f (GLBufferData         target        data_ usage withUnit) = GLBufferData         target        data_ usage (f withUnit)
+	fmap f (GLBufferSubData      target offset data_       withUnit) = GLBufferSubData      target offset data_       (f withUnit)
 
 	fmap f (GLGenVertexArrays    num   withNames) = GLGenVertexArrays    num   (f . withNames)
 	fmap f (GLDeleteVertexArrays names withUnit)  = GLDeleteVertexArrays names (f withUnit)
 
+	fmap f (GLBindBuffer      target        buffer             withUnit) = GLBindBuffer      target        buffer             (f withUnit)
 	fmap f (GLBindBufferBase  target index_ buffer             withUnit) = GLBindBufferBase  target index_ buffer             (f withUnit)
 	fmap f (GLBindBufferRange target index_ buffer offset size withUnit) = GLBindBufferRange target index_ buffer offset size (f withUnit)
 
@@ -454,9 +474,12 @@ instance Functor GLIOF where
 
 	fmap f (GLEnableVertexArrayAttrib  vaobj index_ withUnit) = GLEnableVertexArrayAttrib  vaobj index_ (f withUnit)
 	fmap f (GLDisableVertexArrayAttrib vaobj index_ withUnit) = GLDisableVertexArrayAttrib vaobj index_ (f withUnit)
+	fmap f (GLEnableVertexAttribArray        index_ withUnit) = GLEnableVertexAttribArray        index_ (f withUnit)
+	fmap f (GLDisableVertexAttribArray       index_ withUnit) = GLDisableVertexAttribArray       index_ (f withUnit)
 
-	fmap f (GLDrawElements     mode             indices_ withUnit) = GLDrawElements     mode             indices_ (f withUnit)
-	fmap f (GLDrawElementsData mode count type_ indices_ withUnit) = GLDrawElementsData mode count type_ indices_ (f withUnit)
+	--fmap f (GLDrawElements     mode             indices_ withUnit) = GLDrawElements     mode             indices_ (f withUnit)
+	--fmap f (GLDrawElementsData mode count type_ indices_ withUnit) = GLDrawElementsData mode count type_ indices_ (f withUnit)
+	fmap f (GLDrawElementsRaw mode count type_ offset withUnit) = GLDrawElementsRaw mode count type_ offset (f withUnit)
 
 	fmap f (GLGetString  name        withString) = GLGetString  name        (f . withString)
 	fmap f (GLGetStringi name index_ withString) = GLGetStringi name index_ (f . withString)
@@ -625,10 +648,13 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		y@( GLNamedBufferData    _buffer         _data _usage me) -> putMVar mme me >> return y
 		y@( GLNamedBufferSubData _buffer _offset _data        me) -> putMVar mme me >> return y
+		y@( GLBufferData         _target         _data _usage me) -> putMVar mme me >> return y
+		y@( GLBufferSubData      _target _offset _data        me) -> putMVar mme me >> return y
 
 		_y@(GLGenVertexArrays    num    withNames) -> return $ GLGenVertexArrays num ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
 		y@( GLDeleteVertexArrays _names me)        -> putMVar mme me >> return y
 
+		y@( GLBindBuffer      _target        _buffer               me) -> putMVar mme me >> return y
 		y@( GLBindBufferBase  _target _index _buffer               me) -> putMVar mme me >> return y
 		y@( GLBindBufferRange _target _index _buffer _offset _size me) -> putMVar mme me >> return y
 
@@ -640,9 +666,12 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 
 		y@( GLEnableVertexArrayAttrib  _vaobj _index me) -> putMVar mme me >> return y
 		y@( GLDisableVertexArrayAttrib _vaobj _index me) -> putMVar mme me >> return y
+		y@( GLEnableVertexAttribArray         _index me) -> putMVar mme me >> return y
+		y@( GLDisableVertexAttribArray        _index me) -> putMVar mme me >> return y
 
-		y@( GLDrawElements     _mode              _indices me) -> putMVar mme me >> return y
-		y@( GLDrawElementsData _mode _count _type _indices me) -> putMVar mme me >> return y
+		--y@( GLDrawElements     _mode              _indices me) -> putMVar mme me >> return y
+		--y@( GLDrawElementsData _mode _count _type _indices me) -> putMVar mme me >> return y
+		y@( GLDrawElementsRaw _mode _count _type _offset   me) -> putMVar mme me >> return y
 
 		_y@(GLGetString  name        withString) -> return $ GLGetString  name        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withString)
 		_y@(GLGetStringi name index_ withString) -> return $ GLGetStringi name index_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withString)
@@ -762,10 +791,13 @@ runGLIOIO (GLDeleteBuffers names glio)      = hglDeleteBuffers names >> glio
 
 runGLIOIO (GLNamedBufferData    buffer        data_ usage glio) = hglNamedBufferData    buffer        data_ usage >> glio
 runGLIOIO (GLNamedBufferSubData buffer offset data_       glio) = hglNamedBufferSubData buffer offset data_       >> glio
+runGLIOIO (GLBufferData         target        data_ usage glio) = hglBufferData         target        data_ usage >> glio
+runGLIOIO (GLBufferSubData      target offset data_       glio) = hglBufferSubData      target offset data_       >> glio
 
 runGLIOIO (GLGenVertexArrays    num   withNames) = hglGenVertexArrays    num   >>= withNames
 runGLIOIO (GLDeleteVertexArrays names glio)      = hglDeleteVertexArrays names >> glio
 
+runGLIOIO (GLBindBuffer      target        buffer             glio) = glBindBuffer      target        buffer             >> glio
 runGLIOIO (GLBindBufferBase  target index_ buffer             glio) = glBindBufferBase  target index_ buffer             >> glio
 runGLIOIO (GLBindBufferRange target index_ buffer offset size glio) = glBindBufferRange target index_ buffer offset size >> glio
 
@@ -777,9 +809,12 @@ runGLIOIO (GLVertexAttribLPointer index_ size type_            stride offset gli
 
 runGLIOIO (GLEnableVertexArrayAttrib  vaobj index_ glio) = glEnableVertexArrayAttrib  vaobj index_ >> glio
 runGLIOIO (GLDisableVertexArrayAttrib vaobj index_ glio) = glDisableVertexArrayAttrib vaobj index_ >> glio
+runGLIOIO (GLEnableVertexAttribArray        index_ glio) = glEnableVertexAttribArray        index_ >> glio
+runGLIOIO (GLDisableVertexAttribArray       index_ glio) = glDisableVertexAttribArray       index_ >> glio
 
-runGLIOIO (GLDrawElements     mode             indices_ glio) = hglDrawElements     mode             indices_ >> glio
-runGLIOIO (GLDrawElementsData mode count type_ indices_ glio) = hglDrawElementsData mode count type_ indices_ >> glio
+--runGLIOIO (GLDrawElements     mode             indices_ glio) = hglDrawElements     mode             indices_ >> glio
+--runGLIOIO (GLDrawElementsData mode count type_ indices_ glio) = hglDrawElementsData mode count type_ indices_ >> glio
+runGLIOIO (GLDrawElementsRaw mode count type_ offset    glio) = hglDrawElementsRaw mode count type_ offset    >> glio
 
 runGLIOIO (GLGetString  name        withString) = hglGetString  name        >>= withString
 runGLIOIO (GLGetStringi name index_ withString) = hglGetStringi name index_ >>= withString
@@ -1096,6 +1131,18 @@ hglNamedBufferSubData buffer offset data_ = do
 	BS.useAsCStringLen strict $ \(ptr, len) -> do
 		glNamedBufferSubData buffer (fromIntegral offset) (fromIntegral len) (castPtr ptr)
 
+hglBufferData :: GLenum -> GLData -> GLenum -> IO ()
+hglBufferData target data_ usage = do
+	let strict = glDataToBS data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCStringLen strict $ \(ptr, len) -> do
+		glBufferData target (fromIntegral len) (castPtr ptr) usage
+
+hglBufferSubData :: GLenum -> Integer -> GLData -> IO ()
+hglBufferSubData target offset data_ = do
+	let strict = glDataToBS data_  -- bytestrings only provides a CString interface for strict.
+	BS.useAsCStringLen strict $ \(ptr, len) -> do
+		glBufferSubData target (fromIntegral offset) (fromIntegral len) (castPtr ptr)
+
 hglGenVertexArrays :: GLsizei -> IO [GLuint]
 hglGenVertexArrays num = do
 	let len = fromIntegral num  :: Integer
@@ -1125,17 +1172,26 @@ hglVertexAttribLPointer index_ size type_ stride offset_ = do
 	let offset = castPtr $ nullPtr `plusPtr` (fromIntegral offset_)
 	glVertexAttribLPointer index_ size type_ stride offset
 
+{-
 hglDrawElements :: GLenum -> [GLuint] -> IO ()
 hglDrawElements mode indices_ = do
 	array_ <- newListArray (0 :: Integer, genericLength indices_ - 1) indices_
 	len    <- getNumElements array_
 	withStorableArray array_ $ \ptr -> glDrawElements mode (fromIntegral len) GL_UNSIGNED_INT (castPtr ptr)
+-}
 
+{-
 hglDrawElementsData :: GLenum -> GLsizei -> GLenum -> GLData -> IO ()
 hglDrawElementsData mode count type_ indices_ = do
 	let strict = glDataToBS indices_  -- bytestrings only provides a CString interface for strict.
 	BS.useAsCStringLen strict $ \(ptr, _len) -> do
 		glDrawElements mode count type_ (castPtr ptr)
+-}
+
+hglDrawElementsRaw :: GLenum -> GLsizei -> GLenum -> Integer -> IO()
+hglDrawElementsRaw mode count type_ offset_ = do
+	let offset = castPtr $ nullPtr `plusPtr` (fromIntegral offset_)
+	glDrawElements mode count type_ offset
 
 -- * GLIO aliases that apply the Fixed wrapper
 
@@ -1397,11 +1453,20 @@ mkGLNamedBufferData buffer data_ usage glio = Fixed $ GLNamedBufferData buffer d
 mkGLNamedBufferSubData :: GLuint -> Integer -> GLData -> GLIO -> GLIO
 mkGLNamedBufferSubData buffer offset data_ glio = Fixed $ GLNamedBufferSubData buffer offset data_ glio
 
+mkGLBufferData :: GLenum -> GLData -> GLenum -> GLIO -> GLIO
+mkGLBufferData target data_ usage glio = Fixed $ GLBufferData target data_ usage glio
+
+mkGLBufferSubData :: GLenum -> Integer -> GLData -> GLIO -> GLIO
+mkGLBufferSubData target offset data_ glio = Fixed $ GLBufferSubData target offset data_ glio
+
 mkGLGenVertexArrays :: GLsizei -> ([GLuint] -> GLIO) -> GLIO
 mkGLGenVertexArrays num withNames = Fixed $ GLGenVertexArrays num withNames
 
 mkGLDeleteVertexArrays :: [GLuint] -> GLIO -> GLIO
 mkGLDeleteVertexArrays names glio = Fixed $ GLDeleteVertexArrays names glio
+
+mkGLBindBuffer :: GLenum -> GLuint -> GLIO -> GLIO
+mkGLBindBuffer target buffer glio = Fixed $ GLBindBuffer target buffer glio
 
 mkGLBindBufferBase :: GLenum -> GLuint -> GLuint -> GLIO -> GLIO
 mkGLBindBufferBase target index_ buffer glio = Fixed $ GLBindBufferBase target index_ buffer glio
@@ -1427,11 +1492,24 @@ mkGLEnableVertexArrayAttrib vaobj index_ glio = Fixed $ GLEnableVertexArrayAttri
 mkGLDisableVertexArrayAttrib :: GLuint -> GLuint -> GLIO -> GLIO
 mkGLDisableVertexArrayAttrib vaobj index_ glio = Fixed $ GLDisableVertexArrayAttrib vaobj index_ glio
 
+mkGLEnableVertexAttribArray :: GLuint -> GLIO -> GLIO
+mkGLEnableVertexAttribArray index_ glio = Fixed $ GLEnableVertexAttribArray index_ glio
+
+mkGLDisableVertexAttribArray :: GLuint -> GLIO -> GLIO
+mkGLDisableVertexAttribArray index_ glio = Fixed $ GLDisableVertexAttribArray index_ glio
+
+{-
 mkGLDrawElements :: GLenum -> [GLuint] -> GLIO -> GLIO
 mkGLDrawElements mode indices_ glio = Fixed $ GLDrawElements mode indices_ glio
+-}
 
+{-
 mkGLDrawElementsData :: GLenum -> GLsizei -> GLenum -> GLData -> GLIO -> GLIO
 mkGLDrawElementsData mode count type_ indices_ glio = Fixed $ GLDrawElementsData mode count type_ indices_ glio
+-}
+
+mkGLDrawElementsRaw :: GLenum -> GLsizei -> GLenum -> Integer -> GLIO -> GLIO
+mkGLDrawElementsRaw mode count type_ offset glio = Fixed $ GLDrawElementsRaw mode count type_ offset glio
 
 mkGLGetString :: GLenum -> (BS.ByteString -> GLIO) -> GLIO
 mkGLGetString name withString = Fixed $ GLGetString name withString

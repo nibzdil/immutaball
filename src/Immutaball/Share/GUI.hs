@@ -51,6 +51,7 @@ import Immutaball.Prelude
 import Control.Arrow
 --import Data.Functor.Identity
 import Data.Maybe
+import Foreign.Storable (sizeOf)
 
 import Control.Lens
 import qualified Data.Map.Lazy as M
@@ -360,7 +361,59 @@ guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t),
 
 guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeightI, GLuint), Rect Double)], M.Map id Double, M.Map id (Widget id), Double, IBStateContext) IBStateContext
 guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
-	returnA -< _
+	-- let sdlGL1' = sdlGL1 h
+	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+
+	-- TODO: vertexData, elementData, numElements
+	let (vertexData, elementData, numElements) = _
+
+	() <- monadic -< sdlGL1' $ do
+		vao        <- unSingleton <$> GLGenVertexArrays 1 id
+		vertexBuf  <- unSingleton <$> GLGenBuffers      1 id
+		elementBuf <- unSingleton <$> GLGenBuffers      1 id
+
+		GLBindVertexArray vao ()
+
+		GLBindBuffer GL_ARRAY_BUFFER vertexBuf                  ()
+		GLBufferData GL_ARRAY_BUFFER vertexData GL_DYNAMIC_DRAW ()
+
+		GLBindBuffer GL_ELEMENT_ARRAY_BUFFER elementBuf                  ()
+		GLBufferData GL_ELEMENT_ARRAY_BUFFER elementData GL_DYNAMIC_DRAW ()
+
+		let sd = fromIntegral $ sizeOf (0.0 :: GLdouble)
+		let si = fromIntegral $ sizeOf (0 :: GLint)
+		let fi = fromIntegral
+
+		-- … stride offset ()
+
+		-- location 0: vec3 positions.
+		GLVertexAttribPointer 0 3 GL_DOUBLE GL_FALSE (9*sd + 1*si) (fi$sum[]*sd) ()
+		GLEnableVertexAttribArray 0 ()
+
+		-- location 1: vec4 modulateColors.
+		GLVertexAttribPointer 1 4 GL_DOUBLE GL_FALSE (9*sd + 1*si) (fi$sum[3]*sd) ()
+		GLEnableVertexAttribArray 1 ()
+
+		-- location 2: vec2 texCoords.
+		GLVertexAttribPointer 2 4 GL_DOUBLE GL_FALSE (9*sd + 1*si) (fi$sum[3,4]*sd) ()
+		GLEnableVertexAttribArray 2 ()
+
+		-- location 3: vec2 texLayers.
+		GLVertexAttribPointer 3 1 GL_INT GL_TRUE (9*sd + 1*si) (fi$sum[3,4,2]*sd) ()
+		GLEnableVertexAttribArray 3 ()
+
+		GLDrawElementsRaw GL_TRIANGLES numElements GL_UNSIGNED_INT 0 ()
+
+		GLDeleteBuffers      [vertexBuf]  ()
+		GLDeleteBuffers      [elementBuf] ()
+		GLDeleteVertexArrays [vao]        ()
+
+	returnA -< cxtn
+	where
+		unSingleton [me] = me
+		unSingleton _    = error "Internal error: guiPaintWidgets expected a single result from GLGenVertexArrays or GLGenBuffers."
+		rectToTriangles :: Rect Double -> [Vec3 (Vec2 Double)]
+		rectToTriangles r = [Vec3 (r^.rectLowerLeft) (r^.rectLowerRight) (r^.rectUpperRight), Vec3 (r^.rectLowerLeft) (r^.rectUpperLeft) (r^.rectUpperRight)]
 
 --foldrA :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, t a) b
 --cachingRenderText :: Wire ImmutaballM (T.Text, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)

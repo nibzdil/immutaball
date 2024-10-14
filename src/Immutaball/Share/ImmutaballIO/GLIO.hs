@@ -120,6 +120,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDetachShader,
 		mkGLLinkProgram,
 		mkGLUseProgram,
+		mkGLProgramParameteri,
 		mkGLBindProgramPipeline,
 		mkGLUseProgramStages,
 		mkGLGenProgramPipelines,
@@ -270,6 +271,7 @@ data GLIOF me =
 	| GLDetachShader GLuint GLuint me
 	| GLLinkProgram GLuint me
 	| GLUseProgram GLuint me
+	| GLProgramParameteri GLuint GLenum GLint me
 	| GLBindProgramPipeline GLuint me
 
 	| GLUseProgramStages GLuint GLbitfield GLuint me
@@ -391,13 +393,14 @@ instance Functor GLIOF where
 	fmap f (GLCreateShader shaderType withId) = GLCreateShader shaderType (f . withId)
 	fmap f (GLDeleteShader id_ withUnit)      = GLDeleteShader id_        (f withUnit)
 
-	fmap f (GLShaderSource shader strings withUnit) = GLShaderSource shader strings (f withUnit)
-	fmap f (GLCompileShader id_           withUnit) = GLCompileShader id_           (f withUnit)
-	fmap f (GLAttachShader program shader withUnit) = GLAttachShader program shader (f withUnit)
-	fmap f (GLDetachShader program shader withUnit) = GLDetachShader program shader (f withUnit)
-	fmap f (GLLinkProgram program         withUnit) = GLLinkProgram program         (f withUnit)
-	fmap f (GLUseProgram id_              withUnit) = GLUseProgram id_              (f withUnit)
-	fmap f (GLBindProgramPipeline id_     withUnit) = GLBindProgramPipeline id_     (f withUnit)
+	fmap f (GLShaderSource shader strings           withUnit) = GLShaderSource shader strings           (f withUnit)
+	fmap f (GLCompileShader id_                     withUnit) = GLCompileShader id_                     (f withUnit)
+	fmap f (GLAttachShader program shader           withUnit) = GLAttachShader program shader           (f withUnit)
+	fmap f (GLDetachShader program shader           withUnit) = GLDetachShader program shader           (f withUnit)
+	fmap f (GLLinkProgram program                   withUnit) = GLLinkProgram program                   (f withUnit)
+	fmap f (GLUseProgram id_                        withUnit) = GLUseProgram id_                        (f withUnit)
+	fmap f (GLProgramParameteri program pname value withUnit) = GLProgramParameteri program pname value (f withUnit)
+	fmap f (GLBindProgramPipeline id_               withUnit) = GLBindProgramPipeline id_               (f withUnit)
 
 	fmap f (GLUseProgramStages pipeline stages program withUnit)  = GLUseProgramStages pipeline stages program (f withUnit)
 	fmap f (GLGenProgramPipelines    numNames          withNames) = GLGenProgramPipelines    numNames             (f . withNames)
@@ -576,13 +579,14 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLCreateShader shaderType withId) -> return $ GLCreateShader shaderType ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withId)
 		y@( GLDeleteShader _id        me)     -> putMVar mme me >> return y
 
-		y@( GLShaderSource _shader _strings me) -> putMVar mme me >> return y
-		y@( GLCompileShader _id             me) -> putMVar mme me >> return y
-		y@( GLAttachShader _program _shader me) -> putMVar mme me >> return y
-		y@( GLDetachShader _program _shader me) -> putMVar mme me >> return y
-		y@( GLLinkProgram _program          me) -> putMVar mme me >> return y
-		y@( GLUseProgram _id                me) -> putMVar mme me >> return y
-		y@( GLBindProgramPipeline _id       me) -> putMVar mme me >> return y
+		y@( GLShaderSource _shader _strings            me) -> putMVar mme me >> return y
+		y@( GLCompileShader _id                        me) -> putMVar mme me >> return y
+		y@( GLAttachShader _program _shader            me) -> putMVar mme me >> return y
+		y@( GLDetachShader _program _shader            me) -> putMVar mme me >> return y
+		y@( GLLinkProgram _program                     me) -> putMVar mme me >> return y
+		y@( GLUseProgram _id                           me) -> putMVar mme me >> return y
+		y@( GLProgramParameteri _program _pname _value me) -> putMVar mme me >> return y
+		y@( GLBindProgramPipeline _id                  me) -> putMVar mme me >> return y
 
 		y@( GLUseProgramStages _pipeline _stages _program me)        -> putMVar mme me >> return y
 		_y@(GLGenProgramPipelines numNames                withNames) -> return $ GLGenProgramPipelines numNames ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withNames)
@@ -712,13 +716,14 @@ runGLIOIO (GLDeleteProgram id_       glio)   = glDeleteProgram id_       >> glio
 runGLIOIO (GLCreateShader shaderType withId) = glCreateShader shaderType >>= withId
 runGLIOIO (GLDeleteShader id_        glio)   = glDeleteShader id_        >> glio
 
-runGLIOIO (GLShaderSource shader strings glio) = hglShaderSource shader strings >> glio
-runGLIOIO (GLCompileShader id_           glio) = glCompileShader id_            >> glio
-runGLIOIO (GLAttachShader program shader glio) = glAttachShader program shader  >> glio
-runGLIOIO (GLDetachShader program shader glio) = glDetachShader program shader  >> glio
-runGLIOIO (GLLinkProgram program         glio) = glLinkProgram program          >> glio
-runGLIOIO (GLUseProgram id_              glio) = glUseProgram id_               >> glio
-runGLIOIO (GLBindProgramPipeline id_     glio) = glBindProgramPipeline id_      >> glio
+runGLIOIO (GLShaderSource shader strings           glio) = hglShaderSource shader strings          >> glio
+runGLIOIO (GLCompileShader id_                     glio) = glCompileShader id_                     >> glio
+runGLIOIO (GLAttachShader program shader           glio) = glAttachShader program shader           >> glio
+runGLIOIO (GLDetachShader program shader           glio) = glDetachShader program shader           >> glio
+runGLIOIO (GLLinkProgram program                   glio) = glLinkProgram program                   >> glio
+runGLIOIO (GLUseProgram id_                        glio) = glUseProgram id_                        >> glio
+runGLIOIO (GLProgramParameteri program pname value glio) = glProgramParameteri program pname value >> glio
+runGLIOIO (GLBindProgramPipeline id_               glio) = glBindProgramPipeline id_               >> glio
 
 runGLIOIO (GLUseProgramStages pipeline stages program glio)      = glUseProgramStages pipeline stages program >> glio
 runGLIOIO (GLGenProgramPipelines    numNames          withNames) = hglGenTextures numNames                    >>= withNames
@@ -1295,6 +1300,9 @@ mkGLLinkProgram program glio = Fixed $ GLLinkProgram program glio
 
 mkGLUseProgram :: GLuint -> GLIO -> GLIO
 mkGLUseProgram id_ glio = Fixed $ GLUseProgram id_ glio
+
+mkGLProgramParameteri :: GLuint -> GLenum -> GLint -> GLIO -> GLIO
+mkGLProgramParameteri program pname value glio = Fixed $ GLProgramParameteri program pname value glio
 
 mkGLBindProgramPipeline :: GLuint -> GLIO -> GLIO
 mkGLBindProgramPipeline id_ glio = Fixed $ GLBindProgramPipeline id_ glio

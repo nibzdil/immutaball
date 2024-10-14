@@ -5,7 +5,7 @@
 -- CLI.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, ExistentialQuantification #-}
 
 module Immutaball.Share.Video
 	(
@@ -23,6 +23,12 @@ module Immutaball.Share.Video
 		freeImmutaballShader,
 		rawInitializeImmutaballShaderContinue,
 
+		-- * Errors
+		VideoException(..),
+		videoExceptionToException,
+		videoExceptionFromException,
+		GLErrorVideoException(..),
+
 		-- * Utils
 		checkGLErrorsIB,
 		glErrType,
@@ -32,9 +38,11 @@ module Immutaball.Share.Video
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Exception
 import Control.Monad
 import Data.Bits
 import Data.List
+import Data.Typeable (cast)
 import Data.Word
 
 import Control.Concurrent.STM.TMVar
@@ -206,6 +214,25 @@ rawInitializeImmutaballShaderContinue ibsh = do
 			GL_FRAGMENT_SHADER_BIT
 		]
 	glChecked $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
+
+-- * Errors
+
+data VideoException = forall e. Exception e => VideoException e
+instance Show VideoException where
+	show (VideoException e) = show e
+instance Exception VideoException
+videoExceptionToException :: Exception e => e -> SomeException
+videoExceptionToException = toException . VideoException
+videoExceptionFromException :: Exception e => SomeException -> Maybe e
+videoExceptionFromException x = do
+	VideoException a <- fromException x
+	cast a
+
+data GLErrorVideoException = GLErrorVideoException
+	deriving (Show)
+instance Exception GLErrorVideoException where
+	toException = videoExceptionToException
+	fromException = videoExceptionFromException
 
 -- * Utils
 

@@ -199,7 +199,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 	widgetIdx   <- mkWidgetsAnalysis' mkWidgetIdx   -< widgetsReq
 	widgetToIdx <- mkWidgetsAnalysis' mkWidgetToIdx -< widgetsReq
 	getChildren <- mkWidgetsAnalysis' mkGetChildren -< widgetsReq
-	geometry   <- mkWidgetsAnalysis' mkGeometry    -< widgetsReq
+	geometry    <- mkWidgetsAnalysis' mkGeometry    -< widgetsReq
 
 	nextWidgetHier' <- returnA -< nextWidgetHier widgetBy getChildren
 	prevWidgetHier' <- returnA -< prevWidgetHier widgetBy getChildren

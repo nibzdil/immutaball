@@ -53,6 +53,7 @@ module Immutaball.Share.ImmutaballIO
 		mkWait,
 		mkWithAsync,
 		mkAtomically,
+		mkThrowIO,
 
 		-- * Utils
 		mkBIO
@@ -60,6 +61,8 @@ module Immutaball.Share.ImmutaballIO
 
 import Prelude ()
 import Immutaball.Prelude
+
+import GHC.Stack (HasCallStack)  -- For ThrowIO.
 
 import Control.Concurrent.Async
 import Control.Monad.Fix
@@ -94,6 +97,8 @@ data ImmutaballIOF me =
 	| WithAsync me (Async () -> me)
 	| forall hiddenTypeField. Atomically (STM hiddenTypeField) (hiddenTypeField -> me)
 
+	| forall e. (HasCallStack, Exception e) => ThrowIO e me
+
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
 
@@ -127,6 +132,8 @@ instance Functor ImmutaballIOF where
 	fmap  f   (Wait async_ withAsync_)    = Wait async_ (f . withAsync_)
 	fmap  f   (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
 	fmap  f   (Atomically stm withStm)    = Atomically stm (f . withStm)
+
+	fmap  f   (ThrowIO e withUnit) = ThrowIO e (f withUnit)
 
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinIBIOF
@@ -223,9 +230,12 @@ unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 		_y@(AndIBIOF  a b)     -> putMVar mme a >> return (JoinIBIOF $ AndIBIOF  (PureIBIOF a) (f b))
 		_y@(ThenIBIOF a b)     -> putMVar mme a >> return (JoinIBIOF $ ThenIBIOF (PureIBIOF a) (f b))
 		_y@(BasicIBIOF bio)    -> return . BasicIBIOF . unsafeFixBasicIOFTo mme $ const bio
+
 		_y@(Wait async_ withAsync_)    -> return $ Wait       async_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withAsync_)
 		_y@(WithAsync ibio withAsync_) -> return $ WithAsync  ibio   ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withAsync_)
 		_y@(Atomically stm withStm)    -> return $ Atomically stm    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withStm)
+
+		y@(ThrowIO _e me) -> putMVar mme me >> return y
 
 instance Applicative ImmutaballIOF where
 	pure = PureIBIOF
@@ -276,6 +286,8 @@ runImmutaballIOIO (Wait async_ withAsync_)    = wait async_ >>= withAsync_
 runImmutaballIOIO (WithAsync ibio withAsync_) = withAsync ibio withAsync_
 runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 
+runImmutaballIOIO (ThrowIO e ibio) = throwIO e >> ibio
+
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicIBIOF (runBasicImmutaballIO <$> getFixed bio)
 
@@ -316,6 +328,9 @@ mkWithAsync ibio withAsync_ = Fixed $ WithAsync ibio withAsync_
 
 mkAtomically :: STM a -> (a -> ImmutaballIO) -> ImmutaballIO
 mkAtomically stm withStm = Fixed $ Atomically stm withStm
+
+mkThrowIO :: (HasCallStack, Exception e) => e -> ImmutaballIO -> ImmutaballIO
+mkThrowIO e ibio = Fixed $ ThrowIO e ibio
 
 -- * Utils
 

@@ -212,16 +212,24 @@ rawInitializeImmutaballShaderContinue ibsh = do
 	flip D.trace (pure ()) $ "DEBUG0"
 	glChecked $ GLUseProgram (ibsh^.ibshProgram) ()
 	flip D.trace (pure ()) $ "DEBUG1"
-	glChecked $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
+	when setupProgramPipeline $ do
+		let stages = foldr (.|.) 0 $
+			[
+				GL_VERTEX_SHADER_BIT,
+				GL_FRAGMENT_SHADER_BIT
+			]
+		glChecked $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
 	flip D.trace (pure ()) $ "DEBUG2"
-	let stages = foldr (.|.) 0 $
-		[
-			GL_VERTEX_SHADER_BIT,
-			GL_FRAGMENT_SHADER_BIT
-		]
+	when useProgramPipeline $ do
+		glChecked $ GLUseProgram 0 ()
+		glChecked $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
 	flip D.trace (pure ()) $ "DEBUG3"
-	glChecked $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
-	flip D.trace (pure ()) $ "DEBUG4"
+	where
+		setupProgramPipeline :: Bool
+		setupProgramPipeline = True || useProgramPipeline
+		-- We only need the program.
+		useProgramPipeline :: Bool
+		useProgramPipeline = False
 
 -- * Errors
 

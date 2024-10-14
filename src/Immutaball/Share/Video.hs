@@ -25,7 +25,8 @@ module Immutaball.Share.Video
 
 		-- * Utils
 		checkGLErrorsIB,
-		glErrType
+		glErrType,
+		glChecked
 	) where
 
 import Prelude ()
@@ -158,57 +159,51 @@ freeImmutaballShader sdlMgr ibsh = do
 -- | (Note: we are already in the SDL Manager thread.)
 rawInitializeImmutaballShaderContinue :: ImmutaballShaderHandle -> ImmutaballIOF ()
 rawInitializeImmutaballShaderContinue ibsh = do
-	BasicIBIOF . GLIO $ GLShaderSource (ibsh^.ibshVertexShader) [vertexShader] ()
-	checkGLErrorsIB
-	BasicIBIOF . GLIO $ GLShaderSource (ibsh^.ibshFragmentShader) [fragmentShader] ()
-	checkGLErrorsIB
+	glChecked $ GLShaderSource (ibsh^.ibshVertexShader) [vertexShader] ()
+	glChecked $ GLShaderSource (ibsh^.ibshFragmentShader) [fragmentShader] ()
 
-	BasicIBIOF . GLIO $ GLCompileShader (ibsh^.ibshVertexShader) ()
-	checkGLErrorsIB
-	successV <- ((/= 0) <$>) . BasicIBIOF . GLIO $ GLGetShaderiv (ibsh^.ibshVertexShader) GL_COMPILE_STATUS id
-	checkGLErrorsIB
+	glChecked $ GLCompileShader (ibsh^.ibshVertexShader) ()
+	successV <- ((/= 0) <$>) . glChecked $ GLGetShaderiv (ibsh^.ibshVertexShader) GL_COMPILE_STATUS id
 	when (not successV) $ do
 		compileError <- BasicIBIOF . GLIO $ GLGetShaderInfoLog (ibsh^.ibshVertexShader) id
+		when True $ do  -- TODO DEBUG REMOVE
+			debugName <- glChecked $ GLCreateShader GL_VERTEX_SHADER id  -- TODO DEBUG REMOVE
+			() <- BasicIBIOF $ PutStrLn ("DEBUG0: names: " ++ show (ibsh^.ibshVertexShader, ibsh^.ibshFragmentShader, ibsh^.ibshProgram, ibsh^.ibshPipeline, debugName)) () -- TODO DEBUG REMOVE
+			return ()
 		() <- BasicIBIOF $ PutStrLn ("Error: the vertex shader failed to compile!  OpenGL error: " ++ compileError) ()
+		checkGLErrorsIB
 		() <- BasicIBIOF $ ExitFailureBasicIOF
 		return ()
 
-	BasicIBIOF . GLIO $ GLCompileShader (ibsh^.ibshFragmentShader) ()
-	checkGLErrorsIB
-	successF <- ((/= 0) <$>) . BasicIBIOF . GLIO $ GLGetShaderiv (ibsh^.ibshFragmentShader) GL_COMPILE_STATUS id
-	checkGLErrorsIB
+	glChecked $ GLCompileShader (ibsh^.ibshFragmentShader) ()
+	successF <- ((/= 0) <$>) . glChecked $ GLGetShaderiv (ibsh^.ibshFragmentShader) GL_COMPILE_STATUS id
 	when (not successF) $ do
-		compileError <- BasicIBIOF . GLIO $ GLGetShaderInfoLog (ibsh^.ibshFragmentShader) id
+		compileError <- glChecked $ GLGetShaderInfoLog (ibsh^.ibshFragmentShader) id
 		() <- BasicIBIOF $ PutStrLn ("Error: the fragment shader failed to compile!  OpenGL error: " ++ compileError) ()
+		checkGLErrorsIB
 		() <- BasicIBIOF $ ExitFailureBasicIOF
 		return ()
 
-	BasicIBIOF . GLIO $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshVertexShader) ()
-	checkGLErrorsIB
-	BasicIBIOF . GLIO $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshFragmentShader) ()
-	checkGLErrorsIB
-	BasicIBIOF . GLIO $ GLLinkProgram (ibsh^.ibshProgram) ()
-	checkGLErrorsIB
+	glChecked $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshVertexShader) ()
+	glChecked $ GLAttachShader (ibsh^.ibshProgram) (ibsh^.ibshFragmentShader) ()
+	glChecked $ GLLinkProgram (ibsh^.ibshProgram) ()
 
-	successL <- ((/= 0) <$>) . BasicIBIOF . GLIO $ GLGetProgramiv (ibsh^.ibshProgram) GL_LINK_STATUS id
-	checkGLErrorsIB
+	successL <- ((/= 0) <$>) . glChecked $ GLGetProgramiv (ibsh^.ibshProgram) GL_LINK_STATUS id
 	when (not successL) $ do
 		linkError <- BasicIBIOF . GLIO $ GLGetProgramInfoLog (ibsh^.ibshProgram) id
 		() <- BasicIBIOF $ PutStrLn ("Error: the OpenGL GLSL shaders failed to link!  OpenGL error: " ++ linkError) ()
+		checkGLErrorsIB
 		() <- BasicIBIOF $ ExitFailureBasicIOF
 		return ()
 
-	BasicIBIOF . GLIO $ GLUseProgram (ibsh^.ibshProgram) ()
-	checkGLErrorsIB
-	BasicIBIOF . GLIO $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
-	checkGLErrorsIB
+	glChecked $ GLUseProgram (ibsh^.ibshProgram) ()
+	glChecked $ GLBindProgramPipeline (ibsh^.ibshPipeline) ()
 	let stages = foldr (.|.) 0 $
 		[
 			GL_VERTEX_SHADER_BIT,
 			GL_FRAGMENT_SHADER_BIT
 		]
-	BasicIBIOF . GLIO $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
-	checkGLErrorsIB
+	glChecked $ GLUseProgramStages (ibsh^.ibshPipeline) stages (ibsh^.ibshProgram) ()
 
 -- * Utils
 
@@ -216,7 +211,8 @@ checkGLErrorsIB :: ImmutaballIOF ()
 checkGLErrorsIB = do
 	error_ <- BasicIBIOF . GLIO $ GLGetError id
 	case error_ of
-		GL_NO_ERROR -> return ()
+		--GL_NO_ERROR -> return ()
+		GL_NO_ERROR -> BasicIBIOF $ PutStrLn ("DEBUG8: NO GL ERROR") ()
 		err -> do
 			() <- BasicIBIOF $ PutStrLn ("Error: an OpenGL error occurred (" ++ show err ++ "): " ++ glErrType err) ()
 			() <- BasicIBIOF $ ExitFailureBasicIOF
@@ -232,3 +228,6 @@ glErrType GL_OUT_OF_MEMORY                 = "GL_OUT_OF_MEMORY"
 glErrType GL_STACK_OVERFLOW                = "GL_STACK_OVERFLOW"
 glErrType GL_STACK_UNDERFLOW               = "GL_STACK_UNDERLOW"
 glErrType _                                = "unknown error type"
+
+glChecked :: GLIOF me -> ImmutaballIOF me
+glChecked m = (BasicIBIOF . GLIO $ m) <* checkGLErrorsIB

@@ -39,7 +39,7 @@ module Immutaball.Share.GUI
 		prevWidgetHier,
 		isSelectable,
 		guiPaint,
-		guiPaintWidget,
+		guiPaintWidgetsChunk,
 		focusDecayTime,
 		focusScale
 	) where
@@ -70,9 +70,6 @@ import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
-
-import Debug.Trace as D -------------------------- TODO
-import Text.Printf
 
 -- * widgets
 
@@ -331,11 +328,29 @@ guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, 
 		(widgetLastFocusLast :: M.Map id Double) <- delay M.empty -< widgetLastFocus
 		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
 
-	cxtnp1 <- foldrA guiPaintWidget -< (cxtn, flip map widgets $ \w -> (w, widgetLastFocus, geometry, widgetIdx, t))
+	chunks' <- returnA -< chunksOf (cxtn^.ibContext.ibStaticConfig.x'cfgMaxPassTextures)
+	cxtnp1 <- foldrA guiPaintWidgetsChunk -< (cxtn, flip map (chunks' widgets) $ \ws -> (ws, widgetLastFocus, geometry, widgetIdx, t))
 	returnA -< cxtnp1
 
-guiPaintWidget :: Wire ImmutaballM ((Widget id, M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Double), IBStateContext) IBStateContext
-guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
+guiCachingRenderText :: Wire ImmutaballM (Widget id, IBStateContext) (Maybe (WidthHeightI, GLuint), IBStateContext)
+guiCachingRenderText = _
+
+-- | Just process 16 at a time, the number of textures our shader can handle at a time.
+guiPaintWidgetsChunk :: Wire ImmutaballM (([Widget id], M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Double), IBStateContext) IBStateContext
+guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
+	-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.
+	--guiCacheRenderText' <- returnA -< guiCacheRenderText …
+	(mdimNames :: [Maybe (WidthHeightI, GLuint)], cxtnp1) <- foldrA guiCacheRenderText' -< (([], cxtn), widgets)
+	returnA -< _
+	where
+		-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.
+		guiCacheRenderText' = proc (w, (mdimNames, icxtn)) -> do
+			(mdimName, icxtnp1) <- guiCachingRenderText -< (w, icxtn)
+			returnA -< (mdimName : mdimNames, icxtnp1)
+--foldrA :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, t a) b
+--cachingRenderText :: Wire ImmutaballM (T.Text, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)
+
+	{-
 	_dt <- differentiate -< t
 	dt <- differentiate -< t
 	--offset <- integrate 0 -< 0.01 * dt
@@ -407,6 +422,7 @@ guiPaintWidget = proc ((widget, widgetLastFocus, geometry, widgetIdx, t), cxtn) 
 			-- -}
 			returnA -< cxtnp1
 		_ -> returnA -< cxtn
+	-}
 
 -- Optionally this could be moved to static config.
 focusDecayTime :: Double

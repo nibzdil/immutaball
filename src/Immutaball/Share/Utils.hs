@@ -20,7 +20,9 @@ module Immutaball.Share.Utils
 		safeHead,
 		safeTail,
 		mfix',
-		joinMaybeResult
+		joinMaybeResult,
+		chunksOfI,
+		chunksOf
 	) where
 
 import Prelude ()
@@ -29,6 +31,7 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Monad.Fix
 import Data.Functor.Compose
+import Data.List
 
 import Control.Lens
 
@@ -86,3 +89,10 @@ joinMaybeResult :: Maybe (a -> Maybe b) -> (a -> Maybe b)
 joinMaybeResult mf = \a -> do
 	f <- mf
 	f a
+
+chunksOfI :: Integer -> [a] -> [[a]]
+chunksOfI = chunksOf
+
+chunksOf :: (Integral i) => i -> [a] -> [[a]]
+chunksOf n xs = take' n xs : chunksOf n (drop' n xs)
+	where (take', drop') = (genericTake, genericDrop)

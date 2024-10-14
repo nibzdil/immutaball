@@ -179,12 +179,16 @@ makeClassyPrisms ''WidgetResponse
 
 -- TODO: handle mouse input.
 -- TODO: paint.
+-- TODO: GUISetText, which clears old cache if nobody else refers.
 
 mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id, IBStateContext) (WidgetResponse id, IBStateContext)
 mkGUI initialWidgets = proc (request, cxtn) -> do
 	-- Set up widgets.
-	resetWidgets <- returnA -< either (const Nothing) Just $ matching _ResetGUI request
+	resetWidgets <- returnA -< const Nothing ||| Just $ matching _ResetGUI request
 	widgets <- hold initialWidgets -< resetWidgets
+
+	-- On reset, clear the text cache; we're the only user.
+	cxtnp1 <- clearTextCache ||| returnA -< const cxtn +++ const cxtn $ matching _ResetGUI request
 
 	-- Analyze widgets.
 	widgetsReq  <- returnA -< resetWidgets
@@ -220,9 +224,9 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 			flip mapMaybe widgetsFocusedSinceLastPaintIdx $ \idx -> (^.wid) <$> flip M.lookup widgetIdx idx
 
 	-- Paint.
-	cxtnp1 <- case request of
-		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t, cxtn)
-		_ -> returnA -< cxtn
+	cxtnp2 <- case request of
+		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t, cxtnp1)
+		_ -> returnA -< cxtnp1
 
 	-- Set up response.
 	response <- returnA -< case request of
@@ -230,7 +234,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 			if' (char == fromIntegral Raw.SDLK_RETURN) (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus) $
 			NoWidgetAction
 		_ -> NoWidgetAction
-	returnA -< (response, cxtnp1)
+	returnA -< (response, cxtnp2)
 	where
 		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()

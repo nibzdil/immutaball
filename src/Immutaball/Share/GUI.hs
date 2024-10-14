@@ -189,6 +189,9 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 
 	-- On reset, clear the text cache; we're the only user.
 	cxtnp1 <- clearTextCache ||| returnA -< const cxtn +++ const cxtn $ matching _ResetGUI request
+	-- On the first step, clear the text cache; we're the only user.
+	isFirst <- delay True -< returnA False
+	cxtnp2 <- clearTextCache ||| returnA -< if' isFirst Left Right cxtnp1
 
 	-- Analyze widgets.
 	widgetsReq  <- returnA -< resetWidgets
@@ -224,9 +227,9 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 			flip mapMaybe widgetsFocusedSinceLastPaintIdx $ \idx -> (^.wid) <$> flip M.lookup widgetIdx idx
 
 	-- Paint.
-	cxtnp2 <- case request of
-		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t, cxtnp1)
-		_ -> returnA -< cxtnp1
+	cxtnp3 <- case request of
+		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t, cxtnp2)
+		_ -> returnA -< cxtnp2
 
 	-- Set up response.
 	response <- returnA -< case request of
@@ -234,7 +237,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 			if' (char == fromIntegral Raw.SDLK_RETURN) (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus) $
 			NoWidgetAction
 		_ -> NoWidgetAction
-	returnA -< (response, cxtnp2)
+	returnA -< (response, cxtnp3)
 	where
 		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()

@@ -24,6 +24,8 @@ module Immutaball.Share.ImmutaballIO
 		(<>-),
 		joinImmutaballIOF,
 		forkIBIOF,
+		forkBoundIBIOF,
+		forkBothBoundIBIOF,
 
 		-- * mfix
 		FixImmutaballIOException(..),
@@ -138,8 +140,32 @@ joinImmutaballIOF = JoinIBIOF
 -- second too, preserving ‘let ma = ma >>= f’ in a computable manner.  mfix
 -- with forkOS takes the second argument as result first, but still traverses
 -- the tree all the same.
+--
+-- Note: due to the underlying 'concurrently_' runner, both branches are run
+-- under an unbound thread.
+--
+-- Use 'forkBoundIBIOF' or 'ForkIO' if instead you wish to keep the primary
+-- thread in the second argument bound, but fork the first unbound.  Use
+-- 'forkBothboundIBIOF' or 'ForkOS' if you wish to keep both bound.  Ensuring
+-- some commands are run in a same bound thread may be necessary e.g. for
+-- OpenGL.
 forkIBIOF :: ImmutaballIOF me -> ImmutaballIOF me -> ImmutaballIOF me
 forkIBIOF fork withUnit = JoinIBIOF $ flip AndIBIOF fork withUnit
+
+-- | Keep the second, main thread in a bound thread if it is running in a bound thread.
+--
+-- Note the underlying runner does not use 'concurrently_' to manage automatic
+-- thread clean-up.  Thus normally 'forkIBIOF' is preferable unless you want to
+-- keep the second argument running in a bound thread, e.g. for OpenGL rendering.
+--
+-- (See 'Control.Concurrent' documentation for what a bound versus unbound
+-- thread means.)
+forkBoundIBIOF :: ImmutaballIOF me -> ImmutaballIOF me -> ImmutaballIOF me
+forkBoundIBIOF fork withUnit = JoinIBIOF . BasicIBIOF $ ForkIO fork withUnit
+
+-- | Fork into a bound thread with 'forkOS'.
+forkBothBoundIBIOF :: ImmutaballIOF me -> ImmutaballIOF me -> ImmutaballIOF me
+forkBothBoundIBIOF fork withUnit = JoinIBIOF . BasicIBIOF $ ForkOS fork withUnit
 
 -- * mfix
 

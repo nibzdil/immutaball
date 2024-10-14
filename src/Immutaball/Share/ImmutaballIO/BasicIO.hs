@@ -56,6 +56,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		mkReadText,
 		mkReadTextSync,
 		mkCreateDirectoryIfMissing,
+		mkForkIO,
 		mkForkOS,
 		mkSDLIO,
 		mkGLIO,
@@ -131,6 +132,7 @@ data BasicIOF me =
 	| ReadText FilePath (Maybe (String -> me)) (Async (Maybe T.Text) -> me)
 	| ReadTextSync FilePath (Maybe (String -> me)) (T.Text -> me)
 	| CreateDirectoryIfMissing FilePath me
+	| ForkIO me me
 	| ForkOS me me
 
 	| SDLIO (SDLIOF me)
@@ -182,6 +184,7 @@ instance Functor BasicIOF where
 	fmap  f (ReadText path mwithErr withContents)      = ReadText path ((f .) <$> mwithErr) (f . withContents)
 	fmap  f (ReadTextSync path mwithErr withContents)  = ReadTextSync path ((f .) <$> mwithErr) (f . withContents)
 	fmap  f (CreateDirectoryIfMissing path withUnit)   = CreateDirectoryIfMissing path (f withUnit)
+	fmap  f (ForkIO bio withUnit)                      = ForkIO (f bio) (f withUnit)
 	fmap  f (ForkOS bio withUnit)                      = ForkOS (f bio) (f withUnit)
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
@@ -289,8 +292,10 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		_y@(ReadText          path mwithErr withContents) -> return $ ReadText          path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		_y@(ReadTextSync      path mwithErr withContents) -> return $ ReadTextSync      path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		y@( CreateDirectoryIfMissing _path me)            -> putMVar mme me >> return y
+		--y@( ForkIO            _bio me)                    -> putMVar mme me >> return y
+		_y@(ForkIO            bio me)                     -> putMVar mme me >> return (JoinBasicIOF $ ForkIO (f bio) (PureBasicIOF me))
 		--y@( ForkOS            _os me)                     -> putMVar mme me >> return y
-		_y@(ForkOS            os me)                      -> putMVar mme me >> return (JoinBasicIOF $ ForkOS (f os) (PureBasicIOF me))
+		_y@(ForkOS            os me)                      -> putMVar mme me >> return (JoinBasicIOF $ ForkOS (f os)  (PureBasicIOF me))
 
 		_y@(SDLIO sdlio) -> return . SDLIO . unsafeFixSDLIOFTo mme $ const sdlio
 		_y@(GLIO  glio)  -> return . GLIO  . unsafeFixGLIOFTo  mme $ const glio
@@ -330,6 +335,7 @@ runBasicIOIO (ReadText path mwithErr withContents)         =
 runBasicIOIO (ReadTextSync path mwithErr withContents)     =
 	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . withErr . show) mwithErr e)) >>= maybe (return ()) (id . withContents)
 runBasicIOIO (CreateDirectoryIfMissing path withUnit)      = createDirectoryIfMissing True path >> withUnit
+runBasicIOIO (ForkIO bio withUnit)                         = (void . forkIO) bio >> withUnit
 runBasicIOIO (ForkOS bio withUnit)                         = (void . forkOS) bio >> withUnit
 runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
 runBasicIOIO (GLIO  glio)                                  = runGLIOIO  $ glio
@@ -421,6 +427,9 @@ mkReadTextSync path mwithErr withContents = Fixed $ ReadTextSync path mwithErr w
 
 mkCreateDirectoryIfMissing :: FilePath -> BasicIO -> BasicIO
 mkCreateDirectoryIfMissing path withUnit = Fixed $ CreateDirectoryIfMissing path withUnit
+
+mkForkIO :: BasicIO -> BasicIO -> BasicIO
+mkForkIO bio withUnit = Fixed $ ForkIO bio withUnit
 
 mkForkOS :: BasicIO -> BasicIO -> BasicIO
 mkForkOS bio withUnit = Fixed $ ForkOS bio withUnit

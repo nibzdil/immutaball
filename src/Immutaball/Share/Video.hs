@@ -228,11 +228,12 @@ videoExceptionFromException x = do
 	VideoException a <- fromException x
 	cast a
 
-data GLErrorVideoException = GLErrorVideoException
-	deriving (Show)
+data GLErrorVideoException = GLErrorVideoException String
 instance Exception GLErrorVideoException where
 	toException = videoExceptionToException
 	fromException = videoExceptionFromException
+instance Show GLErrorVideoException where
+	show (GLErrorVideoException msg) = msg
 
 -- * Utils
 

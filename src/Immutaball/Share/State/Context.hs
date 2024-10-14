@@ -113,8 +113,6 @@ stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext)
 stateContextStorage y0 = proc cxt -> do
 	hold y0 -< cxt
 
--- TODO: I forget SDL wants video mode setting in a special thread.  So send
--- these with window and with gl context calls over to SDLManager.
 requireVideo :: Wire ImmutaballM IBStateContext IBStateContext
 requireVideo = proc cxt0 -> do
 	case ((cxt0^.ibContext.ibHeadless), (cxt0^.ibSDLWindow)) of

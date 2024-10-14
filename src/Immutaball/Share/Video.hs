@@ -169,8 +169,8 @@ rawInitializeImmutaballShaderContinue ibsh = do
 		when True $ do  -- TODO DEBUG REMOVE
 			debugName <- glChecked $ GLCreateShader GL_VERTEX_SHADER id  -- TODO DEBUG REMOVE
 			() <- BasicIBIOF $ PutStrLn ("DEBUG0: names: " ++ show (ibsh^.ibshVertexShader, ibsh^.ibshFragmentShader, ibsh^.ibshProgram, ibsh^.ibshPipeline, debugName)) () -- TODO DEBUG REMOVE
-			verBs <- glChecked $ GLGetString GL_VERSION id
-			() <- BasicIBIOF $ PutStrLn ("DEBUG0: version str: " ++ show verBs) () -- TODO DEBUG REMOVE
+			--verBs <- glChecked $ GLGetString GL_VERSION id
+			--() <- BasicIBIOF $ PutStrLn ("DEBUG0: version str: " ++ show verBs) () -- TODO DEBUG REMOVE
 			return ()
 		() <- BasicIBIOF $ PutStrLn ("Error: the vertex shader failed to compile!  OpenGL error: " ++ compileError) ()
 		checkGLErrorsIB

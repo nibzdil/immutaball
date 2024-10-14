@@ -11,7 +11,7 @@ module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
 			ibSDLGLContext, ibSDLFont, ibShader, ibGLTextureNames,
-			ibGLTextTextures,
+			ibGLTextTextures, ibGLAllocatedTextures,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
@@ -19,6 +19,7 @@ module Immutaball.Share.State.Context
 		requireFont,
 		requireGLTextureNames,
 		requireGLTextTextures,
+		requireGLAllocatedTextures,
 		requireMisc,
 		requireBasics,
 		finishFrame,
@@ -36,7 +37,8 @@ module Immutaball.Share.State.Context
 
 		cachingRenderText,
 		uncacheText,
-		clearTextCache
+		clearTextCache,
+		ibFreeTextures
 	) where
 
 import Prelude ()
@@ -90,8 +92,12 @@ data IBStateContext = IBStateContext {
 	_ibShader :: Maybe (TMVar ImmutaballShaderHandle),
 
 	-- | Used, freed.
-	_ibGLTextureNames :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
-	_ibGLTextTextures :: Maybe (TVar (M.Map T.Text (WidthHeightI, GLuint)))
+	_ibGLTextureNames      :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
+	_ibGLTextTextures      :: Maybe (TVar (M.Map T.Text (WidthHeightI, GLuint))),
+	-- | By tracking allocated textures, we can attach their lifetimes to the
+	-- SDL Manager thread to automatically clean them up upon quit.
+	-- 'createTexture' and 'freeTexture' use this interface.
+	_ibGLAllocatedTextures :: Maybe (TVar (S.Set GLuint, S.Set GLuint))
 }
 makeLenses ''IBStateContext
 
@@ -101,12 +107,13 @@ initialStateCxt cxt = IBStateContext {
 
 	_ibNeverballrc = cxt^.ibNeverballrc0,
 
-	_ibSDLWindow      = Nothing,
-	_ibSDLGLContext   = Nothing,
-	_ibSDLFont        = Nothing,
-	_ibShader         = Nothing,
-	_ibGLTextureNames = Nothing,
-	_ibGLTextTextures = Nothing
+	_ibSDLWindow           = Nothing,
+	_ibSDLGLContext        = Nothing,
+	_ibSDLFont             = Nothing,
+	_ibShader              = Nothing,
+	_ibGLTextureNames      = Nothing,
+	_ibGLTextTextures      = Nothing,
+	_ibGLAllocatedTextures = Nothing
 }
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
@@ -194,8 +201,22 @@ requireGLTextTextures = proc cxt0 -> do
 			let cxt1 = cxt0 & (ibGLTextTextures.~Just glTextTextures)
 			returnA -< (glTextTextures, cxt1)
 
+requireGLAllocatedTextures :: Wire ImmutaballM IBStateContext (TVar (S.Set GLuint, S.Set GLuint), IBStateContext)
+requireGLAllocatedTextures = proc cxt0 -> do
+	case (cxt0^.ibGLAllocatedTextures) of
+		Just glAllocatedTextures -> returnA -< (glAllocatedTextures, cxt0)
+		Nothing -> do
+			unusedTo_ <- monadic -< liftIBIO $ Atomically (newTMVar ()) id
+			glAllocatedTextures <- monadic -< liftIBIO $ Atomically (newTVar (S.empty, S.empty)) id
+			let cxt1 = cxt0 & (ibGLAllocatedTextures.~Just glAllocatedTextures)
+			() <- monadic -< liftIBIO $ attachLifetime (cxt0^.ibContext.ibSDLManagerHandle) (pure ()) (\() -> ibFreeTextures cxt1 glAllocatedTextures) unusedTo_ ()
+			returnA -< (glAllocatedTextures, cxt1)
+
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
-requireMisc = snd <$> requireShader <<< snd <$> requireGLTextTextures <<< snd <$> requireGLTextureNames <<< snd <$> requireFont <<< id
+requireMisc =
+	snd <$> requireShader <<< snd <$> requireGLAllocatedTextures <<<
+	snd <$> requireGLTextTextures <<< snd <$> requireGLTextureNames <<<
+	snd <$> requireFont <<< id
 
 -- | Also handles common set-up tasks like clearing the color for rendering.
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
@@ -239,6 +260,10 @@ checkGLErrors = proc () -> do
 
 -- * Utils
 
+-- | This variant does NOT use ibGLAllocatedTextures, so lifetimes would need
+-- to be manually managed.  (This is because I'm currently not using this
+-- variant.)
+--
 -- Edit: actually we need glGenTextures to create names.
 -- So don't use the 'WithoutGenText' versions since they won't work.
 newTextureNameWithoutGenText :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
@@ -270,15 +295,48 @@ freeTextureNameWithoutGenText = proc (name, cxtn) -> do
 	() <- monadic -< flip (maybe $ pure ()) err $ \errMsg -> liftIBIO $ (BasicIBIOF $ PutStrLn errMsg ()) <>>- BasicIBIOF ExitFailureBasicIOF
 	returnA -< cxtnp1
 
+-- | Generate a new texture name.
+--
+-- Also track its lifetime in ibGLAllocatedTextures, so that ibFreeTextures can
+-- be attached to the SDL Manager thread to free all remaining on quit.
 newTextureName :: Wire ImmutaballM IBStateContext (GLuint, IBStateContext)
 newTextureName = proc cxtn -> do
-	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
-	[name] <- monadic -< sdlGL1' $ GLGenTextures 1 id
-	returnA -< (name, cxtn)
+	(glAllocatedTextures, cxtnp1) <- requireGLAllocatedTextures -< cxtn
+
+	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
+	name <- monadic -< (unSingleton <$>) . sdlGL1' $ GLGenTextures 1 id
+	-- Now track in ibGLAllocatedTextures.
+	() <- monadic -< liftIBIO . flip Atomically id $ do
+		let musedFree = glAllocatedTextures
+		usedFree0 <- readTVar musedFree
+		let (used0, free0) = usedFree0
+		let (used1, free1) = (S.insert name used0, free0)
+		let usedFree1 = (used1, free1)
+		writeTVar musedFree usedFree1
+	returnA -< (name, cxtnp1)
+	where
+		unSingleton [me] = me
+		unSingleton _    = error "Internal error: newTextureName expected a single result from GLGenTextures."
 
 freeTextureName :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
-freeTextureName = proc (_name, cxtn) -> do
-	returnA -< cxtn
+freeTextureName = proc (name, cxtn) -> do
+	(glAllocatedTextures, cxtnp1) <- requireGLAllocatedTextures -< cxtn
+
+	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
+	() <- monadic -< sdlGL1' $ GLDeleteTextures [name] ()
+	-- Now free in ibGLAllocatedTextures - just mark it as freed rather than
+	-- used.
+	() <- monadic -< liftIBIO . flip Atomically id $ do
+		let musedFree = glAllocatedTextures
+		usedFree0 <- readTVar musedFree
+		let (used0, free0) = usedFree0
+		let (used1, free1) = (S.delete name used0, if' keepTrackOfFreedTextureNames (S.insert name free0) free0)
+		let usedFree1 = (used1, free1)
+		writeTVar musedFree usedFree1
+	returnA -< cxtnp1
+	where
+		keepTrackOfFreedTextureNames :: Bool
+		keepTrackOfFreedTextureNames = False
 
 -- | Tight RGBA.
 createTexture :: Wire ImmutaballM ((WidthHeightI, BS.ByteString), IBStateContext) (GLuint, IBStateContext)
@@ -305,8 +363,6 @@ createTexture = proc (((w, h), image), cxtn) -> do
 freeTexture :: Wire ImmutaballM (GLuint, IBStateContext) IBStateContext
 freeTexture = proc (name, cxtn) -> do
 	cxtnp1 <- freeTextureName -< (name, cxtn)
-	(sdlGL1' :: GLIOF me -> ImmutaballM me) <- returnA -< liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
-	() <- monadic -< sdlGL1' $ GLDeleteTextures [name] ()
 	returnA -< cxtnp1
 
 -- | Render a text.
@@ -369,3 +425,22 @@ clearTextCache = proc cxtn -> do
 	glTextTextures <- monadic -< liftIBIO $ Atomically (readTVar mglTextTextures) id
 	let (texts :: [T.Text]) = M.keys glTextTextures
 	foldrA uncacheText -< (cxtnp1, texts)
+
+-- You can use this to attach a resource using this to the SDLManager thread to
+-- free all textures on exit.  The state context can be old so long as it still
+-- has the same STM references.
+ibFreeTextures :: IBStateContext -> TVar (S.Set GLuint, S.Set GLuint) -> ImmutaballIOF ()
+ibFreeTextures cxt0 musedFree = (\w -> fst <$> stepImmutaballWire w ()) $ proc () -> do
+	needsFreeing <- monadic -< liftIBIO . flip Atomically id $ do
+		usedFree0 <- readTVar musedFree
+		let (used0, free0) = usedFree0
+		let needsFreeing = used0
+		let free1 = used0 `S.union` free0
+		let used1 = S.empty
+		let usedFree1 = (used1, free1)
+		writeTVar musedFree (if' weManageAllTextures usedFree1 usedFree0)
+		return needsFreeing
+	foldrA (voidA $ freeTexture <<< second (arr $ \() -> cxt0)) -< ((), needsFreeing)
+	where
+		weManageAllTextures :: Bool
+		weManageAllTextures = False

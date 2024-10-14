@@ -12,6 +12,7 @@ module Immutaball.Share.State
 		-- * Immutaball wires
 		Immutaball,
 		ImmutaballM,
+		runImmutaballM,
 		RequestFrameMulti,
 		RequestFrameSingle,
 		RequestFrame,
@@ -26,6 +27,7 @@ module Immutaball.Share.State
 		immutaballIOLinear,
 		-}
 		stepImmutaball,
+		stepImmutaballWire,
 		liftIBIO,
 
 		IBContext,
@@ -68,6 +70,9 @@ type Immutaball = Wire ImmutaballM RequestFrame ResponseFrame
 
 -- | Immutaball wire monad.
 type ImmutaballM = AutoParT (MaybeMT ImmutaballIOF)
+
+runImmutaballM :: ImmutaballM me -> ImmutaballIOF me
+runImmutaballM = runMaybeInMT . runAutoParT
 
 type RequestFrameMulti = [Request]
 type RequestFrameSingle = Identity Request
@@ -131,8 +136,14 @@ immutaballIOLinear ibIO = wire (\() -> hoistMaybe $ Just ([ImmutaballIOFork ibIO
 -- | Convenience utility to simplify the 'AutoPar' layer.
 --
 -- It's 'stepWire' without 'AutoPar'.
-stepImmutaball :: Immutaball -> RequestFrame -> MaybeMT ImmutaballIOF (ResponseFrame, Immutaball)
-stepImmutaball immutaball request = runAutoParT $ stepWire immutaball request
+stepImmutaball :: Immutaball -> RequestFrame -> ImmutaballIOF (ResponseFrame, Immutaball)
+stepImmutaball = stepImmutaballWire
+
+-- | Convenience utility to simplify the 'AutoPar' layer.
+--
+-- It's 'stepWire' without 'AutoPar'.
+stepImmutaballWire :: Wire ImmutaballM a b -> a -> ImmutaballIOF (b, Wire ImmutaballM a b)
+stepImmutaballWire immutaball request = runImmutaballM $ stepWire immutaball request
 
 liftIBIO :: ImmutaballIOF a -> ImmutaballM a
 liftIBIO = AutoParT . MaybeMT . Left

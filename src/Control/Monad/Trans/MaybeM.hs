@@ -11,6 +11,7 @@ module Control.Monad.Trans.MaybeM
 	(
 		MaybeMT(..), maybeMT,
 		runMaybeMT,
+		runMaybeInMT,
 		MaybeM,
 		NaturalTransformation,
 		liftNaturalTransformation,
@@ -22,6 +23,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Applicative
+import Control.Arrow
 import Data.Functor.Identity
 
 import Control.Lens
@@ -38,6 +40,9 @@ instance MonadTrans MaybeMT where
 	lift = MaybeMT . Left
 runMaybeMT :: MaybeMT m a -> Either (m a) a
 runMaybeMT = _maybeMT
+
+runMaybeInMT :: (Applicative m) => MaybeMT m a -> m a
+runMaybeInMT = (id ||| pure) . runMaybeMT
 
 type MaybeM = MaybeMT Identity
 

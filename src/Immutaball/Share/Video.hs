@@ -50,6 +50,7 @@ import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.SDLManager
+import Immutaball.Share.Utils
 import Immutaball.Share.Video.Shaders
 
 -- TODO: learn the new bytestring builders and probably use them.
@@ -139,12 +140,17 @@ initImmutaballShader sdlMgr =
 			_ibshProgram        = program,
 			_ibshPipeline       = pipeline
 		}
+		warnIf (vertexShader_ == 0 && fragmentShader_ == 0) $ "Warning: initImmutaballShader: vertex and fragment shaders both have names 0!"
 		-- Don't write it until we finish initialization, to keep things synchronized.
 		rawInitializeImmutaballShaderContinue ibsh
 		Atomically (writeTMVar mibsh ibsh) id
 	where
 		unSingleton [me] = me
 		unSingleton _    = error "Internal error: initImmutaballShader expected a single result from GLGenProgramPipelines."
+		warnIf :: Bool -> String -> ImmutaballIOF ()
+		warnIf condition msg = do
+			() <- if' (not condition) (pure ()) . BasicIBIOF $ PutStrLn msg ()
+			return ()
 
 -- | Deallocate an immutaball shader.
 freeImmutaballShader :: SDLManagerHandle -> ImmutaballShaderHandle -> ImmutaballIOF ()

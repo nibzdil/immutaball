@@ -213,7 +213,8 @@ rawInitializeImmutaballShaderContinue ibsh = do
 		return ()
 
 	flip D.trace (pure ()) $ "DEBUG0"
-	glChecked $ GLUseProgram (ibsh^.ibshProgram) ()
+	when (not useProgramPipeline) $ do
+		glChecked $ GLUseProgram (ibsh^.ibshProgram) ()
 	flip D.trace (pure ()) $ "DEBUG1"
 	when setupProgramPipeline $ do
 		let stages = foldr (.|.) 0 $
@@ -229,7 +230,7 @@ rawInitializeImmutaballShaderContinue ibsh = do
 	flip D.trace (pure ()) $ "DEBUG3"
 	where
 		setupProgramPipeline :: Bool
-		setupProgramPipeline = True || useProgramPipeline
+		setupProgramPipeline = useProgramPipeline
 		-- We only need the program.
 		useProgramPipeline :: Bool
 		useProgramPipeline = False

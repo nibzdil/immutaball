@@ -41,6 +41,7 @@ module Immutaball.Share.ImmutaballIO
 		runBasicImmutaballIO,
 		runDirectoryImmutaballIO,
 		runSDLImmutaballIO,
+		hArrayToBS,
 
 		-- * ImmutaballIO aliases that apply the Fixed wrapper
 		mkEmptyIBIO,
@@ -54,6 +55,7 @@ module Immutaball.Share.ImmutaballIO
 		mkWithAsync,
 		mkAtomically,
 		mkThrowIO,
+		mkArrayToBS,
 
 		-- * Utils
 		mkBIO
@@ -62,12 +64,17 @@ module Immutaball.Share.ImmutaballIO
 import Prelude ()
 import Immutaball.Prelude
 
-import GHC.Stack (HasCallStack)  -- For ThrowIO.
+import GHC.Stack        (HasCallStack)      -- For ThrowIO.
+import Foreign.Ptr      (castPtr)           -- (For ArrayToBS.)
+import Foreign.Storable (sizeOf, Storable)  -- (For ArrayToBS.)
 
 import Control.Concurrent.Async
 import Control.Monad.Fix
 import Control.Monad.STM
 import Control.Parallel
+import Data.Array.Base
+import Data.Array.Storable
+import qualified Data.ByteString as BS
 
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.DirectoryIO
@@ -99,6 +106,8 @@ data ImmutaballIOF me =
 
 	| forall e. (HasCallStack, Exception e) => ThrowIO e me
 
+	| forall i e. (Integral i, Ix i, Storable e) => ArrayToBS (StorableArray i e) (BS.ByteString -> me)
+
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
 
@@ -121,19 +130,21 @@ instance Monoid ImmutaballIO where
 
 instance Functor ImmutaballIOF where
 	fmap :: (a -> b) -> (ImmutaballIOF a -> ImmutaballIOF b)
-	fmap _f   (EmptyIBIOF)      = EmptyIBIOF
-	fmap  f   (PureIBIOF a)     = PureIBIOF (f a)
-	fmap  f   (UnfixIBIOF ibio) = UnfixIBIOF (f <$> ibio)
-	fmap  f   (JoinIBIOF ibio)  = JoinIBIOF (fmap f <$> ibio)
-	fmap  f   (AndIBIOF a b)    = AndIBIOF (f a) (f b)
-	fmap  f   (ThenIBIOF a b)   = ThenIBIOF (f a) (f b)
-	fmap  f   (BasicIBIOF bio)  = BasicIBIOF $ f <$> bio
+	fmap _f (EmptyIBIOF)      = EmptyIBIOF
+	fmap  f (PureIBIOF a)     = PureIBIOF (f a)
+	fmap  f (UnfixIBIOF ibio) = UnfixIBIOF (f <$> ibio)
+	fmap  f (JoinIBIOF ibio)  = JoinIBIOF (fmap f <$> ibio)
+	fmap  f (AndIBIOF a b)    = AndIBIOF (f a) (f b)
+	fmap  f (ThenIBIOF a b)   = ThenIBIOF (f a) (f b)
+	fmap  f (BasicIBIOF bio)  = BasicIBIOF $ f <$> bio
 
-	fmap  f   (Wait async_ withAsync_)    = Wait async_ (f . withAsync_)
-	fmap  f   (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
-	fmap  f   (Atomically stm withStm)    = Atomically stm (f . withStm)
+	fmap  f (Wait async_ withAsync_)    = Wait async_ (f . withAsync_)
+	fmap  f (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
+	fmap  f (Atomically stm withStm)    = Atomically stm (f . withStm)
 
-	fmap  f   (ThrowIO e withUnit) = ThrowIO e (f withUnit)
+	fmap  f (ThrowIO e withUnit) = ThrowIO e (f withUnit)
+
+	fmap  f (ArrayToBS array_ withBS) = ArrayToBS array_ (f . withBS)
 
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinIBIOF
@@ -237,6 +248,8 @@ unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 
 		y@(ThrowIO _e me) -> putMVar mme me >> return y
 
+		_y@(ArrayToBS array_ withBS) -> return $ ArrayToBS array_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withBS)
+
 instance Applicative ImmutaballIOF where
 	pure = PureIBIOF
 	mf <*> ma = joinImmutaballIOF . flip fmap mf $ \f -> joinImmutaballIOF .  flip fmap ma $ \a -> pure (f a)
@@ -288,6 +301,8 @@ runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 
 runImmutaballIOIO (ThrowIO e ibio) = throwIO e >> ibio
 
+runImmutaballIOIO (ArrayToBS array_ withBS) = hArrayToBS array_ >>= withBS
+
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicIBIOF (runBasicImmutaballIO <$> getFixed bio)
 
@@ -296,6 +311,21 @@ runDirectoryImmutaballIO dio = runBasicImmutaballIO . runDirectoryBasicIO $ dio
 
 runSDLImmutaballIO :: SDLIO -> ImmutaballIO
 runSDLImmutaballIO sdlio = runBasicImmutaballIO . runSDLBasicIO $ sdlio
+
+-- | Copy an array to an immutable strict bytestring.
+hArrayToBS :: (Integral i, Ix i, Storable e) => StorableArray i e -> IO BS.ByteString
+hArrayToBS array_ = do
+	(len :: Integer) <- fromIntegral <$> getNumElements array_
+	size <- do
+		if len <= 0
+			then return 0
+			else do
+				arrayHead <- readArray array_ (fromIntegral (0 :: Integer))
+				let elemSize = fromIntegral $ sizeOf arrayHead
+				let size_ = len * elemSize
+				return size_
+	bs <- withStorableArray array_ $ \ptr -> BS.packCStringLen ((castPtr ptr), fromIntegral $ size)
+	return bs
 
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
@@ -331,6 +361,9 @@ mkAtomically stm withStm = Fixed $ Atomically stm withStm
 
 mkThrowIO :: (HasCallStack, Exception e) => e -> ImmutaballIO -> ImmutaballIO
 mkThrowIO e ibio = Fixed $ ThrowIO e ibio
+
+mkArrayToBS :: (Integral i, Ix i, Storable e) => StorableArray i e -> (BS.ByteString -> ImmutaballIO) -> ImmutaballIO
+mkArrayToBS array_ withBS = Fixed $ ArrayToBS array_ withBS
 
 -- * Utils
 

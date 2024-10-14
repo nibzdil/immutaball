@@ -263,7 +263,7 @@ sdlManagerThreadContinue sdlMgr =
 					then
 						Fixed $ Atomically (modifyTVar (sdlMgr^.sdlmh_finalizers) (a:)) id >>= \() -> init_ >>= \resource -> Atomically (writeTMVar to_ resource) id >>= \() -> getFixed $ sdlManagerThreadContinue sdlMgr
 					else
-						Fixed $ Atomically (modifyTVar (sdlMgr^.sdlmh_finalizers) (a:)) id >>= \() -> forkIBIOF (init_ >>= \resource -> Atomically (writeTMVar to_ resource) id >>= \() -> mempty) . getFixed $ sdlManagerThreadContinue sdlMgr
+						Fixed $ Atomically (modifyTVar (sdlMgr^.sdlmh_finalizers) (a:)) id >>= \() -> forkBoundIBIOF (init_ >>= \resource -> Atomically (writeTMVar to_ resource) id >>= \() -> mempty) . getFixed $ sdlManagerThreadContinue sdlMgr
 			GLSequenceValueless glios to_ -> Fixed $ foldr (\glio then_ -> (BasicIBIOF . GLIO $ glio) >>= \() -> then_) (Atomically (writeTMVar to_ ()) $ \() -> sdlManagerThreadContinue sdlMgr) glios
 			GenSDL sdlio              to_ -> Fixed $ (BasicIBIOF . SDLIO $ sdlio) >>= \me -> Atomically (writeTMVar to_ me) $ \() -> sdlManagerThreadContinue sdlMgr
 			GenIBIO ibio              to_ -> Fixed $ ibio >>= \me -> Atomically (writeTMVar to_ me) $ \() -> sdlManagerThreadContinue sdlMgr

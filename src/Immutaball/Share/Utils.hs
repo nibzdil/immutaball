@@ -94,5 +94,6 @@ chunksOfI :: Integer -> [a] -> [[a]]
 chunksOfI = chunksOf
 
 chunksOf :: (Integral i) => i -> [a] -> [[a]]
+chunksOf _ [] = []
 chunksOf n xs = take' n xs : chunksOf n (drop' n xs)
 	where (take', drop') = (genericTake, genericDrop)

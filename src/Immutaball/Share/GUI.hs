@@ -510,7 +510,7 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 			where r' = rectNormalize r
 
 		-- | 'castSTUArray' doesn't update the range.
-		-- This version does.
+		-- This version does.  Thus it prevents out of index errors when casting from one array type to another with a different element size.
 		-- This version only handles single-dimensional indices.
 		castSTUArray' :: forall ix a b s. (Num ix, Integral ix, Storable a, Storable b) => STUArray s ix a -> ST s (STUArray s ix b)
 		castSTUArray' (STUArray l u _n marr) = return (STUArray l' u' n' marr)

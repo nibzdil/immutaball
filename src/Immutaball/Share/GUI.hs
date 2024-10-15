@@ -511,14 +511,20 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 
 		-- | 'castSTUArray' doesn't update the range.
 		-- This version does.
+		-- This version only handles single-dimensional indices.
 		castSTUArray' :: forall ix a b s. (Num ix, Integral ix, Storable a, Storable b) => STUArray s ix a -> ST s (STUArray s ix b)
-		castSTUArray' (STUArray l u n marr) = return (STUArray l' u n marr)
+		castSTUArray' (STUArray l u _n marr) = return (STUArray l' u' n' marr)
 			where
 				btm = error "Internal error: castSTUArray': sizeOf value accessed."
-				l' = ((sa * l) + (sa-1)) `div` sb
+				len = u - l + 1
+				len' = ((sa * len) + (sa-1)) `div` sb
 					where
 						sb = fromIntegral $ sizeOf (btm :: b)
 						sa = fromIntegral $ sizeOf (btm :: a)
+				-- l and u are actually lower and upper, not length and start.
+				u' = l + len' - 1
+				l' = l
+				n' = fromIntegral $ len'
 
 -- Optionally this could be moved to static config.
 focusDecayTime :: Double

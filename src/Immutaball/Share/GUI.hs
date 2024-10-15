@@ -56,9 +56,9 @@ import Data.Maybe
 import Foreign.Storable (sizeOf)
 
 import Control.Lens
-import Data.Array
+--import Data.Array
 import Data.Array.Base
-import Data.Array.MArray
+--import Data.Array.MArray
 import Data.Array.ST
 import Data.Array.Storable
 import qualified Data.Map.Lazy as M
@@ -348,7 +348,7 @@ guiCachingRenderText = proc (widget, cxtn) -> do
 		(ButtonWidget button) -> Just (button^.text)
 		(LabelWidget  label)  -> Just (label^.text)
 		_                     -> Nothing
-	(mdimName, cxtnp1) <- returnA ||| (first Just) <$> cachingRenderText -< maybe (Left (Nothing, cxtn)) (\text -> Right (T.pack $ text, cxtn)) $ mtext
+	(mdimName, cxtnp1) <- returnA ||| (first Just) <$> cachingRenderText -< maybe (Left (Nothing, cxtn)) (\text_ -> Right (T.pack $ text_, cxtn)) $ mtext
 	returnA -< (mdimName, cxtnp1)
 
 -- | Just process 16 at a time, the number of textures our shader can handle at a time.
@@ -367,19 +367,22 @@ guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t),
 			(mdimName, icxtnp1) <- guiCachingRenderText -< (w, icxtn)
 			returnA -< (mdimName : mdimNames, icxtnp1)
 
+-- TODO: visual effects for focus.
+
 -- | OpenGL paint the GUI widgets.
 --
 -- BUild vertex data to upload to the GPU, set the texture name
 -- shader-variables (aka uniforms), and then issue the GL draw commands.  The
 -- higher order callbacks (aka shaders) we installed on the GPU will procses it.
 guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeightI, GLuint), Rect Double)], M.Map id Double, M.Map id (Widget id), Double, IBStateContext) IBStateContext
-guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
+guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 
 	-- Shared info.
-	let sd = fromIntegral $ sizeOf (0.0 :: GLdouble)
-	let si = fromIntegral $ sizeOf (0   :: GLint)
+	let ( sd :: Integer) = fromIntegral $ sizeOf (0.0 :: GLdouble)
+	let (_si :: Integer) = fromIntegral $ sizeOf (0   :: GLint)
+
 	let fi = fromIntegral
 
 	--let (vertexStride  :: Integer) = 9*sd + 1*si
@@ -411,14 +414,13 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 			-- > "layout(location = 2) in vec2 texCoords;",
 			-- > "layout(location = 3) in int  texLayer;",
 			forM_ (zip [0..] paintWidgets) $ \(idx, (((_w, _h), texture), wrect)) -> do
-				--rectToTriangles :: Rect Double -> (Vec3 (Vec2 Double), Vec3 (Vec2 Double))
-				let (Vec3 p1 p2 p3, Vec3 p4 p5 p6) = rectToTriangles wrect
-				let (Vec3 t1 t2 t3, Vec3 t4 t5 t6) = rectToTriangles (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
+				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles wrect
+				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
 
-				let withVertex p t vidx = do
+				let withVertex vp vt vidx = do
 					-- Position.
-					writeArray array_ (vidx*10 + 0) $ p^.x2
-					writeArray array_ (vidx*10 + 1) $ p^.y2
+					writeArray array_ (vidx*10 + 0) $ vp^.x2
+					writeArray array_ (vidx*10 + 1) $ vp^.y2
 					writeArray array_ (vidx*10 + 2) $ 0.0
 					-- Color.
 					writeArray array_ (vidx*10 + 3) $ 0.3
@@ -426,17 +428,17 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 					writeArray array_ (vidx*10 + 5) $ 0.7
 					writeArray array_ (vidx*10 + 6) $ 1.0
 					-- Tex coords.
-					writeArray array_ (vidx*10 + 7) $ t^.x2
-					writeArray array_ (vidx*10 + 8) $ t^.y2
+					writeArray array_ (vidx*10 + 7) $ vt^.x2
+					writeArray array_ (vidx*10 + 8) $ vt^.y2
 					-- Tex layer (double indices since from this view elements are half as long).
 					writeArray arrayAsGLuint (2*(vidx*10 + 8) + 1) $ texture
 
-				withVertex p1 t1 (verticesPerWidget * idx + 0)
-				withVertex p2 t2 (verticesPerWidget * idx + 1)
-				withVertex p3 t3 (verticesPerWidget * idx + 2)
-				withVertex p4 t4 (verticesPerWidget * idx + 3)
-				withVertex p5 t5 (verticesPerWidget * idx + 4)
-				withVertex p6 t6 (verticesPerWidget * idx + 5)
+				withVertex vp1 vt1 (verticesPerWidget * idx + 0)
+				withVertex vp2 vt2 (verticesPerWidget * idx + 1)
+				withVertex vp3 vt3 (verticesPerWidget * idx + 2)
+				withVertex vp4 vt4 (verticesPerWidget * idx + 3)
+				withVertex vp5 vt5 (verticesPerWidget * idx + 4)
+				withVertex vp6 vt6 (verticesPerWidget * idx + 5)
 		return array_
 	--let (elementArray :: UArray Integer GLuint)   = runSTUArray $ do
 	let (elementArray :: UArray Integer GLuint)   =

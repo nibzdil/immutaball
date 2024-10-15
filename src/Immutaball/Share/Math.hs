@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs, FlexibleInstances, MultiParamTypeClasses #-}
 
 module Immutaball.Share.Math
 	(
@@ -58,6 +58,7 @@ module Immutaball.Share.Math
 		rectLowerRight,
 		rectWidthAboutCenter,
 		rectHeightAboutCenter,
+		rectNormalize,
 		lerpWith,
 		lerp,
 		lerpV2,
@@ -84,6 +85,9 @@ makeLenses ''Vec2
 instance Functor Vec2 where
 	fmap :: (a -> b) -> (Vec2 a -> Vec2 b)
 	fmap f (Vec2 x y) = Vec2 (f x) (f y)
+
+instance Field1 (Vec2 a) (Vec2 a) a a where _1 = x2
+instance Field2 (Vec2 a) (Vec2 a) a a where _2 = y2
 
 pv2 :: (Num a) => Vec2 a -> Vec2 a -> Vec2 a
 pv2 (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax + bx) (ay + by)
@@ -137,6 +141,14 @@ data Vec3 a = Vec3 {
 	deriving (Eq, Ord, Show)
 makeLenses ''Vec3
 
+instance Functor Vec3 where
+	fmap :: (a -> b) -> (Vec3 a -> Vec3 b)
+	fmap f (Vec3 x y z) = Vec3 (f x) (f y) (f z)
+
+instance Field1 (Vec3 a) (Vec3 a) a a where _1 = x3
+instance Field2 (Vec3 a) (Vec3 a) a a where _2 = y3
+instance Field3 (Vec3 a) (Vec3 a) a a where _3 = z3
+
 pv3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
 pv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax + bx) (ay + by) (az + bz)
 
@@ -158,6 +170,15 @@ data Vec4 a = Vec4 {
 	deriving (Eq, Ord, Show)
 makeLenses ''Vec4
 
+instance Functor Vec4 where
+	fmap :: (a -> b) -> (Vec4 a -> Vec4 b)
+	fmap f (Vec4 x y z w) = Vec4 (f x) (f y) (f z) (f w)
+
+instance Field1 (Vec4 a) (Vec4 a) a a where _1 = x4
+instance Field2 (Vec4 a) (Vec4 a) a a where _2 = y4
+instance Field3 (Vec4 a) (Vec4 a) a a where _3 = z4
+instance Field4 (Vec4 a) (Vec4 a) a a where _4 = w4
+
 pv4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
 pv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax + bx) (ay + by) (az + bz) (aw + bw)
 
@@ -178,6 +199,22 @@ makeLenses ''Mat3
 newtype Mat4 a = Mat4 { _getMat4 :: Vec4 (Vec4 a) }
 	deriving (Eq, Ord, Show)
 makeLenses ''Mat4
+
+instance Functor Mat3 where
+	fmap :: (a -> b) -> (Mat3 a -> Mat3 b)
+	fmap f (Mat3 (Vec3 r1_ r2_ r3_)) = Mat3 (Vec3 (f <$> r1_) (f <$> r2_) (f <$> r3_))
+instance Functor Mat4 where
+	fmap :: (a -> b) -> (Mat4 a -> Mat4 b)
+	fmap f (Mat4 (Vec4 r1_ r2_ r3_ r4_)) = Mat4 (Vec4 (f <$> r1_) (f <$> r2_) (f <$> r3_) (f <$> r4_))
+
+instance Field1 (Mat3 a) (Mat3 a) (Vec3 a) (Vec3 a) where _1 = r0_3
+instance Field2 (Mat3 a) (Mat3 a) (Vec3 a) (Vec3 a) where _2 = r1_3
+instance Field3 (Mat3 a) (Mat3 a) (Vec3 a) (Vec3 a) where _3 = r2_3
+
+instance Field1 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _1 = r0_4
+instance Field2 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _2 = r1_4
+instance Field3 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _3 = r2_4
+instance Field4 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _4 = r3_4
 
 r0_3 :: Lens' (Mat3 a) (Vec3 a)
 r0_3 = getMat3.x3
@@ -395,6 +432,9 @@ rectHeightAboutCenter = lens getter (flip setter)
 			where
 				cy = ay + (by - ay)/2
 				hr = h1/2
+
+rectNormalize :: (Ord a) => Rect a -> Rect a
+rectNormalize r = Rect (r^.rectLowerLeft) (r^.rectUpperRight)
 
 lerpWith :: (a -> a -> a) -> (a -> a -> a) -> (s -> a -> a) -> a -> a -> s -> a
 lerpWith plus minus scale from_ to_ v = from_ `plus` (v`scale`(to_ `minus` from_))

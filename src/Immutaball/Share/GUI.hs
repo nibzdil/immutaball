@@ -51,9 +51,10 @@ import Immutaball.Prelude
 import Control.Arrow
 --import Data.Functor.Identity
 import Control.Monad
+import Control.Monad.ST
 import Data.List
 import Data.Maybe
-import Foreign.Storable (sizeOf)
+import Foreign.Storable (sizeOf, Storable)
 
 import Control.Lens
 --import Data.Array
@@ -404,7 +405,7 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		--array_ <- newGenArray (0, numWidgets - 1) $ \idx ->
 		array_ <- newArray (0, numVertices * vertexStrideByDoubles - 1) 0.0
 		when (numWidgets > 0) $ do
-			arrayAsGLuint <- castSTUArray array_
+			arrayAsGLuint <- castSTUArray' array_
 			-- Specify the element type for arrayAsGLuint
 			(_firstElem :: GLuint) <- readArray arrayAsGLuint 0
 
@@ -431,6 +432,7 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 					writeArray array_ (vidx*10 + 7) $ vt^.x2
 					writeArray array_ (vidx*10 + 8) $ vt^.y2
 					-- Tex layer (double indices since from this view elements are half as long).
+					--writeArray arrayAsGLuint (2*(vidx*10 + 8) + 1) $ texture
 					writeArray arrayAsGLuint (2*(vidx*10 + 8) + 1) $ texture
 
 				withVertex vp1 vt1 (verticesPerWidget * idx + 0)
@@ -507,6 +509,17 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		rectToTriangles :: Rect Double -> (Vec3 (Vec2 Double), Vec3 (Vec2 Double))
 		rectToTriangles r = (Vec3 (r'^.rectLowerLeft) (r'^.rectLowerRight) (r'^.rectUpperRight), Vec3 (r'^.rectLowerLeft) (r'^.rectUpperLeft) (r'^.rectUpperRight))
 			where r' = rectNormalize r
+
+		-- | 'castSTUArray' doesn't update the range.
+		-- This version does.
+		castSTUArray' :: forall ix a b s. (Num ix, Integral ix, Storable a, Storable b) => STUArray s ix a -> ST s (STUArray s ix b)
+		castSTUArray' (STUArray l u n marr) = return (STUArray l' u n marr)
+			where
+				btm = error "Internal error: castSTUArray': sizeOf value accessed."
+				l' = ((sa * l) + (sa-1)) `div` sb
+					where
+						sb = fromIntegral $ sizeOf (btm :: b)
+						sa = fromIntegral $ sizeOf (btm :: a)
 
 -- Optionally this could be moved to static config.
 focusDecayTime :: Double

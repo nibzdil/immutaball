@@ -488,7 +488,7 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		GLEnableVertexAttribArray 1 ()
 
 		-- location 2: vec2 texCoords.
-		GLVertexAttribPointer 2 4 GL_DOUBLE GL_FALSE vertexStride' (fi$sum[3,4]*sd) ()
+		GLVertexAttribPointer 2 2 GL_DOUBLE GL_FALSE vertexStride' (fi$sum[3,4]*sd) ()
 		GLEnableVertexAttribArray 2 ()
 
 		-- location 3: vec2 texLayers.

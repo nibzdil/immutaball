@@ -55,6 +55,10 @@ import Data.Maybe
 import Foreign.Storable (sizeOf)
 
 import Control.Lens
+import Data.Array
+import Data.Array.Base
+import Data.Array.ST
+import Data.Array.Storable
 import qualified Data.Map.Lazy as M
 import qualified Data.Text as T
 import Graphics.GL.Compatibility45
@@ -361,13 +365,32 @@ guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t),
 			(mdimName, icxtnp1) <- guiCachingRenderText -< (w, icxtn)
 			returnA -< (mdimName : mdimNames, icxtnp1)
 
+-- | OpenGL paint the GUI widgets.
+--
+-- BUild vertex data to upload to the GPU, set the texture name
+-- shader-variables (aka uniforms), and then issue the GL draw commands.  The
+-- higher order callbacks (aka shaders) we installed on the GPU will procses it.
 guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeightI, GLuint), Rect Double)], M.Map id Double, M.Map id (Widget id), Double, IBStateContext) IBStateContext
 guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 
-	-- TODO: vertexData, elementData, numElements
-	let (vertexData, elementData, numElements) = _
+	-- Build vertex data (and element data) to upload to the GPU.
+
+	-- Note that while most of the elements are 8-byte doubles, we want the
+	-- texture layers to be interpreted as 4-byte ints, so when constructing these
+	-- arrays we do a cast to build the texture layer ints.
+	let (vertexArray  :: Array Integer GLdouble) = runSTArray $ do
+		_
+	let (elementArray :: Array Integer GLuint)   = runSTArray $ do
+		_
+
+	(vertexStorableArray  :: StorableArray Integer GLdouble) <- monadic -< liftIBIO $ ThawIO (vertexArray  :: Array Integer GLdouble) id
+	(elementStorableArray :: StorableArray Integer GLuint)   <- monadic -< liftIBIO $ ThawIO (elementArray :: Array Integer GLuint)   id
+
+	(vertexData  :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS vertexStorableArray id
+	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
+	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: Array Integer GLuint)
 
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.
@@ -416,7 +439,7 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 		GLVertexAttribPointer 3 1 GL_INT GL_TRUE (9*sd + 1*si) (fi$sum[3,4,2]*sd) ()
 		GLEnableVertexAttribArray 3 ()
 
-		GLDrawElementsRaw GL_TRIANGLES numElements GL_UNSIGNED_INT 0 ()
+		GLDrawElementsRaw GL_TRIANGLES (fromIntegral numElements_) GL_UNSIGNED_INT 0 ()
 
 		GLDeleteBuffers      [vertexBuf]  ()
 		GLDeleteBuffers      [elementBuf] ()

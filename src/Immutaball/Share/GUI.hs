@@ -438,8 +438,9 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 				withVertex p5 t5 (verticesPerWidget * idx + 4)
 				withVertex p6 t6 (verticesPerWidget * idx + 5)
 		return array_
-	let (elementArray :: UArray Integer GLuint)   = runSTUArray $ do
-		_
+	--let (elementArray :: UArray Integer GLuint)   = runSTUArray $ do
+	let (elementArray :: UArray Integer GLuint)   =
+		Data.Array.Base.listArray (0, numWidgets - 1) [0..(fromIntegral numWidgets) - 1]
 
 	(vertexStorableArray  :: StorableArray Integer GLdouble) <- monadic -< liftIBIO $ ThawIO (vertexArray  :: UArray Integer GLdouble) id
 	(elementStorableArray :: StorableArray Integer GLuint)   <- monadic -< liftIBIO $ ThawIO (elementArray :: UArray Integer GLuint)   id

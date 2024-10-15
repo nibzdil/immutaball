@@ -32,7 +32,8 @@ module Immutaball.Share.Video
 		-- * Utils
 		checkGLErrorsIB,
 		glErrType,
-		glChecked
+		glChecked,
+		numToGL_TEXTUREi
 	) where
 
 import Prelude ()
@@ -49,6 +50,7 @@ import Control.Concurrent.STM.TMVar
 import Control.Lens
 import qualified Data.ByteString as BS
 --import qualified Data.ByteString.Lazy as BL
+import qualified Data.Map as M
 import Graphics.GL.Compatibility45
 --import Graphics.GL.Core45
 import Graphics.GL.Types
@@ -277,3 +279,24 @@ glErrType _                                = "unknown error type"
 
 glChecked :: GLIOF me -> ImmutaballIOF me
 glChecked m = (BasicIBIOF . GLIO $ m) <* checkGLErrorsIB
+
+numToGL_TEXTUREi :: M.Map Integer GLenum
+numToGL_TEXTUREi = M.fromList $
+	[
+		(0,  GL_TEXTURE0),
+		(1,  GL_TEXTURE1),
+		(2,  GL_TEXTURE2),
+		(3,  GL_TEXTURE3),
+		(4,  GL_TEXTURE4),
+		(5,  GL_TEXTURE5),
+		(6,  GL_TEXTURE6),
+		(7,  GL_TEXTURE7),
+		(8,  GL_TEXTURE8),
+		(9,  GL_TEXTURE9),
+		(10, GL_TEXTURE10),
+		(11, GL_TEXTURE11),
+		(12, GL_TEXTURE12),
+		(13, GL_TEXTURE13),
+		(14, GL_TEXTURE14),
+		(15, GL_TEXTURE15)
+	]

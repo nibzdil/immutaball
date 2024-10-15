@@ -50,6 +50,7 @@ import Immutaball.Prelude
 
 import Control.Arrow
 --import Data.Functor.Identity
+import Control.Monad
 import Data.Maybe
 import Foreign.Storable (sizeOf)
 
@@ -71,6 +72,7 @@ import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
+import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
 -- * widgets
@@ -368,6 +370,18 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 	let (vertexData, elementData, numElements) = _
 
 	() <- monadic -< sdlGL1' $ do
+		-- First set the 16 texture name uniforms, and make them active.
+		forM_ (zip [0..] $ map (^._1._2) paintWidgets) $ \(idx, texture) -> do
+			case flip M.lookup numToGL_TEXTUREi idx of
+				Nothing -> return ()
+				Just gl_TEXTUREi -> do
+					GLUniform1i (fromIntegral idx) (fromIntegral texture) ()
+
+					--GLActiveTexture GL_TEXTUREi ()
+					GLActiveTexture gl_TEXTUREi ()
+					GLBindTexture GL_TEXTURE_2D texture ()
+
+		-- Now upload the vertex data and draw.
 		vao        <- unSingleton <$> GLGenVertexArrays 1 id
 		vertexBuf  <- unSingleton <$> GLGenBuffers      1 id
 		elementBuf <- unSingleton <$> GLGenBuffers      1 id

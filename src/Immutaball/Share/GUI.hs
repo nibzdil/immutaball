@@ -82,6 +82,11 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+import qualified Data.ByteString as BS  -- TODO remove after debugging
+import Text.Printf
+import Data.Word
+import Debug.Trace as D---------------------------TODO
+
 -- * widgets
 
 data Root id = Root {
@@ -452,7 +457,8 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: " ++ show (vertexData, elementData, numElements_)) ()  -- TODO debug
+	let (dbgBs :: BS.ByteString -> String) = concat . map (\w -> printf " %02X" w) . BS.unpack
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: " ++ show (dbgBs vertexData, dbgBs elementData, numElements_)) ()  -- TODO debug
 	() <- monadic -< liftIBIO . BasicIBIOF $ ExitSuccessBasicIOF  -- TODO debug
 
 	() <- monadic -< sdlGL1' $ do

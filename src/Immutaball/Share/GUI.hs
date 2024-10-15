@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, Arrows, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExplicitForAll, InstanceSigs, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, Arrows, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExplicitForAll, InstanceSigs, ScopedTypeVariables, FlexibleContexts #-}
 
 module Immutaball.Share.GUI
 	(
@@ -51,12 +51,14 @@ import Immutaball.Prelude
 import Control.Arrow
 --import Data.Functor.Identity
 import Control.Monad
+import Data.List
 import Data.Maybe
 import Foreign.Storable (sizeOf)
 
 import Control.Lens
 import Data.Array
 import Data.Array.Base
+import Data.Array.MArray
 import Data.Array.ST
 import Data.Array.Storable
 import qualified Data.Map.Lazy as M
@@ -375,22 +377,76 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 
+	-- Shared info.
+	let sd = fromIntegral $ sizeOf (0.0 :: GLdouble)
+	let si = fromIntegral $ sizeOf (0   :: GLint)
+	let fi = fromIntegral
+
+	--let (vertexStride  :: Integer) = 9*sd + 1*si
+	let (vertexStride  :: Integer) = 10*sd
+	let (vertexStride' :: GLsizei) = fromIntegral vertexStride
+
+	let (vertexStrideByDoubles :: Integer) = 10
+
 	-- Build vertex data (and element data) to upload to the GPU.
 
 	-- Note that while most of the elements are 8-byte doubles, we want the
 	-- texture layers to be interpreted as 4-byte ints, so when constructing these
 	-- arrays we do a cast to build the texture layer ints.
-	let (vertexArray  :: Array Integer GLdouble) = runSTArray $ do
-		_
-	let (elementArray :: Array Integer GLuint)   = runSTArray $ do
+	let numWidgets  = genericLength (paintWidgets)
+	let trianglesPerWidget = 3
+	let verticesPerWidget = 2 * trianglesPerWidget
+	let numVertices = numWidgets * verticesPerWidget
+	let (vertexArray  :: UArray Integer GLdouble) = runSTUArray $ do
+		--array_ <- newGenArray (0, numWidgets - 1) $ \idx ->
+		array_ <- newArray (0, numVertices * vertexStrideByDoubles - 1) 0.0
+		when (numWidgets > 0) $ do
+			arrayAsGLuint <- castSTUArray array_
+			-- Specify the element type for arrayAsGLuint
+			(_firstElem :: GLuint) <- readArray arrayAsGLuint 0
+
+			-- Write the array elements for each widget.
+			-- > "layout(location = 0) in vec3 position;",
+			-- > "layout(location = 1) in vec4 modulateColor;",
+			-- > "layout(location = 2) in vec2 texCoords;",
+			-- > "layout(location = 3) in int  texLayer;",
+			forM_ (zip [0..] paintWidgets) $ \(idx, (((_w, _h), texture), wrect)) -> do
+				--rectToTriangles :: Rect Double -> (Vec3 (Vec2 Double), Vec3 (Vec2 Double))
+				let (Vec3 p1 p2 p3, Vec3 p4 p5 p6) = rectToTriangles wrect
+				let (Vec3 t1 t2 t3, Vec3 t4 t5 t6) = rectToTriangles (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
+
+				let withVertex p t vidx = do
+					-- Position.
+					writeArray array_ (vidx*10 + 0) $ p^.x2
+					writeArray array_ (vidx*10 + 1) $ p^.y2
+					writeArray array_ (vidx*10 + 2) $ 0.0
+					-- Color.
+					writeArray array_ (vidx*10 + 3) $ 0.3
+					writeArray array_ (vidx*10 + 4) $ 0.3
+					writeArray array_ (vidx*10 + 5) $ 0.7
+					writeArray array_ (vidx*10 + 6) $ 1.0
+					-- Tex coords.
+					writeArray array_ (vidx*10 + 7) $ t^.x2
+					writeArray array_ (vidx*10 + 8) $ t^.y2
+					-- Tex layer (double indices since from this view elements are half as long).
+					writeArray arrayAsGLuint (2*(vidx*10 + 8) + 1) $ texture
+
+				withVertex p1 t1 (verticesPerWidget * idx + 0)
+				withVertex p2 t2 (verticesPerWidget * idx + 1)
+				withVertex p3 t3 (verticesPerWidget * idx + 2)
+				withVertex p4 t4 (verticesPerWidget * idx + 3)
+				withVertex p5 t5 (verticesPerWidget * idx + 4)
+				withVertex p6 t6 (verticesPerWidget * idx + 5)
+		return array_
+	let (elementArray :: UArray Integer GLuint)   = runSTUArray $ do
 		_
 
-	(vertexStorableArray  :: StorableArray Integer GLdouble) <- monadic -< liftIBIO $ ThawIO (vertexArray  :: Array Integer GLdouble) id
-	(elementStorableArray :: StorableArray Integer GLuint)   <- monadic -< liftIBIO $ ThawIO (elementArray :: Array Integer GLuint)   id
+	(vertexStorableArray  :: StorableArray Integer GLdouble) <- monadic -< liftIBIO $ ThawIO (vertexArray  :: UArray Integer GLdouble) id
+	(elementStorableArray :: StorableArray Integer GLuint)   <- monadic -< liftIBIO $ ThawIO (elementArray :: UArray Integer GLuint)   id
 
 	(vertexData  :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS vertexStorableArray id
 	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
-	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: Array Integer GLuint)
+	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.
@@ -417,26 +473,22 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 		GLBindBuffer GL_ELEMENT_ARRAY_BUFFER elementBuf                  ()
 		GLBufferData GL_ELEMENT_ARRAY_BUFFER elementData GL_DYNAMIC_DRAW ()
 
-		let sd = fromIntegral $ sizeOf (0.0 :: GLdouble)
-		let si = fromIntegral $ sizeOf (0 :: GLint)
-		let fi = fromIntegral
-
 		-- … stride offset ()
 
 		-- location 0: vec3 positions.
-		GLVertexAttribPointer 0 3 GL_DOUBLE GL_FALSE (9*sd + 1*si) (fi$sum[]*sd) ()
+		GLVertexAttribPointer 0 3 GL_DOUBLE GL_FALSE vertexStride' (fi$sum[]*sd) ()
 		GLEnableVertexAttribArray 0 ()
 
 		-- location 1: vec4 modulateColors.
-		GLVertexAttribPointer 1 4 GL_DOUBLE GL_FALSE (9*sd + 1*si) (fi$sum[3]*sd) ()
+		GLVertexAttribPointer 1 4 GL_DOUBLE GL_FALSE vertexStride' (fi$sum[3]*sd) ()
 		GLEnableVertexAttribArray 1 ()
 
 		-- location 2: vec2 texCoords.
-		GLVertexAttribPointer 2 4 GL_DOUBLE GL_FALSE (9*sd + 1*si) (fi$sum[3,4]*sd) ()
+		GLVertexAttribPointer 2 4 GL_DOUBLE GL_FALSE vertexStride' (fi$sum[3,4]*sd) ()
 		GLEnableVertexAttribArray 2 ()
 
 		-- location 3: vec2 texLayers.
-		GLVertexAttribPointer 3 1 GL_INT GL_TRUE (9*sd + 1*si) (fi$sum[3,4,2]*sd) ()
+		GLVertexAttribPointer 3 1 GL_INT GL_TRUE vertexStride' (fi$sum[3,4,2]*sd) ()
 		GLEnableVertexAttribArray 3 ()
 
 		GLDrawElementsRaw GL_TRIANGLES (fromIntegral numElements_) GL_UNSIGNED_INT 0 ()
@@ -449,8 +501,9 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, widgetIdx, t, cxtn) -> do
 	where
 		unSingleton [me] = me
 		unSingleton _    = error "Internal error: guiPaintWidgets expected a single result from GLGenVertexArrays or GLGenBuffers."
-		rectToTriangles :: Rect Double -> [Vec3 (Vec2 Double)]
-		rectToTriangles r = [Vec3 (r^.rectLowerLeft) (r^.rectLowerRight) (r^.rectUpperRight), Vec3 (r^.rectLowerLeft) (r^.rectUpperLeft) (r^.rectUpperRight)]
+		rectToTriangles :: Rect Double -> (Vec3 (Vec2 Double), Vec3 (Vec2 Double))
+		rectToTriangles r = (Vec3 (r'^.rectLowerLeft) (r'^.rectLowerRight) (r'^.rectUpperRight), Vec3 (r'^.rectLowerLeft) (r'^.rectUpperLeft) (r'^.rectUpperRight))
+			where r' = rectNormalize r
 
 --foldrA :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) b -> Wire m (b, t a) b
 --cachingRenderText :: Wire ImmutaballM (T.Text, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)

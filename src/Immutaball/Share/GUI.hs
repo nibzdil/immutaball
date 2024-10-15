@@ -432,7 +432,6 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 					writeArray array_ (vidx*10 + 7) $ vt^.x2
 					writeArray array_ (vidx*10 + 8) $ vt^.y2
 					-- Tex layer (double indices since from this view elements are half as long).
-					--writeArray arrayAsGLuint (2*(vidx*10 + 8) + 1) $ texture
 					writeArray arrayAsGLuint (2*(vidx*10 + 8) + 1) $ texture
 
 				withVertex vp1 vt1 (verticesPerWidget * idx + 0)

@@ -82,11 +82,6 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
-import qualified Data.ByteString as BS  -- TODO remove after debugging
-import Text.Printf
-import Data.Word
-import Debug.Trace as D---------------------------TODO
-
 -- * widgets
 
 data Root id = Root {
@@ -456,10 +451,6 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
-	let (dbgBs :: BS.ByteString -> String) = concat . map (\w -> printf " %02X" w) . BS.unpack
-	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: " ++ show (dbgBs vertexData, dbgBs elementData, numElements_)) ()  -- TODO debug
-	--() <- monadic -< liftIBIO . BasicIBIOF $ ExitSuccessBasicIOF  -- TODO debug
-
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.
 		forM_ (zip [0..] $ map (^._1._2) paintWidgets) $ \(idx, texture) -> do
@@ -508,8 +499,6 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		GLDeleteBuffers      [vertexBuf]  ()
 		GLDeleteBuffers      [elementBuf] ()
 		GLDeleteVertexArrays [vao]        ()
-
-	--() <- monadic -< liftIBIO . BasicIBIOF $ DelayUs (1 * 1000 * 1000) ()  -- TODO DEBUG
 
 	returnA -< cxtn
 	where

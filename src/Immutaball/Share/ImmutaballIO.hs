@@ -56,6 +56,8 @@ module Immutaball.Share.ImmutaballIO
 		mkAtomically,
 		mkThrowIO,
 		mkArrayToBS,
+		mkThawIO,
+		mkFreezeIO,
 
 		-- * Utils
 		mkBIO
@@ -108,6 +110,9 @@ data ImmutaballIOF me =
 
 	| forall i e. (Integral i, Ix i, Storable e) => ArrayToBS (StorableArray i e) (BS.ByteString -> me)
 
+	| forall a b i e. (Ix i, IArray a e,    MArray b e IO) => ThawIO   (a i e) (b i e -> me)
+	| forall a b i e. (Ix i, MArray a e IO, IArray b e)    => FreezeIO (a i e) (b i e -> me)
+
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
 
@@ -145,6 +150,9 @@ instance Functor ImmutaballIOF where
 	fmap  f (ThrowIO e withUnit) = ThrowIO e (f withUnit)
 
 	fmap  f (ArrayToBS array_ withBS) = ArrayToBS array_ (f . withBS)
+
+	fmap  f (ThawIO   iarray withMArray) = ThawIO   iarray (f . withMArray)
+	fmap  f (FreezeIO marray withIArray) = FreezeIO marray (f . withIArray)
 
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinIBIOF
@@ -250,6 +258,9 @@ unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 
 		_y@(ArrayToBS array_ withBS) -> return $ ArrayToBS array_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withBS)
 
+		_y@(ThawIO   iarray withMArray) -> return $ ThawIO   iarray ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMArray)
+		_y@(FreezeIO marray withIArray) -> return $ FreezeIO marray ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withIArray)
+
 instance Applicative ImmutaballIOF where
 	pure = PureIBIOF
 	mf <*> ma = joinImmutaballIOF . flip fmap mf $ \f -> joinImmutaballIOF .  flip fmap ma $ \a -> pure (f a)
@@ -302,6 +313,9 @@ runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 runImmutaballIOIO (ThrowIO e ibio) = throwIO e >> ibio
 
 runImmutaballIOIO (ArrayToBS array_ withBS) = hArrayToBS array_ >>= withBS
+
+runImmutaballIOIO (ThawIO   iarray withMArray) = thaw   iarray >>= withMArray
+runImmutaballIOIO (FreezeIO marray withIArray) = freeze marray >>= withIArray
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicIBIOF (runBasicImmutaballIO <$> getFixed bio)
@@ -364,6 +378,12 @@ mkThrowIO e ibio = Fixed $ ThrowIO e ibio
 
 mkArrayToBS :: (Integral i, Ix i, Storable e) => StorableArray i e -> (BS.ByteString -> ImmutaballIO) -> ImmutaballIO
 mkArrayToBS array_ withBS = Fixed $ ArrayToBS array_ withBS
+
+mkThawIO :: (Ix i, IArray a e, MArray b e IO) => a i e -> (b i e -> ImmutaballIO) -> ImmutaballIO
+mkThawIO iarray withMArray = Fixed $ ThawIO iarray withMArray
+
+mkFreezeIO :: (Ix i, MArray a e IO, IArray b e) => a i e -> (b i e -> ImmutaballIO) -> ImmutaballIO
+mkFreezeIO marray withIArray = Fixed $ FreezeIO marray withIArray
 
 -- * Utils
 

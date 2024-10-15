@@ -443,7 +443,7 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		return array_
 	--let (elementArray :: UArray Integer GLuint)   = runSTUArray $ do
 	let (elementArray :: UArray Integer GLuint)   =
-		Data.Array.Base.listArray (0, numWidgets - 1) [0..(fromIntegral numWidgets) - 1]
+		Data.Array.Base.listArray (0, numVertices - 1) [0..(fromIntegral numVertices) - 1]
 
 	(vertexStorableArray  :: StorableArray Integer GLdouble) <- monadic -< liftIBIO $ ThawIO (vertexArray  :: UArray Integer GLdouble) id
 	(elementStorableArray :: StorableArray Integer GLuint)   <- monadic -< liftIBIO $ ThawIO (elementArray :: UArray Integer GLuint)   id
@@ -451,6 +451,9 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 	(vertexData  :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS vertexStorableArray id
 	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
+
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: " ++ show (vertexData, elementData, numElements_)) ()  -- TODO debug
+	() <- monadic -< liftIBIO . BasicIBIOF $ ExitSuccessBasicIOF  -- TODO debug
 
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.

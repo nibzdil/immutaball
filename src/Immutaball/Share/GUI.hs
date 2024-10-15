@@ -509,6 +509,8 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		GLDeleteBuffers      [elementBuf] ()
 		GLDeleteVertexArrays [vao]        ()
 
+	--() <- monadic -< liftIBIO . BasicIBIOF $ DelayUs (1 * 1000 * 1000) ()  -- TODO DEBUG
+
 	returnA -< cxtn
 	where
 		unSingleton [me] = me

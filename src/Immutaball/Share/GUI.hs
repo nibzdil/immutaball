@@ -457,8 +457,8 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
 	let (dbgBs :: BS.ByteString -> String) = concat . map (\w -> printf " %02X" w) . BS.unpack
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: " ++ show (dbgBs vertexData, dbgBs elementData, numElements_)) ()  -- TODO debug
-	() <- monadic -< liftIBIO . BasicIBIOF $ ExitSuccessBasicIOF  -- TODO debug
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG: " ++ show (dbgBs vertexData, dbgBs elementData, numElements_)) ()  -- TODO debug
+	--() <- monadic -< liftIBIO . BasicIBIOF $ ExitSuccessBasicIOF  -- TODO debug
 
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.
@@ -499,8 +499,8 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 		GLVertexAttribPointer 2 2 GL_DOUBLE GL_FALSE vertexStride' (fi$sum[3,4]*sd) ()
 		GLEnableVertexAttribArray 2 ()
 
-		-- location 3: vec2 texLayers.
-		GLVertexAttribPointer 3 1 GL_INT GL_TRUE vertexStride' (fi$sum[3,4,2]*sd) ()
+		-- location 3: vec1 texLayers.
+		GLVertexAttribIPointer 3 1 GL_INT vertexStride' (fi$sum[3,4,2]*sd) ()
 		GLEnableVertexAttribArray 3 ()
 
 		GLDrawElementsRaw GL_TRIANGLES (fromIntegral numElements_) GL_UNSIGNED_INT 0 ()

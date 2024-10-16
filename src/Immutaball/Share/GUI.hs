@@ -423,10 +423,17 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, currentFocus
 					writeArray array_ (vidx*10 + 1) $ vp^.y2
 					writeArray array_ (vidx*10 + 2) $ 0.0
 					-- Color.
-					writeArray array_ (vidx*10 + 3) $ 0.3
-					writeArray array_ (vidx*10 + 4) $ 0.3
-					writeArray array_ (vidx*10 + 5) $ 0.7
-					writeArray array_ (vidx*10 + 6) $ 1.0
+					if idx /= currentFocus
+						then do
+							writeArray array_ (vidx*10 + 3) $ 0.3
+							writeArray array_ (vidx*10 + 4) $ 0.3
+							writeArray array_ (vidx*10 + 5) $ 0.7
+							writeArray array_ (vidx*10 + 6) $ 1.0
+						else do
+							writeArray array_ (vidx*10 + 3) $ 0.6
+							writeArray array_ (vidx*10 + 4) $ 0.6
+							writeArray array_ (vidx*10 + 5) $ 0.9
+							writeArray array_ (vidx*10 + 6) $ 1.0
 					-- Tex coords.
 					writeArray array_ (vidx*10 + 7) $ vt^.x2
 					writeArray array_ (vidx*10 + 8) $ vt^.y2

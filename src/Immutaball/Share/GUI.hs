@@ -303,7 +303,7 @@ nextWidgetHier widgetBy getChildren wid0 = maybe wid0 (nextWidgetUnder True (Jus
 	where
 		wBy = flip M.lookup widgetBy
 		nextWidgetUnder isFirst mwid parent
-			| mwid == Just wid0 = wid0
+			| not isFirst && mwid == Just wid0 = wid0
 			| Nothing <- mwid
 			, Just (rw@RootWidget {}) <- wBy parent =
 				nextWidgetUnder isFirst (Just (rw^.wid)) parent
@@ -318,7 +318,7 @@ prevWidgetHier widgetBy getChildren wid0 = maybe wid0 (prevWidgetUnder True (Jus
 	where
 		wBy = flip M.lookup widgetBy
 		prevWidgetUnder isFirst mwid parent
-			| mwid == Just wid0 = wid0
+			| not isFirst && mwid == Just wid0 = wid0
 			| Nothing <- mwid
 			, Just (rw@RootWidget {}) <- wBy parent =
 				prevWidgetUnder isFirst (Just (rw^.wid)) parent

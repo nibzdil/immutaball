@@ -222,10 +222,12 @@ requireMisc =
 -- | Also handles common set-up tasks like clearing the color for rendering.
 requireBasics :: Wire ImmutaballM (IBStateContext, Request) IBStateContext
 requireBasics = proc (cxt0, _request) -> do
-	cxt <- requireMisc <<< requireVideo -< cxt0
-	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClearColor 0.1 0.1 0.9 1.0 ()
-	() <- monadic -< liftIBIO . BasicIBIOF . GLIO $ GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) ()
-	returnA -< cxt
+	cxtn <- requireMisc <<< requireVideo -< cxt0
+	let sdlGL1' = liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+	() <- monadic -< sdlGL1' $ do
+		GLClearColor 0.1 0.1 0.9 1.0 ()
+		GLClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT .|. GL_STENCIL_BUFFER_BIT) ()
+	returnA -< cxtn
 
 -- | Handles common frame finishing like swapping the scene on paint.
 --

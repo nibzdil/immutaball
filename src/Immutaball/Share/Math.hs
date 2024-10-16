@@ -58,12 +58,15 @@ module Immutaball.Share.Math
 		rectLowerRight,
 		rectWidthAboutCenter,
 		rectHeightAboutCenter,
+		rectAvgSideAboutCenter,
 		rectNormalize,
 		lerpWith,
 		lerp,
 		lerpV2,
 		lerpV3,
 		lerpV4,
+		ilerpWith,
+		ilerp,
 
 		WidthHeightI
 	) where
@@ -433,6 +436,20 @@ rectHeightAboutCenter = lens getter (flip setter)
 				cy = ay + (by - ay)/2
 				hr = h1/2
 
+-- | Proportion preserving scaling.
+rectAvgSideAboutCenter :: forall a. (Num a, Fractional a, RealFloat a) => Lens' (Rect a) a
+rectAvgSideAboutCenter = lens getter (flip setter)
+	where
+		getter :: Rect a -> a
+		getter r = lerp (r^.rectWidthAboutCenter) (r^.rectHeightAboutCenter) 0.5
+		setter :: a -> Rect a -> Rect a
+		setter avgSide r
+			| isNaN s || isInfinite s = Rect z z
+			| otherwise               = r & rectWidthAboutCenter %~ (s*) & rectHeightAboutCenter %~ (s*)
+			where
+				s = avgSide / getter r
+				z = Vec2 (realToFrac (0.0 :: Double)) (realToFrac (0.0 :: Double))
+
 rectNormalize :: (Ord a) => Rect a -> Rect a
 rectNormalize r = Rect (r^.rectLowerLeft) (r^.rectUpperRight)
 
@@ -451,5 +468,16 @@ lerpV3 = lerpWith pv3 mv3 sv3
 
 lerpV4 :: (Num a) => Vec4 a -> Vec4 a -> a -> Vec4 a
 lerpV4 = lerpWith pv4 mv4 sv4
+
+ilerpWith :: (a -> s) -> (a -> a -> a) -> (s -> s -> s) -> a -> a -> a -> s
+--ilerpWith from_ to_ on_ = (on_ - from_) / (to_ - from_)
+ilerpWith flatten minus div_ from_ to_ on_ = (flatten $ on_ `minus` from_) `div_` (flatten $ to_ `minus` from_)
+
+-- | Inverse lerp on x3.
+--
+-- Get the lerp3 that would provide input x3.  Find how close input x3 is to
+-- destination x2 relative to source x1.
+ilerp :: (Num a, Fractional a) => a -> a -> a -> a
+ilerp = ilerpWith id (-) (/)
 
 type WidthHeightI = (Integer, Integer)

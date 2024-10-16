@@ -371,17 +371,22 @@ guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetBy, curr
 			(mdimName, icxtnp1) <- guiCachingRenderText -< (w, icxtn)
 			returnA -< (mdimName : mdimNames, icxtnp1)
 
--- TODO: visual effects for focus.
-
 -- | OpenGL paint the GUI widgets.
 --
 -- BUild vertex data to upload to the GPU, set the texture name
 -- shader-variables (aka uniforms), and then issue the GL draw commands.  The
 -- higher order callbacks (aka shaders) we installed on the GPU will procses it.
 guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([(id, ((WidthHeightI, GLuint), Rect Double))], M.Map id Double, M.Map id (Widget id), id, Double, IBStateContext) IBStateContext
-guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetBy, currentFocusWid, _t, cxtn) -> do
+guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWid, t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+
+	-- Animate grow and shrinking on focus.
+	rec
+		lastFocusGrow <- delay M.empty -< focusGrow
+		focusGrow <- returnA -< M.filter (< t + focusDecayTime) $ M.union ((\paintTime -> lerp focusScale 1.00 (ilerp t (t + focusDecayTime) paintTime)) <$> widgetLastFocus) lastFocusGrow
+
+	let wfocusScale wid_ = fromMaybe (1.00 :: Double) $ M.lookup wid_ focusGrow
 
 	-- Shared info.
 	let ( sd :: Integer) = fromIntegral $ sizeOf (0.0 :: GLdouble)
@@ -417,8 +422,8 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetBy, currentFocusW
 			-- > "layout(location = 2) in vec2 texCoords;",
 			-- > "layout(location = 3) in int  texLayer;",
 			forM_ (zip [0..] paintWidgets) $ \(idx, (wid_, ((((_w, _h), _texture)), wrect))) -> do
-				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles wrect
-				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
+				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles $ wrect & rectAvgSideAboutCenter %~ (wfocusScale wid_ *)
+				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles $ (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
 
 				let withVertex vp vt vidx = do
 					-- Position.
@@ -546,4 +551,4 @@ focusDecayTime :: Double
 focusDecayTime = 0.25
 
 focusScale :: Double
-focusScale = 1.20
+focusScale = 1.10

@@ -236,7 +236,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 
 	-- Paint.
 	cxtnp3 <- case request of
-		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, t, cxtnp2)
+		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, currentFocus, t, cxtnp2)
 		_ -> returnA -< cxtnp2
 
 	-- Set up response.
@@ -332,15 +332,15 @@ isSelectable :: Widget id -> Bool
 isSelectable (ButtonWidget {}) = True
 isSelectable _                 = False
 
-guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Double), M.Map id (Widget id), [id], Double, IBStateContext) IBStateContext
-guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, t, cxtn) -> do
+guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Double), M.Map id (Widget id), [id], Integer, Double, IBStateContext) IBStateContext
+guiPaint = proc (widgets, geometry, widgetIdx, widgetsFocusedSinceLastPaint, currentFocus, t, cxtn) -> do
 	_dt <- differentiate -< t
 	rec
 		(widgetLastFocusLast :: M.Map id Double) <- delay M.empty -< widgetLastFocus
 		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
 
 	chunks' <- returnA -< chunksOf (cxtn^.ibContext.ibStaticConfig.x'cfgMaxPassTextures)
-	cxtnp1 <- foldrA guiPaintWidgetsChunk -< (cxtn, flip map (chunks' widgets) $ \ws -> (ws, widgetLastFocus, geometry, widgetIdx, t))
+	cxtnp1 <- foldrA guiPaintWidgetsChunk -< (cxtn, flip map (chunks' widgets) $ \ws -> (ws, widgetLastFocus, geometry, widgetIdx, currentFocus, t))
 	returnA -< cxtnp1
 
 guiCachingRenderText :: forall id. (Eq id, Ord id) => Wire ImmutaballM (Widget id, IBStateContext) (Maybe (WidthHeightI, GLuint), IBStateContext)
@@ -353,14 +353,14 @@ guiCachingRenderText = proc (widget, cxtn) -> do
 	returnA -< (mdimName, cxtnp1)
 
 -- | Just process 16 at a time, the number of textures our shader can handle at a time.
-guiPaintWidgetsChunk :: forall id. (Eq id, Ord id) => Wire ImmutaballM (([Widget id], M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Double), IBStateContext) IBStateContext
-guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t), cxtn) -> do
+guiPaintWidgetsChunk :: forall id. (Eq id, Ord id) => Wire ImmutaballM (([Widget id], M.Map id Double, M.Map id (Rect Double), M.Map id (Widget id), Integer, Double), IBStateContext) IBStateContext
+guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, currentFocus, t), cxtn) -> do
 	-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.
 	--guiCacheRenderText' <- returnA -< guiCacheRenderText …
 	(mdimNames :: [Maybe (WidthHeightI, GLuint)], cxtnp1) <- foldrA guiCacheRenderText' -< (([], cxtn), widgets)
 	let (mRects :: [Maybe (Rect Double)]) = flip map widgets $ \w -> M.lookup (w^.wid) geometry
 	let paintWidgets = catMaybes $ zipWith (liftA2 (,)) mdimNames mRects
-	cxtnp2 <- guiPaintWidgets -< (paintWidgets, widgetLastFocus, widgetIdx, t, cxtnp1)
+	cxtnp2 <- guiPaintWidgets -< (paintWidgets, widgetLastFocus, widgetIdx, currentFocus, t, cxtnp1)
 	returnA -< cxtnp2
 	where
 		-- let guiCacheRenderText' = guiCacheRenderText that accumulates on its left input.
@@ -375,8 +375,8 @@ guiPaintWidgetsChunk = proc ((widgets, widgetLastFocus, geometry, widgetIdx, t),
 -- BUild vertex data to upload to the GPU, set the texture name
 -- shader-variables (aka uniforms), and then issue the GL draw commands.  The
 -- higher order callbacks (aka shaders) we installed on the GPU will procses it.
-guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeightI, GLuint), Rect Double)], M.Map id Double, M.Map id (Widget id), Double, IBStateContext) IBStateContext
-guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) -> do
+guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeightI, GLuint), Rect Double)], M.Map id Double, M.Map id (Widget id), Integer, Double, IBStateContext) IBStateContext
+guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, currentFocus, _t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 

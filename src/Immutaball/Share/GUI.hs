@@ -379,7 +379,6 @@ guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeigh
 guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: " ++ show (flip map paintWidgets $ \(((w, h), t), r) -> t)) ()  -- TODO DEBUG
 
 	-- Shared info.
 	let ( sd :: Integer) = fromIntegral $ sizeOf (0.0 :: GLdouble)
@@ -454,8 +453,6 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
-	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1 texture: " ++ show (gl_TEXTUREi, texture)) ()  -- TODO DEBUG
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1 texture: " ++ show (flip map (zip [0..] $ map (^._1._2) paintWidgets) $ \(idx, texture) -> (M.lookup idx numToGL_TEXTUREi, texture))) ()  -- TODO DEBUG
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.
 		forM_ (zip [0..] $ map (^._1._2) paintWidgets) $ \(idx, texture) -> do

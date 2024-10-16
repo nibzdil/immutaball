@@ -304,6 +304,7 @@ nextWidgetHier widgetBy getChildren wid0 = maybe wid0 (nextWidgetUnder True wid0
 		wBy = flip M.lookup widgetBy
 		nextWidgetUnder isFirst wid_ parent
 			| not isFirst && wid_ == wid0 = wid0
+			| wid_ == parent = withRemaining . filter (\w -> (w^.wid) /= wid_) $ getChildren parent
 			| otherwise = withRemaining . drop 1 . dropWhile (\w -> (w^.wid) /= wid_) $ getChildren parent
 			where
 				withRemaining []                                 = maybe wid0 (\parent_ -> nextWidgetUnder False (parent_^.wid) (parent_^.wparent)) $ wBy parent
@@ -316,6 +317,7 @@ prevWidgetHier widgetBy getChildren wid0 = maybe wid0 (prevWidgetUnder True wid0
 		wBy = flip M.lookup widgetBy
 		prevWidgetUnder isFirst wid_ parent
 			| not isFirst && wid_ == wid0 = wid0
+			| wid_ == parent = withRemaining . filter (\w -> (w^.wid) /= wid_) . reverse $ getChildren parent
 			| otherwise = withRemaining . drop 1 . dropWhile (\w -> (w^.wid) /= wid_) . reverse $ getChildren parent
 			where
 				withRemaining []                                 = maybe wid0 (\parent_ -> prevWidgetUnder False (parent_^.wid) (parent_^.wparent)) $ wBy parent

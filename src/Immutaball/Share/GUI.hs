@@ -385,7 +385,7 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 	let widgetLastFocus' = M.filter (> t - focusDecayTime) $ widgetLastFocus
 	rec
 		lastFocusGrow <- delay M.empty -< focusGrow
-		focusGrow <- returnA -< M.union ((\paintTime -> lerp focusScale 1.00 (ilerp t (t + focusDecayTime) paintTime)) <$> widgetLastFocus') lastFocusGrow
+		focusGrow <- returnA -< M.union ((\lastFocusTime -> lerp focusScale 1.00 (ilerp lastFocusTime (lastFocusTime + focusDecayTime) t)) <$> widgetLastFocus') lastFocusGrow
 
 	let wfocusScale wid_ = fromMaybe (1.00 :: Double) $ M.lookup wid_ focusGrow
 

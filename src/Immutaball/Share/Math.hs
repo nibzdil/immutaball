@@ -418,7 +418,7 @@ rectWidthAboutCenter :: forall a. (Num a, Fractional a) => Lens' (Rect a) a
 rectWidthAboutCenter = lens getter (flip setter)
 	where
 		getter :: Rect a -> a
-		getter (Rect (Vec2 ax _ay) (Vec2 bx _by)) = ax + bx
+		getter (Rect (Vec2 ax _ay) (Vec2 bx _by)) = abs $ bx - ax
 		setter :: a -> Rect a -> Rect a
 		setter w1 (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 (cx - wr) ay) (Vec2 (cx + wr) by)
 			where
@@ -429,7 +429,7 @@ rectHeightAboutCenter :: forall a. (Num a, Fractional a) => Lens' (Rect a) a
 rectHeightAboutCenter = lens getter (flip setter)
 	where
 		getter :: Rect a -> a
-		getter (Rect (Vec2 _ax ay) (Vec2 _bx by)) = ay + by
+		getter (Rect (Vec2 _ax ay) (Vec2 _bx by)) = abs $ by - ay
 		setter :: a -> Rect a -> Rect a
 		setter h1 (Rect (Vec2 ax ay) (Vec2 bx by)) = Rect (Vec2 ax (cy - hr)) (Vec2 bx (cy + hr))
 			where

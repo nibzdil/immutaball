@@ -45,6 +45,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
+import Control.Monad
 import Data.Bits
 import Data.Maybe
 
@@ -357,6 +358,20 @@ createTexture = proc (((w, h), image), cxtn) -> do
 		-- TODO: re-enable after mipmap is fixed.
 		--when (cxtnp1^.ibNeverballrc.mipmap) $ do
 		--	GLGenerateMipmap name ()
+
+		GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_S GL_REPEAT ()
+		GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_WRAP_T GL_REPEAT ()
+		-- TODO: re-enable after mipmap is fixed.
+		{-
+		when (      cxtnp1^.ibNeverballrc.mipmap) $ do
+			GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR_MIPMAP_LINEAR ()
+			GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR_MIPMAP_LINEAR ()
+		when (not $ cxtnp1^.ibNeverballrc.mipmap) $ do
+		-}
+		when True $ do
+			GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR ()
+			GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR ()
+
 	returnA -< (name, cxtnp1)
 
 -- | This also frees the texture, not just the name.

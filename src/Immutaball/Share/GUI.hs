@@ -379,6 +379,7 @@ guiPaintWidgets :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([((WidthHeigh
 guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) -> do
 	-- let sdlGL1' = sdlGL1 h
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: " ++ show (flip map paintWidgets $ \(((w, h), t), r) -> t)) ()  -- TODO DEBUG
 
 	-- Shared info.
 	let ( sd :: Integer) = fromIntegral $ sizeOf (0.0 :: GLdouble)
@@ -413,7 +414,7 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 			-- > "layout(location = 1) in vec4 modulateColor;",
 			-- > "layout(location = 2) in vec2 texCoords;",
 			-- > "layout(location = 3) in int  texLayer;",
-			forM_ (zip [0..] paintWidgets) $ \(idx, (((_w, _h), texture), wrect)) -> do
+			forM_ (zip [0..] paintWidgets) $ \(idx, (((_w, _h), _texture), wrect)) -> do
 				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles wrect
 				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
 
@@ -431,7 +432,9 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 					writeArray array_ (vidx*10 + 7) $ vt^.x2
 					writeArray array_ (vidx*10 + 8) $ vt^.y2
 					-- Tex layer (double indices since from this view elements are half as long).
-					writeArray arrayAsGLuint (2*(vidx*10 + 9) + 0) $ texture
+					-- (See note near glActiveTexture on the valeu OpenGL uses.)
+					--writeArray arrayAsGLuint (2*(vidx*10 + 9) + 0) $ texture
+					writeArray arrayAsGLuint (2*(vidx*10 + 9) + 0) $ (fromIntegral idx  :: GLuint)
 
 				withVertex vp1 vt1 (verticesPerWidget * idx + 0)
 				withVertex vp2 vt2 (verticesPerWidget * idx + 1)
@@ -451,13 +454,19 @@ guiPaintWidgets = proc (paintWidgets, _widgetLastFocus, _widgetIdx, _t, cxtn) ->
 	(elementData :: GLData) <- monadic -< liftIBIO $ bsToGLData <$> ArrayToBS elementStorableArray id
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1 texture: " ++ show (gl_TEXTUREi, texture)) ()  -- TODO DEBUG
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1 texture: " ++ show (flip map (zip [0..] $ map (^._1._2) paintWidgets) $ \(idx, texture) -> (M.lookup idx numToGL_TEXTUREi, texture))) ()  -- TODO DEBUG
 	() <- monadic -< sdlGL1' $ do
 		-- First set the 16 texture name uniforms, and make them active.
 		forM_ (zip [0..] $ map (^._1._2) paintWidgets) $ \(idx, texture) -> do
 			case flip M.lookup numToGL_TEXTUREi idx of
 				Nothing -> return ()
 				Just gl_TEXTUREi -> do
-					GLUniform1i (fromIntegral idx) (fromIntegral texture) ()
+					-- Apparently actually we set GL_TEXTUREi for the texture()
+					-- GLSL call, not the texture name.  So set the i used in
+					-- GL_TEXTUREi as the value, not the texture identifier.
+					--GLUniform1i (fromIntegral idx) (fromIntegral texture) ()
+					GLUniform1i (fromIntegral idx) (fromIntegral idx) ()
 
 					--GLActiveTexture GL_TEXTUREi ()
 					GLActiveTexture gl_TEXTUREi ()

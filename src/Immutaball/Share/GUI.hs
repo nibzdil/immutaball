@@ -196,10 +196,10 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 	widgets <- hold initialWidgets -< resetWidgets
 
 	-- On reset, clear the text cache; we're the only user.
-	cxtnp1 <- clearTextCache ||| returnA -< const cxtn +++ const cxtn $ matching _ResetGUI request
+	cxtnp1 <- returnA ||| clearTextCache -< const cxtn +++ const cxtn $ matching _ResetGUI request
 	-- On the first step, clear the text cache; we're the only user.
 	isFirst <- delay True -< returnA False
-	cxtnp2 <- clearTextCache ||| returnA -< if' isFirst Left Right cxtnp1
+	cxtnp2 <- returnA ||| clearTextCache -< if' (not isFirst) Left Right cxtnp1
 
 	-- Analyze widgets.
 	widgetsReq  <- returnA -< resetWidgets

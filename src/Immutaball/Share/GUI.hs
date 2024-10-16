@@ -338,7 +338,7 @@ guiPaint = proc (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, curr
 	_dt <- differentiate -< t
 	rec
 		(widgetLastFocusLast :: M.Map id Double) <- delay M.empty -< widgetLastFocus
-		widgetLastFocus <- returnA -< M.filter (< t + focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
+		widgetLastFocus <- returnA -< M.filter (> t - focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
 
 	chunks' <- returnA -< chunksOf (cxtn^.ibContext.ibStaticConfig.x'cfgMaxPassTextures)
 	cxtnp1 <- foldrA guiPaintWidgetsChunk -< (cxtn, flip map (chunks' widgets) $ \ws -> (ws, widgetLastFocus, geometry, widgetBy, currentFocusWid, t))
@@ -382,9 +382,10 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 	sdlGL1' <- returnA -< liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 
 	-- Animate grow and shrinking on focus.
+	let widgetLastFocus' = M.filter (> t - focusDecayTime) $ widgetLastFocus
 	rec
 		lastFocusGrow <- delay M.empty -< focusGrow
-		focusGrow <- returnA -< M.filter (< t + focusDecayTime) $ M.union ((\paintTime -> lerp focusScale 1.00 (ilerp t (t + focusDecayTime) paintTime)) <$> widgetLastFocus) lastFocusGrow
+		focusGrow <- returnA -< M.union ((\paintTime -> lerp focusScale 1.00 (ilerp t (t + focusDecayTime) paintTime)) <$> widgetLastFocus') lastFocusGrow
 
 	let wfocusScale wid_ = fromMaybe (1.00 :: Double) $ M.lookup wid_ focusGrow
 

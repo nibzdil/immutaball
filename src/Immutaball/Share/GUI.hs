@@ -425,7 +425,7 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 			-- > "layout(location = 3) in int  texLayer;",
 			forM_ (zip [0..] paintWidgets) $ \(idx, (wid_, ((((_w, _h), _texture)), wrect))) -> do
 				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles $ wrect & rectAvgSideAboutCenter %~ (wfocusScale' wid_ *)
-				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles $ (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
+				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles $ (Rect (Vec2 0.0 0.0) (Vec2 1.0 1.0))
 
 				let withVertex vp vt vidx = do
 					-- Position.

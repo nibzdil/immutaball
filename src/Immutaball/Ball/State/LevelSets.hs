@@ -57,5 +57,5 @@ levelSetsGui =
 		RootWidget   $ Root   { _rootWid   = LevelSetsRoot                               },
 		VstackWidget $ Vstack { _vstackWid = MenuVstack, _vstackWparent = LevelSetsRoot  },
 		ButtonWidget $ Button { _buttonWid = BackButton, _buttonWparent = MenuVstack,
-			_buttonText = "Back", _buttonRect = Just $ Rect (Vec2 0.45 0.48) (Vec2 0.55 0.52) }
+			_buttonText = "Back", _buttonRect = Just $ Rect (Vec2 (-0.800) (0.720)) (Vec2 (-0.700) (0.800)) }
 	]

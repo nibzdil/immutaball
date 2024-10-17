@@ -59,7 +59,7 @@ titleGui =
 		RootWidget   $ Root   { _rootWid   = TitleRoot                               },
 		VstackWidget $ Vstack { _vstackWid = MenuVstack, _vstackWparent = TitleRoot  },
 		ButtonWidget $ Button { _buttonWid = PlayButton, _buttonWparent = MenuVstack,
-			_buttonText = "Play", _buttonRect = Just $ Rect (Vec2 0.45 0.48) (Vec2 0.55 0.52) },
+			_buttonText = "Play", _buttonRect = Just $ Rect (Vec2 (-0.100) ( 0.010)) (Vec2 (0.100) ( 0.090)) },
 		ButtonWidget $ Button { _buttonWid = QuitButton, _buttonWparent = MenuVstack,
-			_buttonText = "Quit", _buttonRect = Just $ Rect (Vec2 0.45 0.42) (Vec2 0.55 0.46) }
+			_buttonText = "Quit", _buttonRect = Just $ Rect (Vec2 (-0.100) (-0.090)) (Vec2 (0.100) (-0.010)) }
 	]

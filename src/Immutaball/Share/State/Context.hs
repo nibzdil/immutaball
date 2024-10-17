@@ -374,6 +374,8 @@ createTexture = proc (((w, h), image), cxtn) -> do
 			GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER GL_LINEAR ()
 			GLTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER GL_LINEAR ()
 
+		GLTexParameterfv GL_TEXTURE_2D GL_TEXTURE_BORDER_COLOR [0.0, 0.0, 0.0, 0.0] ()
+
 	returnA -< (name, cxtnp1)
 
 -- | This also frees the texture, not just the name.

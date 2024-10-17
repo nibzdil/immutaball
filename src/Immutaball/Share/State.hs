@@ -222,12 +222,12 @@ makeClassyPrisms ''Response
 -- DoneResponse (just as the controller would close a wire if a multi-response
 -- wire returns [] with no continue).
 immutaballMultiToSingle' :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameSingle ResponseFrameSingle
-immutaballMultiToSingle' = closeSecondI . closeSecondO . immutaballMultiToSingle . openSecondO . openSecondI
+immutaballMultiToSingle' = withOpenSecondIO immutaballMultiToSingle
 
 -- | If the single wire received no request, we give an empty response frame
 -- (like a DoneResponse).
 immutaballSingleToMulti' :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
-immutaballSingleToMulti' = closeSecondI . closeSecondO . immutaballSingleToMulti . openSecondO . openSecondI
+immutaballSingleToMulti' = withOpenSecondIO immutaballSingleToMulti
 
 fromImmutaballMulti' :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
 fromImmutaballMulti' = id

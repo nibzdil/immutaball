@@ -30,7 +30,13 @@ module Immutaball.Share.Utils
 		openFirstO,
 		openSecondO,
 		openFirstI,
-		openSecondI
+		openSecondI,
+		openFirstIO,
+		openSecondIO,
+		closeFirstIO,
+		closeSecondIO,
+		withOpenFirstIO,
+		withOpenSecondIO
 	) where
 
 import Prelude ()
@@ -129,3 +135,21 @@ openFirstI = (arr (\((), b) -> b) >>>)
 
 openSecondI :: (Arrow a) => a b c -> a (b, ()) c
 openSecondI = (arr (\(b, ()) -> b) >>>)
+
+openFirstIO :: (Arrow a) => a b c -> a ((), b) ((), c)
+openFirstIO = openFirstO . openFirstI
+
+openSecondIO :: (Arrow a) => a b c -> a (b, ()) (c, ())
+openSecondIO = openSecondO . openSecondI
+
+closeFirstIO :: (Arrow a) => a ((), b) ((), c) -> a b c
+closeFirstIO = closeFirstI . closeFirstO
+
+closeSecondIO :: (Arrow a) => a (b, ()) (c, ()) -> a b c
+closeSecondIO = closeSecondI . closeSecondO
+
+withOpenFirstIO :: (Arrow a) => (a ((), b0) ((), c0) -> a ((), b1) ((), c1)) -> (a b0 c0 -> a b1 c1)
+withOpenFirstIO f = closeFirstIO . f . openFirstIO
+
+withOpenSecondIO :: (Arrow a) => (a (b0, ()) (c0, ()) -> a (b1, ()) (c1, ())) -> (a b0 c0 -> a b1 c1)
+withOpenSecondIO f = closeSecondIO . f . openSecondIO

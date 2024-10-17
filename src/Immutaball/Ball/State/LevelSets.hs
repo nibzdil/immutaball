@@ -36,7 +36,6 @@ mkLevelSetsState mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleW
 		(guiResponse, cxtnp1) <- mkGUI levelSetsGui -< (GUIDrive request, cxtn)
 		response <- returnA -< case guiResponse of
 			NoWidgetAction          -> ContinueResponse
-			WidgetAction BackButton -> DoneResponse
 			_                       -> ContinueResponse
 		() <- finishFrame -< (request, cxtnp1)
 		cxt <- returnA -< cxtnp1

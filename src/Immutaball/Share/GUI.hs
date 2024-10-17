@@ -42,7 +42,8 @@ module Immutaball.Share.GUI
 		guiPaintWidgetsChunk,
 		guiPaintWidgets,
 		focusDecayTime,
-		focusScale
+		focusScale,
+		focusWaveAmplitude
 	) where
 
 import Prelude ()
@@ -331,7 +332,6 @@ isSelectable _                 = False
 
 guiPaint :: forall id. (Eq id, Ord id) => Wire ImmutaballM ([Widget id], M.Map id (Rect Double), M.Map id (Widget id), [id], id, Double, IBStateContext) IBStateContext
 guiPaint = proc (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, currentFocusWid, t, cxtn) -> do
-	_dt <- differentiate -< t
 	rec
 		(widgetLastFocusLast :: M.Map id Double) <- delay M.empty -< widgetLastFocus
 		widgetLastFocus <- returnA -< M.filter (> t - focusDecayTime) $ foldr (\wid_ -> M.insert wid_ t) widgetLastFocusLast widgetsFocusedSinceLastPaint
@@ -385,6 +385,11 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 
 	let wfocusScale wid_ = fromMaybe (1.00 :: Double) $ M.lookup wid_ focusGrow
 
+	-- Also add a subtle wave on the currently selected widget.
+	dt <- differentiate -< t
+	smallWave <- wave focusWaveAmplitude 1.0 0.0 -< dt
+	let wfocusScale' wid_ = if' (wid_ == currentFocusWid) ((1+smallWave)*) id $ wfocusScale wid_
+
 	-- Shared info.
 	let ( sd :: Integer) = fromIntegral $ sizeOf (0.0 :: GLdouble)
 	let (_si :: Integer) = fromIntegral $ sizeOf (0   :: GLint)
@@ -419,7 +424,7 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 			-- > "layout(location = 2) in vec2 texCoords;",
 			-- > "layout(location = 3) in int  texLayer;",
 			forM_ (zip [0..] paintWidgets) $ \(idx, (wid_, ((((_w, _h), _texture)), wrect))) -> do
-				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles $ wrect & rectAvgSideAboutCenter %~ (wfocusScale wid_ *)
+				let (Vec3 vp1 vp2 vp3, Vec3 vp4 vp5 vp6) = rectToTriangles $ wrect & rectAvgSideAboutCenter %~ (wfocusScale' wid_ *)
 				let (Vec3 vt1 vt2 vt3, Vec3 vt4 vt5 vt6) = rectToTriangles $ (Rect (Vec2 0.0 0.0) (Vec2 1.1 1.1))
 
 				let withVertex vp vt vidx = do
@@ -545,7 +550,10 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 
 -- Optionally this could be moved to static config.
 focusDecayTime :: Double
-focusDecayTime = 0.25
+focusDecayTime = 0.250
 
 focusScale :: Double
-focusScale = 1.10
+focusScale = 1.100
+
+focusWaveAmplitude :: Double
+focusWaveAmplitude = 0.020

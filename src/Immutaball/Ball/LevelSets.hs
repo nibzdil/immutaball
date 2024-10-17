@@ -11,7 +11,8 @@ module Immutaball.Ball.LevelSets
 	(
 		ChallengeModeScores(..), cmsBestTimes, cmsMostCoins,
 		LevelSet(..), lsTitle, lsDesc, lsName, lsPict, lsChallengeModeScores, lsLevels,
-		LevelSets(..), lsExplicitSets, lsLevelSets
+		LevelSets(..), lsExplicitSets, lsLevelSets,
+		getLevelSets
 	) where
 
 import Prelude ()
@@ -19,6 +20,9 @@ import Immutaball.Prelude
 
 import Control.Lens
 import qualified Data.Map as M
+
+import Immutaball.Share.Context
+import Immutaball.Share.ImmutaballIO
 
 data ChallengeModeScores = ChallengeModeScores {
 	_cmsBestTimes :: (Integer, Integer, Integer),
@@ -50,3 +54,7 @@ data LevelSets = LevelSets {
 	_lsLevelSets    :: M.Map String LevelSet
 }
 makeLenses ''LevelSets
+
+-- | Get level sets or fail.
+getLevelSets :: IBContext' a -> ImmutaballIOF LevelSets
+getLevelSets = error "TODO: unimplemented."

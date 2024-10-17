@@ -67,6 +67,7 @@ module Immutaball.Share.Math
 		lerpV4,
 		ilerpWith,
 		ilerp,
+		tau,
 
 		WidthHeightI
 	) where
@@ -479,5 +480,9 @@ ilerpWith flatten minus div_ from_ to_ on_ = (flatten $ on_ `minus` from_) `div_
 -- destination x2 relative to source x1.
 ilerp :: (Num a, Fractional a) => a -> a -> a -> a
 ilerp = ilerpWith id (-) (/)
+
+-- | pi is in prelude and yet tau isn't.
+tau :: (Floating a) => a
+tau = 2*pi
 
 type WidthHeightI = (Integer, Integer)

@@ -49,7 +49,8 @@ module Immutaball.Share.Wire
 		foldrA,
 		foldrListA,
 		constA,
-		nopA
+		nopA,
+		wave
 	) where
 
 import Prelude ()
@@ -68,6 +69,7 @@ import qualified Control.Wire
 import qualified Control.Wire.Controller
 import qualified Control.Wire.Internal (Wire(Wire))
 
+import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
 -- * Primitives
@@ -307,3 +309,8 @@ constA c = arr (const c)
 
 nopA :: (Arrow a) => a () ()
 nopA = arr $ \() -> ()
+
+wave :: (Floating a, Monad m, MonadFix m) => a -> a -> a -> Wire m a a
+wave amplitude period phase = proc dt -> do
+	t <- integrate 0 -< dt
+	returnA -< amplitude * (sin $ tau*(t + phase)/period)

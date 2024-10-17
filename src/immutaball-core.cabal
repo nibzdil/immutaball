@@ -100,6 +100,7 @@ common executable-components
 		Control.Monad.Trans.MaybeM
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
+		Immutaball.Ball.LevelSets
 		Immutaball.Ball.Main
 		Immutaball.Ball.State.LevelSets
 		Immutaball.Ball.State.Title
@@ -153,6 +154,7 @@ library
 		Control.Monad.Trans.MaybeM
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
+		Immutaball.Ball.LevelSets
 		Immutaball.Ball.Main
 		Immutaball.Ball.State.LevelSets
 		Immutaball.Ball.State.Title

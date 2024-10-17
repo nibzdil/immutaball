@@ -67,8 +67,8 @@ tests headless = testGroup "Immutaball.Share.State" $
 	]) ++
 	[
 		withFrameManager headless "id frame manager: " id,
-		withFrameManager headless "immutaballMultiToSingle: " (fromImmutaballSingle . immutaballMultiToSingle),
-		withFrameManager headless "immutaballSigleToMulti: "  (fromImmutaballMulti  . immutaballSingleToMulti),
+		withFrameManager headless "immutaballMultiToSingle: " (fromImmutaballSingle' . immutaballMultiToSingle'),
+		withFrameManager headless "immutaballSigleToMulti: "  (fromImmutaballMulti'  . immutaballSingleToMulti'),
 
 		testGroup "test mfix works" $
 			[

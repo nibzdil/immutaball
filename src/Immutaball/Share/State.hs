@@ -42,7 +42,14 @@ module Immutaball.Share.State
 		fromImmutaballMulti,
 		fromImmutaballSingle,
 		fromImmutaballSingleWith,
-		immutaballMultiQueueFrames
+		immutaballMultiQueueFrames,
+
+		-- * Frame management: Simpler variants
+		immutaballMultiToSingle',
+		immutaballSingleToMulti',
+		fromImmutaballMulti',
+		fromImmutaballSingle',
+		immutaballMultiQueueFrames'
 	) where
 
 import Prelude ()
@@ -59,6 +66,7 @@ import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
 -- * Immutaball wires
@@ -197,13 +205,38 @@ fromImmutaballSingleWith = immutaballSingleToMultiWith
 -- | Transform a wire that can handle unlimited requests and response,
 -- into one that queues up to the context's limit to only process so many
 -- requests and so many responses at once.
-immutaballMultiQueueFrames :: IBContext -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
-immutaballMultiQueueFrames cxt w = proc requests -> do
+immutaballMultiQueueFrames :: IBContext -> Wire ImmutaballM (RequestFrameMulti, a) (ResponseFrameMulti, b) -> Wire ImmutaballM (RequestFrameMulti, a) (ResponseFrameMulti, b)
+immutaballMultiQueueFrames cxt w = proc (requests, a) -> do
 	requestChunk <- maybe returnA queueN (cxt^.ibStaticConfig.maxStepFrameSize) -< requests
-	responses <- w -< requestChunk
+	(responses, b) <- w -< (requestChunk, a)
 	responseChunk <- maybe returnA queueN (cxt^.ibStaticConfig.maxResponseFrameSize) -< responses
-	returnA -< responseChunk
+	returnA -< (responseChunk, b)
 
 -- Lenses at end of file to avoid TH errors.
 makeClassyPrisms ''Request
 makeClassyPrisms ''Response
+
+-- * Frame management: Simpler variants
+
+-- | Send one request at a time; if there is no response, then treat it as a
+-- DoneResponse (just as the controller would close a wire if a multi-response
+-- wire returns [] with no continue).
+immutaballMultiToSingle' :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameSingle ResponseFrameSingle
+immutaballMultiToSingle' = closeSecondI . closeSecondO . immutaballMultiToSingle . openSecondO . openSecondI
+
+-- | If the single wire received no request, we give an empty response frame
+-- (like a DoneResponse).
+immutaballSingleToMulti' :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
+immutaballSingleToMulti' = closeSecondI . closeSecondO . immutaballSingleToMulti . openSecondO . openSecondI
+
+fromImmutaballMulti' :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
+fromImmutaballMulti' = id
+
+fromImmutaballSingle' :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Immutaball
+fromImmutaballSingle' = immutaballSingleToMulti'
+
+-- | Transform a wire that can handle unlimited requests and response,
+-- into one that queues up to the context's limit to only process so many
+-- requests and so many responses at once.
+immutaballMultiQueueFrames' :: IBContext -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
+immutaballMultiQueueFrames' cxt = closeSecondI . closeSecondO . immutaballMultiQueueFrames cxt . openSecondO . openSecondI

@@ -22,7 +22,15 @@ module Immutaball.Share.Utils
 		mfix',
 		joinMaybeResult,
 		chunksOfI,
-		chunksOf
+		chunksOf,
+		closeFirstO,
+		closeSecondO,
+		closeFirstI,
+		closeSecondI,
+		openFirstO,
+		openSecondO,
+		openFirstI,
+		openSecondI
 	) where
 
 import Prelude ()
@@ -97,3 +105,27 @@ chunksOf :: (Integral i) => i -> [a] -> [[a]]
 chunksOf _ [] = []
 chunksOf n xs = take' n xs : chunksOf n (drop' n xs)
 	where (take', drop') = (genericTake, genericDrop)
+
+closeFirstO :: (Arrow a) => a b ((), c) -> a b c
+closeFirstO = (>>> arr (\((), c) -> c))
+
+closeSecondO :: (Arrow a) => a b (c, ()) -> a b c
+closeSecondO = (>>> arr (\(c, ()) -> c))
+
+closeFirstI :: (Arrow a) => a ((), b) c -> a b c
+closeFirstI = (arr ((,) ()) >>>)
+
+closeSecondI :: (Arrow a) => a (b, ()) c -> a b c
+closeSecondI = (arr (flip (,) ()) >>>)
+
+openFirstO :: (Arrow a) => a b c -> a b ((), c)
+openFirstO = (>>> arr ((,) ()))
+
+openSecondO :: (Arrow a) => a b c -> a b (c, ())
+openSecondO = (>>> arr (flip (,) ()))
+
+openFirstI :: (Arrow a) => a b c -> a ((), b) c
+openFirstI = (arr (\((), b) -> b) >>>)
+
+openSecondI :: (Arrow a) => a b c -> a (b, ()) c
+openSecondI = (arr (\(b, ()) -> b) >>>)

@@ -24,11 +24,12 @@ import Immutaball.Share.GUI
 import Immutaball.Share.Math
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
+import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
--- TODO: go to next play state
-mkLevelSetsState :: Either IBContext IBStateContext -> Immutaball
-mkLevelSetsState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
+-- TODO:
+mkLevelSetsState :: (Either IBContext IBStateContext -> Immutaball) -> Either IBContext IBStateContext -> Immutaball
+mkLevelSetsState mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing . openSecondI $ proc (Identity request) -> do
 	rec
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
@@ -39,7 +40,9 @@ mkLevelSetsState baseCxt0 = fromImmutaballSingle $ proc (Identity request) -> do
 			_                       -> ContinueResponse
 		() <- finishFrame -< (request, cxtnp1)
 		cxt <- returnA -< cxtnp1
-	returnA -< Identity response
+	-- Switch on Back button.
+	let switchTo = if' (guiResponse /= WidgetAction BackButton) Nothing . Just . openSecondI $ mkBack (Right cxt)
+	returnA -< (Identity response, switchTo)
 	where cxt0 = either initialStateCxt id baseCxt0
 
 data LevelSetsWidget =

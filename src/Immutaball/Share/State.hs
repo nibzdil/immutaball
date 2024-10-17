@@ -11,6 +11,7 @@ module Immutaball.Share.State
 	(
 		-- * Immutaball wires
 		Immutaball,
+		ImmutaballA,
 		ImmutaballM,
 		runImmutaballM,
 		RequestFrameMulti,
@@ -37,8 +38,10 @@ module Immutaball.Share.State
 		-- * Frame management
 		immutaballMultiToSingle,
 		immutaballSingleToMulti,
+		immutaballSingleToMultiWith,
 		fromImmutaballMulti,
 		fromImmutaballSingle,
+		fromImmutaballSingleWith,
 		immutaballMultiQueueFrames
 	) where
 
@@ -67,6 +70,8 @@ import Immutaball.Share.Wire
 -- > data Wire m a b = Wire { _stepWire :: a -> m (b, Wire m a b) }
 --type Immutaball = Wire Maybe RequestFrame ResponseFrame
 type Immutaball = Wire ImmutaballM RequestFrame ResponseFrame
+
+type ImmutaballA b c = Wire ImmutaballM (RequestFrame, b) (ResponseFrame, c)
 
 -- | Immutaball wire monad.
 type ImmutaballM = AutoParT (MaybeMT ImmutaballIOF)
@@ -157,29 +162,37 @@ type StaticConfig  = StaticConfig' (IBContext -> Maybe Immutaball)
 -- | Send one request at a time; if there is no response, then treat it as a
 -- DoneResponse (just as the controller would close a wire if a multi-response
 -- wire returns [] with no continue).
-immutaballMultiToSingle :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameSingle ResponseFrameSingle
-immutaballMultiToSingle w = proc (Identity request) -> do
-	responses <- w -< [request]
+immutaballMultiToSingle :: Wire ImmutaballM (RequestFrameMulti, a) (ResponseFrameMulti, b) -> Wire ImmutaballM (RequestFrameSingle, a) (ResponseFrameSingle, b)
+immutaballMultiToSingle w = proc (Identity request, a) -> do
+	(responses, b) <- w -< ([request], a)
 	mresponse <- queue -< responses
-	returnA -< Identity $ maybe DoneResponse id mresponse
+	returnA -< ((Identity $ maybe DoneResponse id mresponse), b)
 
 -- | If the single wire received no request, we give an empty response frame
 -- (like a DoneResponse).
-immutaballSingleToMulti :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
-immutaballSingleToMulti w = proc requests -> do
+immutaballSingleToMulti :: (Monoid b) => Wire ImmutaballM (RequestFrameSingle, a) (ResponseFrameSingle, b) -> Wire ImmutaballM (RequestFrameMulti, a) (ResponseFrameMulti, b)
+immutaballSingleToMulti = immutaballSingleToMultiWith mempty
+
+-- | If the single wire received no request, we give an empty response frame
+-- (like a DoneResponse).
+immutaballSingleToMultiWith :: b -> Wire ImmutaballM (RequestFrameSingle, a) (ResponseFrameSingle, b) -> Wire ImmutaballM (RequestFrameMulti, a) (ResponseFrameMulti, b)
+immutaballSingleToMultiWith whenEmpty w = proc (requests, a) -> do
 	request <- queue -< requests
 	case request of
 		Nothing -> do
-			returnA -< []
+			returnA -< ([], whenEmpty)
 		Just jrequest -> do
-			(Identity response) <- w -< Identity jrequest
-			returnA -< [response]
+			((Identity response), b) <- w -< (Identity jrequest, a)
+			returnA -< ([response], b)
 
-fromImmutaballMulti :: Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Immutaball
+fromImmutaballMulti :: Wire ImmutaballM (RequestFrameMulti, a) (ResponseFrameMulti, b) -> ImmutaballA a b
 fromImmutaballMulti = id
 
-fromImmutaballSingle :: Wire ImmutaballM RequestFrameSingle ResponseFrameSingle -> Immutaball
+fromImmutaballSingle :: (Monoid b) => Wire ImmutaballM (RequestFrameSingle, a) (ResponseFrameSingle, b) -> ImmutaballA a b
 fromImmutaballSingle = immutaballSingleToMulti
+
+fromImmutaballSingleWith :: b -> Wire ImmutaballM (RequestFrameSingle, a) (ResponseFrameSingle, b) -> ImmutaballA a b
+fromImmutaballSingleWith = immutaballSingleToMultiWith
 
 -- | Transform a wire that can handle unlimited requests and response,
 -- into one that queues up to the context's limit to only process so many

@@ -258,9 +258,13 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 		_ -> returnA -< cxtnp2
 
 	-- Set up response.
+	let responseOnAction = (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus)
 	response <- returnA -< case request of
 		GUIDrive (Keybd char True) ->
-			if' (char == fromIntegral Raw.SDLK_RETURN) (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus) $
+			if' (char == fromIntegral Raw.SDLK_RETURN) responseOnAction $
+			NoWidgetAction
+		GUIDrive (Click Raw.SDL_BUTTON_LEFT True) ->
+			if' (mouseFocus == Just currentFocus) responseOnAction $
 			NoWidgetAction
 		_ -> NoWidgetAction
 	returnA -< (response, cxtnp3)

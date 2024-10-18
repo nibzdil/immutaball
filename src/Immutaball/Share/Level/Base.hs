@@ -13,6 +13,7 @@ module Immutaball.Share.Level.Base
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
+		Edge(..), edgeVi, edgeVj,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -95,8 +96,13 @@ data Vert = Vert {
 }
 makeLenses ''Vert
 
+data Edge = Edge {
+	_edgeVi :: Int32,
+	_edgeVj :: Int32
+}
+makeLenses ''Edge
+
 -- TODO:
-type Edge = Int32
 type Side = Int32
 type Texc = Int32
 type Offs = Int32
@@ -627,4 +633,12 @@ instance Storable Vert where
 	peek ptr = flip evalStateT 0 $ Vert <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr')
 		where ptr' = castPtr ptr
 	poke ptr (Vert (Vec3 x y z)) = flip evalStateT 0 $ pokef32dLE ptr' x >> pokef32dLE ptr' y >> pokef32dLE ptr' z
+		where ptr' = castPtr ptr
+
+instance Storable Edge where
+	sizeOf    (Edge vi vj) = sum [sizeOf vi, sizeOf vj]
+	alignment (Edge vi vj) = max 1 $ maximum [alignment vi, alignment vj]
+	peek ptr = flip evalStateT 0 $ Edge <$> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Edge vi vj) = flip evalStateT 0 $ pokei32LE ptr' vi >> pokei32LE ptr' vj
 		where ptr' = castPtr ptr

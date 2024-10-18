@@ -30,6 +30,7 @@ module Immutaball.Share.Level.Base
 		Swch(..), swchP, swchR, swchPi, swchT, swchTm, swchF, swchI, swchP0, swchP1,
 		Bill(..), billFl, billMi, billT, billD, billW, billH, billRx, billRy,
 			billRz, billP, billP0, billP1,
+		Ball(..), ballP, ballR,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -311,8 +312,13 @@ data Bill = Bill {
 }
 makeLenses ''Bill
 
+data Ball = Ball {
+	_ballP :: Vec3 Double,
+	_ballR :: Double
+}
+makeLenses ''Ball
+
 -- TODO:
-type Ball = Int32
 type View = Int32
 type Dict = Int32
 
@@ -1361,4 +1367,14 @@ instance Storable Bill where
 			pokei32LE ptr' p0
 			pokei32LE ptr' p1
 
+		where ptr' = castPtr ptr
+
+instance Storable Ball where
+	sizeOf    ~(Ball (Vec3 _px _py _pz) _r) = sum [3 * sizeOf x', sizeOf x']
+		where x' = error "Internal error: sizeOf Ball: sizeOf accessed its argument!" :: Float
+	alignment ~(Ball (Vec3 _px _py _pz) _r) = max 1 $ maximum [alignment x', alignment x']
+		where x' = error "Internal error: alignment Ball: alignment accessed its argument!" :: Float
+	peek ptr = flip evalStateT 0 $ Ball <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> peekf32dLE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Ball (Vec3 px py pz) r) = flip evalStateT 0 $ pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz >> pokef32dLE ptr' r
 		where ptr' = castPtr ptr

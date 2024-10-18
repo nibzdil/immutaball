@@ -17,6 +17,7 @@ module Immutaball.Share.Level.Base
 		Side(..), edgeN, edgeD,
 		Texc(..), texcU,
 		Offs(..), offsTi, offsSi, offsVi,
+		Geom(..), geomMi, geomOi, geomOj, geomOk,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -121,15 +122,21 @@ data Texc = Texc {
 makeLenses ''Texc
 
 data Offs = Offs {
-	-- | Texture coordinates.
 	_offsTi :: Int32,
 	_offsSi :: Int32,
 	_offsVi :: Int32
 }
 makeLenses ''Offs
 
+data Geom = Geom {
+	_geomMi :: Int32,
+	_geomOi :: Int32,
+	_geomOj :: Int32,
+	_geomOk :: Int32
+}
+makeLenses ''Geom
+
 -- TODO:
-type Geom = Int32
 type Lump = Int32
 type Node = Int32
 type Path = Int32
@@ -694,4 +701,12 @@ instance Storable Offs where
 	peek ptr = flip evalStateT 0 $ Offs <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Offs ti si vi) = flip evalStateT 0 $ pokei32LE ptr' ti >> pokei32LE ptr' si >> pokei32Native ptr' vi
+		where ptr' = castPtr ptr
+
+instance Storable Geom where
+	sizeOf    (Geom mi oi oj ok) = sum [sizeOf mi, sizeOf oi, sizeOf oj, sizeOf ok]
+	alignment (Geom mi oi oj ok) = max 1 $ maximum [alignment mi, alignment oi, alignment oj, alignment ok]
+	peek ptr = flip evalStateT 0 $ Geom <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Geom mi oi oj ok) = flip evalStateT 0 $ pokei32LE ptr' mi >> pokei32LE ptr' oi >> pokei32Native ptr' oj >> pokei32LE ptr' ok
 		where ptr' = castPtr ptr

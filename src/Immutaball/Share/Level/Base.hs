@@ -18,6 +18,8 @@ module Immutaball.Share.Level.Base
 		Texc(..), texcU,
 		Offs(..), offsTi, offsSi, offsVi,
 		Geom(..), geomMi, geomOi, geomOj, geomOk,
+		Lump(..), lumpFl, lumpV0, lumpVc, lumpE0, lumpEc, lumpG0, lumpGc,
+			lumpS0, lumpSc,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -136,8 +138,21 @@ data Geom = Geom {
 }
 makeLenses ''Geom
 
+data Lump = Lump {
+	-- | Lump flags.
+	_lumpFl :: Int32,
+	_lumpV0 :: Int32,
+	_lumpVc :: Int32,
+	_lumpE0 :: Int32,
+	_lumpEc :: Int32,
+	_lumpG0 :: Int32,
+	_lumpGc :: Int32,
+	_lumpS0 :: Int32,
+	_lumpSc :: Int32
+}
+makeLenses ''Lump
+
 -- TODO:
-type Lump = Int32
 type Node = Int32
 type Path = Int32
 type Body = Int32
@@ -709,4 +724,12 @@ instance Storable Geom where
 	peek ptr = flip evalStateT 0 $ Geom <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Geom mi oi oj ok) = flip evalStateT 0 $ pokei32LE ptr' mi >> pokei32LE ptr' oi >> pokei32Native ptr' oj >> pokei32LE ptr' ok
+		where ptr' = castPtr ptr
+
+instance Storable Lump where
+	sizeOf    (Lump fl v0 vc e0 ec g0 gc s0 sc) = sum [sizeOf fl, sizeOf v0, sizeOf vc, sizeOf e0, sizeOf ec, sizeOf g0, sizeOf gc, sizeOf s0, sizeOf sc]
+	alignment (Lump fl v0 vc e0 ec g0 gc s0 sc) = max 1 $ maximum [alignment fl, alignment v0, alignment vc, alignment e0, alignment ec, alignment g0, alignment gc, alignment s0, alignment sc]
+	peek ptr = flip evalStateT 0 $ Lump <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Lump fl v0 vc e0 ec g0 gc s0 sc) = flip evalStateT 0 $ pokei32LE ptr' fl >> pokei32LE ptr' v0 >> pokei32LE ptr' vc >> pokei32LE ptr' e0 >> pokei32LE ptr' ec >> pokei32LE ptr' g0 >> pokei32LE ptr' gc >> pokei32LE ptr' s0 >> pokei32LE ptr' sc
 		where ptr' = castPtr ptr

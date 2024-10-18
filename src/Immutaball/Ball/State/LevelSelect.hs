@@ -26,6 +26,7 @@ import Control.Monad
 
 --import Control.Lens
 --import qualified Data.Map as M
+import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Ball.LevelSets
 import Immutaball.Share.GUI
@@ -35,7 +36,7 @@ import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
--- TODO:
+-- TODO: switch to next state
 mkLevelSelectState :: LevelSet -> (Either IBContext IBStateContext -> Immutaball) -> Either IBContext IBStateContext -> Immutaball
 mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing . openSecondI $ proc (Identity request) -> do
 	rec
@@ -46,15 +47,16 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 
 		--(guiResponse, cxtnp1) <- mkGUI $ levelSelectGui levelSet -< (GUIDrive request, cxtn)
 		(guiResponse, cxtnp1) <- withM (\gui -> second (mkGUI gui) >>> arr snd) (return . fst) -< (levelSelectGui levelSet, (GUIDrive request, cxtn))
-		response <- returnA -< case guiResponse of
-			NoWidgetAction          -> ContinueResponse
-			_                       -> ContinueResponse
+		let response = ContinueResponse
+
+		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
+		let isBack = isEsc || guiResponse == WidgetAction BackButton
 
 		() <- finishFrame -< (request, cxtnp1)
 		cxt <- returnA -< cxtnp1
 
 	-- Switch on Back button.
-	let switchTo = if' (guiResponse /= WidgetAction BackButton) Nothing . Just . openSecondI $ mkBack (Right cxt)
+	let switchTo = if' (not isBack) Nothing . Just . openSecondI $ mkBack (Right cxt)
 	returnA -< (Identity response, switchTo)
 
 	where cxt0 = either initialStateCxt id baseCxt0

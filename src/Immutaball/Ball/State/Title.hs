@@ -18,7 +18,10 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
-import Data.Functor.Identity
+import Control.Lens
+--import Data.Functor.Identity
+
+import qualified SDL.Raw.Enum as Raw
 
 import qualified Immutaball.Ball.State.LevelSets as LevelSets
 import Immutaball.Share.GUI
@@ -35,10 +38,11 @@ mkTitleState baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing
 		cxtn <- requireBasics -< (cxtLast, request)
 
 		(guiResponse, cxtnp1) <- mkGUI titleGui -< (GUIDrive request, cxtn)
-		response <- returnA -< case guiResponse of
+		response0 <- returnA -< case guiResponse of
 			NoWidgetAction          -> ContinueResponse
 			WidgetAction QuitButton -> DoneResponse
 			_                       -> ContinueResponse
+		response <- returnA -< if' ((const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request) DoneResponse response0
 
 		() <- finishFrame -< (request, cxtnp1)
 		cxt <- returnA -< cxtnp1

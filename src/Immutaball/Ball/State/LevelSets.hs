@@ -25,6 +25,7 @@ import Data.Functor.Identity
 
 import Control.Lens
 import qualified Data.Map as M
+import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Ball.LevelSets
 import qualified Immutaball.Ball.State.LevelSelect as LevelSelect
@@ -45,15 +46,16 @@ mkLevelSetsState mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleW
 
 		--(guiResponse, cxtnp1) <- mkGUI $ levelSetsGui levelSets -< (GUIDrive request, cxtn)
 		(guiResponse, cxtnp1) <- withM (\gui -> second (mkGUI gui) >>> arr snd) (return . fst) -< (levelSetsGui levelSets, (GUIDrive request, cxtn))
-		response <- returnA -< case guiResponse of
-			NoWidgetAction          -> ContinueResponse
-			_                       -> ContinueResponse
+		let response = ContinueResponse
+
+		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
+		let isBack = isEsc || guiResponse == WidgetAction BackButton
 
 		() <- finishFrame -< (request, cxtnp1)
 		cxt <- returnA -< cxtnp1
 
 	-- Switch on Back button.
-	let switchTo0 = if' (guiResponse /= WidgetAction BackButton) Nothing . Just . openSecondI $ mkBack (Right cxt)
+	let switchTo0 = if' (not isBack) Nothing . Just . openSecondI $ mkBack (Right cxt)
 	let onSet levelSetPath = flip M.lookup (levelSets^.lsLevelSets) levelSetPath >>= \levelSet -> return . openSecondI $ LevelSelect.mkLevelSelectState levelSet (mkLevelSetsState mkBack) (Right cxt)
 	let switchTo = switchTo0 <|> case guiResponse of (WidgetAction (LevelSetButton levelSetPath)) -> onSet levelSetPath; _ -> Nothing
 	returnA -< (Identity response, switchTo)

@@ -20,12 +20,18 @@ module Immutaball.Share.Level.Base
 		peeki32LE,
 		peekf32dLE,
 		peekn,
+		pokei32Native,
+		pokei32BE,
+		pokei32LE,
+		pokef32dLE,
+		poken,
 		asType
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Monad
 import Control.Monad.Fix
 import Data.Bits
 import Data.Coerce
@@ -278,8 +284,56 @@ instance Storable Sol where
 
 		where ptr' = castPtr ptr
 
-	-- TODO: poke
-	--peek ptr = flip evalStateT 0 $ Sol <$>
+	poke ptr
+		(Sol
+			ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
+			av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+		) = flip evalStateT 0 $ do
+			pokei32LE ptr' ac
+			pokei32LE ptr' mc
+			pokei32LE ptr' vc
+			pokei32LE ptr' ec
+			pokei32LE ptr' sc
+			pokei32LE ptr' tc
+			pokei32LE ptr' oc
+			pokei32LE ptr' gc
+			pokei32LE ptr' lc
+			pokei32LE ptr' nc
+			pokei32LE ptr' pc
+			pokei32LE ptr' bc
+			pokei32LE ptr' hc
+			pokei32LE ptr' zc
+			pokei32LE ptr' jc
+			pokei32LE ptr' xc
+			pokei32LE ptr' rc
+			pokei32LE ptr' uc
+			pokei32LE ptr' wc
+			pokei32LE ptr' dc
+			pokei32LE ptr' ic
+
+			poken ptr' ac av
+			poken ptr' mc mv
+			poken ptr' vc vv
+			poken ptr' ec ev
+			poken ptr' sc sv
+			poken ptr' tc tv
+			poken ptr' oc ov
+			poken ptr' gc gv
+			poken ptr' lc lv
+			poken ptr' nc nv
+			poken ptr' pc pv
+			poken ptr' bc bv
+			poken ptr' hc hv
+			poken ptr' zc zv
+			poken ptr' jc jv
+			poken ptr' xc xv
+			poken ptr' rc rv
+			poken ptr' uc uv
+			poken ptr' wc wv
+			poken ptr' dc dv
+			poken ptr' ic iv
+
+		where ptr' = castPtr ptr
 
 peeki32Native :: Ptr () -> StateT Int IO Int32
 peeki32Native ptr = do
@@ -359,3 +413,72 @@ peekn ptr n
 
 asType :: a -> a -> ()
 asType _ _ = ()
+
+pokei32Native :: Ptr () -> Int32 -> StateT Int IO ()
+pokei32Native ptr val = do
+	offset <- get
+	lift $ poke (castPtr ptr `plusPtr` offset) val
+	put $ offset + sizeOf val
+
+pokei32BE :: Ptr () -> Int32 -> StateT Int IO ()
+pokei32BE ptr val = do
+	offset <- get
+	let (w32 :: Word32) = fromIntegral val
+	let (byte0 :: Word8) = fromIntegral $ (w32 .&. 0xFF000000) `shiftR` 24
+	let (byte1 :: Word8) = fromIntegral $ (w32 .&. 0x00FF0000) `shiftR` 16
+	let (byte2 :: Word8) = fromIntegral $ (w32 .&. 0x0000FF00) `shiftR`  8
+	let (byte3 :: Word8) = fromIntegral $ (w32 .&. 0x000000FF) `shiftR`  0
+	lift $ poke (castPtr ptr `plusPtr` (offset + 0)) byte0
+	lift $ poke (castPtr ptr `plusPtr` (offset + 1)) byte1
+	lift $ poke (castPtr ptr `plusPtr` (offset + 2)) byte2
+	lift $ poke (castPtr ptr `plusPtr` (offset + 3)) byte3
+	put $ offset + sizeOf w32
+
+pokei32LE :: Ptr () -> Int32 -> StateT Int IO ()
+pokei32LE ptr val = do
+	offset <- get
+	let (w32 :: Word32) = fromIntegral val
+	let (byte3 :: Word8) = fromIntegral $ (w32 .&. 0xFF000000) `shiftR` 24
+	let (byte2 :: Word8) = fromIntegral $ (w32 .&. 0x00FF0000) `shiftR` 16
+	let (byte1 :: Word8) = fromIntegral $ (w32 .&. 0x0000FF00) `shiftR`  8
+	let (byte0 :: Word8) = fromIntegral $ (w32 .&. 0x000000FF) `shiftR`  0
+	lift $ poke (castPtr ptr `plusPtr` (offset + 0)) byte0
+	lift $ poke (castPtr ptr `plusPtr` (offset + 1)) byte1
+	lift $ poke (castPtr ptr `plusPtr` (offset + 2)) byte2
+	lift $ poke (castPtr ptr `plusPtr` (offset + 3)) byte3
+	put $ offset + sizeOf w32
+
+pokef32dLE :: Ptr () -> Double -> StateT Int IO ()
+pokef32dLE ptr val = do
+	offset <- get
+	let (fl :: Float) = realToFrac val
+
+	-- GHC doesn't support coerce between Float and Word32.
+	-- Just malloc a new word32.
+	{-
+	let (w32 :: Word32) = coerce f
+	-}
+	(w32Ptr :: ForeignPtr Word32) <- lift $ mallocForeignPtr
+	(cw32 :: Word32) <- lift . withForeignPtr w32Ptr $ \ptr_ -> poke (castPtr ptr_) fl >> peek ptr_
+	let (w32 :: Word32) = coerce cw32
+
+	let (byte3 :: Word8) = fromIntegral $ (w32 .&. 0xFF000000) `shiftR` 24
+	let (byte2 :: Word8) = fromIntegral $ (w32 .&. 0x00FF0000) `shiftR` 16
+	let (byte1 :: Word8) = fromIntegral $ (w32 .&. 0x0000FF00) `shiftR`  8
+	let (byte0 :: Word8) = fromIntegral $ (w32 .&. 0x000000FF) `shiftR`  0
+	lift $ poke (castPtr ptr `plusPtr` (offset + 0)) byte0
+	lift $ poke (castPtr ptr `plusPtr` (offset + 1)) byte1
+	lift $ poke (castPtr ptr `plusPtr` (offset + 2)) byte2
+	lift $ poke (castPtr ptr `plusPtr` (offset + 3)) byte3
+	put $ offset + sizeOf w32
+
+poken :: forall a. (Storable a) => Ptr () -> Int32 -> Array Int32 a -> StateT Int IO ()
+poken ptr n array_
+	| n <= 0    = return ()
+	| otherwise = do
+		let elemSizeof = error "Internal error: poken: sizeOf accessed its element!"  :: a
+		let sizeofElem = sizeOf elemSizeof
+		forM_ array_ $ \elem_ -> do
+			offset <- get
+			lift $ poke (castPtr ptr `plusPtr` offset) elem_
+			put $ offset + sizeofElem

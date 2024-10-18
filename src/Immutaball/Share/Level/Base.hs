@@ -23,12 +23,14 @@ module Immutaball.Share.Level.Base
 		Node(..), nodeSi, nodeNi, nodeNj, nodeL0, nodeLc,
 		Path(..), pathP, pathE, pathT, pathTm, pathPi, pathF, pathS, pathFl,
 			pathP0, pathP1,
+		Body(..), bodyP0, bodyP1, bodyNi, bodyL0, bodyLc, bodyG0, bodyGc,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
 			solOv, solGv, solLv, solNv, solPv, solBv, solHv, solZv, solJv,
 			solXv, solRv, solUv, solWv, solDv, solIv,
 		LevelIB,
+		emptySol,
 		peeki32Native,
 		peeki32BE,
 		peeki32LE,
@@ -193,8 +195,21 @@ data Path = Path {
 }
 makeLenses ''Path
 
+data Body = Body {
+	-- | Translation path.
+	_bodyP0 :: Int32,
+	-- | Rotation path.
+	_bodyP1 :: Int32,
+
+	_bodyNi :: Int32,
+	_bodyL0 :: Int32,
+	_bodyLc :: Int32,
+	_bodyG0 :: Int32,
+	_bodyGc :: Int32
+}
+makeLenses ''Body
+
 -- TODO:
-type Body = Int32
 type Item = Int32
 type Goal = Int32
 type Jump = Int32
@@ -319,6 +334,16 @@ instance Storable Sol where
 
 	peek = peekSol
 	poke = pokeSol
+
+emptySol :: Sol
+emptySol =
+	(Sol
+		0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+		a a a a a a a a a a a a a a a a a a a a a
+	)
+	where
+		a :: (Storable a) => Array Int32 a
+		a = IA.listArray (0, -1) []
 
 sizeOfEmptySol :: Sol -> Int
 sizeOfEmptySol
@@ -921,4 +946,12 @@ instance Storable Path where
 			pokei32LE ptr' p0
 			pokei32LE ptr' p1
 
+		where ptr' = castPtr ptr
+
+instance Storable Body where
+	sizeOf    ~(Body p0 p1 ni l0 lc g0 gc) = sum [sizeOf p0, sizeOf p1, sizeOf ni, sizeOf l0, sizeOf lc, sizeOf g0, sizeOf gc]
+	alignment ~(Body p0 p1 ni l0 lc g0 gc) = max 1 $ maximum [alignment p0, alignment p1, alignment ni, alignment l0, alignment lc, alignment g0, alignment gc]
+	peek ptr = flip evalStateT 0 $ Body <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Body p0 p1 ni l0 lc g0 gc) = flip evalStateT 0 $ pokei32LE ptr' p0 >> pokei32LE ptr' p1 >> pokei32Native ptr' ni >> pokei32LE ptr' l0 >> pokei32LE ptr' lc >> pokei32Native ptr' g0 >> pokei32LE ptr' gc
 		where ptr' = castPtr ptr

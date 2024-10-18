@@ -21,6 +21,8 @@ module Immutaball.Share.Level.Base
 		Lump(..), lumpFl, lumpV0, lumpVc, lumpE0, lumpEc, lumpG0, lumpGc,
 			lumpS0, lumpSc,
 		Node(..), nodeSi, nodeNi, nodeNj, nodeL0, nodeLc,
+		Path(..), pathP, pathE, pathT, pathTm, pathPi, pathF, pathS, pathFl,
+			pathP0, pathP1,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -39,7 +41,11 @@ module Immutaball.Share.Level.Base
 		pokef32dLE,
 		poken,
 		pokeCString,
-		asType
+		asType,
+		sizeOfEmptySol,
+		sizeOfExistingSol,
+		peekSol,
+		pokeSol
 	) where
 
 import Prelude ()
@@ -162,8 +168,32 @@ data Node = Node {
 }
 makeLenses ''Node
 
+data Path = Path {
+	-- | Starting position.
+	_pathP :: Vec3 Double,
+	-- | Orientation (quaternion).
+	_pathE :: Vec4 Double,
+	-- | Travel time.
+	_pathT :: Double,
+	-- | Milliseconds.
+	_pathTm :: Int32,
+
+	-- | Next path.
+	_pathPi :: Int32,
+	-- | Enable flag.
+	_pathF :: Int32,
+	-- | Smooth flag.
+	_pathS :: Int32,
+
+	-- | Flags.
+	_pathFl :: Int32,
+
+	_pathP0 :: Int32,
+	_pathP1 :: Int32
+}
+makeLenses ''Path
+
 -- TODO:
-type Path = Int32
 type Body = Int32
 type Item = Int32
 type Goal = Int32
@@ -179,6 +209,10 @@ type Dict = Int32
 -- Uses little-endian format.
 --
 -- Also encoded as floats, but we read into doubles.
+--
+-- The Storable instance does not follow the sizeOf laws of not accessing its
+-- argument, but is still useful for reading and writing when combined with
+-- validation.  peekSol and pokeSol offer more pure implementations.
 data Sol = Sol {
 	_solAc :: Int32,
 	_solMc :: Int32,
@@ -229,60 +263,10 @@ makeLenses ''Sol
 type LevelIB = Sol
 
 instance Storable Sol where
-	sizeOf
-		(Sol
-			ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
-			--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
-			_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
-		) = sum $
-			[
-				sizeOf ac,
-				sizeOf mc,
-				sizeOf vc,
-				sizeOf ec,
-				sizeOf sc,
-				sizeOf tc,
-				sizeOf oc,
-				sizeOf gc,
-				sizeOf lc,
-				sizeOf nc,
-				sizeOf pc,
-				sizeOf bc,
-				sizeOf hc,
-				sizeOf zc,
-				sizeOf jc,
-				sizeOf xc,
-				sizeOf rc,
-				sizeOf uc,
-				sizeOf wc,
-				sizeOf dc,
-				sizeOf ic,
-
-				fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
-				fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
-				fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
-				fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
-				fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
-				fromIntegral tc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Texc ),
-				fromIntegral oc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Offs ),
-				fromIntegral gc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Geom ),
-				fromIntegral lc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Lump ),
-				fromIntegral nc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Node ),
-				fromIntegral pc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Path ),
-				fromIntegral bc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Body ),
-				fromIntegral hc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Item ),
-				fromIntegral zc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Goal ),
-				fromIntegral jc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Jump ),
-				fromIntegral xc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Swch ),
-				fromIntegral rc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
-				fromIntegral uc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
-				fromIntegral wc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
-				fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
-				fromIntegral ic * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
-			]
+	sizeOf = sizeOfEmptySol
 
 	alignment
-		(Sol
+		~(Sol
 			ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
 			--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
 			_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
@@ -333,103 +317,114 @@ instance Storable Sol where
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Int32)
 			]
 
-	peek ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
-		peeki32LE ptr' <*>  -- ac
-		peeki32LE ptr' <*>  -- mc
-		peeki32LE ptr' <*>  -- vc
-		peeki32LE ptr' <*>  -- ec
-		peeki32LE ptr' <*>  -- sc
-		peeki32LE ptr' <*>  -- tc
-		peeki32LE ptr' <*>  -- oc
-		peeki32LE ptr' <*>  -- gc
-		peeki32LE ptr' <*>  -- lc
-		peeki32LE ptr' <*>  -- nc
-		peeki32LE ptr' <*>  -- pc
-		peeki32LE ptr' <*>  -- bc
-		peeki32LE ptr' <*>  -- hc
-		peeki32LE ptr' <*>  -- zc
-		peeki32LE ptr' <*>  -- jc
-		peeki32LE ptr' <*>  -- xc
-		peeki32LE ptr' <*>  -- rc
-		peeki32LE ptr' <*>  -- uc
-		peeki32LE ptr' <*>  -- wc
-		peeki32LE ptr' <*>  -- dc
-		peeki32LE ptr' <*>  -- ic
+	peek = peekSol
+	poke = pokeSol
 
-		peekn ptr' (sol^.solAc) <*>  -- av
-		peekn ptr' (sol^.solMc) <*>  -- mv
-		peekn ptr' (sol^.solVc) <*>  -- vv
-		peekn ptr' (sol^.solEc) <*>  -- ev
-		peekn ptr' (sol^.solSc) <*>  -- sv
-		peekn ptr' (sol^.solTc) <*>  -- tv
-		peekn ptr' (sol^.solOc) <*>  -- ov
-		peekn ptr' (sol^.solGc) <*>  -- gv
-		peekn ptr' (sol^.solLc) <*>  -- lv
-		peekn ptr' (sol^.solNc) <*>  -- nv
-		peekn ptr' (sol^.solPc) <*>  -- pv
-		peekn ptr' (sol^.solBc) <*>  -- bv
-		peekn ptr' (sol^.solHc) <*>  -- hv
-		peekn ptr' (sol^.solZc) <*>  -- zv
-		peekn ptr' (sol^.solJc) <*>  -- jv
-		peekn ptr' (sol^.solXc) <*>  -- xv
-		peekn ptr' (sol^.solRc) <*>  -- rv
-		peekn ptr' (sol^.solUc) <*>  -- uv
-		peekn ptr' (sol^.solWc) <*>  -- wv
-		peekn ptr' (sol^.solDc) <*>  -- dv
-		peekn ptr' (sol^.solIc)      -- iv
+sizeOfEmptySol :: Sol -> Int
+sizeOfEmptySol
+	~(Sol
+		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
+		--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+	) = sum $
+		[
+			sizeOf ac,
+			sizeOf mc,
+			sizeOf vc,
+			sizeOf ec,
+			sizeOf sc,
+			sizeOf tc,
+			sizeOf oc,
+			sizeOf gc,
+			sizeOf lc,
+			sizeOf nc,
+			sizeOf pc,
+			sizeOf bc,
+			sizeOf hc,
+			sizeOf zc,
+			sizeOf jc,
+			sizeOf xc,
+			sizeOf rc,
+			sizeOf uc,
+			sizeOf wc,
+			sizeOf dc,
+			sizeOf ic,
 
-		where ptr' = castPtr ptr
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Texc ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Offs ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Geom ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Lump ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Node ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Path ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Body ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Item ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Goal ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Jump ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Swch ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
+		]
 
-	poke ptr
-		(Sol
-			ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
-			av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
-		) = flip evalStateT 0 $ do
-			pokei32LE ptr' ac
-			pokei32LE ptr' mc
-			pokei32LE ptr' vc
-			pokei32LE ptr' ec
-			pokei32LE ptr' sc
-			pokei32LE ptr' tc
-			pokei32LE ptr' oc
-			pokei32LE ptr' gc
-			pokei32LE ptr' lc
-			pokei32LE ptr' nc
-			pokei32LE ptr' pc
-			pokei32LE ptr' bc
-			pokei32LE ptr' hc
-			pokei32LE ptr' zc
-			pokei32LE ptr' jc
-			pokei32LE ptr' xc
-			pokei32LE ptr' rc
-			pokei32LE ptr' uc
-			pokei32LE ptr' wc
-			pokei32LE ptr' dc
-			pokei32LE ptr' ic
+sizeOfExistingSol :: Sol -> Int
+sizeOfExistingSol
+	(Sol
+		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
+		--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+	) = sum $
+		[
+			sizeOf ac,
+			sizeOf mc,
+			sizeOf vc,
+			sizeOf ec,
+			sizeOf sc,
+			sizeOf tc,
+			sizeOf oc,
+			sizeOf gc,
+			sizeOf lc,
+			sizeOf nc,
+			sizeOf pc,
+			sizeOf bc,
+			sizeOf hc,
+			sizeOf zc,
+			sizeOf jc,
+			sizeOf xc,
+			sizeOf rc,
+			sizeOf uc,
+			sizeOf wc,
+			sizeOf dc,
+			sizeOf ic,
 
-			poken ptr' ac av
-			poken ptr' mc mv
-			poken ptr' vc vv
-			poken ptr' ec ev
-			poken ptr' sc sv
-			poken ptr' tc tv
-			poken ptr' oc ov
-			poken ptr' gc gv
-			poken ptr' lc lv
-			poken ptr' nc nv
-			poken ptr' pc pv
-			poken ptr' bc bv
-			poken ptr' hc hv
-			poken ptr' zc zv
-			poken ptr' jc jv
-			poken ptr' xc xv
-			poken ptr' rc rv
-			poken ptr' uc uv
-			poken ptr' wc wv
-			poken ptr' dc dv
-			poken ptr' ic iv
-
-		where ptr' = castPtr ptr
+			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
+			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
+			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
+			fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
+			fromIntegral tc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Texc ),
+			fromIntegral oc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Offs ),
+			fromIntegral gc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Geom ),
+			fromIntegral lc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Lump ),
+			fromIntegral nc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Node ),
+			fromIntegral pc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Path ),
+			fromIntegral bc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Body ),
+			fromIntegral hc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Item ),
+			fromIntegral zc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Goal ),
+			fromIntegral jc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Jump ),
+			fromIntegral xc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Swch ),
+			fromIntegral rc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
+			fromIntegral uc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
+			fromIntegral wc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
+			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
+			fromIntegral ic * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
+		]
 
 peeki32Native :: Ptr () -> StateT Int IO Int32
 peeki32Native ptr = do
@@ -524,6 +519,106 @@ peekCString ptr' bufSize = do
 asType :: a -> a -> ()
 asType _ _ = ()
 
+peekSol :: Ptr Sol -> IO Sol
+peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
+	peeki32LE ptr' <*>  -- ac
+	peeki32LE ptr' <*>  -- mc
+	peeki32LE ptr' <*>  -- vc
+	peeki32LE ptr' <*>  -- ec
+	peeki32LE ptr' <*>  -- sc
+	peeki32LE ptr' <*>  -- tc
+	peeki32LE ptr' <*>  -- oc
+	peeki32LE ptr' <*>  -- gc
+	peeki32LE ptr' <*>  -- lc
+	peeki32LE ptr' <*>  -- nc
+	peeki32LE ptr' <*>  -- pc
+	peeki32LE ptr' <*>  -- bc
+	peeki32LE ptr' <*>  -- hc
+	peeki32LE ptr' <*>  -- zc
+	peeki32LE ptr' <*>  -- jc
+	peeki32LE ptr' <*>  -- xc
+	peeki32LE ptr' <*>  -- rc
+	peeki32LE ptr' <*>  -- uc
+	peeki32LE ptr' <*>  -- wc
+	peeki32LE ptr' <*>  -- dc
+	peeki32LE ptr' <*>  -- ic
+
+	peekn ptr' (sol^.solAc) <*>  -- av
+	peekn ptr' (sol^.solMc) <*>  -- mv
+	peekn ptr' (sol^.solVc) <*>  -- vv
+	peekn ptr' (sol^.solEc) <*>  -- ev
+	peekn ptr' (sol^.solSc) <*>  -- sv
+	peekn ptr' (sol^.solTc) <*>  -- tv
+	peekn ptr' (sol^.solOc) <*>  -- ov
+	peekn ptr' (sol^.solGc) <*>  -- gv
+	peekn ptr' (sol^.solLc) <*>  -- lv
+	peekn ptr' (sol^.solNc) <*>  -- nv
+	peekn ptr' (sol^.solPc) <*>  -- pv
+	peekn ptr' (sol^.solBc) <*>  -- bv
+	peekn ptr' (sol^.solHc) <*>  -- hv
+	peekn ptr' (sol^.solZc) <*>  -- zv
+	peekn ptr' (sol^.solJc) <*>  -- jv
+	peekn ptr' (sol^.solXc) <*>  -- xv
+	peekn ptr' (sol^.solRc) <*>  -- rv
+	peekn ptr' (sol^.solUc) <*>  -- uv
+	peekn ptr' (sol^.solWc) <*>  -- wv
+	peekn ptr' (sol^.solDc) <*>  -- dv
+	peekn ptr' (sol^.solIc)      -- iv
+
+	where ptr' = castPtr ptr
+
+pokeSol :: Ptr Sol -> Sol -> IO ()
+pokeSol ptr
+	(Sol
+		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
+		av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+	) = flip evalStateT 0 $ do
+		pokei32LE ptr' ac
+		pokei32LE ptr' mc
+		pokei32LE ptr' vc
+		pokei32LE ptr' ec
+		pokei32LE ptr' sc
+		pokei32LE ptr' tc
+		pokei32LE ptr' oc
+		pokei32LE ptr' gc
+		pokei32LE ptr' lc
+		pokei32LE ptr' nc
+		pokei32LE ptr' pc
+		pokei32LE ptr' bc
+		pokei32LE ptr' hc
+		pokei32LE ptr' zc
+		pokei32LE ptr' jc
+		pokei32LE ptr' xc
+		pokei32LE ptr' rc
+		pokei32LE ptr' uc
+		pokei32LE ptr' wc
+		pokei32LE ptr' dc
+		pokei32LE ptr' ic
+
+		poken ptr' ac av
+		poken ptr' mc mv
+		poken ptr' vc vv
+		poken ptr' ec ev
+		poken ptr' sc sv
+		poken ptr' tc tv
+		poken ptr' oc ov
+		poken ptr' gc gv
+		poken ptr' lc lv
+		poken ptr' nc nv
+		poken ptr' pc pv
+		poken ptr' bc bv
+		poken ptr' hc hv
+		poken ptr' zc zv
+		poken ptr' jc jv
+		poken ptr' xc xv
+		poken ptr' rc rv
+		poken ptr' uc uv
+		poken ptr' wc wv
+		poken ptr' dc dv
+		poken ptr' ic iv
+
+	where ptr' = castPtr ptr
+
 pokei32Native :: Ptr () -> Int32 -> StateT Int IO ()
 pokei32Native ptr val = do
 	offset <- get
@@ -609,7 +704,7 @@ pokeCString ptr bufSize str
 
 instance Storable Mtrl where
 	sizeOf
-		(Mtrl
+		~(Mtrl
 			d a s e h angle fl _f alphaFunc alphaRef
 		) = sum $
 			[
@@ -626,7 +721,7 @@ instance Storable Mtrl where
 			]
 
 	alignment
-		(Mtrl
+		~(Mtrl
 			d a s e h angle fl _f alphaFunc alphaRef
 		) = max 1 . maximum $
 			[
@@ -682,9 +777,9 @@ instance Storable Mtrl where
 		where ptr' = castPtr ptr
 
 instance Storable Vert where
-	sizeOf    (Vert (Vec3 _ _ _)) = sum [3 * sizeOf x']
+	sizeOf    ~(Vert (Vec3 _ _ _)) = sum [3 * sizeOf x']
 		where x' = error "Internal error: sizeOf Vert: sizeOf accessed its argument!" :: Float
-	alignment (Vert (Vec3 _ _ _)) = max 1 $ maximum [alignment x']
+	alignment ~(Vert (Vec3 _ _ _)) = max 1 $ maximum [alignment x']
 		where x' = error "Internal error: alignment Vert: alignment accessed its argument!" :: Float
 	peek ptr = flip evalStateT 0 $ Vert <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr')
 		where ptr' = castPtr ptr
@@ -692,17 +787,17 @@ instance Storable Vert where
 		where ptr' = castPtr ptr
 
 instance Storable Edge where
-	sizeOf    (Edge vi vj) = sum [sizeOf vi, sizeOf vj]
-	alignment (Edge vi vj) = max 1 $ maximum [alignment vi, alignment vj]
+	sizeOf    ~(Edge vi vj) = sum [sizeOf vi, sizeOf vj]
+	alignment ~(Edge vi vj) = max 1 $ maximum [alignment vi, alignment vj]
 	peek ptr = flip evalStateT 0 $ Edge <$> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Edge vi vj) = flip evalStateT 0 $ pokei32LE ptr' vi >> pokei32LE ptr' vj
 		where ptr' = castPtr ptr
 
 instance Storable Side where
-	sizeOf    (Side (Vec3 _nx _ny _nz) _d) = sum [3 * sizeOf x', sizeOf x']
+	sizeOf    ~(Side (Vec3 _nx _ny _nz) _d) = sum [3 * sizeOf x', sizeOf x']
 		where x' = error "Internal error: sizeOf Side: sizeOf accessed its argument!" :: Float
-	alignment (Side (Vec3 _nx _ny _nz) _d) = max 1 $ maximum [alignment x', alignment x']
+	alignment ~(Side (Vec3 _nx _ny _nz) _d) = max 1 $ maximum [alignment x', alignment x']
 		where x' = error "Internal error: alignment Side: alignment accessed its argument!" :: Float
 	peek ptr = flip evalStateT 0 $ Side <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> peekf32dLE ptr'
 		where ptr' = castPtr ptr
@@ -710,9 +805,9 @@ instance Storable Side where
 		where ptr' = castPtr ptr
 
 instance Storable Texc where
-	sizeOf    (Texc (Vec2 _tx _ty)) = sum [3 * sizeOf x', sizeOf x']
+	sizeOf    ~(Texc (Vec2 _tx _ty)) = sum [3 * sizeOf x', sizeOf x']
 		where x' = error "Internal error: sizeOf Texc: sizeOf accessed its argument!" :: Float
-	alignment (Texc (Vec2 _tx _ty)) = max 1 $ maximum [alignment x', alignment x']
+	alignment ~(Texc (Vec2 _tx _ty)) = max 1 $ maximum [alignment x', alignment x']
 		where x' = error "Internal error: alignment Texc: alignment accessed its argument!" :: Float
 	peek ptr = flip evalStateT 0 $ Texc <$> (Vec2 <$> peekf32dLE ptr' <*> peekf32dLE ptr')
 		where ptr' = castPtr ptr
@@ -720,33 +815,110 @@ instance Storable Texc where
 		where ptr' = castPtr ptr
 
 instance Storable Offs where
-	sizeOf    (Offs ti si vi) = sum [sizeOf ti, sizeOf si, sizeOf vi]
-	alignment (Offs ti si vi) = max 1 $ maximum [alignment ti, alignment si, alignment vi]
+	sizeOf    ~(Offs ti si vi) = sum [sizeOf ti, sizeOf si, sizeOf vi]
+	alignment ~(Offs ti si vi) = max 1 $ maximum [alignment ti, alignment si, alignment vi]
 	peek ptr = flip evalStateT 0 $ Offs <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Offs ti si vi) = flip evalStateT 0 $ pokei32LE ptr' ti >> pokei32LE ptr' si >> pokei32Native ptr' vi
 		where ptr' = castPtr ptr
 
 instance Storable Geom where
-	sizeOf    (Geom mi oi oj ok) = sum [sizeOf mi, sizeOf oi, sizeOf oj, sizeOf ok]
-	alignment (Geom mi oi oj ok) = max 1 $ maximum [alignment mi, alignment oi, alignment oj, alignment ok]
+	sizeOf    ~(Geom mi oi oj ok) = sum [sizeOf mi, sizeOf oi, sizeOf oj, sizeOf ok]
+	alignment ~(Geom mi oi oj ok) = max 1 $ maximum [alignment mi, alignment oi, alignment oj, alignment ok]
 	peek ptr = flip evalStateT 0 $ Geom <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Geom mi oi oj ok) = flip evalStateT 0 $ pokei32LE ptr' mi >> pokei32LE ptr' oi >> pokei32Native ptr' oj >> pokei32LE ptr' ok
 		where ptr' = castPtr ptr
 
 instance Storable Lump where
-	sizeOf    (Lump fl v0 vc e0 ec g0 gc s0 sc) = sum [sizeOf fl, sizeOf v0, sizeOf vc, sizeOf e0, sizeOf ec, sizeOf g0, sizeOf gc, sizeOf s0, sizeOf sc]
-	alignment (Lump fl v0 vc e0 ec g0 gc s0 sc) = max 1 $ maximum [alignment fl, alignment v0, alignment vc, alignment e0, alignment ec, alignment g0, alignment gc, alignment s0, alignment sc]
+	sizeOf    ~(Lump fl v0 vc e0 ec g0 gc s0 sc) = sum [sizeOf fl, sizeOf v0, sizeOf vc, sizeOf e0, sizeOf ec, sizeOf g0, sizeOf gc, sizeOf s0, sizeOf sc]
+	alignment ~(Lump fl v0 vc e0 ec g0 gc s0 sc) = max 1 $ maximum [alignment fl, alignment v0, alignment vc, alignment e0, alignment ec, alignment g0, alignment gc, alignment s0, alignment sc]
 	peek ptr = flip evalStateT 0 $ Lump <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Lump fl v0 vc e0 ec g0 gc s0 sc) = flip evalStateT 0 $ pokei32LE ptr' fl >> pokei32LE ptr' v0 >> pokei32LE ptr' vc >> pokei32LE ptr' e0 >> pokei32LE ptr' ec >> pokei32LE ptr' g0 >> pokei32LE ptr' gc >> pokei32LE ptr' s0 >> pokei32LE ptr' sc
 		where ptr' = castPtr ptr
 
 instance Storable Node where
-	sizeOf    (Node si ni nj l0 lc) = sum [sizeOf si, sizeOf ni, sizeOf nj, sizeOf l0, sizeOf lc]
-	alignment (Node si ni nj l0 lc) = max 1 $ maximum [alignment si, alignment ni, alignment nj, alignment l0, alignment lc]
+	sizeOf    ~(Node si ni nj l0 lc) = sum [sizeOf si, sizeOf ni, sizeOf nj, sizeOf l0, sizeOf lc]
+	alignment ~(Node si ni nj l0 lc) = max 1 $ maximum [alignment si, alignment ni, alignment nj, alignment l0, alignment lc]
 	peek ptr = flip evalStateT 0 $ Node <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Node si ni nj l0 lc) = flip evalStateT 0 $ pokei32LE ptr' si >> pokei32LE ptr' ni >> pokei32LE ptr' nj >> pokei32LE ptr' l0 >> pokei32LE ptr' lc
+		where ptr' = castPtr ptr
+
+instance Storable Path where
+	sizeOf
+		~(Path
+			_p _e _t tm pi_ f s fl p0 p1
+		) = sum $
+			[
+				3 * sizeOf x',
+				4 * sizeOf x',
+				sizeOf x',
+				sizeOf tm,
+
+				sizeOf pi_,
+				sizeOf f,
+				sizeOf s,
+
+				sizeOf fl,
+				sizeOf p0,
+				sizeOf p1
+			]
+		where x' = error "Internal error: sizeOf Path: sizeOf accessed its argument!" :: Float
+	alignment
+		~(Path
+			_p _e _t tm pi_ f s fl p0 p1
+		) = max 1 . maximum $
+			[
+				alignment x',
+				alignment x',
+				alignment x',
+				alignment tm,
+
+				alignment pi_,
+				alignment f,
+				alignment s,
+
+				alignment fl,
+				alignment p0,
+				alignment p1
+			]
+		where x' = error "Internal error: alignment Path: alignment accessed its argument!" :: Float
+
+	peek ptr = flip evalStateT 0 $ Path <$>
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
+		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- e
+		peekf32dLE ptr' <*>  -- t
+		peeki32LE ptr' <*>  -- tm
+
+		peeki32LE ptr' <*>  -- pi
+		peeki32LE ptr' <*>  -- f
+		peeki32LE ptr' <*>  -- s
+
+		peeki32LE ptr' <*>  -- fl
+
+		peeki32LE ptr' <*>  -- p0
+		peeki32LE ptr'  -- p1
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Path
+			(Vec3 px py pz) (Vec4 ex ey ez ew) t tm pi_ f s fl p0 p1
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokef32dLE ptr' ex >> pokef32dLE ptr' ey >> pokef32dLE ptr' ez >> pokef32dLE ptr' ew
+			pokef32dLE ptr' t
+			pokei32LE ptr' tm
+
+			pokei32LE ptr' pi_
+			pokei32LE ptr' f
+			pokei32LE ptr' s
+
+			pokei32LE ptr' fl
+
+			pokei32LE ptr' p0
+			pokei32LE ptr' p1
+
 		where ptr' = castPtr ptr

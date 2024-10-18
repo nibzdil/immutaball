@@ -56,6 +56,7 @@ module Immutaball.Share.Level.Base
 		sizeOfEmptySol,
 		sizeOfExistingSol,
 		peekSol,
+		peekSolLengths,
 		pokeSol
 	) where
 
@@ -728,6 +729,62 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peekn ptr' (sol^.solIc)      -- iv
 
 	where ptr' = castPtr ptr
+
+-- | Parse only the lengths, leaving empty arrays.
+--
+-- This can be used to safely read in a whole SOL file with arbitrary input.
+peekSolLengths :: Ptr Sol -> IO Sol
+peekSolLengths ptr = flip evalStateT 0 $ Sol <$>
+	peeki32LE ptr' <*>  -- ac
+	peeki32LE ptr' <*>  -- mc
+	peeki32LE ptr' <*>  -- vc
+	peeki32LE ptr' <*>  -- ec
+	peeki32LE ptr' <*>  -- sc
+	peeki32LE ptr' <*>  -- tc
+	peeki32LE ptr' <*>  -- oc
+	peeki32LE ptr' <*>  -- gc
+	peeki32LE ptr' <*>  -- lc
+	peeki32LE ptr' <*>  -- nc
+	peeki32LE ptr' <*>  -- pc
+	peeki32LE ptr' <*>  -- bc
+	peeki32LE ptr' <*>  -- hc
+	peeki32LE ptr' <*>  -- zc
+	peeki32LE ptr' <*>  -- jc
+	peeki32LE ptr' <*>  -- xc
+	peeki32LE ptr' <*>  -- rc
+	peeki32LE ptr' <*>  -- uc
+	peeki32LE ptr' <*>  -- wc
+	peeki32LE ptr' <*>  -- dc
+	peeki32LE ptr' <*>  -- ic
+
+	pure emptyArray <*>  -- av
+	pure emptyArray <*>  -- mv
+	pure emptyArray <*>  -- vv
+	pure emptyArray <*>  -- ev
+	pure emptyArray <*>  -- sv
+	pure emptyArray <*>  -- tv
+	pure emptyArray <*>  -- ov
+	pure emptyArray <*>  -- gv
+	pure emptyArray <*>  -- lv
+	pure emptyArray <*>  -- nv
+	pure emptyArray <*>  -- pv
+	pure emptyArray <*>  -- bv
+	pure emptyArray <*>  -- hv
+	pure emptyArray <*>  -- zv
+	pure emptyArray <*>  -- jv
+	pure emptyArray <*>  -- xv
+	pure emptyArray <*>  -- rv
+	pure emptyArray <*>  -- uv
+	pure emptyArray <*>  -- wv
+	pure emptyArray <*>  -- dv
+	pure emptyArray  -- iv
+
+	where
+		ptr' = castPtr ptr
+		a :: (Storable a) => Array Int32 a
+		a = IA.listArray (0, -1) []
+		emptyArray :: (Storable a) => Array Int32 a
+		emptyArray = a
 
 pokeSol :: Ptr Sol -> Sol -> IO ()
 pokeSol ptr

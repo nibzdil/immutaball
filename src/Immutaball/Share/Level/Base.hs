@@ -25,6 +25,7 @@ module Immutaball.Share.Level.Base
 			pathP0, pathP1,
 		Body(..), bodyP0, bodyP1, bodyNi, bodyL0, bodyLc, bodyG0, bodyGc,
 		Item(..), itemP, itemT, itemN, itemP0, itemP1,
+		Goal(..), goalP, goalR, goalP0, goalP1,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -225,8 +226,20 @@ data Item = Item {
 }
 makeLenses ''Item
 
+data Goal = Goal {
+	-- | Position.
+	_goalP :: Vec3 Double,
+	-- | Radius.
+	_goalR :: Double,
+
+	-- | Translation path.
+	_goalP0 :: Int32,
+	-- | Rotation path.
+	_goalP1 :: Int32
+}
+makeLenses ''Goal
+
 -- TODO:
-type Goal = Int32
 type Jump = Int32
 type Swch = Int32
 type Bill = Int32
@@ -1016,6 +1029,53 @@ instance Storable Item where
 			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
 			pokei32LE ptr' t
 			pokei32LE ptr' n
+
+			pokei32LE ptr' p0
+			pokei32LE ptr' p1
+
+		where ptr' = castPtr ptr
+
+instance Storable Goal where
+	sizeOf
+		~(Goal
+			_p _r p0 p1
+		) = sum $
+			[
+				3 * sizeOf x',
+				sizeOf x',
+
+				sizeOf p0,
+				sizeOf p1
+			]
+		where x' = error "Internal error: sizeOf Item: sizeOf accessed its argument!" :: Float
+	alignment
+		~(Goal
+			_p _r p0 p1
+		) = max 1 . maximum $
+			[
+				alignment x',
+				alignment x',
+
+				alignment p0,
+				alignment p1
+			]
+		where x' = error "Internal error: alignment Item: alignment accessed its argument!" :: Float
+
+	peek ptr = flip evalStateT 0 $ Goal <$>
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
+		peekf32dLE ptr' <*>  -- r
+
+		peeki32LE ptr' <*>  -- p0
+		peeki32LE ptr'      -- p1
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Goal
+			(Vec3 px py pz) r p0 p1
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokef32dLE ptr' r
 
 			pokei32LE ptr' p0
 			pokei32LE ptr' p1

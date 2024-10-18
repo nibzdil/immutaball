@@ -49,6 +49,7 @@ module Immutaball.Share.GUI
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Applicative
 import Control.Arrow
 --import Data.Functor.Identity
 import Control.Monad
@@ -222,7 +223,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 				( lerp (-1.0) (1.0) (     ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.width ) :: Double) (fromIntegral x)) )
 				( lerp (-1.0) (1.0) (flip ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.height) :: Double) (fromIntegral y)) )
 	let newMousePos = (const Nothing ||| Just . convertPoint cxtnp2) . matching (_GUIDrive . _Point) $ request
-	(mousePos, mouseFocus) <- hold (Vec2 (-1.1) (1.1), Nothing) -< flip fmap newMousePos $ \pos ->
+	(_mousePos, mouseFocus) <- hold (Vec2 (-1.1) (1.1), Nothing) -< flip fmap newMousePos $ \pos ->
 		let widgetsUnderMouse = M.keys . M.filterWithKey (\wid_ r -> ((isSelectable <$> flip M.lookup widgetBy wid_) == Just True) && isInRect r pos) $ geometry in
 		let mwidgetUnderMouse = safeHead widgetsUnderMouse in
 		(pos, mwidgetUnderMouse >>= flip M.lookup widgetBy >>= flip M.lookup widgetToIdx)
@@ -232,13 +233,14 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 		initialFocus <- returnA -< maybe 0 id $ flip M.lookup widgetIdx 0 >>= flip M.lookup widgetBy . nextWidgetHier' . prevWidgetHier' . (^.wid) >>= flip M.lookup widgetToIdx
 		currentFocus <- holdWith -< (newFocus, initialFocus)
 		lastFocus <- delayWith -< (currentFocus, initialFocus)
-		newFocus <- case request of
+		newFocus0 <- case request of
 			GUISetFocus wid_ -> returnA -< flip M.lookup widgetBy wid_ >>= flip M.lookup widgetToIdx
 			GUIDrive (Keybd char True) -> returnA -<
 				if' (char == fromIntegral Raw.SDLK_DOWN) (Just $ nextWidgetDirect widgetIdx lastFocus) .
 				if' (char == fromIntegral Raw.SDLK_UP  ) (Just $ prevWidgetDirect widgetIdx lastFocus) $
 				Nothing
 			_ -> returnA -< Nothing
+		newFocus <- returnA -< newFocus0 <|> join (mouseFocus <$ newMousePos)
 
 		-- Find 'widgetsFocusedSinceLastPaintIdx'.
 		isPaint <- returnA -< case request of (GUIDrive (Paint _t)) -> True; _ -> False

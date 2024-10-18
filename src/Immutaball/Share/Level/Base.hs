@@ -595,4 +595,23 @@ instance Storable Mtrl where
 
 		where ptr' = castPtr ptr
 
-	-- TODO: poke.
+	poke ptr
+		(Mtrl
+			d a s e h angle fl f alphaFunc alphaRef
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' (d^.x4) >> pokef32dLE ptr' (d^.y4) >> pokef32dLE ptr' (d^.z4) >> pokef32dLE ptr' (d^.w4)
+			pokef32dLE ptr' (a^.x4) >> pokef32dLE ptr' (a^.y4) >> pokef32dLE ptr' (a^.z4) >> pokef32dLE ptr' (a^.w4)
+			pokef32dLE ptr' (s^.x4) >> pokef32dLE ptr' (s^.y4) >> pokef32dLE ptr' (s^.z4) >> pokef32dLE ptr' (s^.w4)
+			pokef32dLE ptr' (e^.x4) >> pokef32dLE ptr' (e^.y4) >> pokef32dLE ptr' (e^.z4) >> pokef32dLE ptr' (e^.w4)
+			pokef32dLE ptr' h
+
+			pokef32dLE ptr' angle
+
+			pokei32LE ptr' fl
+
+			pokeCString ptr' solPathMax f
+
+			pokei32LE ptr' alphaFunc
+			pokef32dLE ptr' alphaRef
+
+		where ptr' = castPtr ptr

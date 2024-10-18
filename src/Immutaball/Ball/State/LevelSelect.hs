@@ -20,7 +20,9 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Arrow
-import Data.Functor.Identity
+import Control.Lens
+import Control.Monad
+--import Data.Functor.Identity
 
 --import Control.Lens
 --import qualified Data.Map as M
@@ -81,12 +83,8 @@ levelSelectBaseGui =
 		VstackWidget $ Vstack { _vstackWid = LevelsVstack, _vstackWparent = LevelSelectRoot }
 	]
 
--- TODO
 levelSelectButtons :: LevelSet -> [Widget LevelSelectWidget]
-levelSelectButtons _ = []
-{-
-levelSelectButtons levelSet = flip map (zip [0..] . M.toList $ levelSets^.lsLevelSets) $ \((idx :: Integer), (path, levelSet)) ->
-	let idx' = fromIntegral idx in
-	ButtonWidget $ Button { _buttonWid = LevelSetButton path, _buttonWparent = LevelSetsVstack,
-		_buttonText = (levelSet^.lsTitle), _buttonRect = Just $ Rect (Vec2 (-0.100) (0.620 - 0.100*idx')) (Vec2 (0.100) (0.700 - 0.100*idx')) }
--}
+levelSelectButtons levelSet = flip map (zip [0..] (levelSet^.lsLevels)) $ \((idx :: Integer), path) ->
+	let (r, c) = join (***) fromIntegral $ idx `divMod` 5 in
+	ButtonWidget $ Button { _buttonWid = LevelButton path, _buttonWparent = LevelsVstack,
+		_buttonText = "Level", _buttonRect = Just $ Rect (Vec2 (-0.165 + c*0.070) (0.160 - r*0.100)) (Vec2 (-0.115 + c*0.070) (0.240 - r*0.100)) }

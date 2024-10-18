@@ -206,6 +206,7 @@ fixImmutaballIOExceptionFromException x = do
 	FixImmutaballIOException a <- fromException x
 	cast a
 
+-- | Premature evaluation or attempt to access an empty value (e.g. mfix with EmptyIBIOF).
 data PrematureEvaluationFixImmutaballIOException = PrematureEvaluationFixImmutaballIOException
 	deriving (Show)
 instance Exception PrematureEvaluationFixImmutaballIOException where

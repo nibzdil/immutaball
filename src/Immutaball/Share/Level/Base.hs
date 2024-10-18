@@ -9,6 +9,9 @@
 
 module Immutaball.Share.Level.Base
 	(
+		solPathMax,
+		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
+			mtrlAlphaFunc, mtrlAlphaRef,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -52,8 +55,38 @@ import Data.Array.IArray as IA
 --import Data.Array.MArray as MA
 --import Data.Array.Unboxed
 
+import Immutaball.Share.Math
+
+solPathMax :: Int
+solPathMax = 64
+
+data Mtrl = Mtrl {
+	-- | Diffuse color.
+	_mtrlD :: Vec4 Double,
+	-- | Ambient color.
+	_mtrlA :: Vec4 Double,
+	-- | Specular color.
+	_mtrlS :: Vec4 Double,
+	-- | Emmission color.
+	_mtrlE :: Vec4 Double,
+	-- | Specular exponent.
+	_mtrlH :: Double,
+
+	_mtrlAngle :: Double,
+
+	-- | Material flags.
+	_mtrlFl :: Int32,
+
+	-- | Texture file name.
+	_mtrlF :: String,
+
+	-- | Comparison function.
+	_mtrlAlphaFunc :: Int32,
+	_mtrlAlphaRef :: Double
+}
+makeLenses ''Mtrl
+
 -- TODO:
-type Mtrl = Int32
 type Vert = Int32
 type Edge = Int32
 type Side = Int32
@@ -72,11 +105,6 @@ type Bill = Int32
 type Ball = Int32
 type View = Int32
 type Dict = Int32
-
-{-
-data Mtrl = Mtrl {
-}
--}
 
 -- | The level format: .sol.
 --
@@ -482,3 +510,40 @@ poken ptr n array_
 			offset <- get
 			lift $ poke (castPtr ptr `plusPtr` offset) elem_
 			put $ offset + sizeofElem
+
+instance Storable Mtrl where
+	sizeOf
+		(Mtrl
+			d a s e h angle fl _f alphaFunc alphaRef
+		) = sum $
+			[
+				sizeOf (d^._1) * 4,
+				sizeOf (a^._1) * 4,
+				sizeOf (s^._1) * 4,
+				sizeOf (e^._1) * 4,
+				sizeOf h,
+				sizeOf angle,
+				sizeOf fl,
+				solPathMax,
+				sizeOf alphaFunc,
+				sizeOf alphaRef
+			]
+
+	alignment
+		(Mtrl
+			d a s e h angle fl _f alphaFunc alphaRef
+		) = max 1 . maximum $
+			[
+				alignment (d^._1),
+				alignment (a^._1),
+				alignment (s^._1),
+				alignment (e^._1),
+				alignment h,
+				alignment angle,
+				alignment fl,
+				1,
+				alignment alphaFunc,
+				alignment alphaRef
+			]
+
+	-- TODO: peek, poke.

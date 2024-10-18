@@ -31,6 +31,7 @@ module Immutaball.Share.Level.Base
 		Bill(..), billFl, billMi, billT, billD, billW, billH, billRx, billRy,
 			billRz, billP, billP0, billP1,
 		Ball(..), ballP, ballR,
+		View(..), viewP, viewQ,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -318,8 +319,13 @@ data Ball = Ball {
 }
 makeLenses ''Ball
 
+data View = View {
+	_viewP :: Vec3 Double,
+	_viewQ :: Vec3 Double
+}
+makeLenses ''View
+
 -- TODO:
-type View = Int32
 type Dict = Int32
 
 -- | The level format: .sol.
@@ -1377,4 +1383,14 @@ instance Storable Ball where
 	peek ptr = flip evalStateT 0 $ Ball <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> peekf32dLE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Ball (Vec3 px py pz) r) = flip evalStateT 0 $ pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz >> pokef32dLE ptr' r
+		where ptr' = castPtr ptr
+
+instance Storable View where
+	sizeOf    ~(View (Vec3 _px _py _pz) (Vec3 _qx _qy _qz)) = sum [3 * sizeOf x', 3 * sizeOf x']
+		where x' = error "Internal error: sizeOf View: sizeOf accessed its argument!" :: Float
+	alignment ~(View (Vec3 _px _py _pz) (Vec3 _qx _qy _qz)) = max 1 $ maximum [alignment x', alignment x']
+		where x' = error "Internal error: alignment View: alignment accessed its argument!" :: Float
+	peek ptr = flip evalStateT 0 $ View <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr')
+		where ptr' = castPtr ptr
+	poke ptr (View (Vec3 px py pz) (Vec3 qx qy qz)) = flip evalStateT 0 $ pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz >> pokef32dLE ptr' qx >> pokef32dLE ptr' qy >> pokef32dLE ptr' qz
 		where ptr' = castPtr ptr

@@ -126,9 +126,13 @@ monadic = wire $ \m -> (\a -> (a, monadic)) <$> m
 
 -- * Utilities
 
+-- | For a vesion that always applies the input, see 'monadic'.
+--
+-- This version only initializes the monadic action once.
 initial :: (Applicative m) => Wire m (m a) a
 initial = wire $ \m -> (\a -> (a, pure a)) <$> m
 
+-- | The monad is only used to initialize the wire; it is not repeated.
 withM :: (Monad m) => (s -> Wire m a b) -> (a -> m s) -> Wire m a b
 withM initWire initState = wire $ \a -> initState a >>= \s -> stepWire (initWire s) a
 

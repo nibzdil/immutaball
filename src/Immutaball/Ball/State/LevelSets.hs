@@ -35,7 +35,6 @@ import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
--- TODO: switch to level select
 mkLevelSetsState :: (Either IBContext IBStateContext -> Immutaball) -> Either IBContext IBStateContext -> Immutaball
 mkLevelSetsState mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing . openSecondI $ proc (Identity request) -> do
 	rec

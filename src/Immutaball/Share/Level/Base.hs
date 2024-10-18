@@ -32,6 +32,7 @@ module Immutaball.Share.Level.Base
 			billRz, billP, billP0, billP1,
 		Ball(..), ballP, ballR,
 		View(..), viewP, viewQ,
+		Dict(..), dictAi, dictAj,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -325,8 +326,11 @@ data View = View {
 }
 makeLenses ''View
 
--- TODO:
-type Dict = Int32
+data Dict = Dict {
+	_dictAi :: Int32,
+	_dictAj :: Int32
+}
+makeLenses ''Dict
 
 -- | The level format: .sol.
 --
@@ -1393,4 +1397,12 @@ instance Storable View where
 	peek ptr = flip evalStateT 0 $ View <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr')
 		where ptr' = castPtr ptr
 	poke ptr (View (Vec3 px py pz) (Vec3 qx qy qz)) = flip evalStateT 0 $ pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz >> pokef32dLE ptr' qx >> pokef32dLE ptr' qy >> pokef32dLE ptr' qz
+		where ptr' = castPtr ptr
+
+instance Storable Dict where
+	sizeOf    ~(Dict ai aj) = sum [sizeOf ai, sizeOf aj]
+	alignment ~(Dict ai aj) = max 1 $ maximum [alignment ai, alignment aj]
+	peek ptr = flip evalStateT 0 $ Dict <$> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Dict ai aj) = flip evalStateT 0 $ pokei32LE ptr' ai >> pokei32LE ptr' aj
 		where ptr' = castPtr ptr

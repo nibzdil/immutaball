@@ -19,6 +19,7 @@ module Immutaball.Ball.State.LevelSets
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Applicative
 import Control.Arrow
 import Data.Functor.Identity
 
@@ -26,6 +27,7 @@ import Control.Lens
 import qualified Data.Map as M
 
 import Immutaball.Ball.LevelSets
+import qualified Immutaball.Ball.State.LevelSelect as LevelSelect
 import Immutaball.Share.GUI
 import Immutaball.Share.Math
 import Immutaball.Share.State
@@ -52,7 +54,9 @@ mkLevelSetsState mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleW
 		cxt <- returnA -< cxtnp1
 
 	-- Switch on Back button.
-	let switchTo = if' (guiResponse /= WidgetAction BackButton) Nothing . Just . openSecondI $ mkBack (Right cxt)
+	let switchTo0 = if' (guiResponse /= WidgetAction BackButton) Nothing . Just . openSecondI $ mkBack (Right cxt)
+	let onSet levelSetPath = flip M.lookup (levelSets^.lsLevelSets) levelSetPath >>= \levelSet -> return . openSecondI $ LevelSelect.mkLevelSelectState levelSet (mkLevelSetsState mkBack) (Right cxt)
+	let switchTo = switchTo0 <|> case guiResponse of (WidgetAction (LevelSetButton levelSetPath)) -> onSet levelSetPath; _ -> Nothing
 	returnA -< (Identity response, switchTo)
 
 	where cxt0 = either initialStateCxt id baseCxt0

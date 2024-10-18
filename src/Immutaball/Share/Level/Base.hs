@@ -512,6 +512,9 @@ sizeOfEmptySol
 		]
 
 -- | Accesses its argument!
+--
+-- Disregards the actual array elements, making this suitable to parse lengths
+-- and then judge needed total storage size.
 sizeOfExistingSol :: Sol -> Int
 sizeOfExistingSol
 	(Sol

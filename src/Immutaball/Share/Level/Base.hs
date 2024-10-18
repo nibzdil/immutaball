@@ -28,6 +28,8 @@ module Immutaball.Share.Level.Base
 		Goal(..), goalP, goalR, goalP0, goalP1,
 		Jump(..), jumpP, jumpQ, jumpR, jumpP0, jumpP1,
 		Swch(..), swchP, swchR, swchPi, swchT, swchTm, swchF, swchI, swchP0, swchP1,
+		Bill(..), billFl, billMi, billT, billD, billW, billH, billRx, billRy,
+			billRz, billP, billP0, billP1,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -280,8 +282,36 @@ data Swch = Swch {
 }
 makeLenses ''Swch
 
+data Bill = Bill {
+	_billFl :: Int32,
+	_billMi :: Int32,
+	-- | Repeat time interval.
+	_billT :: Double,
+	-- | Distance.
+	_billD :: Double,
+
+	-- | Width coefficients.
+	_billW :: Vec3 Double,
+	-- | Height coefficients.
+	_billH :: Vec3 Double,
+
+	-- | X rotation coefficients.
+	_billRx :: Vec3 Double,
+	-- | Y rotation coefficients.
+	_billRy :: Vec3 Double,
+	-- | Z rotation coefficients.
+	_billRz :: Vec3 Double,
+
+	_billP :: Vec3 Double,
+
+	-- | Translation path.
+	_billP0 :: Int32,
+	-- | Rotation path.
+	_billP1 :: Int32
+}
+makeLenses ''Bill
+
 -- TODO:
-type Bill = Int32
 type Ball = Int32
 type View = Int32
 type Dict = Int32
@@ -1236,6 +1266,97 @@ instance Storable Swch where
 			pokei32LE ptr' tm
 			pokei32LE ptr' f
 			pokei32LE ptr' i
+
+			pokei32LE ptr' p0
+			pokei32LE ptr' p1
+
+		where ptr' = castPtr ptr
+
+instance Storable Bill where
+	sizeOf
+		~(Bill
+			fl mi _t _d _w _h _rx _ry _rz _p p0 p1
+		) = sum $
+			[
+				sizeOf fl,
+				sizeOf mi,
+				sizeOf x',
+				sizeOf x',
+
+				3 * sizeOf x',
+				3 * sizeOf x',
+
+				3 * sizeOf x',
+				3 * sizeOf x',
+				3 * sizeOf x',
+
+				3 * sizeOf x',
+
+				sizeOf p0,
+				sizeOf p1
+			]
+		where x' = error "Internal error: sizeOf Bill: sizeOf accessed its argument!" :: Float
+	alignment
+		~(Bill
+			fl mi _t _d _w _h _rx _ry _rz _p p0 p1
+		) = max 1 . maximum $
+			[
+				alignment fl,
+				alignment mi,
+				alignment x',
+				alignment x',
+
+				alignment x',
+				alignment x',
+
+				alignment x',
+				alignment x',
+				alignment x',
+
+				alignment x',
+
+				alignment p0,
+				alignment p1
+			]
+		where x' = error "Internal error: alignment Bill: alignment accessed its argument!" :: Float
+
+	peek ptr = flip evalStateT 0 $ Bill <$>
+		peeki32LE ptr' <*>  -- fl
+		peeki32LE ptr' <*>  -- mi
+		peekf32dLE ptr' <*>  -- t
+		peekf32dLE ptr' <*>  -- d
+
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- w
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- h
+
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- rx
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- ry
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- rz
+
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
+
+		peeki32LE ptr' <*>  -- p0
+		peeki32LE ptr'      -- p1
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Bill
+			fl mi t d (Vec3 wx wy wz) (Vec3 hx hy hz) (Vec3 rxx rxy rxz) (Vec3 ryx ryy ryz) (Vec3 rzx rzy rzz) (Vec3 px py pz) p0 p1
+		) = flip evalStateT 0 $ do
+			pokei32LE ptr' fl
+			pokei32LE ptr' mi
+			pokef32dLE ptr' t
+			pokef32dLE ptr' d
+
+			pokef32dLE ptr' wx >> pokef32dLE ptr' wy >> pokef32dLE ptr' wz
+			pokef32dLE ptr' hx >> pokef32dLE ptr' hy >> pokef32dLE ptr' hz
+
+			pokef32dLE ptr' rxx >> pokef32dLE ptr' rxy >> pokef32dLE ptr' rxz
+			pokef32dLE ptr' ryx >> pokef32dLE ptr' ryy >> pokef32dLE ptr' ryz
+			pokef32dLE ptr' rzx >> pokef32dLE ptr' rzy >> pokef32dLE ptr' rzz
+
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
 
 			pokei32LE ptr' p0
 			pokei32LE ptr' p1

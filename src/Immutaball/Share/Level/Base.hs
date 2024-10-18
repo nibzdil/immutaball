@@ -20,6 +20,7 @@ module Immutaball.Share.Level.Base
 		Geom(..), geomMi, geomOi, geomOj, geomOk,
 		Lump(..), lumpFl, lumpV0, lumpVc, lumpE0, lumpEc, lumpG0, lumpGc,
 			lumpS0, lumpSc,
+		Node(..), nodeSi, nodeNi, nodeNj, nodeL0, nodeLc,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -152,8 +153,16 @@ data Lump = Lump {
 }
 makeLenses ''Lump
 
+data Node = Node {
+	_nodeSi :: Int32,
+	_nodeNi :: Int32,
+	_nodeNj :: Int32,
+	_nodeL0 :: Int32,
+	_nodeLc :: Int32
+}
+makeLenses ''Node
+
 -- TODO:
-type Node = Int32
 type Path = Int32
 type Body = Int32
 type Item = Int32
@@ -732,4 +741,12 @@ instance Storable Lump where
 	peek ptr = flip evalStateT 0 $ Lump <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Lump fl v0 vc e0 ec g0 gc s0 sc) = flip evalStateT 0 $ pokei32LE ptr' fl >> pokei32LE ptr' v0 >> pokei32LE ptr' vc >> pokei32LE ptr' e0 >> pokei32LE ptr' ec >> pokei32LE ptr' g0 >> pokei32LE ptr' gc >> pokei32LE ptr' s0 >> pokei32LE ptr' sc
+		where ptr' = castPtr ptr
+
+instance Storable Node where
+	sizeOf    (Node si ni nj l0 lc) = sum [sizeOf si, sizeOf ni, sizeOf nj, sizeOf l0, sizeOf lc]
+	alignment (Node si ni nj l0 lc) = max 1 $ maximum [alignment si, alignment ni, alignment nj, alignment l0, alignment lc]
+	peek ptr = flip evalStateT 0 $ Node <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Node si ni nj l0 lc) = flip evalStateT 0 $ pokei32LE ptr' si >> pokei32LE ptr' ni >> pokei32LE ptr' nj >> pokei32LE ptr' l0 >> pokei32LE ptr' lc
 		where ptr' = castPtr ptr

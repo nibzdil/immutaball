@@ -240,7 +240,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 				if' (char == fromIntegral Raw.SDLK_UP  ) (Just $ prevWidgetDirect widgetIdx lastFocus) $
 				Nothing
 			_ -> returnA -< Nothing
-		newFocus <- returnA -< newFocus0 <|> join (mouseFocus <$ newMousePos)
+		newFocus <- returnA -< newFocus0 <|> (join (mouseFocus <$ newMousePos) >>= \mouseFocus_ -> if' (mouseFocus_ == lastFocus) Nothing $ Just mouseFocus_)
 
 		-- Find 'widgetsFocusedSinceLastPaintIdx'.
 		isPaint <- returnA -< case request of (GUIDrive (Paint _t)) -> True; _ -> False

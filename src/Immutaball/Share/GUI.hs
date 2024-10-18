@@ -213,6 +213,17 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 	nextWidgetHier' <- returnA -< nextWidgetHier widgetBy getChildren
 	prevWidgetHier' <- returnA -< prevWidgetHier widgetBy getChildren
 
+	-- Handle mouse movement.
+	--mousePos <- hold ((-1.1), (1.1)) -< (const Nothing) ||| matching _Point $ matching _GUIDrive request
+	let
+		convertPoint :: (Integral i) => IBStateContext -> (i, i, i, i) -> (Double, Double)
+		convertPoint cxt_ (x, y, _dx, _dy)  =
+			(
+				lerp (-1.0) (1.0) (     ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.width ) :: Double) (fromIntegral x)),
+				lerp (-1.0) (1.0) (flip ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.height) :: Double) (fromIntegral y))
+			)
+	mousePos <- hold ((-1.1), (1.1)) -< (const Nothing ||| Just . convertPoint cxtnp2) . matching (_GUIDrive . _Point) $ request
+
 	-- Manage focus.
 	rec
 		initialFocus <- returnA -< maybe 0 id $ flip M.lookup widgetIdx 0 >>= flip M.lookup widgetBy . nextWidgetHier' . prevWidgetHier' . (^.wid) >>= flip M.lookup widgetToIdx

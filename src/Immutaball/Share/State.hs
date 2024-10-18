@@ -212,10 +212,6 @@ immutaballMultiQueueFrames cxt w = proc (requests, a) -> do
 	responseChunk <- maybe returnA queueN (cxt^.ibStaticConfig.maxResponseFrameSize) -< responses
 	returnA -< (responseChunk, b)
 
--- Lenses at end of file to avoid TH errors.
-makeClassyPrisms ''Request
-makeClassyPrisms ''Response
-
 -- * Frame management: Simpler variants
 
 -- | Send one request at a time; if there is no response, then treat it as a
@@ -240,3 +236,7 @@ fromImmutaballSingle' = immutaballSingleToMulti'
 -- requests and so many responses at once.
 immutaballMultiQueueFrames' :: IBContext -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti -> Wire ImmutaballM RequestFrameMulti ResponseFrameMulti
 immutaballMultiQueueFrames' cxt = closeSecondI . closeSecondO . immutaballMultiQueueFrames cxt . openSecondO . openSecondI
+
+-- Lenses at end of file to avoid TH errors.
+makeClassyPrisms ''Request
+makeClassyPrisms ''Response

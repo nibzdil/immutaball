@@ -24,6 +24,7 @@ module Immutaball.Share.Level.Base
 		Path(..), pathP, pathE, pathT, pathTm, pathPi, pathF, pathS, pathFl,
 			pathP0, pathP1,
 		Body(..), bodyP0, bodyP1, bodyNi, bodyL0, bodyLc, bodyG0, bodyGc,
+		Item(..), itemP, itemT, itemN, itemP0, itemP1,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -209,8 +210,22 @@ data Body = Body {
 }
 makeLenses ''Body
 
+data Item = Item {
+	-- | Position.
+	_itemP :: Vec3 Double,
+	-- | Type.
+	_itemT :: Int32,
+	-- | Value.
+	_itemN :: Int32,
+
+	-- | Translation path.
+	_itemP0 :: Int32,
+	-- | Rotation path.
+	_itemP1 :: Int32
+}
+makeLenses ''Item
+
 -- TODO:
-type Item = Int32
 type Goal = Int32
 type Jump = Int32
 type Swch = Int32
@@ -954,4 +969,55 @@ instance Storable Body where
 	peek ptr = flip evalStateT 0 $ Body <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Body p0 p1 ni l0 lc g0 gc) = flip evalStateT 0 $ pokei32LE ptr' p0 >> pokei32LE ptr' p1 >> pokei32Native ptr' ni >> pokei32LE ptr' l0 >> pokei32LE ptr' lc >> pokei32Native ptr' g0 >> pokei32LE ptr' gc
+		where ptr' = castPtr ptr
+
+instance Storable Item where
+	sizeOf
+		~(Item
+			_p t n p0 p1
+		) = sum $
+			[
+				3 * sizeOf x',
+				sizeOf t,
+				sizeOf n,
+
+				sizeOf p0,
+				sizeOf p1
+			]
+		where x' = error "Internal error: sizeOf Item: sizeOf accessed its argument!" :: Float
+	alignment
+		~(Item
+			_p t n p0 p1
+		) = max 1 . maximum $
+			[
+				alignment x',
+				alignment t,
+				alignment n,
+
+				alignment p0,
+				alignment p1
+			]
+		where x' = error "Internal error: alignment Item: alignment accessed its argument!" :: Float
+
+	peek ptr = flip evalStateT 0 $ Item <$>
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
+		peeki32LE ptr' <*>  -- t
+		peeki32LE ptr' <*>  -- n
+
+		peeki32LE ptr' <*>  -- p0
+		peeki32LE ptr'      -- p1
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Item
+			(Vec3 px py pz) t n p0 p1
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokei32LE ptr' t
+			pokei32LE ptr' n
+
+			pokei32LE ptr' p0
+			pokei32LE ptr' p1
+
 		where ptr' = castPtr ptr

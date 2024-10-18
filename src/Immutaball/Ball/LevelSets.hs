@@ -110,10 +110,11 @@ levelSetFileParser = LevelSet <$>
 	line <*>  -- name
 	line <*>  -- pict (screenshot)
 	challengeModeLine <*>
-	(many (line <* endOfLine) <* eof)
-	where line = manyTill anyChar (lookAhead . try $ endOfLine)
+	(many line <* eof)
+	where line = (manyTill anyChar (lookAhead . try $ endOfLine)) <* endOfLine
 
 challengeModeLine :: Parsec String () ChallengeModeScores
 challengeModeLine = ChallengeModeScores <$>
-	((,,) <$> nat <*> nat <*> nat) <*>
-	((,,) <$> nat <*> nat <*> nat)
+	((,,) <$> nat' <*> nat' <*> nat') <*>
+	((,,) <$> nat' <*> nat' <*> nat')
+	where nat' = (try nat <|> pure 0) <* spaces

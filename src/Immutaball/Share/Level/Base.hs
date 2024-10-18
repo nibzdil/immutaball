@@ -113,18 +113,21 @@ data Mtrl = Mtrl {
 	_mtrlAlphaFunc :: Int32,
 	_mtrlAlphaRef :: Double
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Mtrl
 
 data Vert = Vert {
 	-- | Vertex position.
 	_vertP :: Vec3 Double
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Vert
 
 data Edge = Edge {
 	_edgeVi :: Int32,
 	_edgeVj :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Edge
 
 data Side = Side {
@@ -133,12 +136,14 @@ data Side = Side {
 	-- | Distance from origin.
 	_edgeD :: Double
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Side
 
 data Texc = Texc {
 	-- | Texture coordinates.
 	_texcU :: Vec2 Double
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Texc
 
 data Offs = Offs {
@@ -146,6 +151,7 @@ data Offs = Offs {
 	_offsSi :: Int32,
 	_offsVi :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Offs
 
 data Geom = Geom {
@@ -154,6 +160,7 @@ data Geom = Geom {
 	_geomOj :: Int32,
 	_geomOk :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Geom
 
 data Lump = Lump {
@@ -168,6 +175,7 @@ data Lump = Lump {
 	_lumpS0 :: Int32,
 	_lumpSc :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Lump
 
 data Node = Node {
@@ -177,6 +185,7 @@ data Node = Node {
 	_nodeL0 :: Int32,
 	_nodeLc :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Node
 
 data Path = Path {
@@ -202,6 +211,7 @@ data Path = Path {
 	_pathP0 :: Int32,
 	_pathP1 :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Path
 
 data Body = Body {
@@ -216,6 +226,7 @@ data Body = Body {
 	_bodyG0 :: Int32,
 	_bodyGc :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Body
 
 data Item = Item {
@@ -231,6 +242,7 @@ data Item = Item {
 	-- | Rotation path.
 	_itemP1 :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Item
 
 data Goal = Goal {
@@ -244,6 +256,7 @@ data Goal = Goal {
 	-- | Rotation path.
 	_goalP1 :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Goal
 
 data Jump = Jump {
@@ -259,6 +272,7 @@ data Jump = Jump {
 	-- | Rotation path.
 	_jumpP1 :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Jump
 
 data Swch = Swch {
@@ -283,6 +297,7 @@ data Swch = Swch {
 	-- | Rotation path.
 	_swchP1 :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Swch
 
 data Bill = Bill {
@@ -312,24 +327,28 @@ data Bill = Bill {
 	-- | Rotation path.
 	_billP1 :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Bill
 
 data Ball = Ball {
 	_ballP :: Vec3 Double,
 	_ballR :: Double
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Ball
 
 data View = View {
 	_viewP :: Vec3 Double,
 	_viewQ :: Vec3 Double
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''View
 
 data Dict = Dict {
 	_dictAi :: Int32,
 	_dictAj :: Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Dict
 
 -- | The level format: .sol.
@@ -386,6 +405,7 @@ data Sol = Sol {
 	_solDv :: Array Int32 Dict,
 	_solIv :: Array Int32 Int32
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''Sol
 
 type LevelIB = Sol

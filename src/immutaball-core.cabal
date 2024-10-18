@@ -43,6 +43,7 @@ common all-components
 		FlexibleContexts
 		ExistentialQuantification
 		ExplicitForAll
+		NondecreasingIndentation
 
 	hs-source-dirs: .
 

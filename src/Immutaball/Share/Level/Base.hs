@@ -5,7 +5,7 @@
 -- Level/Base.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, NondecreasingIndentation #-}
 
 module Immutaball.Share.Level.Base
 	(
@@ -23,11 +23,13 @@ module Immutaball.Share.Level.Base
 		peeki32LE,
 		peekf32dLE,
 		peekn,
+		peekCString,
 		pokei32Native,
 		pokei32BE,
 		pokei32LE,
 		pokef32dLE,
 		poken,
+		pokeCString,
 		asType
 	) where
 
@@ -56,6 +58,7 @@ import Data.Array.IArray as IA
 --import Data.Array.Unboxed
 
 import Immutaball.Share.Math
+import Immutaball.Share.Utils
 
 solPathMax :: Int
 solPathMax = 64
@@ -439,6 +442,20 @@ peekn ptr n
 		freeze' :: IOArray Int32 a -> IO (Array Int32 a)
 		freeze' = freeze
 
+peekCString :: Ptr () -> Int -> StateT Int IO String
+peekCString ptr' bufSize = do
+	offset <- get
+	str <- flip fix 0 $ \withOffset relOffset -> do
+		if' (offset >= bufSize) (return []) $ do
+		(c :: Word8) <- lift $ peek (castPtr ptr' `plusPtr` (offset + relOffset))
+		if' (c == 0) (return []) $ do
+		(asciiChar c:) <$> withOffset (relOffset+1)
+	put $ offset + bufSize
+	return str
+	where
+		asciiChar :: Word8 -> Char
+		asciiChar = toEnum . fromEnum
+
 asType :: a -> a -> ()
 asType _ _ = ()
 
@@ -511,6 +528,20 @@ poken ptr n array_
 			lift $ poke (castPtr ptr `plusPtr` offset) elem_
 			put $ offset + sizeofElem
 
+pokeCString :: Ptr () -> Int -> String -> StateT Int IO ()
+pokeCString ptr bufSize str
+	| bufSize <= 0 = return ()
+	| otherwise = do
+		offset <- get
+		let strLen = max (bufSize - 1) $ length str
+		forM_ (zip [0..] (take strLen $ str)) $ \(idx, c) -> do
+			lift $ poke (castPtr ptr `plusPtr` (offset + idx)) $ truncateChar c
+		lift $ poke (castPtr ptr `plusPtr` (offset + (strLen - 1))) (0x00 :: Word8)
+		put $ offset + bufSize
+	where
+		truncateChar :: Char -> Word8
+		truncateChar = toEnum . fromEnum
+
 instance Storable Mtrl where
 	sizeOf
 		(Mtrl
@@ -546,4 +577,22 @@ instance Storable Mtrl where
 				alignment alphaRef
 			]
 
-	-- TODO: peek, poke.
+	peek ptr = flip evalStateT 0 $ Mtrl <$>
+		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- mtrlD
+		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- mtrlA
+		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- mtrlS
+		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- mtrlE
+		peekf32dLE ptr' <*>  -- mtrlH
+
+		peekf32dLE ptr' <*>  -- mtrlAngle
+
+		peeki32LE ptr' <*>  -- mtrlFl
+
+		peekCString ptr' solPathMax <*>  -- mtrlF
+
+		peeki32LE ptr' <*>  -- mtrlAlphaFunc
+		peekf32dLE ptr'  -- mtrlAlphaRef
+
+		where ptr' = castPtr ptr
+
+	-- TODO: poke.

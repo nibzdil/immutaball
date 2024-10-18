@@ -127,6 +127,8 @@ common executable-components
 		Immutaball.Share.ImmutaballIO.GLIO
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.Level
+		Immutaball.Share.Level.Base
+		Immutaball.Share.Level.Parser
 		Immutaball.Share.Math
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Config
@@ -185,6 +187,8 @@ library
 		Immutaball.Share.ImmutaballIO.GLIO
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.Level
+		Immutaball.Share.Level.Base
+		Immutaball.Share.Level.Parser
 		Immutaball.Share.Math
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Config

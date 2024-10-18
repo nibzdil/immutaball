@@ -2,18 +2,25 @@
 -- Enable warnings:
 {-# OPTIONS_GHC -Wall -fno-warn-tabs #-}
 
--- Level.hs.
+-- Level/Base.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE TemplateHaskell #-}
 
-module Immutaball.Share.Level
+module Immutaball.Share.Level.Base
 	(
-		module Immutaball.Share.Level.Base,
-		module Immutaball.Share.Level.Parser
+		Sol(..),
+		LevelIB
 	) where
 
 import Prelude ()
 --import Immutaball.Prelude
 
-import Immutaball.Share.Level.Base
-import Immutaball.Share.Level.Parser
+import Control.Lens
+
+-- | The level format: .sol.
+data Sol = Sol {
+}
+makeLenses ''Sol
+
+type LevelIB = Sol

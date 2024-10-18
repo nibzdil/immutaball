@@ -60,6 +60,8 @@ module Immutaball.Share.Math
 		rectHeightAboutCenter,
 		rectAvgSideAboutCenter,
 		rectNormalize,
+		isInRect,
+		isInRect',
 		lerpWith,
 		lerp,
 		lerpV2,
@@ -453,6 +455,17 @@ rectAvgSideAboutCenter = lens getter (flip setter)
 
 rectNormalize :: (Ord a) => Rect a -> Rect a
 rectNormalize r = Rect (r^.rectLowerLeft) (r^.rectUpperRight)
+
+isInRect :: (Ord a) => Rect a -> Vec2 a -> Bool
+isInRect = isInRect' False
+
+isInRect' :: (Ord a) => Bool -> Rect a -> Vec2 a -> Bool
+isInRect' exclusive r (Vec2 px py) = ll^.x2 <=- px && px <=- ur^.x2  &&  ll^.y2 <=- py && py <=- ur^.y2
+	where
+		ll = r^.rectLowerLeft
+		ur = r^.rectUpperRight
+		infixl 4 <=-
+		(<=-) = if' (not exclusive) (<=) (<)
 
 lerpWith :: (a -> a -> a) -> (a -> a -> a) -> (s -> a -> a) -> a -> a -> s -> a
 lerpWith plus minus scale from_ to_ v = from_ `plus` (v`scale`(to_ `minus` from_))

@@ -216,13 +216,16 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 	-- Handle mouse movement.
 	--mousePos <- hold ((-1.1), (1.1)) -< (const Nothing) ||| matching _Point $ matching _GUIDrive request
 	let
-		convertPoint :: (Integral i) => IBStateContext -> (i, i, i, i) -> (Double, Double)
-		convertPoint cxt_ (x, y, _dx, _dy)  =
-			(
-				lerp (-1.0) (1.0) (     ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.width ) :: Double) (fromIntegral x)),
-				lerp (-1.0) (1.0) (flip ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.height) :: Double) (fromIntegral y))
-			)
-	mousePos <- hold ((-1.1), (1.1)) -< (const Nothing ||| Just . convertPoint cxtnp2) . matching (_GUIDrive . _Point) $ request
+		convertPoint :: (Integral i) => IBStateContext -> (i, i, i, i) -> Vec2 Double
+		convertPoint cxt_ (x, y, _dx, _dy) =
+			Vec2
+				( lerp (-1.0) (1.0) (     ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.width ) :: Double) (fromIntegral x)) )
+				( lerp (-1.0) (1.0) (flip ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.height) :: Double) (fromIntegral y)) )
+	let newMousePos = (const Nothing ||| Just . convertPoint cxtnp2) . matching (_GUIDrive . _Point) $ request
+	(mousePos, mouseFocus) <- hold (Vec2 (-1.1) (1.1), Nothing) -< flip fmap newMousePos $ \pos ->
+		let widgetsUnderMouse = M.keys . M.filterWithKey (\wid_ r -> ((isSelectable <$> flip M.lookup widgetBy wid_) == Just True) && isInRect r pos) $ geometry in
+		let mwidgetUnderMouse = safeHead widgetsUnderMouse in
+		(pos, mwidgetUnderMouse >>= flip M.lookup widgetBy >>= flip M.lookup widgetToIdx)
 
 	-- Manage focus.
 	rec

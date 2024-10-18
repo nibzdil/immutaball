@@ -58,6 +58,8 @@ module Immutaball.Share.ImmutaballIO
 		mkArrayToBS,
 		mkThawIO,
 		mkFreezeIO,
+		mkPoke,
+		mkPeek,
 
 		-- * Utils
 		mkBIO
@@ -67,8 +69,8 @@ import Prelude ()
 import Immutaball.Prelude
 
 import GHC.Stack        (HasCallStack)      -- For ThrowIO.
-import Foreign.Ptr      (castPtr)           -- (For ArrayToBS.)
-import Foreign.Storable (sizeOf, Storable)  -- (For ArrayToBS.)
+--import Foreign.Ptr      (castPtr)           -- (For ArrayToBS.)
+--import Foreign.Storable (sizeOf, Storable)  -- (For ArrayToBS.)
 
 import Control.Concurrent.Async
 import Control.Monad.Fix
@@ -77,6 +79,8 @@ import Control.Parallel
 import Data.Array.Base
 import Data.Array.Storable
 import qualified Data.ByteString as BS
+import Foreign.Ptr
+import Foreign.Storable
 
 import Immutaball.Share.ImmutaballIO.BasicIO
 import Immutaball.Share.ImmutaballIO.DirectoryIO
@@ -112,6 +116,9 @@ data ImmutaballIOF me =
 
 	| forall a b i e. (Ix i, IArray a e,    MArray b e IO) => ThawIO   (a i e) (b i e -> me)
 	| forall a b i e. (Ix i, MArray a e IO, IArray b e)    => FreezeIO (a i e) (b i e -> me)
+
+	| forall a. (Storable a) => Poke (Ptr a) a me
+	| forall a. (Storable a) => Peek (Ptr a) (a -> me)
 
 runImmutaballIO :: ImmutaballIO -> IO ()
 runImmutaballIO bio = cata runImmutaballIOIO bio
@@ -153,6 +160,9 @@ instance Functor ImmutaballIOF where
 
 	fmap  f (ThawIO   iarray withMArray) = ThawIO   iarray (f . withMArray)
 	fmap  f (FreezeIO marray withIArray) = FreezeIO marray (f . withIArray)
+
+	fmap  f (Poke ptr val withUnit) = Poke ptr val (f withUnit)
+	fmap  f (Peek ptr     withVal)  = Peek ptr     (f . withVal)
 
 joinImmutaballIOF :: ImmutaballIOF (ImmutaballIOF a) -> ImmutaballIOF a
 joinImmutaballIOF = JoinIBIOF
@@ -264,6 +274,9 @@ unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 		_y@(ThawIO   iarray withMArray) -> return $ ThawIO   iarray ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withMArray)
 		_y@(FreezeIO marray withIArray) -> return $ FreezeIO marray ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withIArray)
 
+		y@( Poke _ptr _val me)      -> putMVar mme me >> return y
+		_y@(Peek ptr       withVal) -> return $ Peek ptr ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withVal)
+
 instance Applicative ImmutaballIOF where
 	pure = PureIBIOF
 	mf <*> ma = joinImmutaballIOF . flip fmap mf $ \f -> joinImmutaballIOF .  flip fmap ma $ \a -> pure (f a)
@@ -319,6 +332,9 @@ runImmutaballIOIO (ArrayToBS array_ withBS) = hArrayToBS array_ >>= withBS
 
 runImmutaballIOIO (ThawIO   iarray withMArray) = thaw   iarray >>= withMArray
 runImmutaballIOIO (FreezeIO marray withIArray) = freeze marray >>= withIArray
+
+runImmutaballIOIO (Poke ptr val ibio)    = poke ptr val >> ibio
+runImmutaballIOIO (Peek ptr     withVal) = peek ptr     >>= withVal
 
 runBasicImmutaballIO :: BasicIO -> ImmutaballIO
 runBasicImmutaballIO bio = Fixed $ BasicIBIOF (runBasicImmutaballIO <$> getFixed bio)
@@ -387,6 +403,12 @@ mkThawIO iarray withMArray = Fixed $ ThawIO iarray withMArray
 
 mkFreezeIO :: (Ix i, MArray a e IO, IArray b e) => a i e -> (b i e -> ImmutaballIO) -> ImmutaballIO
 mkFreezeIO marray withIArray = Fixed $ FreezeIO marray withIArray
+
+mkPoke :: (Storable a) => Ptr a -> a -> ImmutaballIO -> ImmutaballIO
+mkPoke ptr val ibio = Fixed $ Poke ptr val ibio
+
+mkPeek :: (Storable a) => Ptr a -> (a -> ImmutaballIO) -> ImmutaballIO
+mkPeek ptr withVal = Fixed $ Peek ptr withVal
 
 -- * Utils
 

@@ -13,7 +13,10 @@ module Immutaball.Ball.LevelSets
 		LevelSet(..), lsTitle, lsDesc, lsName, lsPict, lsChallengeModeScores, lsLevels,
 		LevelSets(..), lsExplicitSets, lsLevelSets,
 		getLevelSets,
-		getLevelSet
+		getLevelSet,
+
+		-- * Utils
+		challengeModeLine
 	) where
 
 import Prelude ()
@@ -101,4 +104,16 @@ parseLevelSetFile' :: SourceName -> String -> Either ParseError LevelSet
 parseLevelSetFile' inputName inputContents = parse levelSetFileParser inputName inputContents
 
 levelSetFileParser :: Parsec String () LevelSet
-levelSetFileParser = error "TODO: unimplemented."
+levelSetFileParser = LevelSet <$>
+	line <*>  -- title
+	line <*>  -- desc
+	line <*>  -- name
+	line <*>  -- pict (screenshot)
+	challengeModeLine <*>
+	(many (line <* endOfLine) <* eof)
+	where line = manyTill anyChar (lookAhead . try $ endOfLine)
+
+challengeModeLine :: Parsec String () ChallengeModeScores
+challengeModeLine = ChallengeModeScores <$>
+	((,,) <$> nat <*> nat <*> nat) <*>
+	((,,) <$> nat <*> nat <*> nat)

@@ -12,6 +12,7 @@ module Immutaball.Share.Level.Base
 		solPathMax,
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
+		Vert(..), vertP,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -89,8 +90,12 @@ data Mtrl = Mtrl {
 }
 makeLenses ''Mtrl
 
+data Vert = Vert {
+	_vertP :: Vec3 Double
+}
+makeLenses ''Vert
+
 -- TODO:
-type Vert = Int32
 type Edge = Int32
 type Side = Int32
 type Texc = Int32
@@ -614,4 +619,12 @@ instance Storable Mtrl where
 			pokei32LE ptr' alphaFunc
 			pokef32dLE ptr' alphaRef
 
+		where ptr' = castPtr ptr
+
+instance Storable Vert where
+	sizeOf    (Vert (Vec3 x _ _)) = sum [3 * sizeOf x]
+	alignment (Vert (Vec3 x _ _)) = max 1 $ maximum [alignment x]
+	peek ptr = flip evalStateT 0 $ Vert <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr')
+		where ptr' = castPtr ptr
+	poke ptr (Vert (Vec3 x y z)) = flip evalStateT 0 $ pokef32dLE ptr' x >> pokef32dLE ptr' y >> pokef32dLE ptr' z
 		where ptr' = castPtr ptr

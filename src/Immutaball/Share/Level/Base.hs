@@ -15,6 +15,7 @@ module Immutaball.Share.Level.Base
 		Vert(..), vertP,
 		Edge(..), edgeVi, edgeVj,
 		Side(..), edgeN, edgeD,
+		Texc(..), texcU,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -93,6 +94,7 @@ data Mtrl = Mtrl {
 makeLenses ''Mtrl
 
 data Vert = Vert {
+	-- | Vertex position.
 	_vertP :: Vec3 Double
 }
 makeLenses ''Vert
@@ -104,13 +106,20 @@ data Edge = Edge {
 makeLenses ''Edge
 
 data Side = Side {
+	-- | Plane normal vector.
 	_edgeN :: Vec3 Double,
+	-- | Distance from origin.
 	_edgeD :: Double
 }
 makeLenses ''Side
 
+data Texc = Texc {
+	-- | Texture coordinates.
+	_texcU :: Vec2 Double
+}
+makeLenses ''Texc
+
 -- TODO:
-type Texc = Int32
 type Offs = Int32
 type Geom = Int32
 type Lump = Int32
@@ -653,10 +662,20 @@ instance Storable Edge where
 
 instance Storable Side where
 	sizeOf    (Side (Vec3 _nx _ny _nz) _d) = sum [3 * sizeOf x', sizeOf x']
-		where x' = error "Internal error: sizeOf Vert: sizeOf accessed its argument!" :: Float
+		where x' = error "Internal error: sizeOf Side: sizeOf accessed its argument!" :: Float
 	alignment (Side (Vec3 _nx _ny _nz) _d) = max 1 $ maximum [alignment x', alignment x']
-		where x' = error "Internal error: alignment Vert: alignment accessed its argument!" :: Float
+		where x' = error "Internal error: alignment Side: alignment accessed its argument!" :: Float
 	peek ptr = flip evalStateT 0 $ Side <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> peekf32dLE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Side (Vec3 nx ny nz) d) = flip evalStateT 0 $ pokef32dLE ptr' nx >> pokef32dLE ptr' ny >> pokef32dLE ptr' nz >> pokef32dLE ptr' d
+		where ptr' = castPtr ptr
+
+instance Storable Texc where
+	sizeOf    (Texc (Vec2 _tx _ty)) = sum [3 * sizeOf x', sizeOf x']
+		where x' = error "Internal error: sizeOf Texc: sizeOf accessed its argument!" :: Float
+	alignment (Texc (Vec2 _tx _ty)) = max 1 $ maximum [alignment x', alignment x']
+		where x' = error "Internal error: alignment Texc: alignment accessed its argument!" :: Float
+	peek ptr = flip evalStateT 0 $ Texc <$> (Vec2 <$> peekf32dLE ptr' <*> peekf32dLE ptr')
+		where ptr' = castPtr ptr
+	poke ptr (Texc (Vec2 tx ty)) = flip evalStateT 0 $ pokef32dLE ptr' tx >> pokef32dLE ptr' ty
 		where ptr' = castPtr ptr

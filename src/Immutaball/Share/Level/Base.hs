@@ -27,6 +27,7 @@ module Immutaball.Share.Level.Base
 		Item(..), itemP, itemT, itemN, itemP0, itemP1,
 		Goal(..), goalP, goalR, goalP0, goalP1,
 		Jump(..), jumpP, jumpQ, jumpR, jumpP0, jumpP1,
+		Swch(..), swchP, swchR, swchPi, swchT, swchTm, swchF, swchI, swchP0, swchP1,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -255,8 +256,31 @@ data Jump = Jump {
 }
 makeLenses ''Jump
 
+data Swch = Swch {
+	-- | Position.
+	_swchP :: Vec3 Double,
+	-- | Radius.
+	_swchR :: Double,
+	-- | The activated path.
+	_swchPi :: Int32,
+
+	-- | Default timer.
+	_swchT :: Double,
+	-- | Milliseconds.
+	_swchTm :: Int32,
+	-- | Default state.
+	_swchF :: Int32,
+	-- | Is invisible?
+	_swchI :: Int32,
+
+	-- | Translation path.
+	_swchP0 :: Int32,
+	-- | Rotation path.
+	_swchP1 :: Int32
+}
+makeLenses ''Swch
+
 -- TODO:
-type Swch = Int32
 type Bill = Int32
 type Ball = Int32
 type View = Int32
@@ -441,6 +465,7 @@ sizeOfEmptySol
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
 		]
 
+-- | Accesses its argument!
 sizeOfExistingSol :: Sol -> Int
 sizeOfExistingSol
 	(Sol
@@ -1142,6 +1167,75 @@ instance Storable Jump where
 			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
 			pokef32dLE ptr' qx >> pokef32dLE ptr' qy >> pokef32dLE ptr' qz
 			pokef32dLE ptr' r
+
+			pokei32LE ptr' p0
+			pokei32LE ptr' p1
+
+		where ptr' = castPtr ptr
+
+instance Storable Swch where
+	sizeOf
+		~(Swch
+			_p _r pi_ _t tm f i p0 p1
+		) = sum $
+			[
+				3 * sizeOf x',
+				sizeOf x',
+				sizeOf pi_,
+				sizeOf x',
+				sizeOf tm,
+				sizeOf f,
+				sizeOf i,
+
+				sizeOf p0,
+				sizeOf p1
+			]
+		where x' = error "Internal error: sizeOf Swch: sizeOf accessed its argument!" :: Float
+	alignment
+		~(Swch
+			_p _r pi_ _t tm f i p0 p1
+		) = max 1 . maximum $
+			[
+				alignment x',
+				alignment x',
+				alignment pi_,
+				alignment x',
+				alignment tm,
+				alignment f,
+				alignment i,
+
+				alignment p0,
+				alignment p1
+			]
+		where x' = error "Internal error: alignment Swch: alignment accessed its argument!" :: Float
+
+	peek ptr = flip evalStateT 0 $ Swch <$>
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
+		peekf32dLE ptr' <*>  -- r
+		peeki32LE ptr' <*>  -- pi
+
+		peekf32dLE ptr' <*>  -- t
+		peeki32LE ptr' <*>  -- tm
+		peeki32LE ptr' <*>  -- f
+		peeki32LE ptr' <*>  -- i
+
+		peeki32LE ptr' <*>  -- p0
+		peeki32LE ptr'      -- p1
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Swch
+			(Vec3 px py pz) r pi_ t tm f i p0 p1
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokef32dLE ptr' r
+			pokei32LE ptr' pi_
+
+			pokef32dLE ptr' t
+			pokei32LE ptr' tm
+			pokei32LE ptr' f
+			pokei32LE ptr' i
 
 			pokei32LE ptr' p0
 			pokei32LE ptr' p1

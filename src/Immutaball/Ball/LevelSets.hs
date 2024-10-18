@@ -25,7 +25,9 @@ import Control.Lens
 import qualified Data.Text as T
 import qualified Data.Map as M
 import System.FilePath
+import Text.Parsec
 
+import Immutaball.Share.Config.Parser
 import Immutaball.Share.Context
 import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
@@ -81,4 +83,22 @@ getLevelSets cxt = do
 --
 -- e.g. ‘getLevelSet cxt "set-foo.txt"’
 getLevelSet :: IBContext' a -> String -> ImmutaballIOF LevelSet
-getLevelSet = error "TODO: unimplemented."
+getLevelSet cxt path = do
+	alevelSetContents <- BasicIBIOF $ ReadText (((cxt^.ibDirs.ibStaticDataDir)) </> path) id
+	let err ioErr = BasicIBIOF (PutStrLn ("Error: getLevelSet: failed to read data/"++path++"!  Ensure ‘--static-data-dir=’ is set to a compiled neverball data directory.  Error: " ++ (show ioErr)) ()) >> BasicIBIOF ExitFailureBasicIOF
+	mlevelSetContents <- Wait alevelSetContents id
+	levelSetContents <- err ||| return $ mlevelSetContents
+
+	let mlevelSet = parseLevelSetFile path (T.unpack $ levelSetContents)
+	let perr errMsg = BasicIBIOF (PutStrLn ("Error: getLevelSet: failed to parse data/"++path++"!  (But we could read its contents.)  Error: " ++ errMsg) ()) >> BasicIBIOF ExitFailureBasicIOF
+	levelSet <- perr ||| return $ mlevelSet
+	return levelSet
+
+parseLevelSetFile :: String -> String -> Either String LevelSet
+parseLevelSetFile inputName inputContents = show +++ id $ parseLevelSetFile' inputName inputContents
+
+parseLevelSetFile' :: SourceName -> String -> Either ParseError LevelSet
+parseLevelSetFile' inputName inputContents = parse levelSetFileParser inputName inputContents
+
+levelSetFileParser :: Parsec String () LevelSet
+levelSetFileParser = error "TODO: unimplemented."

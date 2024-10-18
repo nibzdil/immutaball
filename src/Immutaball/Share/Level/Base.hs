@@ -16,6 +16,7 @@ module Immutaball.Share.Level.Base
 		Edge(..), edgeVi, edgeVj,
 		Side(..), edgeN, edgeD,
 		Texc(..), texcU,
+		Offs(..), offsTi, offsSi, offsVi,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -119,8 +120,15 @@ data Texc = Texc {
 }
 makeLenses ''Texc
 
+data Offs = Offs {
+	-- | Texture coordinates.
+	_offsTi :: Int32,
+	_offsSi :: Int32,
+	_offsVi :: Int32
+}
+makeLenses ''Offs
+
 -- TODO:
-type Offs = Int32
 type Geom = Int32
 type Lump = Int32
 type Node = Int32
@@ -678,4 +686,12 @@ instance Storable Texc where
 	peek ptr = flip evalStateT 0 $ Texc <$> (Vec2 <$> peekf32dLE ptr' <*> peekf32dLE ptr')
 		where ptr' = castPtr ptr
 	poke ptr (Texc (Vec2 tx ty)) = flip evalStateT 0 $ pokef32dLE ptr' tx >> pokef32dLE ptr' ty
+		where ptr' = castPtr ptr
+
+instance Storable Offs where
+	sizeOf    (Offs ti si vi) = sum [sizeOf ti, sizeOf si, sizeOf vi]
+	alignment (Offs ti si vi) = max 1 $ maximum [alignment ti, alignment si, alignment vi]
+	peek ptr = flip evalStateT 0 $ Offs <$> peeki32LE ptr' <*> peeki32LE ptr' <*> peeki32LE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Offs ti si vi) = flip evalStateT 0 $ pokei32LE ptr' ti >> pokei32LE ptr' si >> pokei32Native ptr' vi
 		where ptr' = castPtr ptr

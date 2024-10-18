@@ -29,9 +29,7 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		runDirectoryBasicIO,
 		runSDLBasicIO,
 		runGLBasicIO,
-		hReadBytes,
 		hReadBytesSync,
-		hReadText,
 		hReadTextSync,
 
 		-- * BasicIO aliases that apply the Fixed wrapper
@@ -333,9 +331,9 @@ runBasicIOIO (DoesPathExist path withExists)          = withAsync (doesPathExist
 runBasicIOIO (DoesPathExistSync path withExists)      = doesPathExist path >>= withExists
 runBasicIOIO (WriteBytes path contents withUnit)      = BL.writeFile path contents >> withUnit
 runBasicIOIO (WriteText path contents withUnit)       = TIO.writeFile path contents >> withUnit
-runBasicIOIO (ReadBytes path withContents)            = hReadBytes path >>= withContents
+runBasicIOIO (ReadBytes path withContents)            = withAsync (hReadBytesSync path) withContents
 runBasicIOIO (ReadBytesSync path withContents)        = hReadBytesSync path >>= withContents
-runBasicIOIO (ReadText path withContents)             = hReadText path >>= withContents
+runBasicIOIO (ReadText path withContents)             = withAsync (hReadTextSync path) withContents
 runBasicIOIO (ReadTextSync path withContents)         = hReadTextSync path >>= withContents
 runBasicIOIO (CreateDirectoryIfMissing path withUnit) = createDirectoryIfMissing True path >> withUnit
 runBasicIOIO (ForkIO bio withUnit)                    = (void . forkIO) bio >> withUnit
@@ -354,14 +352,8 @@ runSDLBasicIO sdlio = Fixed . SDLIO $ runSDLBasicIO <$> getFixed sdlio
 runGLBasicIO :: GLIO -> BasicIO
 runGLBasicIO glio = Fixed . GLIO $ runGLBasicIO <$> getFixed glio
 
-hReadBytes :: FilePath -> IO (Async (Either IOException BL.ByteString))
-hReadBytes path = withAsync (hReadBytesSync path) return
-
 hReadBytesSync :: FilePath -> IO (Either IOException BL.ByteString)
 hReadBytesSync path = try $ BL.readFile path
-
-hReadText :: FilePath -> IO (Async (Either IOException T.Text))
-hReadText path = withAsync (hReadTextSync path) return
 
 hReadTextSync :: FilePath -> IO (Either IOException T.Text)
 hReadTextSync path = try $ TIO.readFile path

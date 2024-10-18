@@ -31,6 +31,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 -- base imports
+import Control.Arrow
 import Data.List
 import System.Console.GetOpt
 import Text.Printf
@@ -204,7 +205,7 @@ immutaballWithCLIConfig' x'cfg cliCfg =
 				withNeverballrcExists True = result_2
 					where
 						result_2 :: ImmutaballIO
-						result_2 = mkBIO . ReadTextSync neverballrcPath Nothing $ \neverballrcContents -> withParse $ parseNeverballrc neverballrcPath (T.unpack neverballrcContents)
+						result_2 = mkBIO . ReadTextSync neverballrcPath . (mkThrowIO |||) $ \neverballrcContents -> withParse $ parseNeverballrc neverballrcPath (T.unpack neverballrcContents)
 						withParse :: Either String Neverballrc -> ImmutaballIO
 						withParse (Left  parseError)   = mkBIO . PutStrLn (printf "Error: failed to parse neverballrc: %s" parseError) $ mkBIO ExitFailureBasicIOF
 						withParse (Right neverballrc_) = immutaballWithNeverballrc x'cfg cliCfg ibDirs_ neverballrc_

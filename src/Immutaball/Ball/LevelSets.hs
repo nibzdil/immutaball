@@ -12,17 +12,24 @@ module Immutaball.Ball.LevelSets
 		ChallengeModeScores(..), cmsBestTimes, cmsMostCoins,
 		LevelSet(..), lsTitle, lsDesc, lsName, lsPict, lsChallengeModeScores, lsLevels,
 		LevelSets(..), lsExplicitSets, lsLevelSets,
-		getLevelSets
+		getLevelSets,
+		getLevelSet
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Arrow
+
 import Control.Lens
+import qualified Data.Text as T
 import qualified Data.Map as M
+import System.FilePath
 
 import Immutaball.Share.Context
+import Immutaball.Share.Context.Config
 import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
 
 data ChallengeModeScores = ChallengeModeScores {
 	_cmsBestTimes :: (Integer, Integer, Integer),
@@ -57,4 +64,21 @@ makeLenses ''LevelSets
 
 -- | Get level sets or fail.
 getLevelSets :: IBContext' a -> ImmutaballIOF LevelSets
-getLevelSets = error "TODO: unimplemented."
+getLevelSets cxt = do
+	asets <- BasicIBIOF $ ReadText ((cxt^.ibDirs.ibStaticDataDir) </> "sets.txt") id
+	let err ioErr = BasicIBIOF (PutStrLn ("Error: getLevelSets: failed to read data/sets.txt!  Ensure ‘--static-data-dir=’ is set to a compiled neverball data directory.  Error: " ++ (show ioErr)) ()) >> BasicIBIOF ExitFailureBasicIOF
+	msets <- Wait asets id
+	sets_ <- err ||| return $ msets
+	let setPathList = lines $ T.unpack sets_
+
+	levelSets <- M.fromList . zip setPathList <$> mapM (getLevelSet cxt) setPathList
+	return $ LevelSets {
+		_lsExplicitSets = setPathList,
+		_lsLevelSets    = levelSets
+	}
+
+-- | Get level set or fail.
+--
+-- e.g. ‘getLevelSet cxt "set-foo.txt"’
+getLevelSet :: IBContext' a -> String -> ImmutaballIOF LevelSet
+getLevelSet = error "TODO: unimplemented."

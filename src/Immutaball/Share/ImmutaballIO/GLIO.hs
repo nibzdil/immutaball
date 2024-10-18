@@ -544,7 +544,8 @@ unsafeFixGLIOFTo :: MVar me -> (me -> GLIOF me) -> GLIOF me
 unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixGLIOException)
 	case f me_ of
-		_y@(EmptyGLIOF)        -> throwIO EmptyFixGLIOException
+		--_y@(EmptyGLIOF)        -> throwIO EmptyFixGLIOException
+		_y@(EmptyGLIOF)        -> return $ EmptyGLIOF
 		y@(PureGLIOF a)        -> putMVar mme a >> return y
 		_y@(UnfixGLIOF glio)   -> return . UnfixGLIOF . unsafeFixGLIOFTo mme $ const glio
 		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.

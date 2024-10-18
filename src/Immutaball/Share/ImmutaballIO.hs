@@ -106,7 +106,7 @@ data ImmutaballIOF me =
 	| WithAsync me (Async () -> me)
 	| forall hiddenTypeField. Atomically (STM hiddenTypeField) (hiddenTypeField -> me)
 
-	| forall e. (HasCallStack, Exception e) => ThrowIO e me
+	| forall e. (HasCallStack, Exception e) => ThrowIO e
 
 	| forall i e. (Integral i, Ix i, Storable e) => ArrayToBS (StorableArray i e) (BS.ByteString -> me)
 
@@ -147,7 +147,7 @@ instance Functor ImmutaballIOF where
 	fmap  f (WithAsync ibio withAsync_) = WithAsync (f ibio) (f . withAsync_)
 	fmap  f (Atomically stm withStm)    = Atomically stm (f . withStm)
 
-	fmap  f (ThrowIO e withUnit) = ThrowIO e (f withUnit)
+	fmap _f (ThrowIO e)       = ThrowIO e
 
 	fmap  f (ArrayToBS array_ withBS) = ArrayToBS array_ (f . withBS)
 
@@ -239,7 +239,8 @@ unsafeFixImmutaballIOFTo :: MVar me -> (me -> ImmutaballIOF me) -> ImmutaballIOF
 unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixImmutaballIOException)
 	case f me_ of
-		_y@(EmptyIBIOF)        -> throwIO EmptyFixImmutaballIOException
+		--_y@(EmptyIBIOF)        -> throwIO EmptyFixImmutaballIOException
+		_y@(EmptyIBIOF)        -> return $ EmptyIBIOF
 		y@(PureIBIOF a)        -> putMVar mme a >> return y
 		_y@(UnfixIBIOF ibio)   -> return . UnfixIBIOF . unsafeFixImmutaballIOFTo mme $ const ibio
 		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.
@@ -254,7 +255,8 @@ unsafeFixImmutaballIOFTo mme f = unsafePerformIO $ do
 		_y@(WithAsync ibio withAsync_) -> return $ WithAsync  ibio   ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withAsync_)
 		_y@(Atomically stm withStm)    -> return $ Atomically stm    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withStm)
 
-		y@(ThrowIO _e me) -> putMVar mme me >> return y
+		--y@(ThrowIO _e me) -> putMVar mme me >> return y
+		_y@(ThrowIO e) -> return $ ThrowIO e
 
 		_y@(ArrayToBS array_ withBS) -> return $ ArrayToBS array_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withBS)
 
@@ -310,7 +312,7 @@ runImmutaballIOIO (Wait async_ withAsync_)    = wait async_ >>= withAsync_
 runImmutaballIOIO (WithAsync ibio withAsync_) = withAsync ibio withAsync_
 runImmutaballIOIO (Atomically stm withStm)    = atomically stm >>= withStm
 
-runImmutaballIOIO (ThrowIO e ibio) = throwIO e >> ibio
+runImmutaballIOIO (ThrowIO e) = throwIO e
 
 runImmutaballIOIO (ArrayToBS array_ withBS) = hArrayToBS array_ >>= withBS
 
@@ -373,8 +375,8 @@ mkWithAsync ibio withAsync_ = Fixed $ WithAsync ibio withAsync_
 mkAtomically :: STM a -> (a -> ImmutaballIO) -> ImmutaballIO
 mkAtomically stm withStm = Fixed $ Atomically stm withStm
 
-mkThrowIO :: (HasCallStack, Exception e) => e -> ImmutaballIO -> ImmutaballIO
-mkThrowIO e ibio = Fixed $ ThrowIO e ibio
+mkThrowIO :: (HasCallStack, Exception e) => e -> ImmutaballIO
+mkThrowIO e = Fixed $ ThrowIO e
 
 mkArrayToBS :: (Integral i, Ix i, Storable e) => StorableArray i e -> (BS.ByteString -> ImmutaballIO) -> ImmutaballIO
 mkArrayToBS array_ withBS = Fixed $ ArrayToBS array_ withBS

@@ -29,6 +29,10 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		runDirectoryBasicIO,
 		runSDLBasicIO,
 		runGLBasicIO,
+		hReadBytes,
+		hReadBytesSync,
+		hReadText,
+		hReadTextSync,
 
 		-- * BasicIO aliases that apply the Fixed wrapper
 		mkEmptyBasicIO,
@@ -126,11 +130,11 @@ data BasicIOF me =
 	| WriteBytes FilePath BL.ByteString me
 	| WriteText FilePath T.Text me
 	-- | Optional error handler.
-	| ReadBytes FilePath (Maybe (String -> me)) (Async (Maybe BL.ByteString) -> me)
-	| ReadBytesSync FilePath (Maybe (String -> me)) (BL.ByteString -> me)
+	| ReadBytes FilePath (Async (Either IOException BL.ByteString) -> me)
+	| ReadBytesSync FilePath (Either IOException BL.ByteString -> me)
 	-- | Optional error handler.
-	| ReadText FilePath (Maybe (String -> me)) (Async (Maybe T.Text) -> me)
-	| ReadTextSync FilePath (Maybe (String -> me)) (T.Text -> me)
+	| ReadText FilePath (Async (Either IOException T.Text) -> me)
+	| ReadTextSync FilePath (Either IOException T.Text -> me)
 	| CreateDirectoryIfMissing FilePath me
 	| ForkIO me me
 	| ForkOS me me
@@ -175,17 +179,17 @@ instance Functor BasicIOF where
 	fmap  f (GetContents withContents)           = GetContents (f . withContents)
 	fmap  f (GetContentsSync withContents)       = GetContentsSync (f . withContents)
 
-	fmap  f (DoesPathExist path withExists)            = DoesPathExist path (f .  withExists)
-	fmap  f (DoesPathExistSync path withExists)        = DoesPathExistSync path (f .  withExists)
-	fmap  f (WriteBytes path contents withUnit)        = WriteBytes path contents (f withUnit)
-	fmap  f (WriteText path contents withUnit)         = WriteText path contents (f withUnit)
-	fmap  f (ReadBytes path mwithErr withContents)     = ReadBytes path ((f .) <$> mwithErr) (f . withContents)
-	fmap  f (ReadBytesSync path mwithErr withContents) = ReadBytesSync path ((f .) <$> mwithErr) (f . withContents)
-	fmap  f (ReadText path mwithErr withContents)      = ReadText path ((f .) <$> mwithErr) (f . withContents)
-	fmap  f (ReadTextSync path mwithErr withContents)  = ReadTextSync path ((f .) <$> mwithErr) (f . withContents)
-	fmap  f (CreateDirectoryIfMissing path withUnit)   = CreateDirectoryIfMissing path (f withUnit)
-	fmap  f (ForkIO bio withUnit)                      = ForkIO (f bio) (f withUnit)
-	fmap  f (ForkOS bio withUnit)                      = ForkOS (f bio) (f withUnit)
+	fmap  f (DoesPathExist path withExists)          = DoesPathExist path (f .  withExists)
+	fmap  f (DoesPathExistSync path withExists)      = DoesPathExistSync path (f .  withExists)
+	fmap  f (WriteBytes path contents withUnit)      = WriteBytes path contents (f withUnit)
+	fmap  f (WriteText path contents withUnit)       = WriteText path contents (f withUnit)
+	fmap  f (ReadBytes path withContents)            = ReadBytes path (f . withContents)
+	fmap  f (ReadBytesSync path withContents)        = ReadBytesSync path (f . withContents)
+	fmap  f (ReadText path withContents)             = ReadText path (f . withContents)
+	fmap  f (ReadTextSync path withContents)         = ReadTextSync path (f . withContents)
+	fmap  f (CreateDirectoryIfMissing path withUnit) = CreateDirectoryIfMissing path (f withUnit)
+	fmap  f (ForkIO bio withUnit)                    = ForkIO (f bio) (f withUnit)
+	fmap  f (ForkOS bio withUnit)                    = ForkOS (f bio) (f withUnit)
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
 	fmap  f (GLIO glio)   = GLIO  (f <$> glio)
@@ -261,7 +265,8 @@ unsafeFixBasicIOFTo :: MVar me -> (me -> BasicIOF me) -> BasicIOF me
 unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 	me_ <- unsafeDupableInterleaveIO (readMVar mme `catch` \BlockedIndefinitelyOnMVar -> throwIO PrematureEvaluationFixBasicIOException)
 	case f me_ of
-		_y@(EmptyBasicIOF)       -> throwIO EmptyFixBasicIOException
+		--_y@(EmptyBasicIOF)       -> throwIO EmptyFixBasicIOException
+		_y@(EmptyBasicIOF)       -> return $ EmptyBasicIOF
 		y@( PureBasicIOF a)      -> putMVar mme a >> return y
 		_y@(UnfixBasicIOF bio)   -> return . UnfixBasicIOF . unsafeFixBasicIOFTo mme $ const bio
 		-- Join: Cover all multi-branching (or else we could hang on multiple putMVars), then just fmap for all other cases.
@@ -270,8 +275,10 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		_y@(JoinBasicIOF ibio)    -> return $ JoinBasicIOF (unsafeFixBasicIOFTo mme . const <$> ibio)
 		_y@(AndBasicIOF  a b)    -> putMVar mme a >> return (JoinBasicIOF $ AndBasicIOF (PureBasicIOF a) (f b))
 		_y@(ThenBasicIOF a b)    -> putMVar mme a >> return (JoinBasicIOF $ ThenBasicIOF (PureBasicIOF a) (f b))
-		_y@(ExitSuccessBasicIOF) -> throwIO EmptyFixBasicIOException
-		_y@(ExitFailureBasicIOF) -> throwIO EmptyFixBasicIOException
+		--_y@(ExitSuccessBasicIOF) -> throwIO EmptyFixBasicIOException
+		--_y@(ExitFailureBasicIOF) -> throwIO EmptyFixBasicIOException
+		_y@(ExitSuccessBasicIOF) -> return $ ExitSuccessBasicIOF
+		_y@(ExitFailureBasicIOF) -> return $ ExitFailureBasicIOF
 
 		_y@(DirectoryIO dio) -> return . DirectoryIO . unsafeFixDirectoryIOFTo mme $ const dio
 
@@ -287,10 +294,10 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		_y@(DoesPathExistSync path withExists)            -> return $ DoesPathExistSync path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withExists)
 		y@( WriteBytes        _path _contents me)         -> putMVar mme me >> return y
 		y@( WriteText         _path _contents me)         -> putMVar mme me >> return y
-		_y@(ReadBytes         path mwithErr withContents) -> return $ ReadBytes         path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
-		_y@(ReadBytesSync     path mwithErr withContents) -> return $ ReadBytesSync     path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
-		_y@(ReadText          path mwithErr withContents) -> return $ ReadText          path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
-		_y@(ReadTextSync      path mwithErr withContents) -> return $ ReadTextSync      path (((\me -> unsafePerformIO $ putMVar mme me >> return me) .) <$> mwithErr) ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadBytes         path withContents)          -> return $ ReadBytes         path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadBytesSync     path withContents)          -> return $ ReadBytesSync     path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadText          path withContents)          -> return $ ReadText          path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
+		_y@(ReadTextSync      path withContents)          -> return $ ReadTextSync      path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		y@( CreateDirectoryIfMissing _path me)            -> putMVar mme me >> return y
 		--y@( ForkIO            _bio me)                    -> putMVar mme me >> return y
 		_y@(ForkIO            bio me)                     -> putMVar mme me >> return (JoinBasicIOF $ ForkIO (f bio) (PureBasicIOF me))
@@ -306,41 +313,37 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 -- * Runners
 
 runBasicIOIO :: BasicIOF (IO ()) -> IO ()
-runBasicIOIO (EmptyBasicIOF)                               = return ()
-runBasicIOIO (PureBasicIOF bio)                            = bio
-runBasicIOIO (UnfixBasicIOF bio)                           = runBasicIOIO bio
-runBasicIOIO (JoinBasicIOF bio)                            = runBasicIOIO $ runBasicIOIO <$> bio
-runBasicIOIO (AndBasicIOF a b)                             = a `par` b `par` concurrently_ a b
-runBasicIOIO (ThenBasicIOF a b)                            = a >> b
-runBasicIOIO (ExitSuccessBasicIOF)                         = exitSuccess
-runBasicIOIO (ExitFailureBasicIOF)                         = exitFailure
-runBasicIOIO (DirectoryIO dio)                             = runDirectoryIOIO $ dio
-runBasicIOIO (GetArgs withArgs_)                           = withAsync getArgs withArgs_
-runBasicIOIO (GetArgsSync withArgs_)                       = getArgs >>= withArgs_
-runBasicIOIO (GetEnvironment withEnvironment)              = withAsync getEnvironment withEnvironment
-runBasicIOIO (GetEnvironmentSync withEnvironment)          = getEnvironment >>= withEnvironment
-runBasicIOIO (PutStrLn str withUnit)                       = putStrLn str >> withUnit
-runBasicIOIO (GetContents withContents)                    = withAsync getContents withContents
-runBasicIOIO (GetContentsSync withContents)                = getContents >>= withContents
-runBasicIOIO (DoesPathExist path withExists)               = withAsync (doesPathExist path) withExists
-runBasicIOIO (DoesPathExistSync path withExists)           = doesPathExist path >>= withExists
-runBasicIOIO (WriteBytes path contents withUnit)           = BL.writeFile path contents >> withUnit
-runBasicIOIO (WriteText path contents withUnit)            = TIO.writeFile path contents >> withUnit
-runBasicIOIO (ReadBytes path mwithErr withContents)        =
-	withAsync (((Just <$> BL.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . withErr . show) mwithErr e))) withContents
-runBasicIOIO (ReadBytesSync path mwithErr withContents)    =
-	((Just <$> BL.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . withErr . show) mwithErr e)) >>= maybe (return ()) (id . withContents)
-runBasicIOIO (ReadText path mwithErr withContents)         =
-	withAsync (((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . withErr . show) mwithErr e))) withContents
-runBasicIOIO (ReadTextSync path mwithErr withContents)     =
-	((Just <$> TIO.readFile path) `catch` (\e -> flip const (e :: IOError) $ maybe throwIO (\withErr -> (const Nothing <$>) . withErr . show) mwithErr e)) >>= maybe (return ()) (id . withContents)
-runBasicIOIO (CreateDirectoryIfMissing path withUnit)      = createDirectoryIfMissing True path >> withUnit
-runBasicIOIO (ForkIO bio withUnit)                         = (void . forkIO) bio >> withUnit
-runBasicIOIO (ForkOS bio withUnit)                         = (void . forkOS) bio >> withUnit
-runBasicIOIO (SDLIO sdlio)                                 = runSDLIOIO $ sdlio
-runBasicIOIO (GLIO  glio)                                  = runGLIOIO  $ glio
-runBasicIOIO (DelayUs us withUnit)                         = delay us >> withUnit
-runBasicIOIO (GetUs withUs)                                = getUsIO >>= withUs
+runBasicIOIO (EmptyBasicIOF)                          = return ()
+runBasicIOIO (PureBasicIOF bio)                       = bio
+runBasicIOIO (UnfixBasicIOF bio)                      = runBasicIOIO bio
+runBasicIOIO (JoinBasicIOF bio)                       = runBasicIOIO $ runBasicIOIO <$> bio
+runBasicIOIO (AndBasicIOF a b)                        = a `par` b `par` concurrently_ a b
+runBasicIOIO (ThenBasicIOF a b)                       = a >> b
+runBasicIOIO (ExitSuccessBasicIOF)                    = exitSuccess
+runBasicIOIO (ExitFailureBasicIOF)                    = exitFailure
+runBasicIOIO (DirectoryIO dio)                        = runDirectoryIOIO $ dio
+runBasicIOIO (GetArgs withArgs_)                      = withAsync getArgs withArgs_
+runBasicIOIO (GetArgsSync withArgs_)                  = getArgs >>= withArgs_
+runBasicIOIO (GetEnvironment withEnvironment)         = withAsync getEnvironment withEnvironment
+runBasicIOIO (GetEnvironmentSync withEnvironment)     = getEnvironment >>= withEnvironment
+runBasicIOIO (PutStrLn str withUnit)                  = putStrLn str >> withUnit
+runBasicIOIO (GetContents withContents)               = withAsync getContents withContents
+runBasicIOIO (GetContentsSync withContents)           = getContents >>= withContents
+runBasicIOIO (DoesPathExist path withExists)          = withAsync (doesPathExist path) withExists
+runBasicIOIO (DoesPathExistSync path withExists)      = doesPathExist path >>= withExists
+runBasicIOIO (WriteBytes path contents withUnit)      = BL.writeFile path contents >> withUnit
+runBasicIOIO (WriteText path contents withUnit)       = TIO.writeFile path contents >> withUnit
+runBasicIOIO (ReadBytes path withContents)            = hReadBytes path >>= withContents
+runBasicIOIO (ReadBytesSync path withContents)        = hReadBytesSync path >>= withContents
+runBasicIOIO (ReadText path withContents)             = hReadText path >>= withContents
+runBasicIOIO (ReadTextSync path withContents)         = hReadTextSync path >>= withContents
+runBasicIOIO (CreateDirectoryIfMissing path withUnit) = createDirectoryIfMissing True path >> withUnit
+runBasicIOIO (ForkIO bio withUnit)                    = (void . forkIO) bio >> withUnit
+runBasicIOIO (ForkOS bio withUnit)                    = (void . forkOS) bio >> withUnit
+runBasicIOIO (SDLIO sdlio)                            = runSDLIOIO $ sdlio
+runBasicIOIO (GLIO  glio)                             = runGLIOIO  $ glio
+runBasicIOIO (DelayUs us withUnit)                    = delay us >> withUnit
+runBasicIOIO (GetUs withUs)                           = getUsIO >>= withUs
 
 runDirectoryBasicIO :: DirectoryIO -> BasicIO
 runDirectoryBasicIO dio = Fixed . DirectoryIO $ runDirectoryBasicIO <$> getFixed dio
@@ -350,6 +353,18 @@ runSDLBasicIO sdlio = Fixed . SDLIO $ runSDLBasicIO <$> getFixed sdlio
 
 runGLBasicIO :: GLIO -> BasicIO
 runGLBasicIO glio = Fixed . GLIO $ runGLBasicIO <$> getFixed glio
+
+hReadBytes :: FilePath -> IO (Async (Either IOException BL.ByteString))
+hReadBytes path = withAsync (hReadBytesSync path) return
+
+hReadBytesSync :: FilePath -> IO (Either IOException BL.ByteString)
+hReadBytesSync path = try $ BL.readFile path
+
+hReadText :: FilePath -> IO (Async (Either IOException T.Text))
+hReadText path = withAsync (hReadTextSync path) return
+
+hReadTextSync :: FilePath -> IO (Either IOException T.Text)
+hReadTextSync path = try $ TIO.readFile path
 
 -- * ImutaballIO aliases that apply the Fixed wrapper
 
@@ -413,17 +428,17 @@ mkWriteBytes path contents withUnit = Fixed $ WriteBytes path contents withUnit
 mkWriteText :: FilePath -> T.Text -> BasicIO -> BasicIO
 mkWriteText path contents withUnit = Fixed $ WriteText path contents withUnit
 
-mkReadBytes :: FilePath -> Maybe (String -> BasicIO) -> (Async (Maybe BL.ByteString) -> BasicIO) -> BasicIO
-mkReadBytes path mwithErr withContents = Fixed $ ReadBytes path mwithErr withContents
+mkReadBytes :: FilePath -> (Async (Either IOException BL.ByteString) -> BasicIO) -> BasicIO
+mkReadBytes path withContents = Fixed $ ReadBytes path withContents
 
-mkReadBytesSync :: FilePath -> Maybe (String -> BasicIO) -> (BL.ByteString -> BasicIO) -> BasicIO
-mkReadBytesSync path mwithErr withContents = Fixed $ ReadBytesSync path mwithErr withContents
+mkReadBytesSync :: FilePath -> (Either IOException BL.ByteString -> BasicIO) -> BasicIO
+mkReadBytesSync path withContents = Fixed $ ReadBytesSync path withContents
 
-mkReadText :: FilePath -> Maybe (String -> BasicIO) -> (Async (Maybe T.Text) -> BasicIO) -> BasicIO
-mkReadText path mwithErr withContents = Fixed $ ReadText path mwithErr withContents
+mkReadText :: FilePath -> (Async (Either IOException T.Text) -> BasicIO) -> BasicIO
+mkReadText path withContents = Fixed $ ReadText path withContents
 
-mkReadTextSync :: FilePath -> Maybe (String -> BasicIO) -> (T.Text -> BasicIO) -> BasicIO
-mkReadTextSync path mwithErr withContents = Fixed $ ReadTextSync path mwithErr withContents
+mkReadTextSync :: FilePath -> (Either IOException T.Text -> BasicIO) -> BasicIO
+mkReadTextSync path withContents = Fixed $ ReadTextSync path withContents
 
 mkCreateDirectoryIfMissing :: FilePath -> BasicIO -> BasicIO
 mkCreateDirectoryIfMissing path withUnit = Fixed $ CreateDirectoryIfMissing path withUnit

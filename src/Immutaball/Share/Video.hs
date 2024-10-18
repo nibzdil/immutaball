@@ -265,7 +265,7 @@ checkGLErrorsIB = do
 		err -> do
 			let msg = "Error: an OpenGL error occurred (" ++ show err ++ "): " ++ glErrType err
 			() <- BasicIBIOF $ PutStrLn msg ()
-			() <- ThrowIO (GLErrorVideoException msg) ()
+			() <- ThrowIO (GLErrorVideoException msg)
 			() <- BasicIBIOF $ ExitFailureBasicIOF
 			return ()
 

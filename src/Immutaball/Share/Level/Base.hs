@@ -26,6 +26,7 @@ module Immutaball.Share.Level.Base
 		Body(..), bodyP0, bodyP1, bodyNi, bodyL0, bodyLc, bodyG0, bodyGc,
 		Item(..), itemP, itemT, itemN, itemP0, itemP1,
 		Goal(..), goalP, goalR, goalP0, goalP1,
+		Jump(..), jumpP, jumpQ, jumpR, jumpP0, jumpP1,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -239,8 +240,22 @@ data Goal = Goal {
 }
 makeLenses ''Goal
 
+data Jump = Jump {
+	-- | Position.
+	_jumpP :: Vec3 Double,
+	-- | Target position.
+	_jumpQ :: Vec3 Double,
+	-- | Radius.
+	_jumpR :: Double,
+
+	-- | Translation path.
+	_jumpP0 :: Int32,
+	-- | Rotation path.
+	_jumpP1 :: Int32
+}
+makeLenses ''Jump
+
 -- TODO:
-type Jump = Int32
 type Swch = Int32
 type Bill = Int32
 type Ball = Int32
@@ -1075,6 +1090,57 @@ instance Storable Goal where
 			(Vec3 px py pz) r p0 p1
 		) = flip evalStateT 0 $ do
 			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokef32dLE ptr' r
+
+			pokei32LE ptr' p0
+			pokei32LE ptr' p1
+
+		where ptr' = castPtr ptr
+
+instance Storable Jump where
+	sizeOf
+		~(Jump
+			_p _q _r p0 p1
+		) = sum $
+			[
+				3 * sizeOf x',
+				3 * sizeOf x',
+				sizeOf x',
+
+				sizeOf p0,
+				sizeOf p1
+			]
+		where x' = error "Internal error: sizeOf Jump: sizeOf accessed its argument!" :: Float
+	alignment
+		~(Jump
+			_p _q _r p0 p1
+		) = max 1 . maximum $
+			[
+				alignment x',
+				alignment x',
+				alignment x',
+
+				alignment p0,
+				alignment p1
+			]
+		where x' = error "Internal error: alignment Jump: alignment accessed its argument!" :: Float
+
+	peek ptr = flip evalStateT 0 $ Jump <$>
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
+		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- q
+		peekf32dLE ptr' <*>  -- r
+
+		peeki32LE ptr' <*>  -- p0
+		peeki32LE ptr'      -- p1
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Jump
+			(Vec3 px py pz) (Vec3 qx qy qz) r p0 p1
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokef32dLE ptr' qx >> pokef32dLE ptr' qy >> pokef32dLE ptr' qz
 			pokef32dLE ptr' r
 
 			pokei32LE ptr' p0

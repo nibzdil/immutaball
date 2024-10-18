@@ -14,6 +14,7 @@ module Immutaball.Share.Level.Base
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
 		Edge(..), edgeVi, edgeVj,
+		Side(..), edgeN, edgeD,
 		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
 			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
 			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
@@ -102,8 +103,13 @@ data Edge = Edge {
 }
 makeLenses ''Edge
 
+data Side = Side {
+	_edgeN :: Vec3 Double,
+	_edgeD :: Double
+}
+makeLenses ''Side
+
 -- TODO:
-type Side = Int32
 type Texc = Int32
 type Offs = Int32
 type Geom = Int32
@@ -628,8 +634,10 @@ instance Storable Mtrl where
 		where ptr' = castPtr ptr
 
 instance Storable Vert where
-	sizeOf    (Vert (Vec3 x _ _)) = sum [3 * sizeOf x]
-	alignment (Vert (Vec3 x _ _)) = max 1 $ maximum [alignment x]
+	sizeOf    (Vert (Vec3 _ _ _)) = sum [3 * sizeOf x']
+		where x' = error "Internal error: sizeOf Vert: sizeOf accessed its argument!" :: Float
+	alignment (Vert (Vec3 _ _ _)) = max 1 $ maximum [alignment x']
+		where x' = error "Internal error: alignment Vert: alignment accessed its argument!" :: Float
 	peek ptr = flip evalStateT 0 $ Vert <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr')
 		where ptr' = castPtr ptr
 	poke ptr (Vert (Vec3 x y z)) = flip evalStateT 0 $ pokef32dLE ptr' x >> pokef32dLE ptr' y >> pokef32dLE ptr' z
@@ -641,4 +649,14 @@ instance Storable Edge where
 	peek ptr = flip evalStateT 0 $ Edge <$> peeki32LE ptr' <*> peeki32LE ptr'
 		where ptr' = castPtr ptr
 	poke ptr (Edge vi vj) = flip evalStateT 0 $ pokei32LE ptr' vi >> pokei32LE ptr' vj
+		where ptr' = castPtr ptr
+
+instance Storable Side where
+	sizeOf    (Side (Vec3 _nx _ny _nz) _d) = sum [3 * sizeOf x', sizeOf x']
+		where x' = error "Internal error: sizeOf Vert: sizeOf accessed its argument!" :: Float
+	alignment (Side (Vec3 _nx _ny _nz) _d) = max 1 $ maximum [alignment x', alignment x']
+		where x' = error "Internal error: alignment Vert: alignment accessed its argument!" :: Float
+	peek ptr = flip evalStateT 0 $ Side <$> (Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*> peekf32dLE ptr'
+		where ptr' = castPtr ptr
+	poke ptr (Side (Vec3 nx ny nz) d) = flip evalStateT 0 $ pokef32dLE ptr' nx >> pokef32dLE ptr' ny >> pokef32dLE ptr' nz >> pokef32dLE ptr' d
 		where ptr' = castPtr ptr

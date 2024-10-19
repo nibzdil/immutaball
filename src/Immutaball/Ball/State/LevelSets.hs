@@ -22,6 +22,7 @@ import Immutaball.Prelude
 import Control.Applicative
 import Control.Arrow
 import Data.Functor.Identity
+import Data.Maybe
 
 import Control.Lens
 import qualified Data.Map as M
@@ -88,7 +89,9 @@ levelSetsBaseGui =
 	]
 
 levelSetsButtons :: LevelSets -> [Widget LevelSetsWidget]
-levelSetsButtons levelSets = flip map (zip [0..] . M.toList $ levelSets^.lsLevelSets) $ \((idx :: Integer), (path, levelSet)) ->
+-- Preserve order.
+--levelSetsButtons levelSets = flip map (zip [0..] . M.toList $ levelSets^.lsLevelSets) $ \((idx :: Integer), (path, levelSet)) ->
+levelSetsButtons levelSets = catMaybes . flip map (zip [0..] (levelSets^.lsExplicitSets)) $ \((idx :: Integer), path) -> flip fmap (M.lookup path (levelSets^.lsLevelSets)) $ \levelSet ->
 	let idx' = fromIntegral idx in
 	ButtonWidget $ Button { _buttonWid = LevelSetButton path, _buttonWparent = LevelSetsVstack,
 		_buttonText = (levelSet^.lsTitle), _buttonRect = Just $ Rect (Vec2 (-0.100) (0.620 - 0.100*idx')) (Vec2 (0.100) (0.700 - 0.100*idx')) }

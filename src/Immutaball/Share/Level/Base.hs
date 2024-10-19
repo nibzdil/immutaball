@@ -633,7 +633,7 @@ peeki32BE ptr = do
 	(byte1 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 1))
 	(byte2 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 2))
 	(byte3 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 3))
-	let (w32 :: Word32) = ((fromIntegral byte3 `shiftL` 24) .|. (fromIntegral byte2 `shiftL` 16) .|. (fromIntegral byte1 `shiftL` 8) .|. (fromIntegral byte0 `shiftL` 0))
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
 	let (i32 :: Int32)  = fromIntegral w32
 	let val = i32
 	put $ offset + sizeOf w32
@@ -648,7 +648,7 @@ peeki32LE ptr = do
 	(byte2 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 1))
 	(byte1 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 2))
 	(byte0 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 3))
-	let (w32 :: Word32) = ((fromIntegral byte3 `shiftL` 24) .|. (fromIntegral byte2 `shiftL` 16) .|. (fromIntegral byte1 `shiftL` 8) .|. (fromIntegral byte0 `shiftL` 0))
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
 	let (i32 :: Int32)  = fromIntegral w32
 	let val = i32
 	put $ offset + sizeOf w32
@@ -662,7 +662,7 @@ peekf32dLE ptr = do
 	(byte2 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 1))
 	(byte1 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 2))
 	(byte0 :: Word8) <- lift $ peek (castPtr ptr `plusPtr` (offset + 3))
-	let (w32 :: Word32) = ((fromIntegral byte3 `shiftL` 24) .|. (fromIntegral byte2 `shiftL` 16) .|. (fromIntegral byte1 `shiftL` 8) .|. (fromIntegral byte0 `shiftL` 0))
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
 
 	-- GHC doesn't support coerce between Word32 and Float.
 	-- Just malloc a new cfloat.

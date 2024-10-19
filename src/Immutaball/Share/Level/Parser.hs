@@ -93,8 +93,6 @@ import Immutaball.Share.Utils
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.ByteString.Unsafe as UB
 
-import Debug.Trace as D------------------------------------------------TODO
-
 -- * optional low-level parsing
 
 -- | Uses low-level memory management.
@@ -131,7 +129,6 @@ unsafeParseLevelFileRaw inputName inputContents
 			-- Now parse the sol now that we validated the size.
 			-- This is unsafe since we don't know if we have enough data, but we at least know we're somewhat within the bounds.
 			sol <- peekSol inputPtr
-			flip D.trace (return ()) $ printf "DEBUG00: %s" (show (sol^.solMv))
 
 			-- Now check the exact length.
 			let neededSize = sizeOfExistingSol lengthSol

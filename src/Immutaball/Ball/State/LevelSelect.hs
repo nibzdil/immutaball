@@ -30,9 +30,12 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 --import qualified Data.Map as M
 import qualified SDL.Raw.Enum as Raw
+import System.FilePath
 
 import Immutaball.Ball.LevelSets
 import qualified Immutaball.Ball.State.Play as Play
+import Immutaball.Share.Context
+import Immutaball.Share.Context.Config
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Level.Parser
 import Immutaball.Share.GUI
@@ -74,7 +77,8 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 
 	-- If a level was selected, parse it.
 	let (toLevelPath :: Maybe String) = (const Nothing ||| Just) . matching (_WidgetAction . _LevelButton) $ guiResponse
-	(mtoLevelContents :: Maybe (Either IOException BL.ByteString)) <- monadic -< maybe (pure Nothing) (\path -> (Just <$>) . liftIBIO . BasicIBIOF $ ReadBytesSync path id) $ toLevelPath
+	let (toLevelPath' :: Maybe String) = ((cxt^.ibContext.ibDirs.ibStaticDataDir) </>) <$> toLevelPath
+	(mtoLevelContents :: Maybe (Either IOException BL.ByteString)) <- monadic -< maybe (pure Nothing) (\path -> (Just <$>) . liftIBIO . BasicIBIOF $ ReadBytesSync path id) $ toLevelPath'
 	(toLevelContents :: Maybe BL.ByteString) <- monadic -< maybe (pure Nothing) (\mcontents -> liftIBIO . ThrowIO ||| pure . Just $ mcontents) $ mtoLevelContents
 	let (toLevelContentsBS :: Maybe BS.ByteString) = BL.toStrict <$> toLevelContents
 	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile <$> toLevelPath <*> toLevelContentsBS

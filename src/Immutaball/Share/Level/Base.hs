@@ -575,7 +575,7 @@ sizeOfMtrlMax
 
 sizeOfExistingMtrl :: Mtrl -> Int
 sizeOfExistingMtrl
-	~(Mtrl
+	(Mtrl
 		_d _a _s _e _h _angle fl _f alphaFunc _alphaRef
 	) = sum $
 		[

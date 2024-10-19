@@ -37,6 +37,8 @@ import Immutaball.Share.Utils
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.ByteString.Unsafe as UB
 
+import Debug.Trace as D-------------------------------- TODO
+
 -- * parsing
 
 -- | Uses low-level memory management.
@@ -52,6 +54,7 @@ parseLevelFile inputName inputContents
 			-- Now we know the lengths, so we can calculate the size of the data we require.
 			let neededSize = sizeOfExistingSol lengthSol
 			let actualSize = inputSize
+			flip D.trace (return ()) $ (printf "DEBUG0: %s" (show (lengthSol)))
 			if' (actualSize < neededSize) (return . Left . err $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d <= %d" inputName inputSize neededSize) $ do
 
 			-- Now parse the sol now that we validated the size.

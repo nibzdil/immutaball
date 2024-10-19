@@ -550,14 +550,14 @@ sizeOfMtrlMin
 			sizeOf fl,
 			solPathMax
 			--sizeOf alphaFunc,
-			--sizeOf alphaRef
+			--sizeOf x'
 		]
 	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 
 sizeOfMtrlMax :: Mtrl -> Int
 sizeOfMtrlMax
 	~(Mtrl
-		_d _a _s _e _h _angle fl _f alphaFunc alphaRef
+		_d _a _s _e _h _angle fl _f alphaFunc _alphaRef
 	) = sum $
 		[
 			sizeOf x' * 4,
@@ -569,14 +569,14 @@ sizeOfMtrlMax
 			sizeOf fl,
 			solPathMax,
 			sizeOf alphaFunc,
-			sizeOf alphaRef
+			sizeOf x'
 		]
 	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 
 sizeOfExistingMtrl :: Mtrl -> Int
 sizeOfExistingMtrl
 	~(Mtrl
-		_d _a _s _e _h _angle fl _f alphaFunc alphaRef
+		_d _a _s _e _h _angle fl _f alphaFunc _alphaRef
 	) = sum $
 		[
 			sizeOf x' * 4,
@@ -588,7 +588,7 @@ sizeOfExistingMtrl
 			sizeOf fl,
 			solPathMax,
 			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaFunc,
-			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaRef
+			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf x'
 		]
 	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 

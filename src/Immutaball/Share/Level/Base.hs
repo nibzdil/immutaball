@@ -10,6 +10,9 @@
 module Immutaball.Share.Level.Base
 	(
 		solPathMax,
+		solMagicConstant,
+		solVersionCurr,
+		solVersion2024_05,
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
@@ -33,11 +36,12 @@ module Immutaball.Share.Level.Base
 		Ball(..), ballP, ballR,
 		View(..), viewP, viewQ,
 		Dict(..), dictAi, dictAj,
-		Sol(..), solAc, solMc, solVc, solEc, solSc, solTc, solOc, solGc, solLc,
-			solNc, solPc, solBc, solHc, solZc, solJc, solXc, solRc, solUc,
-			solWc, solDc, solIc, solAv, solMv, solVv, solEv, solSv, solTv,
-			solOv, solGv, solLv, solNv, solPv, solBv, solHv, solZv, solJv,
-			solXv, solRv, solUv, solWv, solDv, solIv,
+		Sol(..), solMagic, solVersion, solAc, solMc, solVc, solEc, solSc,
+			solTc, solOc, solGc, solLc, solNc, solPc, solBc, solHc, solZc,
+			solJc, solXc, solRc, solUc, solWc, solDc, solIc, solAv, solMv,
+			solVv, solEv, solSv, solTv, solOv, solGv, solLv, solNv, solPv,
+			solBv, solHv, solZv, solJv, solXv, solRv, solUv, solWv, solDv,
+			solIv,
 		LevelIB,
 		emptySol,
 		peeki32Native,
@@ -89,6 +93,15 @@ import Immutaball.Share.Utils
 
 solPathMax :: Int
 solPathMax = 64
+
+solMagicConstant :: Int32
+solMagicConstant = 0x4C4F53AF  -- LE encoding of AF 'S' 'O' 'L'.
+
+solVersionCurr :: Int32
+solVersionCurr = solVersion2024_05
+
+solVersion2024_05 :: Int32
+solVersion2024_05 = 10
 
 data Mtrl = Mtrl {
 	-- | Diffuse color.
@@ -362,6 +375,9 @@ makeLenses ''Dict
 -- argument, but is still useful for reading and writing when combined with
 -- validation.  peekSol and pokeSol offer more pure implementations.
 data Sol = Sol {
+	_solMagic   :: Int32,
+	_solVersion :: Int32,
+
 	_solAc :: Int32,
 	_solMc :: Int32,
 	_solVc :: Int32,
@@ -416,11 +432,15 @@ instance Storable Sol where
 
 	alignment
 		~(Sol
+			magic version
 			ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
 			--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
 			_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
 		) = max 1 . maximum $
 			[
+				alignment magic,
+				alignment version,
+
 				alignment ac,
 				alignment mc,
 				alignment vc,
@@ -472,6 +492,7 @@ instance Storable Sol where
 emptySol :: Sol
 emptySol =
 	(Sol
+		solMagicConstant solVersionCurr
 		0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 		a a a a a a a a a a a a a a a a a a a a a
 	)
@@ -482,11 +503,15 @@ emptySol =
 sizeOfEmptySol :: Sol -> Int
 sizeOfEmptySol
 	~(Sol
+		magic version
 		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
 		--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
 		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
 	) = sum $
 		[
+			sizeOf magic,
+			sizeOf version,
+
 			sizeOf ac,
 			sizeOf mc,
 			sizeOf vc,
@@ -539,11 +564,15 @@ sizeOfEmptySol
 sizeOfExistingSol :: Sol -> Int
 sizeOfExistingSol
 	(Sol
+		magic version
 		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
 		--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
 		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
 	) = sum $
 		[
+			sizeOf magic,
+			sizeOf version,
+
 			sizeOf ac,
 			sizeOf mc,
 			sizeOf vc,
@@ -684,6 +713,9 @@ asType _ _ = ()
 
 peekSol :: Ptr Sol -> IO Sol
 peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
+	peeki32LE ptr' <*>  -- magic
+	peeki32LE ptr' <*>  -- version
+
 	peeki32LE ptr' <*>  -- ac
 	peeki32LE ptr' <*>  -- mc
 	peeki32LE ptr' <*>  -- vc
@@ -735,6 +767,9 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 -- This can be used to safely read in a whole SOL file with arbitrary input.
 peekSolLengths :: Ptr Sol -> IO Sol
 peekSolLengths ptr = flip evalStateT 0 $ Sol <$>
+	peeki32LE ptr' <*>  -- magic
+	peeki32LE ptr' <*>  -- version
+
 	peeki32LE ptr' <*>  -- ac
 	peeki32LE ptr' <*>  -- mc
 	peeki32LE ptr' <*>  -- vc
@@ -789,9 +824,13 @@ peekSolLengths ptr = flip evalStateT 0 $ Sol <$>
 pokeSol :: Ptr Sol -> Sol -> IO ()
 pokeSol ptr
 	(Sol
+		magic version
 		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
 		av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
 	) = flip evalStateT 0 $ do
+		pokei32LE ptr' magic
+		pokei32LE ptr' version
+
 		pokei32LE ptr' ac
 		pokei32LE ptr' mc
 		pokei32LE ptr' vc

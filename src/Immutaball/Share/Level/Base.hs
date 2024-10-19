@@ -1625,7 +1625,7 @@ instance Storable Goal where
 			]
 		where x' = error "Internal error: alignment Item: alignment accessed its argument!" :: Float
 
-	peek ptr = flip evalStateT 0 $ Goal <$>
+	peek ptr = ((\goal -> goal & (goalP1 .~ (if' (goal^.goalP1 < 0) (goal^.goalP0) (goal^.goalP1)))) <$>) . flip evalStateT 0 $ Goal <$>
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
 		peekf32dLE ptr' <*>  -- r
 
@@ -1674,7 +1674,7 @@ instance Storable Jump where
 			]
 		where x' = error "Internal error: alignment Jump: alignment accessed its argument!" :: Float
 
-	peek ptr = flip evalStateT 0 $ Jump <$>
+	peek ptr = ((\jump -> jump & (jumpP1 .~ (if' (jump^.jumpP1 < 0) (jump^.jumpP0) (jump^.jumpP1)))) <$>) . flip evalStateT 0 $ Jump <$>
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- q
 		peekf32dLE ptr' <*>  -- r
@@ -1733,7 +1733,9 @@ instance Storable Swch where
 			]
 		where x' = error "Internal error: alignment Swch: alignment accessed its argument!" :: Float
 
-	peek ptr = ((\swch -> swch & (swchTm .~ (round $ 1000.0*(swch^.swchT)))) <$>) . flip evalStateT 0 $ Swch <$>
+	peek ptr =
+		((\swch -> swch & (swchP1 .~ (if' (swch^.swchP1 < 0) (swch^.swchP0) (swch^.swchP1)))) <$>) .
+		((\swch -> swch & (swchTm .~ (round $ 1000.0*(swch^.swchT)))) <$>) . flip evalStateT 0 $ Swch <$>
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
 		peekf32dLE ptr' <*>  -- r
 		peeki32LE ptr' <*>  -- pi
@@ -1814,7 +1816,7 @@ instance Storable Bill where
 			]
 		where x' = error "Internal error: alignment Bill: alignment accessed its argument!" :: Float
 
-	peek ptr = flip evalStateT 0 $ Bill <$>
+	peek ptr = ((\bill -> bill & (billP1 .~ (if' (bill^.billP1 < 0) (bill^.billP0) (bill^.billP1)))) <$>) . flip evalStateT 0 $ Bill <$>
 		peeki32LE ptr' <*>  -- fl
 		peeki32LE ptr' <*>  -- mi
 		peekf32dLE ptr' <*>  -- t

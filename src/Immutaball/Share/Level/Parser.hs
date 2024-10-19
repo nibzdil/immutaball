@@ -521,16 +521,18 @@ parseBody = Body <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*>
 	& P.try <?> "parseBody expected a Body"
 
 parseItem :: Parsec BL.ByteString () Item
-parseItem = ((\item -> item & (itemP1 .~ (if' (item^.itemP1 < 0) (item^.itemP0) (item^.itemP1)))) <$>) . Item <$>
-	parseVec3fd <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+parseItem = (((\item -> item & (itemP1 .~ (if' (item^.itemP1 < 0) (item^.itemP0) (item^.itemP1)))) <$>) $ Item <$>
+	parseVec3fd <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE)
 	& P.try <?> "parseItem expected an Item"
 
 parseGoal :: Parsec BL.ByteString () Goal
-parseGoal = Goal <$> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE
+parseGoal = (((\goal -> goal & (goalP1 .~ (if' (goal^.goalP1 < 0) (goal^.goalP0) (goal^.goalP1)))) <$>) $ Goal <$>
+	parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE)
 	& P.try <?> "parseGoal expected a Goal"
 
 parseJump :: Parsec BL.ByteString () Jump
-parseJump = Jump <$> parseVec3fd <*> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE
+parseJump = (((\jump -> jump & (jumpP1 .~ (if' (jump^.jumpP1 < 0) (jump^.jumpP0) (jump^.jumpP1)))) <$>) $ Jump <$>
+	parseVec3fd <*> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE)
 	& P.try <?> "parseJump expected a Jump"
 
 -- Irregular encoding.
@@ -550,6 +552,8 @@ parseSwch = (<?> "parseSwch expected a Swch") . P.try $ do
 	p0 <- parsei32LE
 	p1 <- parsei32LE
 
+	let p1' = if' (p1 < 0) p0 p1
+
 	return $ Swch {
 		_swchP  = p,
 		_swchR  = r,
@@ -561,16 +565,16 @@ parseSwch = (<?> "parseSwch expected a Swch") . P.try $ do
 		_swchI  = i,
 
 		_swchP0 = p0,
-		_swchP1 = p1
+		_swchP1 = p1'
 	}
 
 parseBill :: Parsec BL.ByteString () Bill
-parseBill = Bill <$>
+parseBill = (((\bill -> bill & (billP1 .~ (if' (bill^.billP1 < 0) (bill^.billP0) (bill^.billP1)))) <$>) $ Bill <$>
 	parsei32LE <*> parsei32LE <*> parsef32dLE <*> parsef32dLE <*>
 	parseVec3fd <*> parseVec3fd <*>
 	parseVec3fd <*> parseVec3fd <*> parseVec3fd <*>
 	parseVec3fd <*>
-	parsei32LE <*> parsei32LE
+	parsei32LE <*> parsei32LE)
 	& P.try <?> "parseBill expected a Bill"
 
 parseBall :: Parsec BL.ByteString () Ball

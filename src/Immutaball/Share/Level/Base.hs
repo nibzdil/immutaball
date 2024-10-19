@@ -984,7 +984,7 @@ peekCString :: Ptr () -> Int -> StateT Int IO String
 peekCString ptr' bufSize = do
 	offset <- get
 	str <- flip fix 0 $ \withOffset relOffset -> do
-		if' (offset >= bufSize) (return []) $ do
+		if' (relOffset >= bufSize) (return []) $ do
 		(c :: Word8) <- lift $ peek (castPtr ptr' `plusPtr` (offset + relOffset))
 		if' (c == 0) (return []) $ do
 		(asciiChar c:) <$> withOffset (relOffset+1)

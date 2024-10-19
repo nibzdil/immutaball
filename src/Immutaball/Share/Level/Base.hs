@@ -595,13 +595,13 @@ sizeOfPath = sizeOfPathMax
 sizeOfPathMin :: Path -> Int
 sizeOfPathMin
 	~(Path
-		_p _e _t tm pi_ f s fl _p0 _p1
+		_p _e _t _tm pi_ f s fl _p0 _p1
 	) = sum $
 		[
 			3 * sizeOf x',
 			--4 * sizeOf x',
 			sizeOf x',
-			sizeOf tm,
+			--sizeOf tm,
 
 			sizeOf pi_,
 			sizeOf f,
@@ -616,13 +616,13 @@ sizeOfPathMin
 sizeOfPathMax :: Path -> Int
 sizeOfPathMax
 	~(Path
-		_p _e _t tm pi_ f s fl p0 p1
+		_p _e _t _tm pi_ f s fl p0 p1
 	) = sum $
 		[
 			3 * sizeOf x',
 			4 * sizeOf x',
 			sizeOf x',
-			sizeOf tm,
+			--sizeOf tm,
 
 			sizeOf pi_,
 			sizeOf f,
@@ -637,13 +637,13 @@ sizeOfPathMax
 sizeOfExistingPath :: Path -> Int
 sizeOfExistingPath
 	(Path
-		_p _e _t tm pi_ f s fl p0 p1
+		_p _e _t _tm pi_ f s fl p0 p1
 	) = sum $
 		[
 			3 * sizeOf x',
 			if' ((fl .&. pathFlagOriented) /= 0) 0 $ 4 * sizeOf x',
 			sizeOf x',
-			sizeOf tm,
+			--sizeOf tm,
 
 			sizeOf pi_,
 			sizeOf f,

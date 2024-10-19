@@ -101,6 +101,8 @@ import Debug.Trace as D-------------------------------- TODO
 --
 -- It does _some_ length checking but still does some memory reading without
 -- checking for length of the input data (and only afterward reading).
+--
+-- TODO FIXME: this is broken.  Just use the safe, high-level version for now.
 unsafeParseLevelFileRaw :: String -> BS.ByteString -> Either LevelIBParseException LevelIB
 unsafeParseLevelFileRaw inputName inputContents
 	| inputSize < lengthSolSize =

@@ -538,13 +538,13 @@ sizeOfMtrl = sizeOfMtrlMax
 sizeOfMtrlMin :: Mtrl -> Int
 sizeOfMtrlMin
 	~(Mtrl
-		d a s e h _angle fl _f _alphaFunc _alphaRef
+		_d _a _s _e h _angle fl _f _alphaFunc _alphaRef
 	) = sum $
 		[
-			sizeOf (d^._1) * 4,
-			sizeOf (a^._1) * 4,
-			sizeOf (s^._1) * 4,
-			sizeOf (e^._1) * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
 			sizeOf h,
 			--sizeOf angle,
 			sizeOf fl,
@@ -552,17 +552,18 @@ sizeOfMtrlMin
 			--sizeOf alphaFunc,
 			--sizeOf alphaRef
 		]
+	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 
 sizeOfMtrlMax :: Mtrl -> Int
 sizeOfMtrlMax
 	~(Mtrl
-		d a s e h _angle fl _f alphaFunc alphaRef
+		_d _a _s _e h _angle fl _f alphaFunc alphaRef
 	) = sum $
 		[
-			sizeOf (d^._1) * 4,
-			sizeOf (a^._1) * 4,
-			sizeOf (s^._1) * 4,
-			sizeOf (e^._1) * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
 			sizeOf h,
 			--sizeOf angle,
 			sizeOf fl,
@@ -570,17 +571,18 @@ sizeOfMtrlMax
 			sizeOf alphaFunc,
 			sizeOf alphaRef
 		]
+	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 
 sizeOfExistingMtrl :: Mtrl -> Int
 sizeOfExistingMtrl
 	~(Mtrl
-		d a s e h _angle fl _f alphaFunc alphaRef
+		_d _a _s _e h _angle fl _f alphaFunc alphaRef
 	) = sum $
 		[
-			sizeOf (d^._1) * 4,
-			sizeOf (a^._1) * 4,
-			sizeOf (s^._1) * 4,
-			sizeOf (e^._1) * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
+			sizeOf x' * 4,
 			sizeOf h,
 			--sizeOf angle,
 			sizeOf fl,
@@ -588,6 +590,7 @@ sizeOfExistingMtrl
 			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaFunc,
 			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaRef
 		]
+	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 
 sizeOfPath :: Path -> Int
 sizeOfPath = sizeOfPathMax
@@ -1247,13 +1250,13 @@ instance Storable Mtrl where
 	sizeOf = sizeOfMtrlMax
 	alignment
 		~(Mtrl
-			d a s e h _angle fl _f alphaFunc alphaRef
+			_d _a _s _e h _angle fl _f alphaFunc alphaRef
 		) = max 1 . maximum $
 			[
-				alignment (d^._1),
-				alignment (a^._1),
-				alignment (s^._1),
-				alignment (e^._1),
+				alignment x',
+				alignment x',
+				alignment x',
+				alignment x',
 				alignment h,
 				--alignment angle,
 				alignment fl,
@@ -1261,6 +1264,7 @@ instance Storable Mtrl where
 				alignment alphaFunc,
 				alignment alphaRef
 			]
+		where x' = error "Internal error: alignment Mtrl: alignment accessed its argument!" :: Float
 
 	-- Irregular encoding; replace straightforward.
 	{-
@@ -1388,7 +1392,7 @@ instance Storable Side where
 		where ptr' = castPtr ptr
 
 instance Storable Texc where
-	sizeOf    ~(Texc (Vec2 _tx _ty)) = sum [3 * sizeOf x', sizeOf x']
+	sizeOf    ~(Texc (Vec2 _tx _ty)) = sum [2 * sizeOf x']
 		where x' = error "Internal error: sizeOf Texc: sizeOf accessed its argument!" :: Float
 	alignment ~(Texc (Vec2 _tx _ty)) = max 1 $ maximum [alignment x', alignment x']
 		where x' = error "Internal error: alignment Texc: alignment accessed its argument!" :: Float
@@ -1433,13 +1437,13 @@ instance Storable Path where
 	sizeOf = sizeOfPathMax
 	alignment
 		~(Path
-			_p _e _t tm pi_ f s fl p0 p1
+			_p _e _t _tm pi_ f s fl p0 p1
 		) = max 1 . maximum $
 			[
 				alignment x',
 				alignment x',
 				alignment x',
-				alignment tm,
+				--alignment tm,
 
 				alignment pi_,
 				alignment f,
@@ -1700,14 +1704,14 @@ instance Storable Jump where
 instance Storable Swch where
 	sizeOf
 		~(Swch
-			_p _r pi_ _t tm f i p0 p1
+			_p _r pi_ _t _tm f i p0 p1
 		) = sum $
 			[
 				3 * sizeOf x',
 				sizeOf x',
 				sizeOf pi_,
 				sizeOf x',
-				sizeOf tm,
+				--sizeOf tm,
 				sizeOf f,
 				sizeOf i,
 
@@ -1717,14 +1721,14 @@ instance Storable Swch where
 		where x' = error "Internal error: sizeOf Swch: sizeOf accessed its argument!" :: Float
 	alignment
 		~(Swch
-			_p _r pi_ _t tm f i p0 p1
+			_p _r pi_ _t _tm f i p0 p1
 		) = max 1 . maximum $
 			[
 				alignment x',
 				alignment x',
 				alignment pi_,
 				alignment x',
-				alignment tm,
+				--alignment tm,
 				alignment f,
 				alignment i,
 

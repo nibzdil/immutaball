@@ -93,6 +93,8 @@ import Immutaball.Share.Utils
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.ByteString.Unsafe as UB
 
+import Debug.Trace as D------------------------------------------------TODO
+
 -- * optional low-level parsing
 
 -- | Uses low-level memory management.
@@ -100,6 +102,7 @@ import qualified Data.ByteString.Unsafe as UB
 -- It does _some_ length checking but still does some memory reading without
 -- checking for length of the input data (and only afterward reading).
 --
+-- We don't use this.
 -- TODO FIXME: this is broken.  Just use the safe, high-level version for now.
 unsafeParseLevelFileRaw :: String -> BS.ByteString -> Either LevelIBParseException LevelIB
 unsafeParseLevelFileRaw inputName inputContents
@@ -128,6 +131,7 @@ unsafeParseLevelFileRaw inputName inputContents
 			-- Now parse the sol now that we validated the size.
 			-- This is unsafe since we don't know if we have enough data, but we at least know we're somewhat within the bounds.
 			sol <- peekSol inputPtr
+			flip D.trace (return ()) $ printf "DEBUG00: %s" (show (sol^.solMv))
 
 			-- Now check the exact length.
 			let neededSize = sizeOfExistingSol lengthSol

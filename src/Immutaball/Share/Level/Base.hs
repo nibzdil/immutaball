@@ -55,12 +55,14 @@ module Immutaball.Share.Level.Base
 		peeki32LE,
 		peekf32dLE,
 		peekn,
+		peeknWith,
 		peekCString,
 		pokei32Native,
 		pokei32BE,
 		pokei32LE,
 		pokef32dLE,
 		poken,
+		pokenWith,
 		pokeCString,
 		asType,
 		sizeOfMtrl,
@@ -83,6 +85,7 @@ module Immutaball.Share.Level.Base
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Arrow
 import Control.Monad
 import Control.Monad.Fix
 import Data.Bits
@@ -980,14 +983,30 @@ peekn ptr n
 		freeze' :: IOArray Int32 a -> IO (Array Int32 a)
 		freeze' = freeze
 
+peeknWith :: forall a. (Storable a) => (a -> Int) -> Ptr () -> Int32 -> StateT Int IO (Array Int32 a)
+peeknWith sizeOf_ ptr n
+	| n <= 0    = lift $ newArray_ (0, (-1)) >>= freeze'
+	| otherwise = do
+		offset <- get
+		(elems_, dynSize) <- lift . flip fix (0, 0) $ \me (idx, relOffset) -> do
+			if' (idx >= n) (return ([], relOffset)) $ do
+			elem_ <- peek (castPtr ptr `plusPtr` (offset + relOffset))
+			first (elem_:) <$> me (idx+1, relOffset + sizeOf_ elem_)
+		let array_ = IA.listArray (0, n-1) $ elems_
+		put $ offset + dynSize
+		return array_
+	where
+		freeze' :: IOArray Int32 a -> IO (Array Int32 a)
+		freeze' = freeze
+
 peekCString :: Ptr () -> Int -> StateT Int IO String
 peekCString ptr' bufSize = do
 	offset <- get
-	str <- flip fix 0 $ \withOffset relOffset -> do
+	str <- flip fix 0 $ \withRelOffset relOffset -> do
 		if' (relOffset >= bufSize) (return []) $ do
 		(c :: Word8) <- lift $ peek (castPtr ptr' `plusPtr` (offset + relOffset))
 		if' (c == 0) (return []) $ do
-		(asciiChar c:) <$> withOffset (relOffset+1)
+		(asciiChar c:) <$> withRelOffset (relOffset+1)
 	put $ offset + bufSize
 	return str
 	where
@@ -1029,7 +1048,7 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 
 	peekn ptr' (sol^.solAc) <*>  -- av
 	peekn ptr' (sol^.solDc) <*>  -- dv
-	peekn ptr' (sol^.solMc) <*>  -- mv
+	peeknWith sizeOfExistingMtrl ptr' (sol^.solMc) <*>  -- mv
 	peekn ptr' (sol^.solVc) <*>  -- vv
 	peekn ptr' (sol^.solEc) <*>  -- ev
 	peekn ptr' (sol^.solSc) <*>  -- sv
@@ -1038,7 +1057,7 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peekn ptr' (sol^.solGc) <*>  -- gv
 	peekn ptr' (sol^.solLc) <*>  -- lv
 	peekn ptr' (sol^.solNc) <*>  -- nv
-	peekn ptr' (sol^.solPc) <*>  -- pv
+	peeknWith sizeOfExistingPath ptr' (sol^.solPc) <*>  -- pv
 	peekn ptr' (sol^.solBc) <*>  -- bv
 	peekn ptr' (sol^.solHc) <*>  -- hv
 	peekn ptr' (sol^.solZc) <*>  -- zv
@@ -1080,7 +1099,7 @@ peekSol ptr = flip evalStateT 0 $ do
 
 	av <- peekn ptr' ac
 	dv <- peekn ptr' dc
-	mv <- peekn ptr' mc
+	mv <- peeknWith sizeOfExistingMtrl ptr' mc
 	vv <- peekn ptr' vc
 	ev <- peekn ptr' ec
 	sv <- peekn ptr' sc
@@ -1089,7 +1108,7 @@ peekSol ptr = flip evalStateT 0 $ do
 	gv <- peekn ptr' gc
 	lv <- peekn ptr' lc
 	nv <- peekn ptr' nc
-	pv <- peekn ptr' pc
+	pv <- peeknWith sizeOfExistingPath ptr' pc
 	bv <- peekn ptr' bc
 	hv <- peekn ptr' hc
 	zv <- peekn ptr' zc
@@ -1243,25 +1262,25 @@ pokeSol ptr
 		pokei32LE ptr' ic
 
 		poken ptr' ac av
-		poken ptr' mc dv
-		poken ptr' vc mv
-		poken ptr' ec vv
-		poken ptr' sc ev
-		poken ptr' tc sv
-		poken ptr' oc tv
-		poken ptr' gc ov
-		poken ptr' lc gv
-		poken ptr' nc lv
-		poken ptr' pc nv
-		poken ptr' bc pv
-		poken ptr' hc bv
-		poken ptr' zc hv
-		poken ptr' jc zv
-		poken ptr' xc jv
-		poken ptr' rc xv
-		poken ptr' uc rv
-		poken ptr' wc uv
-		poken ptr' dc wv
+		poken ptr' dc dv
+		pokenWith sizeOfExistingMtrl ptr' mc mv
+		poken ptr' vc vv
+		poken ptr' ec ev
+		poken ptr' sc sv
+		poken ptr' tc tv
+		poken ptr' oc ov
+		poken ptr' gc gv
+		poken ptr' lc lv
+		poken ptr' nc nv
+		pokenWith sizeOfExistingPath ptr' pc pv
+		poken ptr' bc bv
+		poken ptr' hc hv
+		poken ptr' zc zv
+		poken ptr' jc jv
+		poken ptr' xc xv
+		poken ptr' rc rv
+		poken ptr' uc uv
+		poken ptr' wc wv
 		poken ptr' ic iv
 
 	where ptr' = castPtr ptr
@@ -1334,6 +1353,15 @@ poken ptr n array_
 			offset <- get
 			lift $ poke (castPtr ptr `plusPtr` offset) elem_
 			put $ offset + sizeofElem
+
+pokenWith :: forall a. (Storable a) => (a -> Int) -> Ptr () -> Int32 -> Array Int32 a -> StateT Int IO ()
+pokenWith sizeOf_ ptr n array_
+	| n <= 0    = return ()
+	| otherwise = do
+		forM_ array_ $ \elem_ -> do
+			offset <- get
+			lift $ poke (castPtr ptr `plusPtr` offset) elem_
+			put $ offset + sizeOf_ elem_
 
 pokeCString :: Ptr () -> Int -> String -> StateT Int IO ()
 pokeCString ptr bufSize str

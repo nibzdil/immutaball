@@ -9,6 +9,7 @@
 
 module Immutaball.Share.Level.Base
 	(
+		-- * sol
 		solPathMax,
 		solMagicConstant,
 		solVersionCurr,
@@ -46,6 +47,8 @@ module Immutaball.Share.Level.Base
 			solIv,
 		LevelIB,
 		emptySol,
+
+		-- * Optional low-level storable provisions.
 		peeki32Native,
 		peeki32BE,
 		peeki32LE,
@@ -98,6 +101,8 @@ import Data.Array.IArray as IA
 
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
+
+-- * sol
 
 solPathMax :: Int
 solPathMax = 64
@@ -444,6 +449,19 @@ makeLenses ''Sol
 
 type LevelIB = Sol
 
+emptySol :: Sol
+emptySol =
+	(Sol
+		solMagicConstant solVersionCurr
+		0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+		a a a a a a a a a a a a a a a a a a a a a
+	)
+	where
+		a :: (Storable a) => Array Int32 a
+		a = IA.listArray (0, -1) []
+
+-- * Optional low-level storable provisions.
+
 instance Storable Sol where
 	sizeOf = sizeOfEmptySol
 
@@ -505,17 +523,6 @@ instance Storable Sol where
 
 	peek = peekSol
 	poke = pokeSol
-
-emptySol :: Sol
-emptySol =
-	(Sol
-		solMagicConstant solVersionCurr
-		0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-		a a a a a a a a a a a a a a a a a a a a a
-	)
-	where
-		a :: (Storable a) => Array Int32 a
-		a = IA.listArray (0, -1) []
 
 sizeOfPath :: Path -> Int
 sizeOfPath = sizeOfPathMax

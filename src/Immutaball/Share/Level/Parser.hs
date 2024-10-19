@@ -12,12 +12,36 @@ module Immutaball.Share.Level.Parser
 		-- * parsing
 		parseLevelFile,
 		levelFileParser,
+		parseByte,
 		parsei32Native,
 		parsei32BE,
 		parsei32LE,
 		parsef32dLE,
 		parsen,
 		parseCString,
+		parseVec2fd,
+		parseVec3fd,
+		parseVec4fd,
+
+		parseDict,
+		parseMtrl,
+		parseVert,
+		parseEdge,
+		parseSide,
+		parseTexc,
+		parseOffs,
+		parseGeom,
+		parseLump,
+		parseNode,
+		parsePath,
+		parseBody,
+		parseItem,
+		parseGoal,
+		parseJump,
+		parseSwch,
+		parseBill,
+		parseBall,
+		parseView,
 
 		-- * optional low-level parsing
 		unsafeParseLevelFileRaw,
@@ -31,7 +55,7 @@ module Immutaball.Share.Level.Parser
 		MissingSOLMagicIBParseException(..),
 		UnsupportedSOLVersionIBParseException(..),
 		OversizedLevelIBParseException(..),
-		ParseErrorIBParseException(..)
+		ParseErrorLevelIBParseException(..)
 	) where
 
 import Prelude ()
@@ -40,6 +64,7 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Exception
 import Control.Lens
+import Control.Monad
 import Data.Bits
 import Data.Coerce
 import Data.Function hiding (id, (.))
@@ -60,6 +85,7 @@ import qualified SDL.Raw.Enum as Raw
 import Text.Parsec
 
 import Immutaball.Share.Level.Base
+import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
 -- Low-level imports.
@@ -266,5 +292,236 @@ parseCString n
 		asciiChar :: Word8 -> Char
 		asciiChar = toEnum . fromEnum
 
+parseVec2fd :: Parsec BL.ByteString () (Vec2 Double)
+parseVec2fd = Vec2 <$> parsef32dLE <*> parsef32dLE
+
+parseVec3fd :: Parsec BL.ByteString () (Vec3 Double)
+parseVec3fd = Vec3 <$> parsef32dLE <*> parsef32dLE <*> parsef32dLE
+
+parseVec4fd :: Parsec BL.ByteString () (Vec4 Double)
+parseVec4fd = Vec4 <$> parsef32dLE <*> parsef32dLE <*> parsef32dLE <*> parsef32dLE
+
 levelFileParser :: Parsec BL.ByteString () LevelIB
-levelFileParser = _
+levelFileParser = do
+	magic   <- parsei32LE
+	when (magic   /= solMagicConstant) . unexpected $ printf "Error: levelFileParser: expected the 4 SOL starter bytes; found 0x%04X, /= 0x%04X" magic solMagicConstant
+	version <- parsei32LE
+	when (version /= solVersionCurr  ) . unexpected $ printf "Error: levelFileParser: unsupported SOL version; found %d, /= %d" version solVersionCurr
+
+	ac <- parsei32LE
+	dc <- parsei32LE
+	mc <- parsei32LE
+	vc <- parsei32LE
+	ec <- parsei32LE
+	sc <- parsei32LE
+	tc <- parsei32LE
+	oc <- parsei32LE
+	gc <- parsei32LE
+	lc <- parsei32LE
+	nc <- parsei32LE
+	pc <- parsei32LE
+	bc <- parsei32LE
+	hc <- parsei32LE
+	zc <- parsei32LE
+	jc <- parsei32LE
+	xc <- parsei32LE
+	rc <- parsei32LE
+	uc <- parsei32LE
+	wc <- parsei32LE
+	ic <- parsei32LE
+
+	av <- parsen parseByte  ac & (fmap (coerce . (fromIntegral :: Word8 -> Int8)) <$>)
+	dv <- parsen parseDict  dc
+	mv <- parsen parseMtrl  mc
+	vv <- parsen parseVert  vc
+	ev <- parsen parseEdge  ec
+	sv <- parsen parseSide  sc
+	tv <- parsen parseTexc  tc
+	ov <- parsen parseOffs  oc
+	gv <- parsen parseGeom  gc
+	lv <- parsen parseLump  lc
+	nv <- parsen parseNode  nc
+	pv <- parsen parsePath  pc
+	bv <- parsen parseBody  bc
+	hv <- parsen parseItem  hc
+	zv <- parsen parseGoal  zc
+	jv <- parsen parseJump  jc
+	xv <- parsen parseSwch  xc
+	rv <- parsen parseBill  rc
+	uv <- parsen parseBall  uc
+	wv <- parsen parseView  wc
+	iv <- parsen parsei32LE ic
+
+	return $ Sol {
+		_solMagic   = magic,
+		_solVersion = version,
+
+		_solAc = ac,
+		_solDc = dc,
+		_solMc = mc,
+		_solVc = vc,
+		_solEc = ec,
+		_solSc = sc,
+		_solTc = tc,
+		_solOc = oc,
+		_solGc = gc,
+		_solLc = lc,
+		_solNc = nc,
+		_solPc = pc,
+		_solBc = bc,
+		_solHc = hc,
+		_solZc = zc,
+		_solJc = jc,
+		_solXc = xc,
+		_solRc = rc,
+		_solUc = uc,
+		_solWc = wc,
+		_solIc = ic,
+
+		_solAv = av,
+		_solDv = dv,
+		_solMv = mv,
+		_solVv = vv,
+		_solEv = ev,
+		_solSv = sv,
+		_solTv = tv,
+		_solOv = ov,
+		_solGv = gv,
+		_solLv = lv,
+		_solNv = nv,
+		_solPv = pv,
+		_solBv = bv,
+		_solHv = hv,
+		_solZv = zv,
+		_solJv = jv,
+		_solXv = xv,
+		_solRv = rv,
+		_solUv = uv,
+		_solWv = wv,
+		_solIv = iv
+	}
+
+parseDict :: Parsec BL.ByteString () Dict
+parseDict = Dict <$> parsei32LE <*> parsei32LE
+
+parseMtrl :: Parsec BL.ByteString () Mtrl
+parseMtrl = Mtrl <$>
+	parseVec4fd <*> parseVec4fd <*> parseVec4fd <*> parseVec4fd <*>
+	parsef32dLE <*>
+	parsef32dLE <*>
+	parsei32LE <*>
+	parseCString solPathMax <*>
+	parsei32LE <*>
+	parsef32dLE
+
+parseVert :: Parsec BL.ByteString () Vert
+parseVert = Vert <$> parseVec3fd
+
+parseEdge :: Parsec BL.ByteString () Edge
+parseEdge = Edge <$> parsei32LE <*> parsei32LE
+
+parseSide :: Parsec BL.ByteString () Side
+parseSide = Side <$> parseVec3fd <*> parsef32dLE
+
+parseTexc :: Parsec BL.ByteString () Texc
+parseTexc = Texc <$> parseVec2fd
+
+parseOffs :: Parsec BL.ByteString () Offs
+parseOffs = Offs <$> parsei32LE <*> parsei32LE <*> parsei32LE
+
+parseGeom :: Parsec BL.ByteString () Geom
+parseGeom = Geom <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+
+parseLump :: Parsec BL.ByteString () Lump
+parseLump = Lump <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+
+parseNode :: Parsec BL.ByteString () Node
+parseNode = Node <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+
+-- Irregular encoding.
+parsePath :: Parsec BL.ByteString () Path
+parsePath = do
+	p   <- parseVec3fd
+	t   <- parsef32dLE
+	pi_ <- parsei32LE
+	f   <- parsei32LE
+	s   <- parsei32LE
+	fl  <- parsei32LE
+
+	e        <- if' ((fl .&. pathFlagOriented) /= 0) parseVec4fd (return $ Vec4 0.0 0.0 0.0 0.0)
+	(p0, p1) <- if' ((fl .&. pathFlagParented) /= 0) ((,) <$> parsei32LE <*> parsei32LE) (return $ (0, 0))
+
+	let tm = round $ (1000.0*t)
+
+	return $ Path {
+		_pathP  = p,
+		_pathE  = e,
+		_pathT  = t,
+		_pathTm = tm,
+
+		_pathPi = pi_,
+		_pathF  = f,
+		_pathS  = s,
+
+		_pathFl = fl,
+
+		_pathP0 = p0,
+		_pathP1 = p1
+	}
+
+parseBody :: Parsec BL.ByteString () Body
+parseBody = Body <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+
+parseItem :: Parsec BL.ByteString () Item
+parseItem = Item <$> parseVec3fd <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+
+parseGoal :: Parsec BL.ByteString () Goal
+parseGoal = Goal <$> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE
+
+parseJump :: Parsec BL.ByteString () Jump
+parseJump = Jump <$> parseVec3fd <*> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE
+
+-- Irregular encoding.
+parseSwch :: Parsec BL.ByteString () Swch
+parseSwch = do
+	p   <- parseVec3fd
+	r   <- parsef32dLE
+	pi_ <- parsei32LE
+
+	t      <- parsef32dLE
+	_skip0 <- parsef32dLE
+	let tm = round $ 1000.0*t
+	f      <- parsei32LE
+	_skip1 <- parsei32LE
+	i      <- parsei32LE
+
+	p0 <- parsei32LE
+	p1 <- parsei32LE
+
+	return $ Swch {
+		_swchP  = p,
+		_swchR  = r,
+		_swchPi = pi_,
+
+		_swchT  = t,
+		_swchTm = tm,
+		_swchF  = f,
+		_swchI  = i,
+
+		_swchP0 = p0,
+		_swchP1 = p1
+	}
+
+parseBill :: Parsec BL.ByteString () Bill
+parseBill = Bill <$>
+	parsei32LE <*> parsei32LE <*> parsef32dLE <*> parsef32dLE <*>
+	parseVec3fd <*> parseVec3fd <*>
+	parseVec3fd <*> parseVec3fd <*> parseVec3fd <*>
+	parseVec3fd <*>
+	parsei32LE <*> parsei32LE
+
+parseBall :: Parsec BL.ByteString () Ball
+parseBall = Ball <$> parseVec3fd <*> parsef32dLE
+
+parseView :: Parsec BL.ByteString () View
+parseView = View <$> parseVec3fd <*> parseVec3fd

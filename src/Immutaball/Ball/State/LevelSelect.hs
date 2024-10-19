@@ -26,7 +26,7 @@ import Control.Monad
 --import Data.Functor.Identity
 
 --import Control.Lens
-import qualified Data.ByteString as BS
+--import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 --import qualified Data.Map as M
 import qualified SDL.Raw.Enum as Raw
@@ -80,8 +80,8 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 	let (toLevelPath' :: Maybe String) = ((cxt^.ibContext.ibDirs.ibStaticDataDir) </>) <$> toLevelPath
 	(mtoLevelContents :: Maybe (Either IOException BL.ByteString)) <- monadic -< maybe (pure Nothing) (\path -> (Just <$>) . liftIBIO . BasicIBIOF $ ReadBytesSync path id) $ toLevelPath'
 	(toLevelContents :: Maybe BL.ByteString) <- monadic -< maybe (pure Nothing) (\mcontents -> liftIBIO . ThrowIO ||| pure . Just $ mcontents) $ mtoLevelContents
-	let (toLevelContentsBS :: Maybe BS.ByteString) = if' False BL.toStrict id <$> toLevelContents
-	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile <$> toLevelPath <*> toLevelContentsBS
+	let (toLevelContentsBL :: Maybe BL.ByteString) = flip const BL.toStrict id <$> toLevelContents
+	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile <$> toLevelPath <*> toLevelContentsBL
 	(toLevel :: Maybe LevelIB) <- monadic -< maybe (pure Nothing) (liftIBIO . ThrowIO ||| pure . Just) $ toLevelParse
 
 	-- Switch to a level.

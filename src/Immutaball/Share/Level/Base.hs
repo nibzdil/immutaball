@@ -538,14 +538,14 @@ sizeOfMtrl = sizeOfMtrlMax
 sizeOfMtrlMin :: Mtrl -> Int
 sizeOfMtrlMin
 	~(Mtrl
-		_d _a _s _e h _angle fl _f _alphaFunc _alphaRef
+		_d _a _s _e _h _angle fl _f _alphaFunc _alphaRef
 	) = sum $
 		[
 			sizeOf x' * 4,
 			sizeOf x' * 4,
 			sizeOf x' * 4,
 			sizeOf x' * 4,
-			sizeOf h,
+			sizeOf x',
 			--sizeOf angle,
 			sizeOf fl,
 			solPathMax
@@ -557,14 +557,14 @@ sizeOfMtrlMin
 sizeOfMtrlMax :: Mtrl -> Int
 sizeOfMtrlMax
 	~(Mtrl
-		_d _a _s _e h _angle fl _f alphaFunc alphaRef
+		_d _a _s _e _h _angle fl _f alphaFunc alphaRef
 	) = sum $
 		[
 			sizeOf x' * 4,
 			sizeOf x' * 4,
 			sizeOf x' * 4,
 			sizeOf x' * 4,
-			sizeOf h,
+			sizeOf x',
 			--sizeOf angle,
 			sizeOf fl,
 			solPathMax,

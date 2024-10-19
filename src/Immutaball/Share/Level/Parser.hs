@@ -129,7 +129,9 @@ unsafeParseLevelFileRaw inputName inputContents
 
 			-- Now parse the sol now that we validated the size.
 			-- This is unsafe since we don't know if we have enough data, but we at least know we're somewhat within the bounds.
+			flip D.trace (return ()) ("DEBUG00")
 			sol <- peekSol inputPtr
+			flip D.trace (return ()) ("DEBUG01")
 
 			-- Now check the exact length.
 			let neededSize = sizeOfExistingSol lengthSol

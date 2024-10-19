@@ -82,7 +82,7 @@ import Data.Array.IArray as IA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified SDL.Raw.Enum as Raw
-import Text.Parsec
+import Text.Parsec as P
 
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
@@ -217,12 +217,13 @@ parseLevelFile inputName inputContents = (\r -> flip D.trace r $ printf "DEBUG0:
 
 parseByte :: Parsec BL.ByteString () Word8
 parseByte = truncateAsciiChar <$> anyChar
+	& P.try <?> "parseByte expected a w8"
 	where
 		truncateAsciiChar :: Char -> Word8
 		truncateAsciiChar = toEnum . fromEnum
 
 parsei32Native :: Parsec BL.ByteString () Int32
-parsei32Native = do
+parsei32Native = (<?> "parsei32Native expected an i32") . P.try $ do
 	byte0_ <- parseByte
 	byte1_ <- parseByte
 	byte2_ <- parseByte
@@ -233,7 +234,7 @@ parsei32Native = do
 	return $ i32
 
 parsei32BE :: Parsec BL.ByteString () Int32
-parsei32BE = do
+parsei32BE = (<?> "parsei32BE expected an i32") . P.try $ do
 	byte0 <- parseByte
 	byte1 <- parseByte
 	byte2 <- parseByte
@@ -243,7 +244,7 @@ parsei32BE = do
 	return $ i32
 
 parsei32LE :: Parsec BL.ByteString () Int32
-parsei32LE = do
+parsei32LE = (<?> "parsei32LE expected an i32") . P.try $ do
 	byte3 <- parseByte
 	byte2 <- parseByte
 	byte1 <- parseByte
@@ -253,7 +254,7 @@ parsei32LE = do
 	return $ i32
 
 parsef32dLE :: Parsec BL.ByteString () Double
-parsef32dLE = do
+parsef32dLE = (<?> "parsef32dLE expected an f32") . P.try $ do
 	byte3 <- parseByte
 	byte2 <- parseByte
 	byte1 <- parseByte
@@ -266,7 +267,7 @@ parsef32dLE = do
 parsen :: forall a. Parsec BL.ByteString () a -> Int32 -> Parsec BL.ByteString () (Array Int32 a)
 parsen parseElem n
 	| n <= 0 = return emptyArray
-	| otherwise = do
+	| otherwise = (<?> (printf "parsen _ %d expected an array" n)) . P.try $ do
 		as <- flip fix 0 $ \me idx -> do
 			if' (idx >= n) (return []) $ do
 			a <- parseElem
@@ -279,7 +280,7 @@ parsen parseElem n
 parseCString :: Int -> Parsec BL.ByteString () String
 parseCString n
 	| n <= 0 = return []
-	| otherwise = do
+	| otherwise = (<?> (printf "parseCString %d expected a CString" n)) . P.try $ do
 		cs <- (\me -> me 0 False) . fix $ \me idx isTerminated -> do
 			if' (idx >= n) (return []) $ do
 			b <- parseByte
@@ -294,15 +295,18 @@ parseCString n
 
 parseVec2fd :: Parsec BL.ByteString () (Vec2 Double)
 parseVec2fd = Vec2 <$> parsef32dLE <*> parsef32dLE
+	& P.try <?> "parseVec2fd expected a Vec2f"
 
 parseVec3fd :: Parsec BL.ByteString () (Vec3 Double)
 parseVec3fd = Vec3 <$> parsef32dLE <*> parsef32dLE <*> parsef32dLE
+	& P.try <?> "parseVec3fd expected a Vec3f"
 
 parseVec4fd :: Parsec BL.ByteString () (Vec4 Double)
 parseVec4fd = Vec4 <$> parsef32dLE <*> parsef32dLE <*> parsef32dLE <*> parsef32dLE
+	& P.try <?> "parseVec4fd expected a Vec4f"
 
 levelFileParser :: Parsec BL.ByteString () LevelIB
-levelFileParser = do
+levelFileParser = (<?> "levelFileParser expected a sol") . P.try $ do
 	magic   <- parsei32LE
 	when (magic   /= solMagicConstant) . unexpected $ printf "Error: levelFileParser: expected the 4 SOL starter bytes; found 0x%04X, /= 0x%04X" magic solMagicConstant
 	version <- parsei32LE
@@ -403,6 +407,7 @@ levelFileParser = do
 
 parseDict :: Parsec BL.ByteString () Dict
 parseDict = Dict <$> parsei32LE <*> parsei32LE
+	& P.try <?> "parseDict expected a Dict"
 
 parseMtrl :: Parsec BL.ByteString () Mtrl
 parseMtrl = Mtrl <$>
@@ -413,34 +418,43 @@ parseMtrl = Mtrl <$>
 	parseCString solPathMax <*>
 	parsei32LE <*>
 	parsef32dLE
+	& P.try <?> "parseMtrl expected a Mtrl"
 
 parseVert :: Parsec BL.ByteString () Vert
 parseVert = Vert <$> parseVec3fd
+	& P.try <?> "parseVert expected a Vert"
 
 parseEdge :: Parsec BL.ByteString () Edge
 parseEdge = Edge <$> parsei32LE <*> parsei32LE
+	& P.try <?> "parseEdge expected an Edge"
 
 parseSide :: Parsec BL.ByteString () Side
 parseSide = Side <$> parseVec3fd <*> parsef32dLE
+	& P.try <?> "parseSide expected a Side"
 
 parseTexc :: Parsec BL.ByteString () Texc
 parseTexc = Texc <$> parseVec2fd
+	& P.try <?> "parseTexc expected a Texc"
 
 parseOffs :: Parsec BL.ByteString () Offs
 parseOffs = Offs <$> parsei32LE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseOffs expected an Offs"
 
 parseGeom :: Parsec BL.ByteString () Geom
 parseGeom = Geom <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseGeom expected a Geom"
 
 parseLump :: Parsec BL.ByteString () Lump
 parseLump = Lump <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseLump expected a Lump"
 
 parseNode :: Parsec BL.ByteString () Node
 parseNode = Node <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseNode expected a Node"
 
 -- Irregular encoding.
 parsePath :: Parsec BL.ByteString () Path
-parsePath = do
+parsePath = (<?> "parsePath expected a Path") . P.try $ do
 	p   <- parseVec3fd
 	t   <- parsef32dLE
 	pi_ <- parsei32LE
@@ -471,19 +485,23 @@ parsePath = do
 
 parseBody :: Parsec BL.ByteString () Body
 parseBody = Body <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseBody expected a Body"
 
 parseItem :: Parsec BL.ByteString () Item
 parseItem = Item <$> parseVec3fd <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseItem expected an Item"
 
 parseGoal :: Parsec BL.ByteString () Goal
 parseGoal = Goal <$> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseGoal expected a Goal"
 
 parseJump :: Parsec BL.ByteString () Jump
 parseJump = Jump <$> parseVec3fd <*> parseVec3fd <*> parsef32dLE <*> parsei32LE <*> parsei32LE
+	& P.try <?> "parseJump expected a Jump"
 
 -- Irregular encoding.
 parseSwch :: Parsec BL.ByteString () Swch
-parseSwch = do
+parseSwch = (<?> "parseSwch expected a Swch") . P.try $ do
 	p   <- parseVec3fd
 	r   <- parsef32dLE
 	pi_ <- parsei32LE
@@ -519,9 +537,12 @@ parseBill = Bill <$>
 	parseVec3fd <*> parseVec3fd <*> parseVec3fd <*>
 	parseVec3fd <*>
 	parsei32LE <*> parsei32LE
+	& P.try <?> "parseBill expected a Bill"
 
 parseBall :: Parsec BL.ByteString () Ball
 parseBall = Ball <$> parseVec3fd <*> parsef32dLE
+	& P.try <?> "parseBall expected a Ball"
 
 parseView :: Parsec BL.ByteString () View
 parseView = View <$> parseVec3fd <*> parseVec3fd
+	& P.try <?> "parseView expected a View"

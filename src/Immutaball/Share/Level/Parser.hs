@@ -12,9 +12,16 @@ module Immutaball.Share.Level.Parser
 		-- * parsing
 		parseLevelFile,
 		levelFileParser,
+		parsei32Native,
+		parsei32BE,
+		parsei32LE,
+		parsef32dLE,
+		parsen,
+		parseCString,
 
 		-- * optional low-level parsing
 		unsafeParseLevelFileRaw,
+		w32ToFloat,
 
 		-- * exceptions
 		LevelIBParseException(..),
@@ -33,12 +40,23 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Exception
 import Control.Lens
+import Data.Bits
+import Data.Coerce
+import Data.Function hiding (id, (.))
+import Data.Int
 import Data.Typeable
+import Data.Word
+import Foreign.C.Types
+import Foreign.ForeignPtr
 import Foreign.Ptr
+import Foreign.Storable
 import Text.Printf
 
+import Data.Array
+import Data.Array.IArray as IA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
+import qualified SDL.Raw.Enum as Raw
 import Text.Parsec
 
 import Immutaball.Share.Level.Base
@@ -101,6 +119,18 @@ unsafeParseLevelFileRaw inputName inputContents
 		errMagic = LevelIBParseException . MissingSOLMagicIBParseException
 		errVersion = LevelIBParseException . UnsupportedSOLVersionIBParseException
 
+w32ToFloat :: Word32 -> Float
+w32ToFloat w32 = unsafePerformIO $ do
+	-- GHC doesn't support coerce between Word32 and Float.
+	-- Just malloc a new cfloat.
+	{-
+	let (f32 :: Float)  = coerce w32
+	-}
+	(cfloat :: ForeignPtr CFloat) <- mallocForeignPtr
+	(cf32 :: CFloat) <- withForeignPtr cfloat $ \cfloatPtr -> poke (castPtr cfloatPtr) w32 >> peek cfloatPtr
+	let (f32 :: Float) = coerce cf32
+	return f32
+
 -- * exceptions
 
 data LevelIBParseException = forall e. Exception e => LevelIBParseException e
@@ -158,6 +188,83 @@ instance Show ParseErrorLevelIBParseException where
 
 parseLevelFile :: String -> BL.ByteString -> Either LevelIBParseException LevelIB
 parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
+
+parseByte :: Parsec BL.ByteString () Word8
+parseByte = truncateAsciiChar <$> anyChar
+	where
+		truncateAsciiChar :: Char -> Word8
+		truncateAsciiChar = toEnum . fromEnum
+
+parsei32Native :: Parsec BL.ByteString () Int32
+parsei32Native = do
+	byte0_ <- parseByte
+	byte1_ <- parseByte
+	byte2_ <- parseByte
+	byte3_ <- parseByte
+	let (byte0, byte1, byte2, byte3) = if' (Raw.SDL_BYTEORDER == Raw.SDL_BIG_ENDIAN) (byte0_, byte1_, byte2_, byte3_) (byte3_, byte2_, byte1_, byte0_)
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
+	let (i32 :: Int32)  = fromIntegral w32
+	return $ i32
+
+parsei32BE :: Parsec BL.ByteString () Int32
+parsei32BE = do
+	byte0 <- parseByte
+	byte1 <- parseByte
+	byte2 <- parseByte
+	byte3 <- parseByte
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
+	let (i32 :: Int32)  = fromIntegral w32
+	return $ i32
+
+parsei32LE :: Parsec BL.ByteString () Int32
+parsei32LE = do
+	byte3 <- parseByte
+	byte2 <- parseByte
+	byte1 <- parseByte
+	byte0 <- parseByte
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
+	let (i32 :: Int32)  = fromIntegral w32
+	return $ i32
+
+parsef32dLE :: Parsec BL.ByteString () Double
+parsef32dLE = do
+	byte3 <- parseByte
+	byte2 <- parseByte
+	byte1 <- parseByte
+	byte0 <- parseByte
+	let (w32 :: Word32) = ((fromIntegral byte0 `shiftL` 24) .|. (fromIntegral byte1 `shiftL` 16) .|. (fromIntegral byte2 `shiftL` 8) .|. (fromIntegral byte3 `shiftL` 0))
+	let (fl  :: Float)  = w32ToFloat w32
+	let (d   :: Double) = realToFrac fl
+	return $ d
+
+parsen :: forall a. Parsec BL.ByteString () a -> Int32 -> Parsec BL.ByteString () (Array Int32 a)
+parsen parseElem n
+	| n <= 0 = return emptyArray
+	| otherwise = do
+		as <- flip fix 0 $ \me idx -> do
+			if' (idx >= n) (return []) $ do
+			a <- parseElem
+			(a:) <$> me (idx+1)
+		return $ IA.listArray (0, n-1) as
+	where
+		emptyArray :: Array Int32 a
+		emptyArray = IA.listArray (0, -1) []
+
+parseCString :: Int -> Parsec BL.ByteString () String
+parseCString n
+	| n <= 0 = return []
+	| otherwise = do
+		cs <- (\me -> me 0 False) . fix $ \me idx isTerminated -> do
+			if' (idx >= n) (return []) $ do
+			b <- parseByte
+			let c = asciiChar b
+			if' (isTerminated || b == 0) (me (idx+1) True) $ do
+			(c:) <$> me (idx+1) isTerminated
+		let str = cs
+		return $ str
+	where
+		asciiChar :: Word8 -> Char
+		asciiChar = toEnum . fromEnum
 
 levelFileParser :: Parsec BL.ByteString () LevelIB
 levelFileParser = _

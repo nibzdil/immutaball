@@ -94,7 +94,7 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 
 	where
 		cxt0 = either initialStateCxt id baseCxt0
-		useUnsafeVersion = True
+		useUnsafeVersion = False
 		parseLevelFile' = if' useUnsafeVersion (\p -> unsafeParseLevelFileRaw p . BL.toStrict) parseLevelFile
 
 -- TODO: make a better UI.  For now we just have a simple list of levels.

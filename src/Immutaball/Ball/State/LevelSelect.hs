@@ -80,7 +80,7 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 	let (toLevelPath' :: Maybe String) = ((cxt^.ibContext.ibDirs.ibStaticDataDir) </>) <$> toLevelPath
 	(mtoLevelContents :: Maybe (Either IOException BL.ByteString)) <- monadic -< maybe (pure Nothing) (\path -> (Just <$>) . liftIBIO . BasicIBIOF $ ReadBytesSync path id) $ toLevelPath'
 	(toLevelContents :: Maybe BL.ByteString) <- monadic -< maybe (pure Nothing) (\mcontents -> liftIBIO . ThrowIO ||| pure . Just $ mcontents) $ mtoLevelContents
-	let (toLevelContentsBS :: Maybe BS.ByteString) = BL.toStrict <$> toLevelContents
+	let (toLevelContentsBS :: Maybe BS.ByteString) = if' False BL.toStrict id <$> toLevelContents
 	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile <$> toLevelPath <*> toLevelContentsBS
 	(toLevel :: Maybe LevelIB) <- monadic -< maybe (pure Nothing) (liftIBIO . ThrowIO ||| pure . Just) $ toLevelParse
 

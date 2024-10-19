@@ -11,6 +11,10 @@ module Immutaball.Share.Level.Parser
 	(
 		-- * parsing
 		parseLevelFile,
+		levelFileParser,
+
+		-- * optional low-level parsing
+		unsafeParseLevelFileRaw,
 
 		-- * exceptions
 		LevelIBParseException(..),
@@ -19,12 +23,14 @@ module Immutaball.Share.Level.Parser
 		UndersizedLevelIBParseException(..),
 		MissingSOLMagicIBParseException(..),
 		UnsupportedSOLVersionIBParseException(..),
-		OversizedLevelIBParseException(..)
+		OversizedLevelIBParseException(..),
+		ParseErrorIBParseException(..)
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Arrow
 import Control.Exception
 import Control.Lens
 import Data.Typeable
@@ -32,7 +38,8 @@ import Foreign.Ptr
 import Text.Printf
 
 import qualified Data.ByteString as BS
---import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy as BL
+import Text.Parsec
 
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Utils
@@ -43,11 +50,14 @@ import qualified Data.ByteString.Unsafe as UB
 
 import Debug.Trace as D-------------------------------- TODO
 
--- * parsing
+-- * optional low-level parsing
 
 -- | Uses low-level memory management.
-parseLevelFile :: String -> BS.ByteString -> Either LevelIBParseException LevelIB
-parseLevelFile inputName inputContents
+--
+-- It does _some_ length checking but still does some memory reading without
+-- checking for length of the input data (and only afterward reading).
+unsafeParseLevelFileRaw :: String -> BS.ByteString -> Either LevelIBParseException LevelIB
+unsafeParseLevelFileRaw inputName inputContents
 	| inputSize < lengthSolSize =
 		Left . errSize $ "Error: parseLevelFile: the data string does not have enough data to read the header with lengths!"
 	| otherwise = unsafePerformIO $
@@ -62,16 +72,25 @@ parseLevelFile inputName inputContents
 			if' ((lengthSol^.solVersion) /= solVersionCurr)   (return . Left . errVersion $ printf "Error: parseLevelFile: SOL file input ‘%s’ has an unsupported version.  Its code %d /= %d." inputName (lengthSol^.solVersion) solVersionCurr) $ do
 
 			-- Now we know the lengths, so we can calculate the size of the data we require.
-			let neededSize = sizeOfExistingSol lengthSol
+			let neededSizeMin = sizeOfExistingSolMin lengthSol
+			let neededSizeMax = sizeOfExistingSolMax lengthSol
 			let actualSize = inputSize
 			flip D.trace (return ()) $ (printf "DEBUG0: %s" (show (lengthSol)))
-			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
+			if' (actualSize < neededSizeMin) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d < %d" inputName inputSize neededSizeMin) $ do
 
-			-- Also check for overside.
-			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected: input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSize) $ do
+			-- Also check for oversize.
+			if' (actualSize > neededSizeMax) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected: input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSizeMax) $ do
 
 			-- Now parse the sol now that we validated the size.
+			-- This is unsafe since we don't know if we have enough data, but we at least know we're somewhat within the bounds.
 			sol <- peekSol inputPtr
+
+			-- Now check the exact length.
+			let neededSize = sizeOfExistingSol lengthSol
+			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file (exact sizE): input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
+			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected (exact sizE): input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSize) $ do
+
+			-- Return our parsed Sol.
 			return $ Right sol
 	where
 		lengthSolSize :: Int
@@ -126,3 +145,19 @@ instance Exception OversizedLevelIBParseException where
 	fromException = levelIBParseExceptionFromException
 instance Show OversizedLevelIBParseException where
 	show (OversizedLevelIBParseException msg) = msg
+
+-- | The input data was bigger than expected.
+data ParseErrorLevelIBParseException = ParseErrorLevelIBParseException ParseError
+instance Exception ParseErrorLevelIBParseException where
+	toException = levelIBParseExceptionToException
+	fromException = levelIBParseExceptionFromException
+instance Show ParseErrorLevelIBParseException where
+	show (ParseErrorLevelIBParseException parseError) = show parseError
+
+-- * parsing
+
+parseLevelFile :: String -> BL.ByteString -> Either LevelIBParseException LevelIB
+parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
+
+levelFileParser :: Parsec BL.ByteString () LevelIB
+levelFileParser = _

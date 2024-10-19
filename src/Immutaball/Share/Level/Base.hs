@@ -16,6 +16,7 @@ module Immutaball.Share.Level.Base
 		solVersion2024_04,
 		pathFlagOriented,
 		pathFlagParented,
+		mtrlFlagAlphaTest,
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
@@ -62,6 +63,10 @@ module Immutaball.Share.Level.Base
 		poken,
 		pokeCString,
 		asType,
+		sizeOfMtrl,
+		sizeOfMtrlMin,
+		sizeOfMtrlMax,
+		sizeOfExistingMtrl,
 		sizeOfPath,
 		sizeOfPathMin,
 		sizeOfPathMax,
@@ -121,6 +126,9 @@ pathFlagOriented = 1
 
 pathFlagParented :: Int32
 pathFlagParented = 2
+
+mtrlFlagAlphaTest :: Int32
+mtrlFlagAlphaTest = 1 `shiftL` 9
 
 data Mtrl = Mtrl {
 	-- | Diffuse color.
@@ -394,8 +402,8 @@ makeLenses ''Dict
 -- argument, but is still useful for reading and writing when combined with
 -- validation.  peekSol and pokeSol offer more pure implementations.
 --
--- Note that Path and Swch have irregular serializers, and Path is
--- variable-width.  The sizes by default are the conservative max sizes.
+-- Note that Mtrl, Path, and Swch have irregular serializers, and Mtrl and Path
+-- is variable-width.  The sizes by default are the conservative max sizes.
 data Sol = Sol {
 	_solMagic   :: Int32,
 	_solVersion :: Int32,
@@ -523,6 +531,63 @@ instance Storable Sol where
 
 	peek = peekSol
 	poke = pokeSol
+
+sizeOfMtrl :: Mtrl -> Int
+sizeOfMtrl = sizeOfMtrlMax
+
+sizeOfMtrlMin :: Mtrl -> Int
+sizeOfMtrlMin
+	~(Mtrl
+		d a s e h _angle fl _f _alphaFunc _alphaRef
+	) = sum $
+		[
+			sizeOf (d^._1) * 4,
+			sizeOf (a^._1) * 4,
+			sizeOf (s^._1) * 4,
+			sizeOf (e^._1) * 4,
+			sizeOf h,
+			--sizeOf angle,
+			sizeOf fl,
+			solPathMax
+			--sizeOf alphaFunc,
+			--sizeOf alphaRef
+		]
+
+sizeOfMtrlMax :: Mtrl -> Int
+sizeOfMtrlMax
+	~(Mtrl
+		d a s e h _angle fl _f alphaFunc alphaRef
+	) = sum $
+		[
+			sizeOf (d^._1) * 4,
+			sizeOf (a^._1) * 4,
+			sizeOf (s^._1) * 4,
+			sizeOf (e^._1) * 4,
+			sizeOf h,
+			--sizeOf angle,
+			sizeOf fl,
+			solPathMax,
+			sizeOf alphaFunc,
+			sizeOf alphaRef
+		]
+
+sizeOfExistingMtrl :: Mtrl -> Int
+sizeOfExistingMtrl
+	~(Mtrl
+		d a s e h _angle fl _f alphaFunc alphaRef
+	) = sum $
+		[
+			sizeOf (d^._1) * 4,
+			sizeOf (a^._1) * 4,
+			sizeOf (s^._1) * 4,
+			sizeOf (e^._1) * 4,
+			sizeOf h,
+			--sizeOf angle,
+			sizeOf fl,
+			solPathMax,
+			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaFunc,
+			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaRef
+		]
 
 sizeOfPath :: Path -> Int
 sizeOfPath = sizeOfPathMax
@@ -690,7 +755,7 @@ sizeOfExistingSolMin
 
 			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
 			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
-			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			fromIntegral mc * sizeOfMtrlMin (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
 			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
 			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
 			fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
@@ -754,7 +819,7 @@ sizeOfExistingSolMax
 
 			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
 			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
-			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			fromIntegral mc * sizeOfMtrlMax (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
 			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
 			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
 			fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
@@ -785,7 +850,7 @@ sizeOfExistingSol
 		magic version
 		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
 		--av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
-		_  _  _  _  _  _  _  _  _  _  _  pv _  _  _  _  _  _  _  _  _
+		_  _  mv _  _  _  _  _  _  _  _  pv _  _  _  _  _  _  _  _  _
 	) = sum $
 		[
 			sizeOf magic,
@@ -815,7 +880,7 @@ sizeOfExistingSol
 
 			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
 			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
-			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			sum . flip map (IA.elems mv) $ \mtrl -> sizeOfExistingMtrl mtrl,
 			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
 			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
 			fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
@@ -1179,26 +1244,10 @@ pokeCString ptr bufSize str
 		truncateChar = toEnum . fromEnum
 
 instance Storable Mtrl where
-	sizeOf
-		~(Mtrl
-			d a s e h angle fl _f alphaFunc alphaRef
-		) = sum $
-			[
-				sizeOf (d^._1) * 4,
-				sizeOf (a^._1) * 4,
-				sizeOf (s^._1) * 4,
-				sizeOf (e^._1) * 4,
-				sizeOf h,
-				sizeOf angle,
-				sizeOf fl,
-				solPathMax,
-				sizeOf alphaFunc,
-				sizeOf alphaRef
-			]
-
+	sizeOf = sizeOfMtrlMax
 	alignment
 		~(Mtrl
-			d a s e h angle fl _f alphaFunc alphaRef
+			d a s e h _angle fl _f alphaFunc alphaRef
 		) = max 1 . maximum $
 			[
 				alignment (d^._1),
@@ -1206,13 +1255,15 @@ instance Storable Mtrl where
 				alignment (s^._1),
 				alignment (e^._1),
 				alignment h,
-				alignment angle,
+				--alignment angle,
 				alignment fl,
 				1,
 				alignment alphaFunc,
 				alignment alphaRef
 			]
 
+	-- Irregular encoding; replace straightforward.
+	{-
 	peek ptr = flip evalStateT 0 $ Mtrl <$>
 		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- mtrlD
 		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- mtrlA
@@ -1249,6 +1300,62 @@ instance Storable Mtrl where
 
 			pokei32LE ptr' alphaFunc
 			pokef32dLE ptr' alphaRef
+
+		where ptr' = castPtr ptr
+	-}
+
+	peek ptr = flip evalStateT 0 $ do
+		d <- Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr'
+		a <- Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr'
+		s <- Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr'
+		e <- Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr'
+		h <- peekf32dLE ptr'
+
+		let angle = 0.0
+
+		fl <- peeki32LE ptr'
+
+		f <- peekCString ptr' solPathMax
+
+		alphaFunc <- if' ((fl .&. mtrlFlagAlphaTest) /= 0) (peeki32LE  ptr') (pure 0  )
+		alphaRef  <- if' ((fl .&. mtrlFlagAlphaTest) /= 0) (peekf32dLE ptr') (pure 0.0)
+
+		return $ Mtrl {
+			_mtrlD = d,
+			_mtrlA = a,
+			_mtrlS = s,
+			_mtrlE = e,
+			_mtrlH = h,
+
+			_mtrlAngle = angle,
+
+			_mtrlFl = fl,
+			_mtrlF  = f,
+
+			_mtrlAlphaFunc = alphaFunc,
+			_mtrlAlphaRef  = alphaRef
+		}
+
+		where ptr' = castPtr ptr
+
+	poke ptr
+		(Mtrl
+			d a s e h _angle fl f alphaFunc alphaRef
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' (d^.x4) >> pokef32dLE ptr' (d^.y4) >> pokef32dLE ptr' (d^.z4) >> pokef32dLE ptr' (d^.w4)
+			pokef32dLE ptr' (a^.x4) >> pokef32dLE ptr' (a^.y4) >> pokef32dLE ptr' (a^.z4) >> pokef32dLE ptr' (a^.w4)
+			pokef32dLE ptr' (s^.x4) >> pokef32dLE ptr' (s^.y4) >> pokef32dLE ptr' (s^.z4) >> pokef32dLE ptr' (s^.w4)
+			pokef32dLE ptr' (e^.x4) >> pokef32dLE ptr' (e^.y4) >> pokef32dLE ptr' (e^.z4) >> pokef32dLE ptr' (e^.w4)
+			pokef32dLE ptr' h
+
+			--pokef32dLE ptr' angle
+
+			pokei32LE ptr' fl
+
+			pokeCString ptr' solPathMax f
+
+			when ((fl .&. mtrlFlagAlphaTest) /= 0) $ pokei32LE  ptr' alphaFunc
+			when ((fl .&. mtrlFlagAlphaTest) /= 0) $ pokef32dLE ptr' alphaRef
 
 		where ptr' = castPtr ptr
 

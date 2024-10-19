@@ -419,15 +419,37 @@ parseDict = Dict <$> parsei32LE <*> parsei32LE
 	& P.try <?> "parseDict expected a Dict"
 
 parseMtrl :: Parsec BL.ByteString () Mtrl
-parseMtrl = Mtrl <$>
-	parseVec4fd <*> parseVec4fd <*> parseVec4fd <*> parseVec4fd <*>
-	parsef32dLE <*>
-	parsef32dLE <*>
-	parsei32LE <*>
-	parseCString solPathMax <*>
-	parsei32LE <*>
-	parsef32dLE
-	& P.try <?> "parseMtrl expected a Mtrl"
+parseMtrl = (<?> "parsePath expected a Path") . P.try $ do
+	d <- parseVec4fd
+	a <- parseVec4fd
+	s <- parseVec4fd
+	e <- parseVec4fd
+	h <- parsef32dLE
+
+	let angle = 0.0
+
+	fl <- parsei32LE
+
+	f <- parseCString solPathMax
+
+	alphaFunc <- if' ((fl .&. mtrlFlagAlphaTest) /= 0) parsei32LE  (pure 0  )
+	alphaRef  <- if' ((fl .&. mtrlFlagAlphaTest) /= 0) parsef32dLE (pure 0.0)
+
+	return $ Mtrl {
+		_mtrlD = d,
+		_mtrlA = a,
+		_mtrlS = s,
+		_mtrlE = e,
+		_mtrlH = h,
+
+		_mtrlAngle = angle,
+
+		_mtrlFl = fl,
+		_mtrlF  = f,
+
+		_mtrlAlphaFunc = alphaFunc,
+		_mtrlAlphaRef  = alphaRef
+	}
 
 parseVert :: Parsec BL.ByteString () Vert
 parseVert = Vert <$> parseVec3fd

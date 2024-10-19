@@ -997,6 +997,9 @@ peekCString ptr' bufSize = do
 asType :: a -> a -> ()
 asType _ _ = ()
 
+-- mfix doesn't seem quite up to the task; it throws a blocked indefinitely in
+-- mvar exception.  Just do it manually.
+{-
 peekSol :: Ptr Sol -> IO Sol
 peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peeki32LE ptr' <*>  -- magic
@@ -1045,6 +1048,106 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peekn ptr' (sol^.solUc) <*>  -- uv
 	peekn ptr' (sol^.solWc) <*>  -- wv
 	peekn ptr' (sol^.solIc)      -- iv
+
+	where ptr' = castPtr ptr
+-}
+peekSol :: Ptr Sol -> IO Sol
+peekSol ptr = flip evalStateT 0 $ do
+	magic   <- peeki32LE ptr'
+	version <- peeki32LE ptr'
+
+	ac <- peeki32LE ptr'
+	dc <- peeki32LE ptr'
+	mc <- peeki32LE ptr'
+	vc <- peeki32LE ptr'
+	ec <- peeki32LE ptr'
+	sc <- peeki32LE ptr'
+	tc <- peeki32LE ptr'
+	oc <- peeki32LE ptr'
+	gc <- peeki32LE ptr'
+	lc <- peeki32LE ptr'
+	nc <- peeki32LE ptr'
+	pc <- peeki32LE ptr'
+	bc <- peeki32LE ptr'
+	hc <- peeki32LE ptr'
+	zc <- peeki32LE ptr'
+	jc <- peeki32LE ptr'
+	xc <- peeki32LE ptr'
+	rc <- peeki32LE ptr'
+	uc <- peeki32LE ptr'
+	wc <- peeki32LE ptr'
+	ic <- peeki32LE ptr'
+
+	av <- peekn ptr' ac
+	dv <- peekn ptr' dc
+	mv <- peekn ptr' mc
+	vv <- peekn ptr' vc
+	ev <- peekn ptr' ec
+	sv <- peekn ptr' sc
+	tv <- peekn ptr' tc
+	ov <- peekn ptr' oc
+	gv <- peekn ptr' gc
+	lv <- peekn ptr' lc
+	nv <- peekn ptr' nc
+	pv <- peekn ptr' pc
+	bv <- peekn ptr' bc
+	hv <- peekn ptr' hc
+	zv <- peekn ptr' zc
+	jv <- peekn ptr' jc
+	xv <- peekn ptr' xc
+	rv <- peekn ptr' rc
+	uv <- peekn ptr' uc
+	wv <- peekn ptr' wc
+	iv <- peekn ptr' ic
+
+	return $ Sol {
+		_solMagic   = magic,
+		_solVersion = version,
+
+		_solAc = ac,
+		_solDc = dc,
+		_solMc = mc,
+		_solVc = vc,
+		_solEc = ec,
+		_solSc = sc,
+		_solTc = tc,
+		_solOc = oc,
+		_solGc = gc,
+		_solLc = lc,
+		_solNc = nc,
+		_solPc = pc,
+		_solBc = bc,
+		_solHc = hc,
+		_solZc = zc,
+		_solJc = jc,
+		_solXc = xc,
+		_solRc = rc,
+		_solUc = uc,
+		_solWc = wc,
+		_solIc = ic,
+
+		_solAv = av,
+		_solDv = dv,
+		_solMv = mv,
+		_solVv = vv,
+		_solEv = ev,
+		_solSv = sv,
+		_solTv = tv,
+		_solOv = ov,
+		_solGv = gv,
+		_solLv = lv,
+		_solNv = nv,
+		_solPv = pv,
+		_solBv = bv,
+		_solHv = hv,
+		_solZv = zv,
+		_solJv = jv,
+		_solXv = xv,
+		_solRv = rv,
+		_solUv = uv,
+		_solWv = wv,
+		_solIv = iv
+	}
 
 	where ptr' = castPtr ptr
 

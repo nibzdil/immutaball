@@ -93,8 +93,6 @@ import Immutaball.Share.Utils
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.ByteString.Unsafe as UB
 
-import Debug.Trace as D-------------------------------- TODO
-
 -- * optional low-level parsing
 
 -- | Uses low-level memory management.
@@ -129,14 +127,12 @@ unsafeParseLevelFileRaw inputName inputContents
 
 			-- Now parse the sol now that we validated the size.
 			-- This is unsafe since we don't know if we have enough data, but we at least know we're somewhat within the bounds.
-			flip D.trace (return ()) ("DEBUG00")
 			sol <- peekSol inputPtr
-			flip D.trace (return ()) ("DEBUG01")
 
 			-- Now check the exact length.
 			let neededSize = sizeOfExistingSol lengthSol
-			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file (exact sizE): input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
-			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected (exact sizE): input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSize) $ do
+			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file (exact size): input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
+			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected (exact size): input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSize) $ do
 
 			-- Return our parsed Sol.
 			return $ Right sol
@@ -217,8 +213,7 @@ instance Show ParseErrorLevelIBParseException where
 -- * parsing
 
 parseLevelFile :: String -> BL.ByteString -> Either LevelIBParseException LevelIB
---parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
-parseLevelFile inputName inputContents = (\r -> flip D.trace r $ printf "DEBUG parseLevelFile: %s" (show r)) . LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
+parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
 
 parseByte :: Parsec BL.ByteString () Word8
 parseByte = truncateAsciiChar <$> anyChar
@@ -362,10 +357,7 @@ levelFileParser' isEof = (<?> "levelFileParser expected a sol") . P.try $ do
 	rv <- parsen parseBill  rc & P.try <?> "levelFileParser expected rv"
 	uv <- parsen parseBall  uc & P.try <?> "levelFileParser expected uv"
 	wv <- parsen parseView  wc & P.try <?> "levelFileParser expected wv"
-	--parserTrace $ printf "DEBUG5: %s" (show (ac, dc, mc, mc, vc, ec, (sc, tc, oc, gc, lc, nc, pc, (bc, hc, zc, jc, xc, rc, uc, wc, ic))))
-	parserTrace $ printf "DEBUG5: %s" (show (mv))
 	iv <- parsen parsei32LE ic & P.try <?> "levelFileParser expected iv"
-	--parserTrace "DEBUG6"
 
 	if' isEof eof (pure ()) & P.try <?> "levelFileParser expected end of input."
 

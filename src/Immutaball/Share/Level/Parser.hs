@@ -12,6 +12,7 @@ module Immutaball.Share.Level.Parser
 		-- * parsing
 		parseLevelFile,
 		levelFileParser,
+		levelFileParser',
 		parseByte,
 		parsei32Native,
 		parsei32BE,
@@ -213,7 +214,7 @@ instance Show ParseErrorLevelIBParseException where
 
 parseLevelFile :: String -> BL.ByteString -> Either LevelIBParseException LevelIB
 --parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
-parseLevelFile inputName inputContents = (\r -> flip D.trace r $ printf "DEBUG0: %s" (show r)) . LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
+parseLevelFile inputName inputContents = (\r -> flip D.trace r $ printf "DEBUG parseLevelFile: %s" (show r)) . LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
 
 parseByte :: Parsec BL.ByteString () Word8
 parseByte = truncateAsciiChar <$> anyChar
@@ -306,7 +307,10 @@ parseVec4fd = Vec4 <$> parsef32dLE <*> parsef32dLE <*> parsef32dLE <*> parsef32d
 	& P.try <?> "parseVec4fd expected a Vec4f"
 
 levelFileParser :: Parsec BL.ByteString () LevelIB
-levelFileParser = (<?> "levelFileParser expected a sol") . P.try $ do
+levelFileParser = levelFileParser' True
+
+levelFileParser' :: Bool -> Parsec BL.ByteString () LevelIB
+levelFileParser' isEof = (<?> "levelFileParser expected a sol") . P.try $ do
 	magic   <- parsei32LE & P.try <?> "levelFileParser expected magic"
 	when (magic   /= solMagicConstant) . unexpected $ printf "Error: levelFileParser: expected the 4 SOL starter bytes; found 0x%04X, /= 0x%04X" magic solMagicConstant
 	version <- parsei32LE & P.try <?> "levelFileParser expected version"
@@ -355,6 +359,8 @@ levelFileParser = (<?> "levelFileParser expected a sol") . P.try $ do
 	uv <- parsen parseBall  uc & P.try <?> "levelFileParser expected uv"
 	wv <- parsen parseView  wc & P.try <?> "levelFileParser expected wv"
 	iv <- parsen parsei32LE ic & P.try <?> "levelFileParser expected iv"
+
+	if' isEof eof (pure ()) & P.try <?> "levelFileParser expected end of input."
 
 	return $ Sol {
 		_solMagic   = magic,

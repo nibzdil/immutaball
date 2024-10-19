@@ -119,7 +119,6 @@ unsafeParseLevelFileRaw inputName inputContents
 			let neededSizeMin = sizeOfExistingSolMin lengthSol
 			let neededSizeMax = sizeOfExistingSolMax lengthSol
 			let actualSize = inputSize
-			flip D.trace (return ()) $ (printf "DEBUG0: %s" (show (lengthSol)))
 			if' (actualSize < neededSizeMin) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d < %d" inputName inputSize neededSizeMin) $ do
 
 			-- Also check for oversize.
@@ -213,7 +212,8 @@ instance Show ParseErrorLevelIBParseException where
 -- * parsing
 
 parseLevelFile :: String -> BL.ByteString -> Either LevelIBParseException LevelIB
-parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
+--parseLevelFile inputName inputContents = LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
+parseLevelFile inputName inputContents = (\r -> flip D.trace r $ printf "DEBUG0: %s" (show r)) . LevelIBParseException . ParseErrorLevelIBParseException +++ id $ parse levelFileParser inputName inputContents
 
 parseByte :: Parsec BL.ByteString () Word8
 parseByte = truncateAsciiChar <$> anyChar

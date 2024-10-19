@@ -1381,7 +1381,7 @@ instance Storable Mtrl where
 	sizeOf = sizeOfMtrlMax
 	alignment
 		~(Mtrl
-			_d _a _s _e h _angle fl _f alphaFunc alphaRef
+			_d _a _s _e h _angle fl _f alphaFunc _alphaRef
 		) = max 1 . maximum $
 			[
 				alignment x',
@@ -1393,7 +1393,7 @@ instance Storable Mtrl where
 				alignment fl,
 				1,
 				alignment alphaFunc,
-				alignment alphaRef
+				alignment x'
 			]
 		where x' = error "Internal error: alignment Mtrl: alignment accessed its argument!" :: Float
 

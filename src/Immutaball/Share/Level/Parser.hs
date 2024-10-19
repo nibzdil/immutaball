@@ -307,54 +307,54 @@ parseVec4fd = Vec4 <$> parsef32dLE <*> parsef32dLE <*> parsef32dLE <*> parsef32d
 
 levelFileParser :: Parsec BL.ByteString () LevelIB
 levelFileParser = (<?> "levelFileParser expected a sol") . P.try $ do
-	magic   <- parsei32LE
+	magic   <- parsei32LE & P.try <?> "levelFileParser expected magic"
 	when (magic   /= solMagicConstant) . unexpected $ printf "Error: levelFileParser: expected the 4 SOL starter bytes; found 0x%04X, /= 0x%04X" magic solMagicConstant
-	version <- parsei32LE
+	version <- parsei32LE & P.try <?> "levelFileParser expected version"
 	when (version /= solVersionCurr  ) . unexpected $ printf "Error: levelFileParser: unsupported SOL version; found %d, /= %d" version solVersionCurr
 
-	ac <- parsei32LE
-	dc <- parsei32LE
-	mc <- parsei32LE
-	vc <- parsei32LE
-	ec <- parsei32LE
-	sc <- parsei32LE
-	tc <- parsei32LE
-	oc <- parsei32LE
-	gc <- parsei32LE
-	lc <- parsei32LE
-	nc <- parsei32LE
-	pc <- parsei32LE
-	bc <- parsei32LE
-	hc <- parsei32LE
-	zc <- parsei32LE
-	jc <- parsei32LE
-	xc <- parsei32LE
-	rc <- parsei32LE
-	uc <- parsei32LE
-	wc <- parsei32LE
-	ic <- parsei32LE
+	ac <- parsei32LE & P.try <?> "levelFileParser expected ac"
+	dc <- parsei32LE & P.try <?> "levelFileParser expected dc"
+	mc <- parsei32LE & P.try <?> "levelFileParser expected mc"
+	vc <- parsei32LE & P.try <?> "levelFileParser expected vc"
+	ec <- parsei32LE & P.try <?> "levelFileParser expected ec"
+	sc <- parsei32LE & P.try <?> "levelFileParser expected sc"
+	tc <- parsei32LE & P.try <?> "levelFileParser expected tc"
+	oc <- parsei32LE & P.try <?> "levelFileParser expected oc"
+	gc <- parsei32LE & P.try <?> "levelFileParser expected gc"
+	lc <- parsei32LE & P.try <?> "levelFileParser expected lc"
+	nc <- parsei32LE & P.try <?> "levelFileParser expected nc"
+	pc <- parsei32LE & P.try <?> "levelFileParser expected pc"
+	bc <- parsei32LE & P.try <?> "levelFileParser expected bc"
+	hc <- parsei32LE & P.try <?> "levelFileParser expected hc"
+	zc <- parsei32LE & P.try <?> "levelFileParser expected zc"
+	jc <- parsei32LE & P.try <?> "levelFileParser expected jc"
+	xc <- parsei32LE & P.try <?> "levelFileParser expected xc"
+	rc <- parsei32LE & P.try <?> "levelFileParser expected rc"
+	uc <- parsei32LE & P.try <?> "levelFileParser expected uc"
+	wc <- parsei32LE & P.try <?> "levelFileParser expected wc"
+	ic <- parsei32LE & P.try <?> "levelFileParser expected ic"
 
-	av <- parsen parseByte  ac & (fmap (coerce . (fromIntegral :: Word8 -> Int8)) <$>)
-	dv <- parsen parseDict  dc
-	mv <- parsen parseMtrl  mc
-	vv <- parsen parseVert  vc
-	ev <- parsen parseEdge  ec
-	sv <- parsen parseSide  sc
-	tv <- parsen parseTexc  tc
-	ov <- parsen parseOffs  oc
-	gv <- parsen parseGeom  gc
-	lv <- parsen parseLump  lc
-	nv <- parsen parseNode  nc
-	pv <- parsen parsePath  pc
-	bv <- parsen parseBody  bc
-	hv <- parsen parseItem  hc
-	zv <- parsen parseGoal  zc
-	jv <- parsen parseJump  jc
-	xv <- parsen parseSwch  xc
-	rv <- parsen parseBill  rc
-	uv <- parsen parseBall  uc
-	wv <- parsen parseView  wc
-	iv <- parsen parsei32LE ic
+	av <- parsen parseByte  ac & (fmap (coerce . (fromIntegral :: Word8 -> Int8)) <$>) & P.try <?> "levelFileParser expected av"
+	dv <- parsen parseDict  dc & P.try <?> "levelFileParser expected dv"
+	mv <- parsen parseMtrl  mc & P.try <?> "levelFileParser expected mv"
+	vv <- parsen parseVert  vc & P.try <?> "levelFileParser expected vv"
+	ev <- parsen parseEdge  ec & P.try <?> "levelFileParser expected ev"
+	sv <- parsen parseSide  sc & P.try <?> "levelFileParser expected sv"
+	tv <- parsen parseTexc  tc & P.try <?> "levelFileParser expected tv"
+	ov <- parsen parseOffs  oc & P.try <?> "levelFileParser expected ov"
+	gv <- parsen parseGeom  gc & P.try <?> "levelFileParser expected gv"
+	lv <- parsen parseLump  lc & P.try <?> "levelFileParser expected lv"
+	nv <- parsen parseNode  nc & P.try <?> "levelFileParser expected nv"
+	pv <- parsen parsePath  pc & P.try <?> "levelFileParser expected pv"
+	bv <- parsen parseBody  bc & P.try <?> "levelFileParser expected bv"
+	hv <- parsen parseItem  hc & P.try <?> "levelFileParser expected hv"
+	zv <- parsen parseGoal  zc & P.try <?> "levelFileParser expected zv"
+	jv <- parsen parseJump  jc & P.try <?> "levelFileParser expected jv"
+	xv <- parsen parseSwch  xc & P.try <?> "levelFileParser expected xv"
+	rv <- parsen parseBill  rc & P.try <?> "levelFileParser expected rv"
+	uv <- parsen parseBall  uc & P.try <?> "levelFileParser expected uv"
+	wv <- parsen parseView  wc & P.try <?> "levelFileParser expected wv"
+	iv <- parsen parsei32LE ic & P.try <?> "levelFileParser expected iv"
 
 	return $ Sol {
 		_solMagic   = magic,

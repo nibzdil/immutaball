@@ -590,8 +590,8 @@ sizeOfExistingMtrl
 			--sizeOf x',
 			sizeOf fl,
 			solPathMax,
-			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf alphaFunc,
-			if' ((fl .&. mtrlFlagAlphaTest) /= 0) 0 $ sizeOf x'
+			if' ((fl .&. mtrlFlagAlphaTest) /= 0) (sizeOf alphaFunc) 0,
+			if' ((fl .&. mtrlFlagAlphaTest) /= 0) (sizeOf x'       ) 0
 		]
 	where x' = error "Internal error: sizeOf Mtrl: sizeOf accessed its argument!" :: Float
 
@@ -647,7 +647,7 @@ sizeOfExistingPath
 	) = sum $
 		[
 			3 * sizeOf x',
-			if' ((fl .&. pathFlagOriented) /= 0) 0 $ 4 * sizeOf x',
+			if' ((fl .&. pathFlagOriented) /= 0) (4 * sizeOf x') 0,
 			sizeOf x',
 			--sizeOf tm,
 
@@ -656,8 +656,8 @@ sizeOfExistingPath
 			sizeOf s,
 
 			sizeOf fl,
-			if' ((fl .&. pathFlagParented) /= 0) 0 $ sizeOf p0,
-			if' ((fl .&. pathFlagParented) /= 0) 0 $ sizeOf p1
+			if' ((fl .&. pathFlagParented) /= 0) (sizeOf p0) 0,
+			if' ((fl .&. pathFlagParented) /= 0) (sizeOf p1) 0
 		]
 	where x' = error "Internal error: sizeOf Path: sizeOf accessed its argument!" :: Float
 

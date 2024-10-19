@@ -36,11 +36,11 @@ module Immutaball.Share.Level.Base
 		Ball(..), ballP, ballR,
 		View(..), viewP, viewQ,
 		Dict(..), dictAi, dictAj,
-		Sol(..), solMagic, solVersion, solAc, solMc, solVc, solEc, solSc,
-			solTc, solOc, solGc, solLc, solNc, solPc, solBc, solHc, solZc,
-			solJc, solXc, solRc, solUc, solWc, solDc, solIc, solAv, solMv,
-			solVv, solEv, solSv, solTv, solOv, solGv, solLv, solNv, solPv,
-			solBv, solHv, solZv, solJv, solXv, solRv, solUv, solWv, solDv,
+		Sol(..), solMagic, solVersion, solAc, solDc, solMc, solVc, solEc,
+			solSc, solTc, solOc, solGc, solLc, solNc, solPc, solBc, solHc,
+			solZc, solJc, solXc, solRc, solUc, solWc, solIc, solAv, solDv,
+			solMv, solVv, solEv, solSv, solTv, solOv, solGv, solLv, solNv,
+			solPv, solBv, solHv, solZv, solJv, solXv, solRv, solUv, solWv,
 			solIv,
 		LevelIB,
 		emptySol,
@@ -379,6 +379,7 @@ data Sol = Sol {
 	_solVersion :: Int32,
 
 	_solAc :: Int32,
+	_solDc :: Int32,
 	_solMc :: Int32,
 	_solVc :: Int32,
 	_solEc :: Int32,
@@ -397,10 +398,10 @@ data Sol = Sol {
 	_solRc :: Int32,
 	_solUc :: Int32,
 	_solWc :: Int32,
-	_solDc :: Int32,
 	_solIc :: Int32,
 
 	_solAv :: Array Int32 CChar,
+	_solDv :: Array Int32 Dict,
 	_solMv :: Array Int32 Mtrl,
 	_solVv :: Array Int32 Vert,
 	_solEv :: Array Int32 Edge,
@@ -419,7 +420,6 @@ data Sol = Sol {
 	_solRv :: Array Int32 Bill,
 	_solUv :: Array Int32 Ball,
 	_solWv :: Array Int32 View,
-	_solDv :: Array Int32 Dict,
 	_solIv :: Array Int32 Int32
 }
 	deriving (Eq, Ord, Show)
@@ -433,8 +433,8 @@ instance Storable Sol where
 	alignment
 		~(Sol
 			magic version
-			ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
-			--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+			ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
+			--av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
 			_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
 		) = max 1 . maximum $
 			[
@@ -442,6 +442,7 @@ instance Storable Sol where
 				alignment version,
 
 				alignment ac,
+				alignment dc,
 				alignment mc,
 				alignment vc,
 				alignment ec,
@@ -460,10 +461,10 @@ instance Storable Sol where
 				alignment rc,
 				alignment uc,
 				alignment wc,
-				alignment dc,
 				alignment ic,
 
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: CChar),
+				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Dict ),
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Mtrl ),
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Vert ),
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Edge ),
@@ -482,7 +483,6 @@ instance Storable Sol where
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Bill ),
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Ball ),
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: View ),
-				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Dict ),
 				alignment (error "Internal error: alignment Sol: alignment accessed its argument!"  :: Int32)
 			]
 
@@ -504,8 +504,8 @@ sizeOfEmptySol :: Sol -> Int
 sizeOfEmptySol
 	~(Sol
 		magic version
-		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
-		--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
+		--av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
 		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
 	) = sum $
 		[
@@ -513,6 +513,7 @@ sizeOfEmptySol
 			sizeOf version,
 
 			sizeOf ac,
+			sizeOf dc,
 			sizeOf mc,
 			sizeOf vc,
 			sizeOf ec,
@@ -531,10 +532,10 @@ sizeOfEmptySol
 			sizeOf rc,
 			sizeOf uc,
 			sizeOf wc,
-			sizeOf dc,
 			sizeOf ic,
 
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
+			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
@@ -553,7 +554,6 @@ sizeOfEmptySol
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
-			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
 			0 * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
 		]
 
@@ -565,8 +565,8 @@ sizeOfExistingSol :: Sol -> Int
 sizeOfExistingSol
 	(Sol
 		magic version
-		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
-		--av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
+		--av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
 		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
 	) = sum $
 		[
@@ -574,6 +574,7 @@ sizeOfExistingSol
 			sizeOf version,
 
 			sizeOf ac,
+			sizeOf dc,
 			sizeOf mc,
 			sizeOf vc,
 			sizeOf ec,
@@ -592,10 +593,10 @@ sizeOfExistingSol
 			sizeOf rc,
 			sizeOf uc,
 			sizeOf wc,
-			sizeOf dc,
 			sizeOf ic,
 
 			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
+			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
 			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
 			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
 			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
@@ -614,7 +615,6 @@ sizeOfExistingSol
 			fromIntegral rc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
 			fromIntegral uc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
 			fromIntegral wc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
-			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
 			fromIntegral ic * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
 		]
 
@@ -717,6 +717,7 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peeki32LE ptr' <*>  -- version
 
 	peeki32LE ptr' <*>  -- ac
+	peeki32LE ptr' <*>  -- dc
 	peeki32LE ptr' <*>  -- mc
 	peeki32LE ptr' <*>  -- vc
 	peeki32LE ptr' <*>  -- ec
@@ -735,10 +736,10 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peeki32LE ptr' <*>  -- rc
 	peeki32LE ptr' <*>  -- uc
 	peeki32LE ptr' <*>  -- wc
-	peeki32LE ptr' <*>  -- dc
 	peeki32LE ptr' <*>  -- ic
 
 	peekn ptr' (sol^.solAc) <*>  -- av
+	peekn ptr' (sol^.solDc) <*>  -- dv
 	peekn ptr' (sol^.solMc) <*>  -- mv
 	peekn ptr' (sol^.solVc) <*>  -- vv
 	peekn ptr' (sol^.solEc) <*>  -- ev
@@ -757,7 +758,6 @@ peekSol ptr = mfix $ \sol -> flip evalStateT 0 $ Sol <$>
 	peekn ptr' (sol^.solRc) <*>  -- rv
 	peekn ptr' (sol^.solUc) <*>  -- uv
 	peekn ptr' (sol^.solWc) <*>  -- wv
-	peekn ptr' (sol^.solDc) <*>  -- dv
 	peekn ptr' (sol^.solIc)      -- iv
 
 	where ptr' = castPtr ptr
@@ -771,6 +771,7 @@ peekSolLengths ptr = flip evalStateT 0 $ Sol <$>
 	peeki32LE ptr' <*>  -- version
 
 	peeki32LE ptr' <*>  -- ac
+	peeki32LE ptr' <*>  -- dc
 	peeki32LE ptr' <*>  -- mc
 	peeki32LE ptr' <*>  -- vc
 	peeki32LE ptr' <*>  -- ec
@@ -789,10 +790,10 @@ peekSolLengths ptr = flip evalStateT 0 $ Sol <$>
 	peeki32LE ptr' <*>  -- rc
 	peeki32LE ptr' <*>  -- uc
 	peeki32LE ptr' <*>  -- wc
-	peeki32LE ptr' <*>  -- dc
 	peeki32LE ptr' <*>  -- ic
 
 	pure emptyArray <*>  -- av
+	pure emptyArray <*>  -- dv
 	pure emptyArray <*>  -- mv
 	pure emptyArray <*>  -- vv
 	pure emptyArray <*>  -- ev
@@ -811,8 +812,7 @@ peekSolLengths ptr = flip evalStateT 0 $ Sol <$>
 	pure emptyArray <*>  -- rv
 	pure emptyArray <*>  -- uv
 	pure emptyArray <*>  -- wv
-	pure emptyArray <*>  -- dv
-	pure emptyArray  -- iv
+	pure emptyArray      -- iv
 
 	where
 		ptr' = castPtr ptr
@@ -825,13 +825,14 @@ pokeSol :: Ptr Sol -> Sol -> IO ()
 pokeSol ptr
 	(Sol
 		magic version
-		ac mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc dc ic
-		av mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv dv iv
+		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
+		av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
 	) = flip evalStateT 0 $ do
 		pokei32LE ptr' magic
 		pokei32LE ptr' version
 
 		pokei32LE ptr' ac
+		pokei32LE ptr' dc
 		pokei32LE ptr' mc
 		pokei32LE ptr' vc
 		pokei32LE ptr' ec
@@ -850,29 +851,28 @@ pokeSol ptr
 		pokei32LE ptr' rc
 		pokei32LE ptr' uc
 		pokei32LE ptr' wc
-		pokei32LE ptr' dc
 		pokei32LE ptr' ic
 
 		poken ptr' ac av
-		poken ptr' mc mv
-		poken ptr' vc vv
-		poken ptr' ec ev
-		poken ptr' sc sv
-		poken ptr' tc tv
-		poken ptr' oc ov
-		poken ptr' gc gv
-		poken ptr' lc lv
-		poken ptr' nc nv
-		poken ptr' pc pv
-		poken ptr' bc bv
-		poken ptr' hc hv
-		poken ptr' zc zv
-		poken ptr' jc jv
-		poken ptr' xc xv
-		poken ptr' rc rv
-		poken ptr' uc uv
-		poken ptr' wc wv
-		poken ptr' dc dv
+		poken ptr' mc dv
+		poken ptr' vc mv
+		poken ptr' ec vv
+		poken ptr' sc ev
+		poken ptr' tc sv
+		poken ptr' oc tv
+		poken ptr' gc ov
+		poken ptr' lc gv
+		poken ptr' nc lv
+		poken ptr' pc nv
+		poken ptr' bc pv
+		poken ptr' hc bv
+		poken ptr' zc hv
+		poken ptr' jc zv
+		poken ptr' xc jv
+		poken ptr' rc xv
+		poken ptr' uc rv
+		poken ptr' wc uv
+		poken ptr' dc wv
 		poken ptr' ic iv
 
 	where ptr' = castPtr ptr

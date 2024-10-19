@@ -5,16 +5,25 @@
 -- Level/Parser.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE ScopedTypeVariables, NondecreasingIndentation #-}
+{-# LANGUAGE ScopedTypeVariables, NondecreasingIndentation, ExistentialQuantification #-}
 
 module Immutaball.Share.Level.Parser
 	(
-		parseLevelFile
+		-- * parsing
+		parseLevelFile,
+
+		-- * exceptions
+		LevelIBParseException(..),
+		levelIBParseExceptionToException,
+		levelIBParseExceptionFromException,
+		UndersizedLevelIBParseException(..)
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Exception
+import Data.Typeable
 import Foreign.Ptr
 import Text.Printf
 
@@ -28,11 +37,13 @@ import Immutaball.Share.Utils
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.ByteString.Unsafe as UB
 
+-- * parsing
+
 -- | Uses low-level memory management.
-parseLevelFile :: String -> BS.ByteString -> Either String LevelIB
+parseLevelFile :: String -> BS.ByteString -> Either LevelIBParseException LevelIB
 parseLevelFile inputName inputContents
 	| inputSize < lengthSolSize =
-		Left "Error: parseLevelFile: the data string does not have enough data to read lengths!"
+		Left . err $ "Error: parseLevelFile: the data string does not have enough data to read lengths!"
 	| otherwise = unsafePerformIO $
 		UB.unsafeUseAsCString inputContents $ \inputPtr_ -> do
 			let (inputPtr :: Ptr Sol) = castPtr inputPtr_
@@ -41,7 +52,7 @@ parseLevelFile inputName inputContents
 			-- Now we know the lengths, so we can calculate the size of the data we require.
 			let neededSize = sizeOfExistingSol lengthSol
 			let actualSize = inputSize
-			if' (actualSize < neededSize) (return . Left $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d <= %d" inputName inputSize neededSize) $ do
+			if' (actualSize < neededSize) (return . Left . err $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d <= %d" inputName inputSize neededSize) $ do
 
 			-- Now parse the sol now that we validated the size.
 			sol <- peekSol inputPtr
@@ -50,3 +61,25 @@ parseLevelFile inputName inputContents
 		lengthSolSize :: Int
 		lengthSolSize = sizeOfEmptySol emptySol
 		inputSize = BS.length inputContents
+		err = LevelIBParseException . UndersizedLevelIBParseException
+
+-- * exceptions
+
+data LevelIBParseException = forall e. Exception e => LevelIBParseException e
+instance Show LevelIBParseException where
+	show (LevelIBParseException e) = show e
+instance Exception LevelIBParseException
+levelIBParseExceptionToException :: Exception e => e -> SomeException
+levelIBParseExceptionToException = toException . LevelIBParseException
+levelIBParseExceptionFromException :: Exception e => SomeException -> Maybe e
+levelIBParseExceptionFromException x = do
+	LevelIBParseException a <- fromException x
+	cast a
+
+-- | The input data was not big enough.
+data UndersizedLevelIBParseException = UndersizedLevelIBParseException String
+instance Exception UndersizedLevelIBParseException where
+	toException = levelIBParseExceptionToException
+	fromException = levelIBParseExceptionFromException
+instance Show UndersizedLevelIBParseException where
+	show (UndersizedLevelIBParseException msg) = msg

@@ -5,12 +5,12 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, TemplateHaskell #-}
 
 module Immutaball.Ball.State.Title
 	(
 		mkTitleState,
-		TitleWidget(..),
+		TitleWidget(..), AsTitleWidget(..),
 		titleGui
 	) where
 
@@ -60,6 +60,7 @@ data TitleWidget =
 	| QuitButton
 	| Anonymous Integer
 	deriving (Eq, Ord, Show)
+--makeClassyPrisms ''TitleWidget
 
 titleGui :: [Widget TitleWidget]
 titleGui =
@@ -71,3 +72,5 @@ titleGui =
 		ButtonWidget $ Button { _buttonWid = QuitButton, _buttonWparent = MenuVstack,
 			_buttonText = "Quit", _buttonRect = Just $ Rect (Vec2 (-0.100) (-0.090)) (Vec2 (0.100) (-0.010)) }
 	]
+
+makeClassyPrisms ''TitleWidget

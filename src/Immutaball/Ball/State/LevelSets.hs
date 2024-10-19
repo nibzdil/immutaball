@@ -5,12 +5,12 @@
 -- LevelSets.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE Arrows, ScopedTypeVariables #-}
+{-# LANGUAGE Arrows, TemplateHaskell, ScopedTypeVariables #-}
 
 module Immutaball.Ball.State.LevelSets
 	(
 		mkLevelSetsState,
-		LevelSetsWidget(..),
+		LevelSetsWidget(..), AsLevelSetsWidget(..),
 		levelSetsGui,
 		levelSetsBaseGui,
 		levelSetsButtons
@@ -69,6 +69,7 @@ data LevelSetsWidget =
 	| LevelSetButton String
 	| Anonymous Integer
 	deriving (Eq, Ord, Show)
+--makeClassyPrisms ''LevelSetsWidget
 
 -- TODO: make a better UI.  For now we just have a simple list of level set titles.
 
@@ -91,3 +92,5 @@ levelSetsButtons levelSets = flip map (zip [0..] . M.toList $ levelSets^.lsLevel
 	let idx' = fromIntegral idx in
 	ButtonWidget $ Button { _buttonWid = LevelSetButton path, _buttonWparent = LevelSetsVstack,
 		_buttonText = (levelSet^.lsTitle), _buttonRect = Just $ Rect (Vec2 (-0.100) (0.620 - 0.100*idx')) (Vec2 (0.100) (0.700 - 0.100*idx')) }
+
+makeClassyPrisms ''LevelSetsWidget

@@ -12,7 +12,7 @@ module Immutaball.Share.Level.Base
 		solPathMax,
 		solMagicConstant,
 		solVersionCurr,
-		solVersion2024_05,
+		solVersion2024_04,
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
@@ -98,10 +98,10 @@ solMagicConstant :: Int32
 solMagicConstant = 0x4C4F53AF  -- LE encoding of AF 'S' 'O' 'L'.
 
 solVersionCurr :: Int32
-solVersionCurr = solVersion2024_05
+solVersionCurr = solVersion2024_04
 
-solVersion2024_05 :: Int32
-solVersion2024_05 = 10
+solVersion2024_04 :: Int32
+solVersion2024_04 = 9
 
 data Mtrl = Mtrl {
 	-- | Diffuse color.

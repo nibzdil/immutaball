@@ -123,7 +123,7 @@ unsafeParseLevelFileRaw inputName inputContents
 			if' (actualSize < neededSizeMin) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d < %d" inputName inputSize neededSizeMin) $ do
 
 			-- Also check for oversize.
-			if' (actualSize > neededSizeMax) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected: input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSizeMax) $ do
+			if' (actualSize > neededSizeMax) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected: input ‘%s’ has size %d > %d; recommend aborting in case data is corrupted" inputName inputSize neededSizeMax) $ do
 
 			-- Now parse the sol now that we validated the size.
 			-- This is unsafe since we don't know if we have enough data, but we at least know we're somewhat within the bounds.
@@ -132,7 +132,7 @@ unsafeParseLevelFileRaw inputName inputContents
 			-- Now check the exact length.
 			let neededSize = sizeOfExistingSol lengthSol
 			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file (exact size): input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
-			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected (exact size): input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSize) $ do
+			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected (exact size): input ‘%s’ has size %d > %d; recommend aborting in case data is corrupted" inputName inputSize neededSize) $ do
 
 			-- Return our parsed Sol.
 			return $ Right sol

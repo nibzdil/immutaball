@@ -1505,6 +1505,8 @@ instance Storable Path where
 
 		let tm = round $ (1000.0*t)
 
+		let p1' = if' (p1 < 0) p0 p1
+
 		return $ Path {
 			_pathP  = p,
 			_pathE  = e,
@@ -1518,7 +1520,7 @@ instance Storable Path where
 			_pathFl = fl,
 
 			_pathP0 = p0,
-			_pathP1 = p1
+			_pathP1 = p1'
 		}
 
 		where ptr' = castPtr ptr

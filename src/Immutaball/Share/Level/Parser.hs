@@ -498,6 +498,8 @@ parsePath = (<?> "parsePath expected a Path") . P.try $ do
 
 	let tm = round $ (1000.0*t)
 
+	let p1' = if' (p1 < 0) p0 p1
+
 	return $ Path {
 		_pathP  = p,
 		_pathE  = e,
@@ -511,7 +513,7 @@ parsePath = (<?> "parsePath expected a Path") . P.try $ do
 		_pathFl = fl,
 
 		_pathP0 = p0,
-		_pathP1 = p1
+		_pathP1 = p1'
 	}
 
 parseBody :: Parsec BL.ByteString () Body

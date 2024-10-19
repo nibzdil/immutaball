@@ -101,7 +101,6 @@ import qualified Data.ByteString.Unsafe as UB
 -- checking for length of the input data (and only afterward reading).
 --
 -- We don't use this.
--- TODO FIXME: this is broken.  Just use the safe, high-level version for now.
 unsafeParseLevelFileRaw :: String -> BS.ByteString -> Either LevelIBParseException LevelIB
 unsafeParseLevelFileRaw inputName inputContents
 	| inputSize < lengthSolSize =

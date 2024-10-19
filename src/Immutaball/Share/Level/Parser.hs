@@ -131,7 +131,7 @@ unsafeParseLevelFileRaw inputName inputContents
 			sol <- peekSol inputPtr
 
 			-- Now check the exact length.
-			let neededSize = sizeOfExistingSol lengthSol
+			let neededSize = sizeOfExistingSol sol
 			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file (exact size): input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
 			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected (exact size): input ‘%s’ has size %d > %d; recommend aborting in case data is corrupted" inputName inputSize neededSize) $ do
 

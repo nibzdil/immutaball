@@ -13,6 +13,8 @@ module Immutaball.Share.Level.Base
 		solMagicConstant,
 		solVersionCurr,
 		solVersion2024_04,
+		pathFlagOriented,
+		pathFlagParented,
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
@@ -102,6 +104,12 @@ solVersionCurr = solVersion2024_04
 
 solVersion2024_04 :: Int32
 solVersion2024_04 = 9
+
+pathFlagOriented :: Int32
+pathFlagOriented = 1
+
+pathFlagParented :: Int32
+pathFlagParented = 2
 
 data Mtrl = Mtrl {
 	-- | Diffuse color.
@@ -374,6 +382,9 @@ makeLenses ''Dict
 -- The Storable instance does not follow the sizeOf laws of not accessing its
 -- argument, but is still useful for reading and writing when combined with
 -- validation.  peekSol and pokeSol offer more pure implementations.
+--
+-- Note that Path and Swch have irregular serializers, and Path is
+-- variable-width.  The sizes by default are the conservative max sizes.
 data Sol = Sol {
 	_solMagic   :: Int32,
 	_solVersion :: Int32,
@@ -1144,6 +1155,7 @@ instance Storable Path where
 			]
 		where x' = error "Internal error: alignment Path: alignment accessed its argument!" :: Float
 
+	{-
 	peek ptr = flip evalStateT 0 $ Path <$>
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
 		(Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- e
@@ -1178,6 +1190,55 @@ instance Storable Path where
 
 			pokei32LE ptr' p0
 			pokei32LE ptr' p1
+
+		where ptr' = castPtr ptr
+	-}
+	-- Actually, Paths are serialized in a different order, and are also
+	-- variable width.  So we'll need to provide special implementations
+	-- carefully.
+	peek ptr = flip evalStateT 0 $ do
+		p   <- Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr'
+		t   <- peekf32dLE ptr'
+		pi_ <- peeki32LE ptr'
+		f   <- peeki32LE ptr'
+		s   <- peeki32LE ptr'
+		fl  <- peeki32LE ptr'
+
+		e        <- if' ((fl .&. pathFlagOriented) /= 0) (Vec4 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') (return $ Vec4 0.0 0.0 0.0 0.0)
+		(p0, p1) <- if' ((fl .&. pathFlagParented) /= 0) ((,)  <$> peeki32LE  ptr' <*> peeki32LE  ptr'                                        ) (return $ (0, 0))
+
+		let tm = round $ (1000.0*t)
+
+		return $ Path {
+			_pathP  = p,
+			_pathE  = e,
+			_pathT  = t,
+			_pathTm = tm,
+
+			_pathPi = pi_,
+			_pathF  = f,
+			_pathS  = s,
+
+			_pathFl = fl,
+
+			_pathP0 = p0,
+			_pathP1 = p1
+		}
+
+		where ptr' = castPtr ptr
+	poke ptr
+		(Path
+			(Vec3 px py pz) (Vec4 ex ey ez ew) t _tm pi_ f s fl p0 p1
+		) = flip evalStateT 0 $ do
+			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
+			pokef32dLE ptr' t
+			pokei32LE  ptr' pi_
+			pokei32LE  ptr' f
+			pokei32LE  ptr' s
+			pokei32LE  ptr' fl
+
+			when ((fl .&. pathFlagOriented) /= 0) (pokef32dLE ptr' ex >> pokef32dLE ptr' ey >> pokef32dLE ptr' ez >> pokef32dLE ptr' ew)
+			when ((fl .&. pathFlagParented) /= 0) (pokei32LE ptr' p0 >> pokei32LE ptr' p1)
 
 		where ptr' = castPtr ptr
 
@@ -1379,9 +1440,9 @@ instance Storable Swch where
 		peekf32dLE ptr' <*>  -- r
 		peeki32LE ptr' <*>  -- pi
 
-		peekf32dLE ptr' <*>  -- t
-		peeki32LE ptr' <*>  -- tm
-		peeki32LE ptr' <*>  -- f
+		(peekf32dLE ptr' <* peekf32dLE ptr') <*>  -- t (skip f32)
+		pure (round $ 1000.0*t) <*>  -- tm
+		(peeki32LE ptr' <* peeki32LE ptr') <*>  -- f (skip i32)
 		peeki32LE ptr' <*>  -- i
 
 		peeki32LE ptr' <*>  -- p0
@@ -1397,9 +1458,9 @@ instance Storable Swch where
 			pokef32dLE ptr' r
 			pokei32LE ptr' pi_
 
-			pokef32dLE ptr' t
-			pokei32LE ptr' tm
-			pokei32LE ptr' f
+			pokef32dLE ptr' t >> pokef32dLE ptr' t
+			--pokei32LE ptr' tm
+			pokei32LE ptr' f >> pokei32LE ptr' f
 			pokei32LE ptr' i
 
 			pokei32LE ptr' p0

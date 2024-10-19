@@ -358,7 +358,10 @@ levelFileParser' isEof = (<?> "levelFileParser expected a sol") . P.try $ do
 	rv <- parsen parseBill  rc & P.try <?> "levelFileParser expected rv"
 	uv <- parsen parseBall  uc & P.try <?> "levelFileParser expected uv"
 	wv <- parsen parseView  wc & P.try <?> "levelFileParser expected wv"
+	--parserTrace $ printf "DEBUG5: %s" (show (ac, dc, mc, mc, vc, ec, (sc, tc, oc, gc, lc, nc, pc, (bc, hc, zc, jc, xc, rc, uc, wc, ic))))
+	parserTrace $ printf "DEBUG5: %s" (show (mv))
 	iv <- parsen parsei32LE ic & P.try <?> "levelFileParser expected iv"
+	--parserTrace "DEBUG6"
 
 	if' isEof eof (pure ()) & P.try <?> "levelFileParser expected end of input."
 

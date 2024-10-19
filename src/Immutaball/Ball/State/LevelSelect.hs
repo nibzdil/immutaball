@@ -80,8 +80,7 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 	let (toLevelPath' :: Maybe String) = ((cxt^.ibContext.ibDirs.ibStaticDataDir) </>) <$> toLevelPath
 	(mtoLevelContents :: Maybe (Either IOException BL.ByteString)) <- monadic -< maybe (pure Nothing) (\path -> (Just <$>) . liftIBIO . BasicIBIOF $ ReadBytesSync path id) $ toLevelPath'
 	(toLevelContents :: Maybe BL.ByteString) <- monadic -< maybe (pure Nothing) (\mcontents -> liftIBIO . ThrowIO ||| pure . Just $ mcontents) $ mtoLevelContents
-	let (toLevelContentsBL :: Maybe BL.ByteString) = flip const BL.toStrict id <$> toLevelContents
-	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile <$> toLevelPath <*> toLevelContentsBL
+	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile' <$> toLevelPath <*> toLevelContents
 	(toLevel :: Maybe LevelIB) <- monadic -< maybe (pure Nothing) (liftIBIO . ThrowIO ||| pure . Just) $ toLevelParse
 
 	-- Switch to a level.
@@ -93,7 +92,10 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 	let switchTo  = if' (not    isBack ) switchTo0 . Just . openSecondI $ mkBack (Right cxt)
 	returnA -< (Identity response, switchTo)
 
-	where cxt0 = either initialStateCxt id baseCxt0
+	where
+		cxt0 = either initialStateCxt id baseCxt0
+		useUnsafeVersion = False
+		parseLevelFile' = if' useUnsafeVersion (\p -> unsafeParseLevelFileRaw p . BL.toStrict) parseLevelFile
 
 -- TODO: make a better UI.  For now we just have a simple list of levels.
 

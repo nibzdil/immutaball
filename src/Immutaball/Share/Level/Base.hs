@@ -59,7 +59,13 @@ module Immutaball.Share.Level.Base
 		poken,
 		pokeCString,
 		asType,
+		sizeOfPath,
+		sizeOfPathMin,
+		sizeOfPathMax,
+		sizeOfExistingPath,
 		sizeOfEmptySol,
+		sizeOfExistingSolMin,
+		sizeOfExistingSolMax,
 		sizeOfExistingSol,
 		peekSol,
 		peekSolLengths,
@@ -511,6 +517,72 @@ emptySol =
 		a :: (Storable a) => Array Int32 a
 		a = IA.listArray (0, -1) []
 
+sizeOfPath :: Path -> Int
+sizeOfPath = sizeOfPathMax
+
+sizeOfPathMin :: Path -> Int
+sizeOfPathMin
+	~(Path
+		_p _e _t tm pi_ f s fl _p0 _p1
+	) = sum $
+		[
+			3 * sizeOf x',
+			--4 * sizeOf x',
+			sizeOf x',
+			sizeOf tm,
+
+			sizeOf pi_,
+			sizeOf f,
+			sizeOf s,
+
+			sizeOf fl
+			--sizeOf p0,
+			--sizeOf p1
+		]
+	where x' = error "Internal error: sizeOf Path: sizeOf accessed its argument!" :: Float
+
+sizeOfPathMax :: Path -> Int
+sizeOfPathMax
+	~(Path
+		_p _e _t tm pi_ f s fl p0 p1
+	) = sum $
+		[
+			3 * sizeOf x',
+			4 * sizeOf x',
+			sizeOf x',
+			sizeOf tm,
+
+			sizeOf pi_,
+			sizeOf f,
+			sizeOf s,
+
+			sizeOf fl,
+			sizeOf p0,
+			sizeOf p1
+		]
+	where x' = error "Internal error: sizeOf Path: sizeOf accessed its argument!" :: Float
+
+sizeOfExistingPath :: Path -> Int
+sizeOfExistingPath
+	(Path
+		_p _e _t tm pi_ f s fl p0 p1
+	) = sum $
+		[
+			3 * sizeOf x',
+			if' ((fl .&. pathFlagOriented) /= 0) 0 $ 4 * sizeOf x',
+			sizeOf x',
+			sizeOf tm,
+
+			sizeOf pi_,
+			sizeOf f,
+			sizeOf s,
+
+			sizeOf fl,
+			if' ((fl .&. pathFlagParented) /= 0) 0 $ sizeOf p0,
+			if' ((fl .&. pathFlagParented) /= 0) 0 $ sizeOf p1
+		]
+	where x' = error "Internal error: sizeOf Path: sizeOf accessed its argument!" :: Float
+
 sizeOfEmptySol :: Sol -> Int
 sizeOfEmptySol
 	~(Sol
@@ -572,8 +644,11 @@ sizeOfEmptySol
 --
 -- Disregards the actual array elements, making this suitable to parse lengths
 -- and then judge needed total storage size.
-sizeOfExistingSol :: Sol -> Int
-sizeOfExistingSol
+--
+-- Get a lower bound by the minimum size of variant width elements, but don't
+-- precisely calculate the exact size.
+sizeOfExistingSolMin :: Sol -> Int
+sizeOfExistingSolMin
 	(Sol
 		magic version
 		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
@@ -617,7 +692,132 @@ sizeOfExistingSol
 			fromIntegral gc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Geom ),
 			fromIntegral lc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Lump ),
 			fromIntegral nc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Node ),
-			fromIntegral pc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Path ),
+			fromIntegral pc * sizeOfPathMin (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Path ),
+			fromIntegral bc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Body ),
+			fromIntegral hc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Item ),
+			fromIntegral zc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Goal ),
+			fromIntegral jc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Jump ),
+			fromIntegral xc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Swch ),
+			fromIntegral rc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
+			fromIntegral uc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
+			fromIntegral wc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
+			fromIntegral ic * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
+		]
+
+-- | Accesses its argument!
+--
+-- Disregards the actual array elements, making this suitable to parse lengths
+-- and then judge needed total storage size.
+--
+-- Get a lower bound by the maximum size of variant width elements, but don't
+-- precisely calculate the exact size.
+sizeOfExistingSolMax :: Sol -> Int
+sizeOfExistingSolMax
+	(Sol
+		magic version
+		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
+		--av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
+		_  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _  _
+	) = sum $
+		[
+			sizeOf magic,
+			sizeOf version,
+
+			sizeOf ac,
+			sizeOf dc,
+			sizeOf mc,
+			sizeOf vc,
+			sizeOf ec,
+			sizeOf sc,
+			sizeOf tc,
+			sizeOf oc,
+			sizeOf gc,
+			sizeOf lc,
+			sizeOf nc,
+			sizeOf pc,
+			sizeOf bc,
+			sizeOf hc,
+			sizeOf zc,
+			sizeOf jc,
+			sizeOf xc,
+			sizeOf rc,
+			sizeOf uc,
+			sizeOf wc,
+			sizeOf ic,
+
+			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
+			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
+			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
+			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
+			fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
+			fromIntegral tc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Texc ),
+			fromIntegral oc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Offs ),
+			fromIntegral gc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Geom ),
+			fromIntegral lc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Lump ),
+			fromIntegral nc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Node ),
+			fromIntegral pc * sizeOfPathMax (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Path ),
+			fromIntegral bc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Body ),
+			fromIntegral hc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Item ),
+			fromIntegral zc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Goal ),
+			fromIntegral jc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Jump ),
+			fromIntegral xc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Swch ),
+			fromIntegral rc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Bill ),
+			fromIntegral uc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Ball ),
+			fromIntegral wc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: View ),
+			fromIntegral ic * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Int32)
+		]
+
+-- | Accesses its argument!
+--
+-- Disregards the actual array elements, making this suitable to parse lengths
+-- and then judge needed total storage size.
+sizeOfExistingSol :: Sol -> Int
+sizeOfExistingSol
+	(Sol
+		magic version
+		ac dc mc vc ec sc tc oc gc lc nc pc bc hc zc jc xc rc uc wc ic
+		--av dv mv vv ev sv tv ov gv lv nv pv bv hv zv jv xv rv uv wv iv
+		_  _  _  _  _  _  _  _  _  _  _  pv _  _  _  _  _  _  _  _  _
+	) = sum $
+		[
+			sizeOf magic,
+			sizeOf version,
+
+			sizeOf ac,
+			sizeOf dc,
+			sizeOf mc,
+			sizeOf vc,
+			sizeOf ec,
+			sizeOf sc,
+			sizeOf tc,
+			sizeOf oc,
+			sizeOf gc,
+			sizeOf lc,
+			sizeOf nc,
+			sizeOf pc,
+			sizeOf bc,
+			sizeOf hc,
+			sizeOf zc,
+			sizeOf jc,
+			sizeOf xc,
+			sizeOf rc,
+			sizeOf uc,
+			sizeOf wc,
+			sizeOf ic,
+
+			fromIntegral ac * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: CChar),
+			fromIntegral dc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Dict ),
+			fromIntegral mc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Mtrl ),
+			fromIntegral vc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Vert ),
+			fromIntegral ec * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Edge ),
+			fromIntegral sc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Side ),
+			fromIntegral tc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Texc ),
+			fromIntegral oc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Offs ),
+			fromIntegral gc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Geom ),
+			fromIntegral lc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Lump ),
+			fromIntegral nc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Node ),
+			sum . flip map (IA.elems pv) $ \path -> sizeOfExistingPath path,
 			fromIntegral bc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Body ),
 			fromIntegral hc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Item ),
 			fromIntegral zc * sizeOf (error "Internal error: sizeOf Sol: sizeOf accessed its argument!"  :: Goal ),
@@ -1116,25 +1316,7 @@ instance Storable Node where
 		where ptr' = castPtr ptr
 
 instance Storable Path where
-	sizeOf
-		~(Path
-			_p _e _t tm pi_ f s fl p0 p1
-		) = sum $
-			[
-				3 * sizeOf x',
-				4 * sizeOf x',
-				sizeOf x',
-				sizeOf tm,
-
-				sizeOf pi_,
-				sizeOf f,
-				sizeOf s,
-
-				sizeOf fl,
-				sizeOf p0,
-				sizeOf p1
-			]
-		where x' = error "Internal error: sizeOf Path: sizeOf accessed its argument!" :: Float
+	sizeOf = sizeOfPathMax
 	alignment
 		~(Path
 			_p _e _t tm pi_ f s fl p0 p1
@@ -1435,13 +1617,13 @@ instance Storable Swch where
 			]
 		where x' = error "Internal error: alignment Swch: alignment accessed its argument!" :: Float
 
-	peek ptr = flip evalStateT 0 $ Swch <$>
+	peek ptr = ((\swch -> swch & (swchTm .~ (round $ 1000.0*(swch^.swchT)))) <$>) . flip evalStateT 0 $ Swch <$>
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
 		peekf32dLE ptr' <*>  -- r
 		peeki32LE ptr' <*>  -- pi
 
 		(peekf32dLE ptr' <* peekf32dLE ptr') <*>  -- t (skip f32)
-		pure (round $ 1000.0*t) <*>  -- tm
+		pure 0 <*>  -- tm
 		(peeki32LE ptr' <* peeki32LE ptr') <*>  -- f (skip i32)
 		peeki32LE ptr' <*>  -- i
 
@@ -1452,7 +1634,7 @@ instance Storable Swch where
 
 	poke ptr
 		(Swch
-			(Vec3 px py pz) r pi_ t tm f i p0 p1
+			(Vec3 px py pz) r pi_ t _tm f i p0 p1
 		) = flip evalStateT 0 $ do
 			pokef32dLE ptr' px >> pokef32dLE ptr' py >> pokef32dLE ptr' pz
 			pokef32dLE ptr' r

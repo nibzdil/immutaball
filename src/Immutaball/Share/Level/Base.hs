@@ -49,7 +49,7 @@ module Immutaball.Share.Level.Base
 		LevelIB,
 		emptySol,
 
-		-- * Optional low-level storable provisions.
+		-- * Optional low-level storable provisions (we don't use these)
 		peeki32Native,
 		peeki32BE,
 		peeki32LE,
@@ -468,7 +468,7 @@ emptySol =
 		a :: (Storable a) => Array Int32 a
 		a = IA.listArray (0, -1) []
 
--- * Optional low-level storable provisions.
+-- * Optional low-level storable provisions (we don't use these)
 
 instance Storable Sol where
 	sizeOf = sizeOfEmptySol
@@ -1813,9 +1813,9 @@ instance Storable Swch where
 				3 * sizeOf x',
 				sizeOf x',
 				sizeOf pi_,
-				sizeOf x',
+				sizeOf x', sizeOf x',
 				--sizeOf tm,
-				sizeOf f,
+				sizeOf f, sizeOf f,
 				sizeOf i,
 
 				sizeOf p0,

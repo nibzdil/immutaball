@@ -993,6 +993,9 @@ peeknWith sizeOf_ ptr n
 			elem_ <- peek (castPtr ptr `plusPtr` (offset + relOffset))
 			first (elem_:) <$> me (idx+1, relOffset + sizeOf_ elem_)
 		let array_ = IA.listArray (0, n-1) $ elems_
+		lift $ putStrLn $ "DEBUG1: dynSize is " ++ show dynSize
+		lift $ putStrLn $ "DEBUG1: sizeOfMtrlMin is " ++ show (sizeOfMtrlMin undefined)
+		lift $ putStrLn $ "DEBUG1: sizeOfMtrlMax is " ++ show (sizeOfMtrlMax undefined)
 		put $ offset + dynSize
 		return array_
 	where
@@ -1118,6 +1121,9 @@ peekSol ptr = flip evalStateT 0 $ do
 	uv <- peekn ptr' uc
 	wv <- peekn ptr' wc
 	iv <- peekn ptr' ic
+
+	lift $ putStrLn $ "DEBUG1: sizeOfExistingMtrl 0 is " ++ show (sizeOfExistingMtrl (mv IA.! 0))
+	lift $ putStrLn $ "DEBUG1: sizeOfExistingMtrl 1 is " ++ show (sizeOfExistingMtrl (mv IA.! 1))
 
 	return $ Sol {
 		_solMagic   = magic,

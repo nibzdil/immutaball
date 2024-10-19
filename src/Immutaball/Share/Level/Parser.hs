@@ -18,7 +18,8 @@ module Immutaball.Share.Level.Parser
 		levelIBParseExceptionFromException,
 		UndersizedLevelIBParseException(..),
 		MissingSOLMagicIBParseException(..),
-		UnsupportedSOLVersionIBParseException(..)
+		UnsupportedSOLVersionIBParseException(..),
+		OversizedLevelIBParseException(..)
 	) where
 
 import Prelude ()
@@ -64,7 +65,10 @@ parseLevelFile inputName inputContents
 			let neededSize = sizeOfExistingSol lengthSol
 			let actualSize = inputSize
 			flip D.trace (return ()) $ (printf "DEBUG0: %s" (show (lengthSol)))
-			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d <= %d" inputName inputSize neededSize) $ do
+			if' (actualSize < neededSize) (return . Left . errSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is too small to parse the file: input ‘%s’ has size %d < %d" inputName inputSize neededSize) $ do
+
+			-- Also check for overside.
+			if' (actualSize > neededSize) (return . Left . errBigSize $ printf "Error: parseLevelFile: we parsed the lengths, but the data is larger than expected: input ‘%s’ has size %d > %d; recommend aborting in case data is corruted" inputName inputSize neededSize) $ do
 
 			-- Now parse the sol now that we validated the size.
 			sol <- peekSol inputPtr
@@ -74,6 +78,7 @@ parseLevelFile inputName inputContents
 		lengthSolSize = sizeOfEmptySol emptySol
 		inputSize = BS.length inputContents
 		errSize = LevelIBParseException . UndersizedLevelIBParseException
+		errBigSize = LevelIBParseException . OversizedLevelIBParseException
 		errMagic = LevelIBParseException . MissingSOLMagicIBParseException
 		errVersion = LevelIBParseException . UnsupportedSOLVersionIBParseException
 
@@ -113,3 +118,11 @@ instance Exception UnsupportedSOLVersionIBParseException where
 	fromException = levelIBParseExceptionFromException
 instance Show UnsupportedSOLVersionIBParseException where
 	show (UnsupportedSOLVersionIBParseException msg) = msg
+
+-- | The input data was bigger than expected.
+data OversizedLevelIBParseException = OversizedLevelIBParseException String
+instance Exception OversizedLevelIBParseException where
+	toException = levelIBParseExceptionToException
+	fromException = levelIBParseExceptionFromException
+instance Show OversizedLevelIBParseException where
+	show (OversizedLevelIBParseException msg) = msg

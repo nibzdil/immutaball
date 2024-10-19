@@ -1576,7 +1576,7 @@ instance Storable Item where
 			]
 		where x' = error "Internal error: alignment Item: alignment accessed its argument!" :: Float
 
-	peek ptr = flip evalStateT 0 $ Item <$>
+	peek ptr = ((\item -> item & (itemP1 .~ (if' (item^.itemP1 < 0) (item^.itemP0) (item^.itemP1)))) <$>) . flip evalStateT 0 $ Item <$>
 		(Vec3 <$> peekf32dLE ptr' <*> peekf32dLE ptr' <*> peekf32dLE ptr') <*>  -- p
 		peeki32LE ptr' <*>  -- t
 		peeki32LE ptr' <*>  -- n

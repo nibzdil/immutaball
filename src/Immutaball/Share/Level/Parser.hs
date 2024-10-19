@@ -521,7 +521,8 @@ parseBody = Body <$> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE <*>
 	& P.try <?> "parseBody expected a Body"
 
 parseItem :: Parsec BL.ByteString () Item
-parseItem = Item <$> parseVec3fd <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
+parseItem = ((\item -> item & (itemP1 .~ (if' (item^.itemP1 < 0) (item^.itemP0) (item^.itemP1)))) <$>) . Item <$>
+	parseVec3fd <*> parsei32LE <*> parsei32LE <*> parsei32LE <*> parsei32LE
 	& P.try <?> "parseItem expected an Item"
 
 parseGoal :: Parsec BL.ByteString () Goal

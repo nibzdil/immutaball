@@ -9,7 +9,9 @@
 
 module Immutaball.Share.Video.LowLevel
 	(
-		reverseRowsImage
+		reverseRowsImage,
+		reverseRowsImageBuilder,
+		reverseRowsImageLowLevel
 	) where
 
 import Prelude ()
@@ -17,10 +19,12 @@ import Immutaball.Prelude
 
 import Control.Arrow
 import Control.Monad
-import Data.Function
+import Data.Function hiding (id, (.))
 import Data.Word
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Builder as BB
+import qualified Data.ByteString.Lazy as BL
 
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
@@ -32,13 +36,37 @@ import Foreign.Ptr
 import Foreign.Storable
 import System.IO.Unsafe (unsafePerformIO)
 
+reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
+--reverseRowsImage = reverseRowsImageLowLevel
+reverseRowsImage = reverseRowsImageBuilder
+
+-- This is still noticeably slower than reverseRowsImageLowLevel.
+reverseRowsImageBuilder :: (WidthHeightI, BS.ByteString) -> BS.ByteString
+reverseRowsImageBuilder ((w, h), image)
+	| BS.length image <= 0 = image
+	| otherwise = BL.toStrict . BB.toLazyByteString $
+		flip fix 0 $ \withRow row ->
+			if' (row >= h') mempty $
+			flip fix 0 $ \withCol col ->
+				if' (col >= w') (withRow (row+1)) $
+				flip fix 0 $ \withComponent component ->
+					if' (component >= 4) (withCol (col+1)) $
+					let idx = ((h'-1)-row)*w'*4 + col*4 + component in
+					if' (idx >= BS.length image) mempty $
+					(BB.word8 $ image `BS.index` idx) <> (withComponent (component+1))
+	where
+		w', h' :: Int
+		(w', h') = join (***) fromIntegral (w, h)
+
 -- | The old version was really slow.
 --
 -- Use unsafe lower-level functions to manually implement a faster version,
 -- given the limitations of the safe bytestring interface provided along with
 -- the low-level implementation of it.
-reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
-reverseRowsImage ((w, h), image)
+--
+-- But now we have a safe _and_ faster version that uses bytestring builders; see 'reverseRowsImageBuilder'.
+reverseRowsImageLowLevel :: (WidthHeightI, BS.ByteString) -> BS.ByteString
+reverseRowsImageLowLevel ((w, h), image)
 	| BS.length image <= 0 = image
 	| otherwise = unsafePerformIO $ do
 		-- Unsafe optimization to avoid a copy: use unsafeUseAsCStringLen with the promise we won't mutate the data.

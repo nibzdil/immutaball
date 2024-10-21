@@ -528,5 +528,35 @@ ibFreeAllTextures :: IBStateContext -> ImmutaballIOF IBStateContext
 ibFreeAllTextures cxt0 = (\w -> fst <$> stepImmutaballWire w cxt0) $ freeAllTextures
 
 -- | Give it a material path, like ‘mtrl/invisible’.
+--
+-- TODO: implement more full support for mtrl textures.  For now just read the
+-- base image file for the texture, inside ‘data/textures/mtrl/’.
 cachingRenderMtrl :: Wire ImmutaballM (String, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)
-cachingRenderMtrl = error "TODO: unimplemented."
+cachingRenderMtrl = proc (mtrl, cxtn) -> do
+	(mglMtrlTextures, cxtnp1) <- requireGLMtrlTextures -< cxtn
+	glMtrlTextures <- monadic -< liftIBIO $ Atomically (readTVar mglMtrlTextures) id
+	case M.lookup mtrl glMtrlTextures of
+		Just ((w, h), name) -> do
+			returnA -< (((w, h), name), cxtnp1)
+		Nothing -> do
+			--_
+			--let ((w, h), image) = _
+			let ((w, h), image) = error "TODO: unimplemented"
+
+			(name, cxtnp3) <- createTexture -< (((w, h), image), cxtnp1)
+			-- Also see if somebody already cached our text while we were
+			-- creating the texture.
+			raceAlreadyCached <- monadic -< liftIBIO . flip Atomically id $ do
+				glMtrlTextures2 <- readTVar mglMtrlTextures
+				case M.lookup mtrl glMtrlTextures2 of
+					Nothing -> do
+						let glMtrlTextures3 = M.insert mtrl ((w, h), name) glMtrlTextures2
+						writeTVar mglMtrlTextures glMtrlTextures3
+						return Nothing
+					Just ((w2, h2), name2) -> do
+						return $ Just ((w2, h2), name2)
+			case raceAlreadyCached of
+				Nothing -> do returnA -< (((w, h), name), cxtnp3)
+				Just ((w2, h2), name2) -> do
+					cxtnp4 <- freeTexture -< (name, cxtnp3)
+					returnA -< (((w2, h2), name2), cxtnp4)

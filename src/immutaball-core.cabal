@@ -107,6 +107,7 @@ common executable-components
 		Immutaball.Ball.State.LevelSelect
 		Immutaball.Ball.State.LevelSets
 		Immutaball.Ball.State.Play
+		Immutaball.Ball.State.Preplay
 		Immutaball.Ball.State.Title
 		Immutaball.Prelude
 		Immutaball.Putt.CLI
@@ -168,6 +169,7 @@ library
 		Immutaball.Ball.State.LevelSelect
 		Immutaball.Ball.State.LevelSets
 		Immutaball.Ball.State.Play
+		Immutaball.Ball.State.Preplay
 		Immutaball.Ball.State.Title
 		Immutaball.Prelude
 		Immutaball.Putt.CLI

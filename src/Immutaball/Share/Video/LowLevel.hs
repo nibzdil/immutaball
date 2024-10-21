@@ -24,6 +24,7 @@ import Data.Word
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BB
+--import qualified Data.ByteString.Builder.Extra as BB
 import qualified Data.ByteString.Lazy as BL
 
 import Immutaball.Share.Math
@@ -37,14 +38,15 @@ import Foreign.Storable
 import System.IO.Unsafe (unsafePerformIO)
 
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
---reverseRowsImage = reverseRowsImageLowLevel
-reverseRowsImage = reverseRowsImageBuilder
+reverseRowsImage = reverseRowsImageLowLevel
+--reverseRowsImage = reverseRowsImageBuilder
 
 -- This is still noticeably slower than reverseRowsImageLowLevel.
 reverseRowsImageBuilder :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 reverseRowsImageBuilder ((w, h), image)
 	| BS.length image <= 0 = image
 	| otherwise = BL.toStrict . BB.toLazyByteString $
+	-- | otherwise = BL.toStrict . BB.toLazyByteStringWith (BB.safeStrategy chunkSize chunkSize) BL.empty $
 		flip fix 0 $ \withRow row ->
 			if' (row >= h') mempty $
 			flip fix 0 $ \withCol col ->
@@ -53,10 +55,13 @@ reverseRowsImageBuilder ((w, h), image)
 					if' (component >= 4) (withCol (col+1)) $
 					let idx = ((h'-1)-row)*w'*4 + col*4 + component in
 					if' (idx >= BS.length image) mempty $
+					--(BB.word8 $ image `UnsafeBS.unsafeIndex` idx) <> (withComponent (component+1))  -- This doesn't seem to be a major improvement on the core performance issue.  Keep it to the safe API.
 					(BB.word8 $ image `BS.index` idx) <> (withComponent (component+1))
 	where
 		w', h' :: Int
 		(w', h') = join (***) fromIntegral (w, h)
+		--chunkSize :: Int
+		--chunkSize = 2^(20 :: Int)
 
 -- | The old version was really slow.
 --

@@ -10,7 +10,8 @@
 module Immutaball.Share.Video.LowLevel
 	(
 		reverseRowsImage,
-		reverseRowsImageBuilder,
+		reverseRowsImageBuilderRows,
+		reverseRowsImageBuilderBytes,
 		reverseRowsImageLowLevel
 	) where
 
@@ -38,12 +39,25 @@ import Foreign.Storable
 import System.IO.Unsafe (unsafePerformIO)
 
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
-reverseRowsImage = reverseRowsImageLowLevel
---reverseRowsImage = reverseRowsImageBuilder
+--reverseRowsImage = reverseRowsImageLowLevel
+--reverseRowsImage = reverseRowsImageBuilderBytes
+reverseRowsImage = reverseRowsImageBuilderRows
+
+-- This is much better.  And safe!
+reverseRowsImageBuilderRows :: (WidthHeightI, BS.ByteString) -> BS.ByteString
+reverseRowsImageBuilderRows ((w, h), image)
+	| BS.length image <= 0 = image
+	| otherwise = BL.toStrict . BB.toLazyByteString $
+		flip fix 0 $ \withRow row ->
+			if' (row >= h') mempty $
+			(BB.byteString . BS.take (w'*4) . BS.drop (((h'-1)-row)*w'*4) $ image) <> (withRow (row+1))
+	where
+		w', h' :: Int
+		(w', h') = join (***) fromIntegral (w, h)
 
 -- This is still noticeably slower than reverseRowsImageLowLevel.
-reverseRowsImageBuilder :: (WidthHeightI, BS.ByteString) -> BS.ByteString
-reverseRowsImageBuilder ((w, h), image)
+reverseRowsImageBuilderBytes :: (WidthHeightI, BS.ByteString) -> BS.ByteString
+reverseRowsImageBuilderBytes ((w, h), image)
 	| BS.length image <= 0 = image
 	| otherwise = BL.toStrict . BB.toLazyByteString $
 	-- | otherwise = BL.toStrict . BB.toLazyByteStringWith (BB.safeStrategy chunkSize chunkSize) BL.empty $

@@ -666,7 +666,12 @@ precacheMtrlsDirect = proc cxtn -> do
 	let mtrlsDir = texturesDir </> "mtrl"
 	amtrlsDirContents <- monadic -< liftIBIO . BasicIBIOF $ GetDirectoryContents mtrlsDir id
 	mtrlsDirContents <- monadic -< liftIBIO $ Wait amtrlsDirContents id
-	let mtrlsBase_ = flip filter mtrlsDirContents $ \path -> not (path `elem` [".", ".."]) && not (".png" `isSuffixOf` path) && not (".jpg" `isSuffixOf` path)
+	let mtrlsBase_ = flip filter mtrlsDirContents $ \path -> not (path `elem` [".", ".."]) && not (".png" `isSuffixOf` path) && not (".jpg" `isSuffixOf` path) && path /= "default"
 	let mtrlsBase = S.toList . S.fromList $ mtrlsBase_
 	let mtrls = map ("mtrl" </>) mtrlsBase
-	foldrA (proc (mtrlBase, cxt) -> snd <$> cachingRenderMtrl -< (mtrlBase, cxt)) -< (cxtn, mtrls)
+	foldrA (proc (mtrlBase, cxt) -> snd <$> cachingRenderMtrl' -< (mtrlBase, cxt)) -< (cxtn, mtrls)
+	-- Delay 100ms between materials to not congest the SDL manager thread.
+	where cachingRenderMtrl' = proc (mtrl, cxt) -> do
+		cxtnp1 <- cachingRenderMtrl -< (mtrl, cxt)
+		() <- monadic -< liftIBIO . BasicIBIOF $ DelayUs (100*1000) ()
+		returnA -< cxtnp1

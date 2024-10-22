@@ -649,8 +649,11 @@ precacheMtrls = proc cxtn -> do
 	(_, cxtnp4) <- requireGLMtrlTextures      -< cxtnp3
 	(_, cxtnp5) <- requireGLAllocatedTextures -< cxtnp4
 
-	--() <- monadic -< liftIBIO . JoinIBIOF . BasicIBIOF $ ForkIO (void $ precacheMtrlsIB cxtnp5) (pure ())
-	() <- monadic -< liftIBIO $ forkIBIOF (void $ precacheMtrlsIB cxtnp5) (pure ())
+	-- TODO: the former uses async concurrency so exceptions are noticed and so
+	-- on, which would be preferable, but FIXME it causes an exception to be
+	-- thrown when the application quits.  Use the latter in the meantime.
+	--() <- monadic -< liftIBIO $ forkIBIOF (void $ precacheMtrlsIB cxtnp5) (pure ())
+	() <- monadic -< liftIBIO . JoinIBIOF . BasicIBIOF $ ForkIO (void $ precacheMtrlsIB cxtnp5) (pure ())
 
 	returnA -< cxtnp5
 

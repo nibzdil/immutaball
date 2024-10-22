@@ -83,7 +83,7 @@ reverseRowsImageBuilderBytes ((w, h), image)
 -- given the limitations of the safe bytestring interface provided along with
 -- the low-level implementation of it.
 --
--- But now we have a safe _and_ faster version that uses bytestring builders; see 'reverseRowsImageBuilder'.
+-- But now we have a safe _and_ faster version that uses bytestring builders; see 'reverseRowsImageBuilderRows'.
 reverseRowsImageLowLevel :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 reverseRowsImageLowLevel ((w, h), image)
 	| BS.length image <= 0 = image

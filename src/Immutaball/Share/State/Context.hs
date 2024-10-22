@@ -46,7 +46,10 @@ module Immutaball.Share.State.Context
 		clearMtrlCache,
 		freeAllTextures,
 		ibFreeAllTextures,
-		cachingRenderMtrl
+		cachingRenderMtrl,
+
+		juicyPixelsDynamicImageToJPImage,
+		juicyPixelsImageToImage
 	) where
 
 import Prelude ()
@@ -55,13 +58,19 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Monad
 import Data.Bits
+import Data.Either
+import Data.List
 import Data.Maybe
+import Text.Printf
 
+import qualified Codec.Picture as JP
+import qualified Codec.Picture.Types as JP
 import Control.Lens
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import qualified Data.ByteString as BS
---import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Builder as BB
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Lazy as M
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -102,8 +111,8 @@ data IBStateContext = IBStateContext {
 
 	-- | Used, freed.
 	_ibGLTextureNames      :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
-	_ibGLTextTextures      :: Maybe (TVar (M.Map T.Text (WidthHeightI, GLuint))),
-	_ibGLMtrlTextures      :: Maybe (TVar (M.Map String (WidthHeightI, GLuint))),
+	_ibGLTextTextures      :: Maybe (TVar (M.Map T.Text  (WidthHeightI, GLuint))),
+	_ibGLMtrlTextures      :: Maybe (TVar (M.Map String ((WidthHeightI, GLuint), MtrlMeta))),
 	-- | By tracking allocated textures, we can attach their lifetimes to the
 	-- SDL Manager thread to automatically clean them up upon quit.
 	-- 'createTexture' and 'freeTexture' use this interface.
@@ -212,7 +221,7 @@ requireGLTextTextures = proc cxt0 -> do
 			let cxt1 = cxt0 & (ibGLTextTextures.~Just glTextTextures)
 			returnA -< (glTextTextures, cxt1)
 
-requireGLMtrlTextures :: Wire ImmutaballM IBStateContext (TVar (M.Map String (WidthHeightI, GLuint)), IBStateContext)
+requireGLMtrlTextures :: Wire ImmutaballM IBStateContext (TVar (M.Map String ((WidthHeightI, GLuint), MtrlMeta)), IBStateContext)
 requireGLMtrlTextures = proc cxt0 -> do
 	case (cxt0^.ibGLMtrlTextures) of
 		Just glMtrlTextures -> returnA -< (glMtrlTextures, cxt0)
@@ -503,7 +512,7 @@ uncacheMtrl = proc (mtrl, cxtn) -> do
 		glMtrlTextures <- readTVar mglMtrlTextures
 		let glMtrlTextures2 = M.delete mtrl glMtrlTextures
 		writeTVar mglMtrlTextures glMtrlTextures2
-		return $ snd <$> M.lookup mtrl glMtrlTextures
+		return $ snd . fst <$> M.lookup mtrl glMtrlTextures
 	case mname of
 		Nothing -> returnA -< cxtnp1
 		Just name -> do
@@ -531,18 +540,48 @@ ibFreeAllTextures cxt0 = (\w -> fst <$> stepImmutaballWire w cxt0) $ freeAllText
 --
 -- TODO: implement more full support for mtrl textures.  For now just read the
 -- base image file for the texture, inside ‘data/textures/mtrl/’.
-cachingRenderMtrl :: Wire ImmutaballM (String, IBStateContext) ((WidthHeightI, GLuint), IBStateContext)
+cachingRenderMtrl :: Wire ImmutaballM (String, IBStateContext) (((WidthHeightI, GLuint), MtrlMeta), IBStateContext)
 cachingRenderMtrl = proc (mtrl, cxtn) -> do
 	(mglMtrlTextures, cxtnp1) <- requireGLMtrlTextures -< cxtn
 	glMtrlTextures <- monadic -< liftIBIO $ Atomically (readTVar mglMtrlTextures) id
 	case M.lookup mtrl glMtrlTextures of
-		Just ((w, h), name) -> do
-			returnA -< (((w, h), name), cxtnp1)
+		Just (((w, h), name), meta) -> do
+			returnA -< ((((w, h), name), meta), cxtnp1)
 		Nothing -> do
-			--_
-			--let ((w, h), image) = _
-			let ((w, h), image) = error "TODO: unimplemented"
+			-- Find (((w, h), image), meta).
+			let texturesDir = cxtnp1^.ibContext.ibDirs.ibStaticDataDir </> "textures"
+			let baseMtrlPath = texturesDir </> mtrl
+			let mtrlMetaPath = baseMtrlPath
+			let mtrlImageTryPaths = [baseMtrlPath ++ ".png", baseMtrlPath ++ ".jpg"]
 
+			ammtrlMetaContents <- monadic -< liftIBIO . BasicIBIOF $ ReadText mtrlMetaPath id
+			ammtrlEncodedImages <- monadic -< liftIBIO . BasicIBIOF $ forM mtrlImageTryPaths $ \mtrlImageTryPath -> ReadBytes mtrlImageTryPath id
+			mmtrlMetaContents <- monadic -< liftIBIO $ Wait ammtrlMetaContents id
+			mmtrlEncodedImages <- monadic -< liftIBIO . forM ammtrlEncodedImages $ \ammtrlEncodedImage -> Wait ammtrlEncodedImage id
+
+			mtrlMetaContents <- monadic -< liftIBIO . (ThrowIO ||| pure) $ mmtrlMetaContents
+			let (mtrlEncodedImagesFailures, mtrlEncodedImages) = partitionEithers mmtrlEncodedImages
+			mtrlEncodedImage <- monadic -< liftIBIO $ case (mtrlEncodedImagesFailures, mtrlEncodedImages) of
+				(errs@(err:_), []) -> do
+					BasicIBIOF $ PutStrLn (printf "Error: cachingRenderMtrl %s: failed to read mtrl texture image: %s" mtrl (intercalate "\n" (map show errs))) ()
+					ThrowIO err
+				([], []) -> ThrowIO $ userError ("Error: cachingRenderMtrl: no errors or successes when reading the mtrl " ++ mtrl)
+				(_, [encodedImage]) -> return encodedImage
+				(_, (_encodedImages@(encodedImage:_more))) -> do
+					BasicIBIOF $ PutStrLn (printf "Warning: cachingRenderMtrl %s: found multiple mtrl images; using the first" mtrl) ()
+					return encodedImage
+			let mmtrlJpEncodedImage = JP.decodeImage . BL.toStrict $ mtrlEncodedImage
+			mtrlJpEncodedImage <- monadic -< liftIBIO . (ThrowIO . (\e -> userError (printf "Error: cachingRenderMtrl %s: failed to decode texture image!: %s" mtrl e)) ||| pure) $ mmtrlJpEncodedImage
+			let mtrlJpImage = juicyPixelsDynamicImageToJPImage mtrlJpEncodedImage
+			let (mtrlW, mtrlH) = join (***) fromIntegral (JP.imageWidth mtrlJpImage, JP.imageHeight mtrlJpImage)
+			let mtrlImage = juicyPixelsImageToImage mtrlJpImage
+			let mtrlImageGL = reverseRowsImage ((mtrlW, mtrlH), mtrlImage)
+			let mtrlMeta = MtrlMeta
+			let _unused = [mtrlMetaContents]
+
+			let (((w, h), image), meta) = (((mtrlW, mtrlH), mtrlImageGL), mtrlMeta)
+
+			-- Make the texture with (((w, h), image), meta).
 			(name, cxtnp3) <- createTexture -< (((w, h), image), cxtnp1)
 			-- Also see if somebody already cached our text while we were
 			-- creating the texture.
@@ -550,13 +589,36 @@ cachingRenderMtrl = proc (mtrl, cxtn) -> do
 				glMtrlTextures2 <- readTVar mglMtrlTextures
 				case M.lookup mtrl glMtrlTextures2 of
 					Nothing -> do
-						let glMtrlTextures3 = M.insert mtrl ((w, h), name) glMtrlTextures2
+						let glMtrlTextures3 = M.insert mtrl (((w, h), name), meta) glMtrlTextures2
 						writeTVar mglMtrlTextures glMtrlTextures3
 						return Nothing
-					Just ((w2, h2), name2) -> do
-						return $ Just ((w2, h2), name2)
+					Just (((w2, h2), name2), meta2) -> do
+						return $ Just (((w2, h2), name2), meta2)
 			case raceAlreadyCached of
-				Nothing -> do returnA -< (((w, h), name), cxtnp3)
-				Just ((w2, h2), name2) -> do
+				Nothing -> do returnA -< ((((w, h), name), meta), cxtnp3)
+				Just (((w2, h2), name2), meta2) -> do
 					cxtnp4 <- freeTexture -< (name, cxtnp3)
-					returnA -< (((w2, h2), name2), cxtnp4)
+					returnA -< ((((w2, h2), name2), meta2), cxtnp4)
+
+-- | Convert a JuicyPixels image to our own RGBA pixel format.
+juicyPixelsDynamicImageToJPImage :: JP.DynamicImage -> JP.Image JP.PixelRGBA8
+juicyPixelsDynamicImageToJPImage (JP.ImageY8     img) = JP.promoteImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageY16    img) = juicyPixelsDynamicImageToJPImage . JP.ImageRGBA16 $ JP.promoteImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageY32    img) = flip JP.pixelMap img $ \pixel -> (\c -> JP.PixelRGBA8 c c c 255) $ (round $ (fromIntegral pixel / (4294967295  :: Double))*255)
+juicyPixelsDynamicImageToJPImage (JP.ImageYF     img) = flip JP.pixelMap img $ \pixel -> (\c -> JP.PixelRGBA8 c c c 255) $ (round $ pixel*255)
+juicyPixelsDynamicImageToJPImage (JP.ImageYA8    img) = JP.promoteImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageYA16   img) = juicyPixelsDynamicImageToJPImage . JP.ImageRGBA16 $ JP.promoteImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageRGB8   img) = JP.promoteImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageRGB16  img) = flip JP.pixelMap img $ \(JP.PixelRGB16 r g b) -> JP.PixelRGBA8 (round $ ((fromIntegral r  :: Double) / 65535.0)*255) (round $ ((fromIntegral g  :: Double) / 65535.0)*255) (round $ ((fromIntegral b  :: Double) / 65535.0)*255) 255
+juicyPixelsDynamicImageToJPImage (JP.ImageRGBF   img) = flip JP.pixelMap img $ \(JP.PixelRGBF r g b) -> JP.PixelRGBA8 (round $ r*255) (round $ g*255) (round $ b*255) (255)
+juicyPixelsDynamicImageToJPImage (JP.ImageRGBA8  img) = img
+juicyPixelsDynamicImageToJPImage (JP.ImageRGBA16 img) = flip JP.pixelMap img $ \(JP.PixelRGBA16 r g b a) -> JP.PixelRGBA8 (round $ ((fromIntegral r  :: Double) / 65535.0)*255) (round $ ((fromIntegral g  :: Double) / 65535.0)*255) (round $ ((fromIntegral b  :: Double) / 65535.0)*255) (round $ ((fromIntegral a  :: Double) / 65535.0)*255)
+juicyPixelsDynamicImageToJPImage (JP.ImageYCbCr8 img) = juicyPixelsDynamicImageToJPImage . JP.ImageRGB8  $ JP.convertImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageCMYK8  img) = juicyPixelsDynamicImageToJPImage . JP.ImageRGB8  $ JP.convertImage img
+juicyPixelsDynamicImageToJPImage (JP.ImageCMYK16 img) = juicyPixelsDynamicImageToJPImage . JP.ImageRGB16 $ JP.convertImage img
+
+juicyPixelsImageToImage :: JP.Image JP.PixelRGBA8 -> BS.ByteString
+juicyPixelsImageToImage jpImage@(JP.Image w h _) = BL.toStrict . BB.toLazyByteString $ JP.pixelFold (\builder _ _ (JP.PixelRGBA8 r g b a) -> builder <> BB.word8 r <> BB.word8 g <> BB.word8 b <> BB.word8 a) mempty jpImage
+	where
+		_w', _h' :: Integer
+		(_w', _h') = join (***) fromIntegral (w, h)

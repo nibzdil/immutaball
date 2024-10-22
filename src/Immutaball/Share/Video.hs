@@ -24,6 +24,9 @@ module Immutaball.Share.Video
 		freeImmutaballShader,
 		rawInitializeImmutaballShaderContinue,
 
+		-- * MtrlMeta
+		MtrlMeta(..),
+
 		-- * Errors
 		VideoException(..),
 		videoExceptionToException,
@@ -234,6 +237,14 @@ rawInitializeImmutaballShaderContinue ibsh = do
 		useProgramPipeline :: Bool
 		useProgramPipeline = False
 
+-- * MtrlMeta
+
+-- | TODO:
+data MtrlMeta = MtrlMeta {
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''MtrlMeta
+
 -- * Errors
 
 data VideoException = forall e. Exception e => VideoException e
@@ -302,3 +313,5 @@ numToGL_TEXTUREi = M.fromList $
 		(14, GL_TEXTURE14),
 		(15, GL_TEXTURE15)
 	]
+
+makeLenses ''MtrlMeta

@@ -71,7 +71,13 @@ module Immutaball.Share.Math
 		ilerp,
 		tau,
 
-		WidthHeightI
+		WidthHeightI,
+
+		v4to3,
+		v3to4,
+		vm3,
+		vm4,
+		v3m4
 	) where
 
 import Prelude ()
@@ -499,3 +505,20 @@ tau :: (Floating a) => a
 tau = 2*pi
 
 type WidthHeightI = (Integer, Integer)
+
+-- | Homonogenous coordinates.
+v4to3 :: (Fractional a) => Vec4 a -> Vec3 a
+v4to3 (Vec4 x y z w) = Vec3 (x/w) (y/w) (z/w)
+
+v3to4 :: (Fractional a) => Vec3 a -> Vec4 a
+v3to4 (Vec3 x y z) = Vec4 x y z 1.0
+
+-- | (The vector is interpreted as a 1x4 matrix.)
+vm3 :: (Num a) => Vec3 a -> Mat3 a -> Vec3 a
+vm3 v m = Vec3 (d3 v (m^.c0_3)) (d3 v (m^.c1_3)) (d3 v (m^.c2_3))
+
+vm4 :: (Num a) => Vec4 a -> Mat4 a -> Vec4 a
+vm4 v m = Vec4 (d4 v (m^.c0_4)) (d4 v (m^.c1_4)) (d4 v (m^.c2_4)) (d4 v (m^.c3_4))
+
+v3m4 :: (Num a, Fractional a) => Vec3 a -> Mat4 a -> Vec3 a
+v3m4 v m = v4to3 $ vm4 (v3to4 v) m

@@ -18,8 +18,8 @@ module Immutaball.Share.State.Context
 		requireShader,
 		requireFont,
 		requireGLTextureNames,
-		requireGLMtrlTextures,
 		requireGLTextTextures,
+		requireGLMtrlTextures,
 		requireGLAllocatedTextures,
 		requireMisc,
 		requireBasics,
@@ -49,7 +49,12 @@ module Immutaball.Share.State.Context
 		cachingRenderMtrl,
 
 		juicyPixelsDynamicImageToJPImage,
-		juicyPixelsImageToImage
+		juicyPixelsImageToImage,
+
+		checkPrecacheMtrls,
+		precacheMtrls,
+		precacheMtrlsIB,
+		precacheMtrlsDirect
 	) where
 
 import Prelude ()
@@ -241,7 +246,9 @@ requireGLAllocatedTextures = proc cxt0 -> do
 			glAllocatedTextures <- monadic -< liftIBIO $ Atomically (newTVar (S.empty, S.empty)) id
 			let cxt1 = cxt0 & (ibGLAllocatedTextures.~Just glAllocatedTextures)
 			() <- monadic -< liftIBIO $ attachLifetime (cxt0^.ibContext.ibSDLManagerHandle) (pure ()) (\() -> void $ ibFreeAllTextures cxt1) unusedTo_ ()
-			returnA -< (glAllocatedTextures, cxt1)
+			--returnA -< (glAllocatedTextures, cxt1)
+			cxt2 <- checkPrecacheMtrls -< cxt1
+			returnA -< (glAllocatedTextures, cxt2)
 
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
 requireMisc =
@@ -622,3 +629,42 @@ juicyPixelsImageToImage jpImage@(JP.Image w h _) = BL.toStrict . BB.toLazyByteSt
 	where
 		_w', _h' :: Integer
 		(_w', _h') = join (***) fromIntegral (w, h)
+
+-- | If the context enables precaching mtrls, spawn a thread to precache them.
+checkPrecacheMtrls :: Wire ImmutaballM IBStateContext IBStateContext
+checkPrecacheMtrls = proc cxtn -> do
+	--cxtnp1 <- if' (cxtn^.ibContext.ibStaticConfig.x'cfgPrecacheMtrls) precacheMtrls returnA -<< cxtn
+	cxtnp1 <- replaceNow $ (proc (_cxt, doPrecacheMtrls) -> do
+		returnA -< if' (not doPrecacheMtrls) (arr fst) $ proc (cxt2, _doPrecacheMtrls) -> do
+			precacheMtrls -< cxt2
+		) -< (cxtn, (cxtn^.ibContext.ibStaticConfig.x'cfgPrecacheMtrls))
+	returnA -< cxtnp1
+
+-- | Spawn a thread to scan for mtrls and render them to the cache.
+precacheMtrls :: Wire ImmutaballM IBStateContext IBStateContext
+precacheMtrls = proc cxtn -> do
+	cxtnp1      <- requireVideo               -< cxtn
+	(_, cxtnp2) <- requireGLTextureNames      -< cxtnp1
+	(_, cxtnp3) <- requireGLTextTextures      -< cxtnp2
+	(_, cxtnp4) <- requireGLMtrlTextures      -< cxtnp3
+	(_, cxtnp5) <- requireGLAllocatedTextures -< cxtnp4
+
+	() <- monadic -< liftIBIO . JoinIBIOF . BasicIBIOF $ ForkIO (void $ precacheMtrlsIB cxtnp5) (pure ())
+
+	returnA -< cxtnp5
+
+-- | The mtrl precaching thread.
+--
+-- Ensure the STM resources have been allocated before calling.
+precacheMtrlsIB :: IBStateContext -> ImmutaballIOF IBStateContext
+precacheMtrlsIB cxt0 = ((\w -> fst <$> stepImmutaballWire w cxt0)) $ precacheMtrlsDirect
+
+precacheMtrlsDirect :: Wire ImmutaballM IBStateContext IBStateContext
+precacheMtrlsDirect = proc cxtn -> do
+	let texturesDir = cxtn^.ibContext.ibDirs.ibStaticDataDir </> "textures"
+	let mtrlsDir = texturesDir </> "mtrl"
+	amtrlsDirContents <- monadic -< liftIBIO . BasicIBIOF $ GetDirectoryContents mtrlsDir id
+	mtrlsDirContents <- monadic -< liftIBIO $ Wait amtrlsDirContents id
+	let mtrlsBase_ = flip filter mtrlsDirContents $ \path -> not (path `elem` [".", ".."]) && not (".png" `isSuffixOf` path) && not (".jpg" `isSuffixOf` path)
+	let mtrlsBase = S.toList . S.fromList $ mtrlsBase_
+	foldrA (proc (mtrlBase, cxt) -> snd <$> cachingRenderMtrl -< (mtrlBase, cxt)) -< (cxtn, mtrlsBase)

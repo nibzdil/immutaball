@@ -58,6 +58,8 @@ module Immutaball.Share.ImmutaballIO.BasicIO
 		mkReadText,
 		mkReadTextSync,
 		mkCreateDirectoryIfMissing,
+		mkGetDirectoryContents,
+		mkGetDirectoryContentsSync,
 		mkForkIO,
 		mkForkOS,
 		mkSDLIO,
@@ -134,6 +136,8 @@ data BasicIOF me =
 	| ReadText FilePath (Async (Either IOException T.Text) -> me)
 	| ReadTextSync FilePath (Either IOException T.Text -> me)
 	| CreateDirectoryIfMissing FilePath me
+	| GetDirectoryContents FilePath (Async [FilePath] -> me)
+	| GetDirectoryContentsSync FilePath ([FilePath] -> me)
 	| ForkIO me me
 	| ForkOS me me
 
@@ -177,17 +181,19 @@ instance Functor BasicIOF where
 	fmap  f (GetContents withContents)           = GetContents (f . withContents)
 	fmap  f (GetContentsSync withContents)       = GetContentsSync (f . withContents)
 
-	fmap  f (DoesPathExist path withExists)          = DoesPathExist path (f .  withExists)
-	fmap  f (DoesPathExistSync path withExists)      = DoesPathExistSync path (f .  withExists)
-	fmap  f (WriteBytes path contents withUnit)      = WriteBytes path contents (f withUnit)
-	fmap  f (WriteText path contents withUnit)       = WriteText path contents (f withUnit)
-	fmap  f (ReadBytes path withContents)            = ReadBytes path (f . withContents)
-	fmap  f (ReadBytesSync path withContents)        = ReadBytesSync path (f . withContents)
-	fmap  f (ReadText path withContents)             = ReadText path (f . withContents)
-	fmap  f (ReadTextSync path withContents)         = ReadTextSync path (f . withContents)
-	fmap  f (CreateDirectoryIfMissing path withUnit) = CreateDirectoryIfMissing path (f withUnit)
-	fmap  f (ForkIO bio withUnit)                    = ForkIO (f bio) (f withUnit)
-	fmap  f (ForkOS bio withUnit)                    = ForkOS (f bio) (f withUnit)
+	fmap  f (DoesPathExist path withExists)             = DoesPathExist path (f .  withExists)
+	fmap  f (DoesPathExistSync path withExists)         = DoesPathExistSync path (f .  withExists)
+	fmap  f (WriteBytes path contents withUnit)         = WriteBytes path contents (f withUnit)
+	fmap  f (WriteText path contents withUnit)          = WriteText path contents (f withUnit)
+	fmap  f (ReadBytes path withContents)               = ReadBytes path (f . withContents)
+	fmap  f (ReadBytesSync path withContents)           = ReadBytesSync path (f . withContents)
+	fmap  f (ReadText path withContents)                = ReadText path (f . withContents)
+	fmap  f (ReadTextSync path withContents)            = ReadTextSync path (f . withContents)
+	fmap  f (CreateDirectoryIfMissing path withUnit)    = CreateDirectoryIfMissing path (f withUnit)
+	fmap  f (GetDirectoryContents path withEntries)     = GetDirectoryContents path (f . withEntries)
+	fmap  f (GetDirectoryContentsSync path withEntries) = GetDirectoryContentsSync path (f . withEntries)
+	fmap  f (ForkIO bio withUnit)                       = ForkIO (f bio) (f withUnit)
+	fmap  f (ForkOS bio withUnit)                       = ForkOS (f bio) (f withUnit)
 
 	fmap  f (SDLIO sdlio) = SDLIO (f <$> sdlio)
 	fmap  f (GLIO glio)   = GLIO  (f <$> glio)
@@ -297,6 +303,8 @@ unsafeFixBasicIOFTo mme f = unsafePerformIO $ do
 		_y@(ReadText          path withContents)          -> return $ ReadText          path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		_y@(ReadTextSync      path withContents)          -> return $ ReadTextSync      path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withContents)
 		y@( CreateDirectoryIfMissing _path me)            -> putMVar mme me >> return y
+		_y@(GetDirectoryContents path withEntries)        -> return $ GetDirectoryContents path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withEntries)
+		_y@(GetDirectoryContentsSync path withEntries)    -> return $ GetDirectoryContentsSync path ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withEntries)
 		--y@( ForkIO            _bio me)                    -> putMVar mme me >> return y
 		_y@(ForkIO            bio me)                     -> putMVar mme me >> return (JoinBasicIOF $ ForkIO (f bio) (PureBasicIOF me))
 		--y@( ForkOS            _os me)                     -> putMVar mme me >> return y
@@ -336,6 +344,8 @@ runBasicIOIO (ReadBytesSync path withContents)        = hReadBytesSync path >>= 
 runBasicIOIO (ReadText path withContents)             = withAsync (hReadTextSync path) withContents
 runBasicIOIO (ReadTextSync path withContents)         = hReadTextSync path >>= withContents
 runBasicIOIO (CreateDirectoryIfMissing path withUnit) = createDirectoryIfMissing True path >> withUnit
+runBasicIOIO (GetDirectoryContents path withEntries)  = withAsync (getDirectoryContents path) withEntries
+runBasicIOIO (GetDirectoryContentsSync path withEntries) = getDirectoryContents path >>= withEntries
 runBasicIOIO (ForkIO bio withUnit)                    = (void . forkIO) bio >> withUnit
 runBasicIOIO (ForkOS bio withUnit)                    = (void . forkOS) bio >> withUnit
 runBasicIOIO (SDLIO sdlio)                            = runSDLIOIO $ sdlio
@@ -434,6 +444,12 @@ mkReadTextSync path withContents = Fixed $ ReadTextSync path withContents
 
 mkCreateDirectoryIfMissing :: FilePath -> BasicIO -> BasicIO
 mkCreateDirectoryIfMissing path withUnit = Fixed $ CreateDirectoryIfMissing path withUnit
+
+mkGetDirectoryContents :: FilePath -> (Async [FilePath] -> BasicIO) -> BasicIO
+mkGetDirectoryContents path withEntries = Fixed $ GetDirectoryContents path withEntries
+
+mkGetDirectoryContentsSync :: FilePath -> ([FilePath] -> BasicIO) -> BasicIO
+mkGetDirectoryContentsSync path withEntries = Fixed $ GetDirectoryContentsSync path withEntries
 
 mkForkIO :: BasicIO -> BasicIO -> BasicIO
 mkForkIO bio withUnit = Fixed $ ForkIO bio withUnit

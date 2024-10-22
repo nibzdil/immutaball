@@ -15,7 +15,7 @@ module Immutaball.Share.Config
 			configFilename, x'cfgInitialWireWithCxt, immutaballFont,
 			immutaballFontSize, sdlManagerStaticConfig, glManagerStaticConfig,
 			x'cfgUseExistingSDLManager, x'cfgUseExistingGLManager,
-			x'cfgMaxPassTextures,
+			x'cfgMaxPassTextures, x'cfgPrecacheMtrls,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -96,7 +96,10 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 
 	-- | How many textures can we use at once in a single call to
 	-- 'glDrawElements'?
-	_x'cfgMaxPassTextures :: Integer
+	_x'cfgMaxPassTextures :: Integer,
+
+	-- | Request a thread is spawned in the background to precache Mtrl.
+	_x'cfgPrecacheMtrls :: Bool
 }
 makeLenses ''StaticConfig'
 
@@ -126,7 +129,9 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgUseExistingSDLManager = Nothing,
 	_x'cfgUseExistingGLManager  = Nothing,
 
-	_x'cfgMaxPassTextures = 16
+	_x'cfgMaxPassTextures = 16,
+
+	_x'cfgPrecacheMtrls = True
 }
 
 type Neverballrc = Config

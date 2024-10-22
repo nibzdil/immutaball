@@ -649,7 +649,8 @@ precacheMtrls = proc cxtn -> do
 	(_, cxtnp4) <- requireGLMtrlTextures      -< cxtnp3
 	(_, cxtnp5) <- requireGLAllocatedTextures -< cxtnp4
 
-	() <- monadic -< liftIBIO . JoinIBIOF . BasicIBIOF $ ForkIO (void $ precacheMtrlsIB cxtnp5) (pure ())
+	--() <- monadic -< liftIBIO . JoinIBIOF . BasicIBIOF $ ForkIO (void $ precacheMtrlsIB cxtnp5) (pure ())
+	() <- monadic -< liftIBIO $ forkIBIOF (void $ precacheMtrlsIB cxtnp5) (pure ())
 
 	returnA -< cxtnp5
 
@@ -667,4 +668,5 @@ precacheMtrlsDirect = proc cxtn -> do
 	mtrlsDirContents <- monadic -< liftIBIO $ Wait amtrlsDirContents id
 	let mtrlsBase_ = flip filter mtrlsDirContents $ \path -> not (path `elem` [".", ".."]) && not (".png" `isSuffixOf` path) && not (".jpg" `isSuffixOf` path)
 	let mtrlsBase = S.toList . S.fromList $ mtrlsBase_
-	foldrA (proc (mtrlBase, cxt) -> snd <$> cachingRenderMtrl -< (mtrlBase, cxt)) -< (cxtn, mtrlsBase)
+	let mtrls = map ("mtrl" </>) mtrlsBase
+	foldrA (proc (mtrlBase, cxt) -> snd <$> cachingRenderMtrl -< (mtrlBase, cxt)) -< (cxtn, mtrls)

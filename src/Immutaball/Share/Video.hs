@@ -65,8 +65,7 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video.LowLevel
 import Immutaball.Share.Video.Shaders
 
--- TODO: learn the new bytestring builders and probably use them.
--- | This was really slow, so I decided to write a faster version with unsafe functions.
+-- | Replaced by a newer 'reverseRowsImage' that performs better.
 reverseRowsImageReallySlow :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 reverseRowsImageReallySlow ((w, _h), image) = glImage
 	where

@@ -122,7 +122,13 @@ module Immutaball.Share.Math
 		rotate3Simple,
 		rotate3Simple_,
 		identityTransformation3,
-		identityTransformation3Simple
+		identityTransformation3Simple,
+		rotatexy,
+		rotatexz,
+		rotateyz,
+		rotatexySimple,
+		rotatexzSimple,
+		rotateyzSimple
 	) where
 
 import Prelude ()
@@ -982,6 +988,36 @@ identityTransformation3Simple = Mat3 $ Vec3
 	(Vec3 1.0 0.0 0.0)
 	(Vec3 0.0 1.0 0.0)
 	(Vec3 0.0 0.0 1.0)
+
+rotatexy :: (Floating a) => a -> Mat4 a
+rotatexy = m3to4 . rotatexySimple
+
+rotatexz :: (Floating a) => a -> Mat4 a
+rotatexz = m3to4 . rotatexzSimple
+
+rotateyz :: (Floating a) => a -> Mat4 a
+rotateyz = m3to4 . rotateyzSimple
+
+rotatexySimple :: (Floating a) => a -> Mat3 a
+rotatexySimple t = Mat3 $ Vec3
+	(Vec3 c    s   0.0)
+	(Vec3 (-s) c   0.0)
+	(Vec3 0.0  0.0 1.0)
+	where (c, s) = (cos t, sin t)
+
+rotatexzSimple :: (Floating a) => a -> Mat3 a
+rotatexzSimple t = Mat3 $ Vec3
+	(Vec3 c    0.0 s  )
+	(Vec3 0.0  1.0 0.0)
+	(Vec3 (-s) 0.0 c  )
+	where (c, s) = (cos t, sin t)
+
+rotateyzSimple :: (Floating a) => a -> Mat3 a
+rotateyzSimple t = Mat3 $ Vec3
+	(Vec3 1.0 0.0  0.0)
+	(Vec3 0.0 c    s  )
+	(Vec3 0.0 (-s) c  )
+	where (c, s) = (cos t, sin t)
 
 -- TODO: perspective
 

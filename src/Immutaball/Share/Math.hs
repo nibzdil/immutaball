@@ -128,7 +128,9 @@ module Immutaball.Share.Math
 		rotateyz,
 		rotatexySimple,
 		rotatexzSimple,
-		rotateyzSimple
+		rotateyzSimple,
+		determinant4,
+		determinant3
 	) where
 
 import Prelude ()
@@ -1021,6 +1023,31 @@ rotateyzSimple t = Mat3 $ Vec3
 
 -- TODO: perspective
 
--- TODO: determinant
+-- | For each on the first row, multiply the element by the determinent of the
+-- submatrix modulo width, to the base case of a 2x2 matrix.  Sum.
+-- If you ignored sign then 1x1 could be the base case.
+determinant4 :: (Num a) => Mat4 a -> a
+determinant4 (Mat4 (Vec4
+		(Vec4 v0_0 v0_1 v0_2 v0_3)
+		(Vec4 v1_0 v1_1 v1_2 v1_3)
+		(Vec4 v2_0 v2_1 v2_2 v2_3)
+		(Vec4 v3_0 v3_1 v3_2 v3_3)
+	)) =
+		v0_0*(v1_1*(v2_2*v3_3 - v2_3*v3_2) + v1_2*(v2_3*v3_1 - v2_1*v3_3) + v1_3*(v2_1*v3_2 - v2_2*v3_1)) +
+		v0_1*(v1_2*(v2_3*v3_4 - v2_4*v3_3) + v1_3*(v2_4*v3_2 - v2_2*v3_4) + v1_4*(v2_2*v3_3 - v2_3*v3_2)) +
+		v0_2*(v1_3*(v2_4*v3_5 - v2_5*v3_4) + v1_4*(v2_5*v3_3 - v2_3*v3_5) + v1_5*(v2_3*v3_4 - v2_4*v3_3)) +
+		v0_3*(v1_4*(v2_5*v3_6 - v2_6*v3_5) + v1_5*(v2_6*v3_4 - v2_4*v3_6) + v1_6*(v2_4*v3_5 - v2_5*v3_4))
+	where
+		(Vec4 _v0_4 _v0_5 _v0_6 _v0_7) = (Vec4 v0_0 v0_1 v0_2 v0_3)
+		(Vec4  v1_4  v1_5  v1_6 _v1_7) = (Vec4 v1_0 v1_1 v1_2 v1_3)
+		(Vec4  v2_4  v2_5  v2_6 _v2_7) = (Vec4 v2_0 v2_1 v2_2 v2_3)
+		(Vec4  v3_4  v3_5  v3_6 _v3_7) = (Vec4 v3_0 v3_1 v3_2 v3_3)
+
+determinant3 :: (Num a) => Mat3 a -> a
+determinant3 (Mat3 (Vec3
+		(Vec3 v0_0 v0_1 v0_2)
+		(Vec3 v1_0 v1_1 v1_2)
+		(Vec3 v2_0 v2_1 v2_2)
+	)) = v0_0*(v1_1*v2_2 - v1_2*v2_1) + v0_1*(v1_2*v2_0 - v1_0*v2_2) + v0_2*(v1_0*v2_1 - v1_1*v2_0)
 
 -- TODO: inverse

@@ -7,24 +7,26 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs, FlexibleInstances, MultiParamTypeClasses #-}
 
+-- | Dependent types might make for a funner linear algebra implementation, so
+-- I just stick with what's most applicable for our uses and goals here.
 module Immutaball.Share.Math
 	(
 		Vec2(..), x2, y2,
 		pv2,
 		sv2,
-		mv2,
+		minusv2,
 		d2,
 		r2,
 		t2,
 		Vec3(..), x3, y3, z3,
 		pv3,
 		sv3,
-		mv3,
+		minusv3,
 		d3,
 		Vec4(..), x4, y4, z4, w4,
 		pv4,
 		sv4,
-		mv4,
+		minusv4,
 		d4,
 		Mat3(..), getMat3,
 		Mat4(..), getMat4,
@@ -46,6 +48,10 @@ module Immutaball.Share.Math
 		c1_4,
 		c2_4,
 		c3_4,
+		v3normalize,
+		v3magnitude,
+		v4normalize,
+		v4magnitude,
 		Rect(..), rectp1, rectp2,
 		rectLowerLeft,
 		rectUpperRight,
@@ -75,9 +81,48 @@ module Immutaball.Share.Math
 
 		v4to3,
 		v3to4,
+		mv3,
+		mv4,
 		vm3,
 		vm4,
-		v3m4
+		v3m4,
+		v3or,
+		v3orWith,
+		vx3,
+		v2perp,
+		v3perp,
+
+		SimpleRotation(..), srCcwAngle, srOriginAxis,
+		Quaternion(..), qReal, qVector,
+		qasv4,
+		sq,
+		pq,
+		mq,
+		qmi,
+		qq,
+		v3q,
+		qcv3,
+		srToQ,
+		qnormalize,
+		qmagnitude,
+		qToSr,
+		srToVec3,
+		v3ToSr,
+		simpleRotate,
+		m3to4,
+		scale3,
+		scale3Simple,
+		scale4,
+		translate3,
+		tilt3,
+		tilt3Simple,
+		tilt3Reverse,
+		tilt3ReverseSimple,
+		rotate3,
+		rotate3Simple,
+		rotate3Simple_,
+		identityTransformation3,
+		identityTransformation3Simple
 	) where
 
 import Prelude ()
@@ -107,8 +152,8 @@ pv2 (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax + bx) (ay + by)
 sv2 :: (Num a) => a -> Vec2 a -> Vec2 a
 sv2 s (Vec2 x y) = Vec2 (s*x) (s*y)
 
-mv2 :: (Num a) => Vec2 a -> Vec2 a -> Vec2 a
-mv2 (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax - bx) (ay - by)
+minusv2 :: (Num a) => Vec2 a -> Vec2 a -> Vec2 a
+minusv2 (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax - bx) (ay - by)
 
 -- | Polar coordinates.
 r2 :: forall a. (RealFloat a) => Lens' (Vec2 a) a
@@ -167,8 +212,8 @@ pv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax + bx) (ay + by) (az + bz)
 sv3 :: (Num a) => a -> Vec3 a -> Vec3 a
 sv3 s (Vec3 x y z) = Vec3 (s*x) (s*y) (s*z)
 
-mv3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
-mv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax - bx) (ay - by) (az - bz)
+minusv3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
+minusv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax - bx) (ay - by) (az - bz)
 
 d3 :: (Num a) => Vec3 a -> Vec3 a -> a
 d3 (Vec3 ax ay az) (Vec3 bx by bz) = ax*bx + ay*by + az*bz
@@ -197,8 +242,8 @@ pv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax + bx) (ay + by) (az + bz) (
 sv4 :: (Num a) => a -> Vec4 a -> Vec4 a
 sv4 s (Vec4 x y z w) = Vec4 (s*x) (s*y) (s*z) (s*w)
 
-mv4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
-mv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax - bx) (ay - by) (az - bz) (aw - bw)
+minusv4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
+minusv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax - bx) (ay - by) (az - bz) (aw - bw)
 
 d4 :: (Num a) => Vec4 a -> Vec4 a -> a
 d4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = ax*bx + ay*by + az*bz + aw*bw
@@ -331,6 +376,18 @@ mm4 a b = (Mat4 (Vec4
 		(Vec4 (d4 (a^.r3_4) (b^.c0_4))  (d4 (a^.r3_4) (b^.c1_4))  (d4 (a^.r3_4) (b^.c2_4))  (d4 (a^.r3_4) (b^.c3_4)))
 	))
 
+v3magnitude :: (Num a, Floating a) => Vec3 a -> a
+v3magnitude (Vec3 x y z) = sqrt $ x*x + y*y + z*z
+
+v3normalize :: (Num a, Floating a) => Vec3 a -> Vec3 a
+v3normalize v = (1/v3magnitude v) `sv3` v
+
+v4magnitude :: (Num a, Floating a) => Vec4 a -> a
+v4magnitude (Vec4 x y z w) = sqrt $ x*x + y*y + z*z + w*w
+
+v4normalize :: (Num a, Floating a) => Vec4 a -> Vec4 a
+v4normalize v = (1/v4magnitude v) `sv4` v
+
 data Rect a = Rect {
 	_rectp1 :: Vec2 a,
 	_rectp2 :: Vec2 a
@@ -365,7 +422,7 @@ rectCenter = lens getter (flip setter)
 		setter :: (Vec2 a) -> Rect a -> Rect a
 		setter c1 r@(Rect p1 p2) = Rect (p1 `pv2` offset) (p2 `pv2` offset)
 			where
-				offset = c1 `mv2` c0
+				offset = c1 `minusv2` c0
 				c0 = getter r
 
 -- | Not a lens by laws definition; see 'rectBottom'.
@@ -481,13 +538,13 @@ lerp :: (Num a) => a -> a -> a -> a
 lerp = lerpWith (+) (-) (*)
 
 lerpV2 :: (Num a) => Vec2 a -> Vec2 a -> a -> Vec2 a
-lerpV2 = lerpWith pv2 mv2 sv2
+lerpV2 = lerpWith pv2 minusv2 sv2
 
 lerpV3 :: (Num a) => Vec3 a -> Vec3 a -> a -> Vec3 a
-lerpV3 = lerpWith pv3 mv3 sv3
+lerpV3 = lerpWith pv3 minusv3 sv3
 
 lerpV4 :: (Num a) => Vec4 a -> Vec4 a -> a -> Vec4 a
-lerpV4 = lerpWith pv4 mv4 sv4
+lerpV4 = lerpWith pv4 minusv4 sv4
 
 ilerpWith :: (a -> s) -> (a -> a -> a) -> (s -> s -> s) -> a -> a -> a -> s
 --ilerpWith from_ to_ on_ = (on_ - from_) / (to_ - from_)
@@ -513,12 +570,421 @@ v4to3 (Vec4 x y z w) = Vec3 (x/w) (y/w) (z/w)
 v3to4 :: (Fractional a) => Vec3 a -> Vec4 a
 v3to4 (Vec3 x y z) = Vec4 x y z 1.0
 
+-- | Apply a transformation matrix to a vector.
+--
+-- The vector is interpreted as a 4x1 matrix, like a column.
+--
+-- You can think of multiplication of a matrix with a vector like this:
+--
+--          x
+--          x
+--          x
+--          x
+--
+-- x x x x  ?
+-- x x x x  ?
+-- x x x x  ?
+-- x x x x  ?
+--
+-- In the middle is the result of ? we want to find.  Above it is the vector.
+-- To the left of the result is the matrix.  This visual may aid in
+-- understanding this basic linear algebra.  I like to think of the column on
+-- top as like a falling block, with its top falling to the left, so that it
+-- rotates 45 degrees counter-clockwise.  It first falls onto the top row, and
+-- you take the dot product to get the first ‘?’ result.  Repeat for the second
+-- ‘?’ on the second row and so on.  Note that if you had 4 vectors (columns)
+-- above, you could do the same, taking that column as a brick-like block, and
+-- letting it fall onto a row of the matrix of the left, and then you'd get
+-- full matrix-matrix multiplication.
+--
+-- Each row of the transformation matrix tells you how to get a new coordinate,
+-- i.e. what the result is of mapping a coordinate after the transformation back
+-- into original coordinates.  The first row is like a weighted sum, taking
+-- each input coordinate, and producing an ‘x’ coordinate.  The second row
+-- likewise, producing a ‘y’ coordinate.  (e.g. for ‘y’ coordinate, a row of ‘0 1 0 0’
+-- simply returns the ‘y’ coordinate unchanged, and ‘0.5 0.5 0.0 0.0’ would
+-- provide the value half-way between the input x and y coordinates as the new y
+-- coordinate.
+--
+-- The columns of the transformation matrix can be interpreted to mean the new
+-- axes after your transformation.  e.g. if you scale the z axis by 2, making
+-- it double in size, the new z axis is represented by the vector from the
+-- origin to the point ‘0 0 2 0’.  This can also be useful for 3D rotation,
+-- since it can be easier to do rotations in a simple, 2D plane, dealing with
+-- just some sines, cosines, and angles.
+--
+-- We usually use the transformation on the matrix and the vector on the right.
+-- You can do it in reverse order, but then the matrix would need to be
+-- transposed, and the vector would be a row rather than a column.  For the
+-- reversed order, see 'vm4'.
+--
+-- Finally, we usually use 4D vectors to deal with 3D space through what's
+-- called homogonous coordinates, an extra coordinate, which lets us more
+-- easily represent translations and perspectives.  The meaning of the last
+-- coordinate with homogonous coordinates is that all the other coordinates are
+-- divided by it.  Often the 4th coordinate can just be ‘1’.  This gives the
+-- property that multiplying a scalar by the vector yields an equivalent point.
+-- It also happens to be convenient for translations and perspectives.
+mv4 :: (Num a) => Mat4 a -> Vec4 a -> Vec4 a
+mv4 m v = Vec4 (d4 (m^.r0_4) v) (d4 (m^.r1_4) v) (d4 (m^.r2_4) v) (d4 (m^.r3_4) v)
+
+-- | See 'mv4'; this is just for 3d vectors.
+--
+-- mv4 is 4d but we use 4d vectors to represent 3d vectors in order to more
+-- easily represent translations and perspectives, through what's known as
+-- homogonous coordinates, where the components except the last is divided by
+-- the last component, and where a vector can be multiplied by a scalar and
+-- getting an equivalent vector.
+mv3 :: (Num a) => Mat3 a -> Vec3 a -> Vec3 a
+mv3 m v = Vec3 (d3 (m^.r0_3) v) (d3 (m^.r1_3) v) (d3 (m^.r2_3) v)
+
 -- | (The vector is interpreted as a 1x4 matrix.)
+--
+-- Note the vector is on the left with a transposed matrix.  We personally use
+-- vector on the right with mv3, where the columns, not the rows, are the new
+-- axes, and points in terms of the new axes are mapped back to the original
+-- coordinates with the transformation matrix.)
 vm3 :: (Num a) => Vec3 a -> Mat3 a -> Vec3 a
 vm3 v m = Vec3 (d3 v (m^.c0_3)) (d3 v (m^.c1_3)) (d3 v (m^.c2_3))
 
+-- | Vector on the left with transposed transformation matrix.
+--
+-- See also 'vm3' and 'v4m'.
 vm4 :: (Num a) => Vec4 a -> Mat4 a -> Vec4 a
 vm4 v m = Vec4 (d4 v (m^.c0_4)) (d4 v (m^.c1_4)) (d4 v (m^.c2_4)) (d4 v (m^.c3_4))
 
 v3m4 :: (Num a, Fractional a) => Vec3 a -> Mat4 a -> Vec3 a
 v3m4 v m = v4to3 $ vm4 (v3to4 v) m
+
+v3or :: (RealFloat a) => Vec3 a -> Vec3 a
+v3or = v3orWith (Vec3 0.0 0.0 0.0)
+
+v3orWith :: (RealFloat a) => Vec3 a -> Vec3 a -> Vec3 a
+v3orWith else_ v@(Vec3 x y z)
+	| isNaN x || isInfinite x = else_
+	| isNaN y || isInfinite y = else_
+	| isNaN z || isInfinite z = else_
+	| otherwise = v
+
+-- | Cross product.
+--
+-- Satisfies a x b = |a| * |b| * sin(t) * n, providing a vector perpendicular
+-- to the plane containing both vectors (if linearly independent) with a magnitude
+-- equal to the product of magnitudes at the sin of the angle between them.
+vx3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
+vx3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ay*bz - az*by) (az*bx - ax*bz) (ax*by - ay*bx)
+
+-- | Find a vector perpendicular.
+v2perp :: (Num a) => Vec2 a -> Vec2 a
+v2perp (Vec2 x y) = Vec2 (-y) x
+
+-- | Find a vector perpendicular to the normal, with v2perp on the largest
+-- magnitude component (which is non-zero iff the vector is non-zero) and some
+-- other component (the next one).
+v3perp :: (Num a, Ord a) => Vec3 a -> Vec3 a
+v3perp (Vec3 x y z)
+	| abs y <= abs x && abs z <= abs x = Vec3 (-y) x    z
+	| abs z <= abs y && abs x <= abs y = Vec3 x    (-z) y
+	| otherwise                        = Vec3 z    y    (-x)
+
+-- | A representation of a simple 3D rotation about an axis that intersects the
+-- origin.
+data SimpleRotation a = SimpleRotation {
+	_srCcwAngle   :: a,
+	_srOriginAxis :: Vec3 a
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''SimpleRotation
+
+-- | A complex number with 3 imaginary components instead of 1.
+--
+-- It is sometimes used to represent 3D rotations as an alternative to transformation matrices.
+--
+-- ij = -ji = k; jk = -kj = i; ki = -ik = j; i^2 = j^2 = k^2 = -1.
+--
+-- Beyond this I haven't learned much about these things.
+data Quaternion a = Quaternion {
+	_qReal   :: a,
+	_qVector :: Vec3 a
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''Quaternion
+
+qasv4 :: Lens' (Quaternion a) (Vec4 a)
+qasv4 = lens getter (flip setter)
+	where
+		getter :: Quaternion a -> Vec4 a
+		getter (Quaternion a (Vec3 b c d)) = Vec4 a b c d
+		setter :: Vec4 a -> Quaternion a -> Quaternion a
+		setter (Vec4 a b c d) _ = Quaternion a (Vec3 b c d)
+
+-- | Scale quaternion.
+sq :: (Num a) => a -> Quaternion a -> Quaternion a
+sq s (Quaternion a (Vec3 b c d)) = Quaternion (s*a) (Vec3 (s*b) (s*c) (s*d))
+
+-- | Plus quaternion.
+pq :: (Num a) => Quaternion a -> Quaternion a -> Quaternion a
+pq (Quaternion aa (Vec3 ab ac ad)) (Quaternion ba (Vec3 bb bc bd)) = Quaternion (aa + ba) (Vec3 (ab + bb) (ac + bc) (ad + bd))
+
+-- | Minus quaternion.
+mq :: (Num a) => Quaternion a -> Quaternion a -> Quaternion a
+mq (Quaternion aa (Vec3 ab ac ad)) (Quaternion ba (Vec3 bb bc bd)) = Quaternion (aa - ba) (Vec3 (ab - bb) (ac - bc) (ad - bd))
+
+-- | quaternion ^ -1.
+--
+-- (Quaternion multiplicative inverse.)
+qmi :: (Num a, Fractional a) => Quaternion a -> Quaternion a
+qmi (Quaternion a (Vec3 b c d)) = sq (1/(a*a + b*b + c*c + d*d)) $ Quaternion a (Vec3 (-b) (-c) (-d))
+
+-- | Quaternion multiplication.
+--
+-- ‘Hamilton product’: distribute bases.
+qq :: (Num a) => Quaternion a -> Quaternion a -> Quaternion a
+qq (Quaternion aa (Vec3 ab ac ad)) (Quaternion ba (Vec3 bb bc bd)) =
+	Quaternion
+		(aa*ba - ab*bb - ac*bc - ad*bd) $ Vec3
+		(aa*bb + ab*ba + ac*bd - ad*bc)
+		(aa*bc - ab*bd + ac*ba + ad*bb)
+		(aa*bd + ab*bc - ac*bb + ad*ba)
+
+-- | Convert a vector to a quaternion representation.
+--
+-- This can be conjugated with a rotation quaternion to rotate a vector.
+v3q :: (Fractional a) => Vec3 a -> Quaternion a
+v3q v = Quaternion 0.0 v
+
+-- | Conjugate a 3D vector by a quaternion.
+--
+-- If the quaternion represents a rotation, the vector will be rotated.
+qcv3 :: (Num a, Fractional a) => Quaternion a -> Vec3 a -> Vec3 a
+qcv3 q v = (^.qVector) $ q `qq` (v3q v) `qq` (qmi q)
+
+-- | Convert a 'SimpleRotation' to a quaternion.
+srToQ :: (Num a, Floating a) => SimpleRotation a -> Quaternion a
+srToQ sr = Quaternion (cos ((sr^.srCcwAngle)/2)) $ (sin ((sr^.srCcwAngle)/2)) `sv3` (v3normalize $ sr^.srOriginAxis)
+
+qnormalize :: (Num a, Fractional a, Floating a) => Quaternion a -> Quaternion a
+qnormalize q = (1/qmagnitude q) `sq` q
+
+qmagnitude :: (Num a, Floating a) => Quaternion a -> a
+qmagnitude (Quaternion a (Vec3 b c d)) = sqrt $ a*a + b*b + c*c + d*d
+
+-- | Convert a quaternion-encoded rotation to a SimpleRotation.
+--
+-- The magnitude of the vector is the sine of half the angle of rotation.
+--
+-- Get the sign of Real to get the quadrant.
+qToSr :: (RealFloat a, Num a) => Quaternion a -> SimpleRotation a
+qToSr (Quaternion a v) = SimpleRotation {
+	_srCcwAngle   = atan2 (2 * asin (v3magnitude v)) (2 * acos a),
+	_srOriginAxis = v3normalize v
+}
+
+-- | Encode the angle as the magnitude.
+srToVec3 :: (Num a) => SimpleRotation a -> Vec3 a
+srToVec3 sr = (sr^.srCcwAngle) `sv3` (sr^.srOriginAxis)
+
+-- | Decode the angle as the magnitude.
+v3ToSr :: (Floating a, RealFloat a) => Vec3 a -> SimpleRotation a
+v3ToSr v = SimpleRotation {
+	_srCcwAngle   = v3magnitude $ v,
+	_srOriginAxis = v3or . v3normalize $ v
+}
+
+-- | Rotate x radians about the axis pointing in direction, which intersects the origin.
+--
+-- You can use 'v3to4' and 'v4to3' as needed to translate between homogenous
+-- coordinates and non-homogenous coordinates.
+simpleRotate :: (Num a, RealFloat a) => SimpleRotation a -> Vec3 a -> Vec3 a
+simpleRotate sr v = rotate3Simple sr `mv3` v
+
+m3to4 :: (Fractional a) => Mat3 a -> Mat4 a
+m3to4 (Mat3 (Vec3
+		(Vec3 v0_0 v0_1 v0_2)
+		(Vec3 v1_0 v1_1 v1_2)
+		(Vec3 v2_0 v2_1 v2_2)
+	)) = Mat4 (Vec4
+		(Vec4 v0_0 v1_0 v2_0 0.0)
+		(Vec4 v0_1 v1_1 v2_1 0.0)
+		(Vec4 v0_2 v1_2 v2_2 0.0)
+		(Vec4 0.0  0.0  0.0  1.0)
+	)
+
+-- | Make a transformation that applies the given component-wise scale.
+scale3 :: (Fractional a) => Vec3 a -> Mat4 a
+scale3 = m3to4 . scale3Simple
+
+-- | Make a transformation that applies the given component-wise scale.
+scale3Simple :: (Fractional a) => Vec3 a -> Mat3 a
+scale3Simple v = Mat3 $ Vec3
+	(Vec3 (v^.x3) 0.0     0.0)
+	(Vec3 0.0     (v^.y3) 0.0)
+	(Vec3 0.0     0.0     (v^.z3))
+
+-- | Make a transformation that applies the given component-wise scale.
+scale4 :: (Fractional a) => Vec4 a -> Mat4 a
+scale4 v = Mat4 $ Vec4
+	(Vec4 (v^.x4) 0.0     0.0     0.0)
+	(Vec4 0.0     (v^.y4) 0.0     0.0)
+	(Vec4 0.0     0.0     (v^.z4) 0.0)
+	(Vec4 0.0     0.0     0.0     (v^.w4))
+
+-- | Make a transformation matrix that translates a 3D point in 4D homogeneous coordinates.
+--
+-- (Note this in the order we normally use, where you can multiply a vector to
+-- the right of the matrix.  You can still transpose the matrix to multiply in the
+-- reverse order.)
+translate3 :: (Fractional a) => Vec3 a -> Mat4 a
+translate3 v = Mat4 $ Vec4
+	(Vec4 1.0 0.0 0.0 (v^.x3))
+	(Vec4 0.0 1.0 0.0 (v^.y3))
+	(Vec4 0.0 0.0 1.0 (v^.z3))
+	(Vec4 0.0 0.0 0.0 1.0)
+
+-- | Provide a new z-axis, like a plane normal, and make a transformation
+-- matrix that rotates about the origin so that the xy plane now has a normal
+-- pointing to the given normal, without spinning the x or y axes outside the
+-- yz and xz planes, and using the shortest path.
+--
+-- Each column in the matrix can be interpreted as the new axes.  (BTW, and the
+-- abs of the determinant of the matrix as the hypervolume of the unit hypersquare in terms
+-- of the new axes, IIUC.)  So without spinning the x or y axes, tilt the z axis to
+-- point toward the normal in the closest path.  Rotate the z axis about the x
+-- axis in the yz plane until the z axis's y equals the desired y, and rotate
+-- the z axis axis about the y axis in the xz plane until the z axi's x equals
+-- the desired x.  (Since the normal is unit length, and rotations preserve
+-- magnitude, the z axis'z z coordinate should end up as expected).  Apply both
+-- rotations to the identity x and y axes.
+--
+-- Then we know the 3rd column of the resulting transformation matrix, which is
+-- simply the vector (i.e. the new z axis), which can be a normal to a plane.
+-- If it's the normal of the xy plane, then it's the identity z axis that points
+-- straight up.
+--
+-- The 2nd column takes the vector 0 1 0 and rotates as described.  The
+-- rotation about y doesn't affect this axis, so we only deal with the other
+-- rotation.  y axis's x
+-- stays 0, and y and z change as needed - the axis stays in the yz plane (it
+-- rotates about the x axis).  Essentially, project the normal (input vector)
+-- onto the yz plane with a straight line going through the normal vector point
+-- and the yz plane by and then renormalize to length 1 (reset to the identity
+-- y axis if the projection is the zero vector); find the change in angle.  The
+-- angle from 0 0 1 to 0 (z^.y) (z^.z) is (normalize the latter vector to
+-- length 1) what we want.  It's like a change in theta in polar coordinates
+-- between these two 2D vectors without the 0 X coordinate.  It's just
+-- -asin (z^.y).  On the yz plane, the y axis starts as (1,0).  Then add angle
+-- -asin (z^.y).  So (on the yz plane), the new y axis is
+--   (cos(-asin (z^.y)), sin(-asin (z^.y)))
+-- = (sqrt (1 - (z^.y)^2), -(z^.y))
+--
+-- The xz plane for the new x axis about the y axis is similar.  It starts (1,0).  Add angle -asin (z^.x).
+--   (cos(-asin (z^.x)), sin(-asin (z^.x)))
+-- = (sqrt (1 - (z^.x)^2), -(z^.x))
+tilt3 :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3 = m3to4 . tilt3Simple
+
+-- | 'tilt3' without homogeneous coordinates.
+tilt3Simple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3Simple z = Mat3 $ Vec3
+	-- new x axis                 new y axis              new z axis
+	(Vec3 (sqrt$ 1 - sq_ (z^.x3)) 0.0                     (z^.x3))
+	(Vec3 0.0                     (sqrt$ 1 - sq_ (z^.y3)) (z^.y3))
+	(Vec3 (             -(z^.x3)) (             -(z^.y3)) (z^.z3))
+	where sq_ a = a * a
+
+tilt3Reverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3Reverse = m3to4 . tilt3ReverseSimple
+
+tilt3ReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3ReverseSimple (Vec3 x y z) = tilt3Simple $ Vec3 (-x) (-y) z
+
+-- | Rotate x radians about the axis pointing in direction, which intersects the origin.
+--
+-- One way to solve this is to compose tilting to the axis, then rotating the x
+-- and y axes (w/ x axis cos t, sin t; y axis -sin t, cos t), and then reversing
+-- the tilt, and then simplifying the result.
+--
+-- First, take the tilt to the axis, M0:
+--
+-- 	(Vec3 (sqrt$ 1 - sq (z^.x3)) 0.0                    (z^.x3))
+-- 	(Vec3 0.0                    (sqrt$ 1 - sq (z^.y3)) (z^.y3))
+-- 	(Vec3 (            -(z^.x3)) (            -(z^.y3)) (z^.z3))
+--
+-- Then take the xy rotate about theta, M1:
+-- 	(Vec3 (cos t)  (-sin t)  0.0)
+-- 	(Vec3 (sin t)  ( cos t)  0.0)
+-- 	(Vec3 0.0      0.0       1.0)
+--
+-- Now take M1*M0:
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * cos t) (-(sqrt$ 1 - sq (z^.y3)) * sin t) ((z^.x3) * cos t - (z^.y3) * sin t))
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * sin t) ( (sqrt$ 1 - sq (z^.y3)) * cos t) ((z^.x3) * sin t + (z^.y3) * cos t))
+-- 	(Vec3 (-(z^.x3))                       (-(z^.y3))                        (z^.z3)                            )
+--
+-- Now take M2, reverse tilt:
+-- 	(Vec3 (sqrt$ 1 - sq (z^.x3)) 0.0                    (-(z^.x3)))
+-- 	(Vec3 0.0                    (sqrt$ 1 - sq (z^.y3)) (-(z^.y3)))
+-- 	(Vec3 (             (z^.x3)) (             (z^.y3)) (  z^.z3))
+--
+-- Now take M2*(M1*M0):
+-- 	-- new x axis                                                                                                 new y axis                                                                                                    new z axis
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * cos t * (sqrt$ 1 - sq (z^.x3))                             + (z^.x3)*(z^.x3)) ((-(sqrt$ 1 - sq (z^.y3)) * sin t) * (sqrt$ 1 - sq (z^.x3))                                + (z^.y3)*(z^.x3)) (((z^.x3) * cos t - (z^.y3) * sin t) * (sqrt$ 1 - sq (z^.x3))                                  - (z^.z3)*(z^.x3)))
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * sin t * (sqrt$ 1 - sq (z^.y3))                             + (z^.x3)*(z^.y3)) (( (sqrt$ 1 - sq (z^.y3)) * cos t) * (sqrt$ 1 - sq (z^.y3))                                + (z^.y3)*(z^.y3)) (((z^.x3) * sin t + (z^.y3) * cos t) * (sqrt$ 1 - sq (z^.y3))                                  - (z^.z3)*(z^.y3)))
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * cos t * (z^.x3) + (sqrt$ 1 - sq (z^.x3)) * sin t * (z^.y3) - (z^.x3)*(z^.z3)) ((-(sqrt$ 1 - sq (z^.y3)) * sin t) * (z^.x3) + ( (sqrt$ 1 - sq (z^.y3)) * cos t) * (z^.y3) - (z^.y3)*(z^.z3)) (((z^.x3) * cos t - (z^.y3) * sin t) * (z^.x3) + ((z^.x3) * sin t + (z^.y3) * cos t) * (z^.y3) + (z^.z3)*(z^.z3)))
+--
+-- Now simplify/rearrange M2*M1*M0:
+-- 	-- new x axis                                                                          new y axis                                                                          new z axis
+-- 	(Vec3 ((      1 - sq (z^.x3)) * cos t                               + (z^.x3)*(z^.x3)) ((-(sqrt$ 1 - sq (z^.y3)) * sin t) * (sqrt$ 1 - sq (z^.x3))      + (z^.y3)*(z^.x3)) (((z^.x3) * cos t - (z^.y3) * sin t) * (sqrt$ 1 - sq (z^.x3))                                  - (z^.z3)*(z^.x3)))
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * sin t * (sqrt$ 1 - sq (z^.y3))      + (z^.x3)*(z^.y3)) (  (      1 - sq (z^.y3)) * cos t                                + (z^.y3)*(z^.y3)) (((z^.x3) * sin t + (z^.y3) * cos t) * (sqrt$ 1 - sq (z^.y3))                                  - (z^.z3)*(z^.y3)))
+-- 	(Vec3 ((sqrt$ 1 - sq (z^.x3)) * (cos t * (z^.x3) + sin t * (z^.y3)) - (z^.x3)*(z^.z3)) (  (sqrt$ 1 - sq (z^.y3)) * (-sin t * (z^.x3) + cos t * (z^.y3)) - (z^.y3)*(z^.z3)) (((z^.x3) * cos t - (z^.y3) * sin t) * (z^.x3) + ((z^.x3) * sin t + (z^.y3) * cos t) * (z^.y3) + (z^.z3)*(z^.z3)))
+--
+-- This is our rotation matrix.
+--
+-- I hope I didn't make a mistake somewhere.
+rotate3 :: (Fractional a, RealFloat a) => SimpleRotation a -> Mat4 a
+rotate3 = m3to4 . rotate3Simple
+
+-- | Rotate x radians about the axis pointing in direction, which intersects the origin.
+rotate3Simple :: (RealFloat a, Floating a) => SimpleRotation a -> Mat3 a
+rotate3Simple sr = rotate3Simple_ $ sr & (srOriginAxis %~ v3orWith (Vec3 0.0 0.0 1.0) . v3normalize)
+
+-- | Skip normalizing the axis and assume it's already normal.
+rotate3Simple_ :: (Num a, Floating a) => SimpleRotation a -> Mat3 a
+rotate3Simple_ sr = Mat3 $ Vec3
+	-- new x axis                       new y axis                      new z axis
+	(Vec3 (x'_ * c               + x*x) (-y'  * s * x'           + y*x) ((x * c - y * s) * x'                      - z*x))
+	(Vec3 (x'  * s * y'          + x*y) ( y'_ * c                + y*y) ((x * s + y * c) * y'                      - z*y))
+	(Vec3 (x'  * (c * x + s * y) - x*z) ( y'  * (-s * x + c * y) - y*z) ((x * c - y * s) * x + (x * s + y * c) * y + z*z))
+	where
+		sq_ a = a*a
+		x = zaxis^.x3
+		y = zaxis^.y3
+		z = zaxis^.z3
+		zaxis = sr^.srOriginAxis
+		t = sr^.srCcwAngle
+		c = cos t
+		s = sin t
+		x'_ = 1 - sq_ x
+		y'_ = 1 - sq_ y
+		x' = sqrt $ x'_
+		y' = sqrt $ y'_
+
+-- | Uses homogeneous coordinates on top of 3 dimensions.
+identityTransformation3 :: (Fractional a) => Mat4 a
+identityTransformation3 = Mat4 $ Vec4
+	(Vec4 1.0 0.0 0.0 0.0)
+	(Vec4 0.0 1.0 0.0 0.0)
+	(Vec4 0.0 0.0 1.0 0.0)
+	(Vec4 0.0 0.0 0.0 1.0)
+
+-- | Does not use homogeneous coordinates on top of 3 dimensions.
+identityTransformation3Simple :: (Fractional a) => Mat3 a
+identityTransformation3Simple = Mat3 $ Vec3
+	(Vec3 1.0 0.0 0.0)
+	(Vec3 0.0 1.0 0.0)
+	(Vec3 0.0 0.0 1.0)
+
+-- TODO: perspective
+
+-- TODO: determinant
+
+-- TODO: inverse

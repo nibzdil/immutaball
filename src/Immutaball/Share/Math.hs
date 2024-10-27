@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
 
 -- | Dependent types might make for a funner linear algebra implementation, so
 -- I just stick with what's most applicable for our uses and goals here.
@@ -39,6 +39,13 @@ module Immutaball.Share.Math
 		r3_4,
 		transposeMat3,
 		transposeMat4,
+		e0_0_4, e0_1_4, e0_2_4, e0_3_4,
+		e1_0_4, e1_1_4, e1_2_4, e1_3_4,
+		e2_0_4, e2_1_4, e2_2_4, e2_3_4,
+		e3_0_4, e3_1_4, e3_2_4, e3_3_4,
+		e0_0_3, e0_1_3, e0_2_3,
+		e1_0_3, e1_1_3, e1_2_3,
+		e2_0_3, e2_1_3, e2_2_3,
 		mm3,
 		mm4,
 		c0_3,
@@ -130,11 +137,24 @@ module Immutaball.Share.Math
 		rotatexzSimple,
 		rotateyzSimple,
 		determinant4,
-		determinant3
+		determinant3,
+		smalld,
+		smallf,
+		SmallNum(..),
+		equivalentSmall,
+		rankNonzerov4,
+		rankNonzerov3,
+		inversem4,
+		inversem3,
+		inversem4GaussianElimination,
+		inversem3GaussianElimination
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
+
+import Control.Arrow
+import Control.Monad
 
 import Control.Lens
 
@@ -301,6 +321,63 @@ r2_4 = getMat4.z4
 
 r3_4 :: Lens' (Mat4 a) (Vec4 a)
 r3_4 = getMat4.w4
+
+e0_0_4 :: Lens' (Mat4 a) a
+e0_0_4 = r0_4.x4
+e0_1_4 :: Lens' (Mat4 a) a
+e0_1_4 = r0_4.y4
+e0_2_4 :: Lens' (Mat4 a) a
+e0_2_4 = r0_4.z4
+e0_3_4 :: Lens' (Mat4 a) a
+e0_3_4 = r0_4.w4
+
+e1_0_4 :: Lens' (Mat4 a) a
+e1_0_4 = r1_4.x4
+e1_1_4 :: Lens' (Mat4 a) a
+e1_1_4 = r1_4.y4
+e1_2_4 :: Lens' (Mat4 a) a
+e1_2_4 = r1_4.z4
+e1_3_4 :: Lens' (Mat4 a) a
+e1_3_4 = r1_4.w4
+
+e2_0_4 :: Lens' (Mat4 a) a
+e2_0_4 = r2_4.x4
+e2_1_4 :: Lens' (Mat4 a) a
+e2_1_4 = r2_4.y4
+e2_2_4 :: Lens' (Mat4 a) a
+e2_2_4 = r2_4.z4
+e2_3_4 :: Lens' (Mat4 a) a
+e2_3_4 = r2_4.w4
+
+e3_0_4 :: Lens' (Mat4 a) a
+e3_0_4 = r3_4.x4
+e3_1_4 :: Lens' (Mat4 a) a
+e3_1_4 = r3_4.y4
+e3_2_4 :: Lens' (Mat4 a) a
+e3_2_4 = r3_4.z4
+e3_3_4 :: Lens' (Mat4 a) a
+e3_3_4 = r3_4.w4
+
+e0_0_3 :: Lens' (Mat3 a) a
+e0_0_3 = r0_3.x3
+e0_1_3 :: Lens' (Mat3 a) a
+e0_1_3 = r0_3.y3
+e0_2_3 :: Lens' (Mat3 a) a
+e0_2_3 = r0_3.z3
+
+e1_0_3 :: Lens' (Mat3 a) a
+e1_0_3 = r1_3.x3
+e1_1_3 :: Lens' (Mat3 a) a
+e1_1_3 = r1_3.y3
+e1_2_3 :: Lens' (Mat3 a) a
+e1_2_3 = r1_3.z3
+
+e2_0_3 :: Lens' (Mat3 a) a
+e2_0_3 = r2_3.x3
+e2_1_3 :: Lens' (Mat3 a) a
+e2_1_3 = r2_3.y3
+e2_2_3 :: Lens' (Mat3 a) a
+e2_2_3 = r2_3.z3
 
 transposeMat3 :: Mat3 a -> Mat3 a
 transposeMat3 (Mat3 (Vec3
@@ -1021,8 +1098,6 @@ rotateyzSimple t = Mat3 $ Vec3
 	(Vec3 0.0 (-s) c  )
 	where (c, s) = (cos t, sin t)
 
--- TODO: perspective
-
 -- | For each on the first row, multiply the element by the determinent of the
 -- submatrix modulo width, to the base case of a 2x2 matrix.  Sum.
 -- If you ignored sign then 1x1 could be the base case.
@@ -1050,4 +1125,255 @@ determinant3 (Mat3 (Vec3
 		(Vec3 v2_0 v2_1 v2_2)
 	)) = v0_0*(v1_1*v2_2 - v1_2*v2_1) + v0_1*(v1_2*v2_0 - v1_0*v2_2) + v0_2*(v1_0*v2_1 - v1_1*v2_0)
 
--- TODO: inverse
+smalld :: Double
+smalld = 0.001**64
+
+smallf :: Float
+smallf = 0.001**12
+
+class SmallNum a where smallNum :: a
+instance {-# OVERLAPPING  #-} SmallNum Double where smallNum = smalld
+instance {-# OVERLAPPING  #-} SmallNum Float where smallNum = smallf
+instance {-# OVERLAPPABLE #-} (Fractional a) => SmallNum a where smallNum = realToFrac $ smallf
+
+equivalentSmall :: (SmallNum a, Ord a, Num a) => a -> a -> Bool
+equivalentSmall x y = abs (y - x) <= smallNum
+
+rankNonzerov4 :: (SmallNum a, Ord a, Num a) => Vec4 a -> Integer
+rankNonzerov4 (Vec4 x y z w)
+	| abs x > smallNum = 4
+	| abs y > smallNum = 3
+	| abs z > smallNum = 2
+	| abs w > smallNum = 1
+	| otherwise        = 0
+
+rankNonzerov3 :: (SmallNum a, Ord a, Num a) => Vec3 a -> Integer
+rankNonzerov3 (Vec3 x y z)
+	| abs x > smallNum = 3
+	| abs y > smallNum = 2
+	| abs z > smallNum = 1
+	| otherwise        = 0
+
+sortRowsRankNonzerom4 :: (SmallNum a, Ord a, Num a) => Mat4 a -> Mat4 a
+sortRowsRankNonzerom4 (Mat4 (Vec4 r0 r1 r2_ r3)) =
+	-- Merge sort.
+	if' (rn0 <= rn1) (
+		if' (rn2 <= rn3) (
+			-- Now merge (max 3 comparisons).
+			if' (rn0 <= rn2) (
+				if' (rn1 <= rn2) (
+					m4 r0 r1 r2_ r3
+				) (
+					if' (rn1 <= rn3) (m4 r0 r2_ r1 r3) (m4 r0 r2_ r3 r1)
+				)
+			) (
+				if' (rn0 <= rn3) (
+					if' (rn1 <= rn3) (m4 r2_ r0 r1 r3) (m4 r2_ r0 r3 r1)
+				) (
+					m4 r2_ r3 r0 r1
+				)
+			)
+		) (
+			-- Copy and swap r3 and r2_.
+			if' (rn0 <= rn3) (
+				if' (rn1 <= rn3) (
+					m4 r0 r1 r3 r2_
+				) (
+					if' (rn1 <= rn2) (m4 r0 r3 r1 r2_) (m4 r0 r3 r2_ r1)
+				)
+			) (
+				if' (rn0 <= rn2) (
+					if' (rn1 <= rn2) (m4 r3 r0 r1 r2_) (m4 r3 r0 r2_ r1)
+				) (
+					m4 r3 r2_ r0 r1
+				)
+			)
+		)
+	) (
+		-- Copy and swap r0 and r1.
+		if' (rn2 <= rn3) (
+			if' (rn1 <= rn2) (
+				if' (rn0 <= rn2) (
+					m4 r0 r1 r2_ r3
+				) (
+					if' (rn0 <= rn3) (m4 r0 r2_ r1 r3) (m4 r0 r2_ r3 r1)
+				)
+			) (
+				if' (rn1 <= rn3) (
+					if' (rn0 <= rn3) (m4 r2_ r0 r1 r3) (m4 r2_ r0 r3 r1)
+				) (
+					m4 r2_ r3 r0 r1
+				)
+			)
+		) (
+			if' (rn1 <= rn3) (
+				if' (rn0 <= rn3) (
+					m4 r0 r1 r3 r2_
+				) (
+					if' (rn0 <= rn2) (m4 r0 r3 r1 r2_) (m4 r0 r3 r2_ r1)
+				)
+			) (
+				if' (rn1 <= rn2) (
+					if' (rn0 <= rn2) (m4 r3 r0 r1 r2_) (m4 r3 r0 r2_ r1)
+				) (
+					m4 r3 r2_ r0 r1
+				)
+			)
+		)
+	)
+	where
+		rn0 = -rankNonzerov4 r0
+		rn1 = -rankNonzerov4 r1
+		rn2 = -rankNonzerov4 r2_
+		rn3 = -rankNonzerov4 r3
+		m4 r0_ r1_ r2_2 r3_ = Mat4 $ Vec4 r0_ r1_ r2_2 r3_
+
+sortRowsRankNonzerom3 :: (SmallNum a, Ord a, Num a) => Mat3 a -> Mat3 a
+sortRowsRankNonzerom3 (Mat3 (Vec3 r0 r1 r2_)) =
+	if' (rn0 <= rn1) (
+		if' (rn1 <= rn2) (
+			m3 r0 r1 r2_
+		) (
+			if' (rn0 <= rn2) (m3 r0 r2_ r1) (m3 r2_ r1 r0)
+		)
+	) (
+		if' (rn0 <= rn2) (
+			m3 r1 r0 r2_
+		) (
+			if' (rn1 <= rn2) (m3 r1 r2_ r0) (m3 r2_ r0 r1)
+		)
+	)
+	where
+		rn0 = -rankNonzerov3 r0
+		rn1 = -rankNonzerov3 r1
+		rn2 = -rankNonzerov3 r2_
+		m3 r0_ r1_ r2_2 = Mat3 $ Vec3 r0_ r1_ r2_2
+
+inversem4 :: (SmallNum a, Ord a, Num a, Fractional a) => Mat4 a -> Mat4 a
+inversem4 = inversem4GaussianElimination
+
+inversem3 :: (SmallNum a, Ord a, Num a, Fractional a) => Mat3 a -> Mat3 a
+inversem3 = inversem3GaussianElimination
+
+-- | Inverse.  Method by Gaussian elimination.  Non-zero determinant will avoid
+-- divide by zero in the matrix, since then the vectors are linearly
+-- independent without a vector to ‘collapse’ the hypervolume by multiplying by 0.
+--
+-- 	(Vec4 v0_0 v0_1 v0_2 v0_3) (Vec4 1.0 0.0 0.0 0.0)
+-- 	(Vec4 v1_0 v1_1 v1_2 v1_3) (Vec4 0.0 1.0 0.0 0.0)
+-- 	(Vec4 v2_0 v2_1 v2_2 v2_3) (Vec4 0.0 0.0 1.0 0.0)
+-- 	(Vec4 v3_0 v3_1 v3_2 v3_3) (Vec4 0.0 0.0 0.0 1.0)
+--
+-- 	(Vec4 v0_0 v0_1 v0_2 v0_3)
+-- 	(Vec4 0.0  v1_1 v1_2 v1_3)  - (v1_0/v0_0)*r0
+-- 	(Vec4 0.0  v2_1 v2_2 v2_3)  - (v2_0/v0_0)*r0
+-- 	(Vec4 0.0  v3_1 v3_2 v3_3)  - (v3_0/v0_0)*r0
+--
+-- 	(Vec4 v0_0 v0_1 v0_2 v0_3)
+-- 	(Vec4 0.0  v1_1 v1_2 v1_3)
+-- 	(Vec4 0.0  0.0  v2_2 v2_3)  - (v2_1/v1_1)*r1
+-- 	(Vec4 0.0  0.0  v3_2 v3_3)  - (v3_1/v1_1)*r1
+--
+-- 	(Vec4 v0_0 v0_1 v0_2 v0_3)
+-- 	(Vec4 0.0  v1_1 v1_2 v1_3)
+-- 	(Vec4 0.0  0.0  v2_2 v2_3)
+-- 	(Vec4 0.0  0.0  0.0  v3_3)  - (v3_2/v2_2)*r2
+--
+-- 	(Vec4 v0_0 v0_1 v0_2 0.0 )  - (v0_3/v3_3)*r3
+-- 	(Vec4 0.0  v1_1 v1_2 0.0 )  - (v1_3/v3_3)*r3
+-- 	(Vec4 0.0  0.0  v2_2 0.0 )  - (v2_3/v3_3)*r3
+-- 	(Vec4 0.0  0.0  0.0  v3_3)
+--
+-- 	(Vec4 v0_0 v0_1 0.0  0.0 )  - (v0_2/v2_2)*r2
+-- 	(Vec4 0.0  v1_1 0.0  0.0 )  - (v1_2/v2_2)*r2
+-- 	(Vec4 0.0  0.0  v2_2 0.0 )
+-- 	(Vec4 0.0  0.0  0.0  v3_3)
+--
+-- 	(Vec4 v0_0 0.0  0.0  0.0 )  - (v0_1/v1_1)*r1
+-- 	(Vec4 0.0  v1_1 0.0  0.0 )
+-- 	(Vec4 0.0  0.0  v2_2 0.0 )
+-- 	(Vec4 0.0  0.0  0.0  v3_3)
+--
+-- 	(Vec4 1.0 0.0 0.0 0.0)  - / v0_0
+-- 	(Vec4 0.0 1.0 0.0 0.0)  - / v1_1
+-- 	(Vec4 0.0 0.0 1.0 0.0)  - / v2_2
+-- 	(Vec4 0.0 0.0 0.0 1.0)  - / v3_3
+--
+-- Between each 0 operation there is a sort.
+--
+-- Now apply these operations to the identity matrix to get the inverse.
+inversem4GaussianElimination :: (SmallNum a, Ord a, Num a, Fractional a) => Mat4 a -> Mat4 a
+inversem4GaussianElimination m =
+	b sortRowsRankNonzerom4 >>> (\(mn, mi) -> (
+		b (r1_4 %~ (`minusv4` (((mn^.e1_0_4)/(mn^.e0_0_4)) `sv4` (mn^.r0_4)))) >>>
+		b (r2_4 %~ (`minusv4` (((mn^.e2_0_4)/(mn^.e0_0_4)) `sv4` (mn^.r0_4)))) >>>
+		b (r3_4 %~ (`minusv4` (((mn^.e3_0_4)/(mn^.e0_0_4)) `sv4` (mn^.r0_4))))
+		) $ (mn, mi)) >>>
+	b sortRowsRankNonzerom4 >>> (\(mn, mi) -> (
+		b (r2_4 %~ (`minusv4` (((mn^.e2_1_4)/(mn^.e1_1_4)) `sv4` (mn^.r1_4)))) >>>
+		b (r3_4 %~ (`minusv4` (((mn^.e3_1_4)/(mn^.e1_1_4)) `sv4` (mn^.r1_4))))
+		) $ (mn, mi)) >>>
+	b sortRowsRankNonzerom4 >>> (\(mn, mi) -> (
+		b (r3_4 %~ (`minusv4` (((mn^.e3_2_4)/(mn^.e2_2_4)) `sv4` (mn^.r2_4))))
+		) $ (mn, mi)) >>>
+
+	(\(mn, mi) -> (
+		b (r0_4 %~ (`minusv4` (((mn^.e0_3_4)/(mn^.e3_3_4)) `sv4` (mn^.r3_4)))) >>>
+		b (r1_4 %~ (`minusv4` (((mn^.e1_3_4)/(mn^.e3_3_4)) `sv4` (mn^.r3_4)))) >>>
+		b (r2_4 %~ (`minusv4` (((mn^.e2_3_4)/(mn^.e3_3_4)) `sv4` (mn^.r3_4))))
+		) $ (mn, mi)) >>>
+	(\(mn, mi) -> (
+		b (r0_4 %~ (`minusv4` (((mn^.e0_2_4)/(mn^.e2_2_4)) `sv4` (mn^.r2_4)))) >>>
+		b (r1_4 %~ (`minusv4` (((mn^.e1_2_4)/(mn^.e2_2_4)) `sv4` (mn^.r2_4))))
+		) $ (mn, mi)) >>>
+	(\(mn, mi) -> (
+		b (r0_4 %~ (`minusv4` (((mn^.e0_1_4)/(mn^.e1_1_4)) `sv4` (mn^.r1_4))))
+		) $ (mn, mi)) >>>
+
+	(\(mn, mi) -> (
+		b (r0_4 %~ ((1/(mn^.e0_0_4)) `sv4`)) >>>
+		b (r1_4 %~ ((1/(mn^.e1_1_4)) `sv4`)) >>>
+		b (r2_4 %~ ((1/(mn^.e2_2_4)) `sv4`)) >>>
+		b (r3_4 %~ ((1/(mn^.e3_3_4)) `sv4`))
+		) $ (mn, mi)) >>>
+
+	snd $ (m, (
+		Mat4 $ Vec4
+			(Vec4 1.0 0.0 0.0 0.0)
+			(Vec4 0.0 1.0 0.0 0.0)
+			(Vec4 0.0 0.0 1.0 0.0)
+			(Vec4 0.0 0.0 0.0 1.0)
+	))
+	where b = join (***)
+
+inversem3GaussianElimination :: (SmallNum a, Ord a, Num a, Fractional a) => Mat3 a -> Mat3 a
+inversem3GaussianElimination m =
+	b sortRowsRankNonzerom3 >>> (\(mn, mi) -> (
+		b (r1_3 %~ (`minusv3` (((mn^.e1_0_3)/(mn^.e0_0_3)) `sv3` (mn^.r0_3)))) >>>
+		b (r2_3 %~ (`minusv3` (((mn^.e2_0_3)/(mn^.e0_0_3)) `sv3` (mn^.r0_3))))
+		) $ (mn, mi)) >>>
+	b sortRowsRankNonzerom3 >>> (\(mn, mi) -> (
+		b (r2_3 %~ (`minusv3` (((mn^.e2_1_3)/(mn^.e1_1_3)) `sv3` (mn^.r1_3))))
+		) $ (mn, mi)) >>>
+
+	(\(mn, mi) -> (
+		b (r0_3 %~ (`minusv3` (((mn^.e0_2_3)/(mn^.e2_2_3)) `sv3` (mn^.r2_3)))) >>>
+		b (r1_3 %~ (`minusv3` (((mn^.e1_2_3)/(mn^.e2_2_3)) `sv3` (mn^.r2_3))))
+		) $ (mn, mi)) >>>
+	(\(mn, mi) -> (
+		b (r0_3 %~ (`minusv3` (((mn^.e0_1_3)/(mn^.e1_1_3)) `sv3` (mn^.r1_3))))
+		) $ (mn, mi)) >>>
+
+	(\(mn, mi) -> (
+		b (r0_3 %~ ((1/(mn^.e0_0_3)) `sv3`)) >>>
+		b (r1_3 %~ ((1/(mn^.e1_1_3)) `sv3`)) >>>
+		b (r2_3 %~ ((1/(mn^.e2_2_3)) `sv3`))
+		) $ (mn, mi)) >>>
+
+	snd $ (m, (
+		Mat3 $ Vec3
+			(Vec3 1.0 0.0 0.0)
+			(Vec3 0.0 1.0 0.0)
+			(Vec3 0.0 0.0 1.0)
+	))
+	where b = join (***)

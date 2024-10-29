@@ -9,7 +9,9 @@
 module Immutaball.Share.Level.Utils
 	(
 		transformSol,
-		restoreSolTransformation
+		restoreSolTransformation,
+		restoreSolTransformationSimple,
+		mapcSolTransformationSimple
 	) where
 
 import Prelude ()
@@ -44,4 +46,19 @@ transformSol m sol = sol &
 -- | Invert mapc's swapping of y and z axes and negation to in terms I like to
 -- think of in more; glFrustrum can be combined with a transformation.
 restoreSolTransformation :: Mat4 Double
-restoreSolTransformation = error "TODO: unimplemented."
+restoreSolTransformation = m3to4 $ restoreSolTransformationSimple
+
+-- | Invert 'mapcSolTransformationSimple'.
+--
+-- This does not include the scaling by 1/64, which is preserved.
+restoreSolTransformationSimple :: Mat3 Double
+restoreSolTransformationSimple = Mat3 $ Vec3
+	(Vec3 1.0 0.0 0.0   )
+	(Vec3 0.0 0.0 (-1.0))
+	(Vec3 0.0 1.0 0.0   )
+
+mapcSolTransformationSimple :: Mat3 Double
+mapcSolTransformationSimple = Mat3 $ Vec3
+	(Vec3 1.0 0.0    0.0)
+	(Vec3 0.0 0.0    1.0)
+	(Vec3 0.0 (-1.0) 0.0)

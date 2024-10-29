@@ -147,7 +147,11 @@ module Immutaball.Share.Math
 		inversem4,
 		inversem3,
 		inversem4GaussianElimination,
-		inversem3GaussianElimination
+		inversem3GaussianElimination,
+		perspective,
+		perspectivePure,
+		fov,
+		fovPure
 	) where
 
 import Prelude ()
@@ -1377,3 +1381,69 @@ inversem3GaussianElimination m =
 			(Vec3 0.0 0.0 1.0)
 	))
 	where b = join (***)
+
+-- | perspective.
+--
+-- e.g. for a simple right-angled fov with a (0,0,1) perspective vector,
+-- a point (2,4,1,1) corresponds to (2,4,2,2), which is (1,2,1).  At further
+-- distance from the viewer, points should seem smaller (closer to 0 x and y
+-- coordinates), so where at z=0 the x and y coordinates effectively remain
+-- unchanged, at z=1 they are halved.  And a point (2,4,3,1) is twice as far
+-- away as the first point relative to the viewer z=-1 (z=0 is the inner
+-- plane), and it corresponds / maps back to coordinates in the original
+-- coordinate system (2,4,6,4), which is (0.5, 1, 1.5) after applying homogenous
+-- coordinates (divide coords by last coordinate).  (3/2=1.5)  (2z/(z+1))
+--
+-- A third example is a point (2,4,5,1) mapping back to original axes as
+-- (2,4,10,6), which is equivalent to (1/3, 2/3, 5/3 = 1.66…).  It is three
+-- times as far away as the first point relative to the viewer z=-1.
+perspective :: (Fractional a) => Vec3 a -> Mat4 a
+perspective v = Mat4 $ Vec4
+	(Vec4 (1+v^.x3) 0.0       0.0       0.0)
+	(Vec4 0.0       (1+v^.y3) 0.0       0.0)
+	(Vec4 0.0       0.0       (1+v^.z3) 0.0)
+	(Vec4 (v^.x3)   (v^.y3)   (v^.z3)   1.0)
+
+-- | preserves z and does not shift by 1 but is not invertible.
+--
+-- With linear non-independence, it collapses into 3 dimensions without a nonzero determinant.
+perspectivePure :: (Fractional a) => Vec3 a -> Mat4 a
+perspectivePure v = Mat4 $ Vec4
+	(Vec4 (1+v^.x3) 0.0       0.0       0.0)
+	(Vec4 0.0       (1+v^.y3) 0.0       0.0)
+	(Vec4 0.0       0.0       (1+v^.z3) 0.0)
+	(Vec4 (v^.x3)   (v^.y3)   (v^.z3)   0.0)
+
+-- | fov.
+--
+-- For a 2D space with the y coordinate determining distance, with doubling
+-- distance halving the other coordinates (x), you can find the the length of
+-- the left side of the following triangle knowing angle theta and the length
+-- of the top side, which is x, which is 1, where we want to know, for each
+-- increase by 1 of the z or y or distance coordinate, what the increase in the
+-- homogoneous coordinate w is, where the result of the homogeneous coordinate is
+-- (x/w, y/w, z/w).
+--
+--  ^
+--  |--.
+--  |  /
+--  | /
+--  |θ/
+--  |/
+-- -+----->
+--  |
+--
+-- Then we can generalize to 3 dimensions.
+--
+-- To preserve the original distance coordinate, .
+--
+-- Also preserving a nonzero determinant, the perspective is with z shifted
+-- back by 1 unit, so that z=0 is not the eye origin, but the inner plane, for
+-- a unit w or homogenous coordinate.
+--
+-- e.g. a right angled fov makes for a z component of 1, for a 1:1 ratio.
+fov :: (Fractional a, Floating a) => a -> Mat4 a
+fov t = perspective $ Vec3 0.0 0.0 (1 / tan (t/2))
+
+fovPure :: (Fractional a, Floating a) => a -> Mat4 a
+fovPure t = perspectivePure $ Vec3 0.0 0.0 (1 / tan (t/2))

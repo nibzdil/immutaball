@@ -23,18 +23,22 @@ import Immutaball.Share.Math
 -- TODO: implement.
 
 -- | Apply a transformation to all positions in a Sol.
+--
+-- TODO: apply transformation to path E orientation, which is a quaternion.
 transformSol :: Mat4 Double -> Sol -> Sol
 transformSol m sol = sol &
-	(solVv %~ fmap (vertP %~ flip v3m4 m)) &
-	(solPv %~ fmap (pathP %~ flip v3m4 m)) &  -- TODO: rotation?
-	(solHv %~ fmap (itemP %~ flip v3m4 m)) &
-	(solZv %~ fmap (goalP %~ flip v3m4 m)) &
-	(solJv %~ fmap (jumpP %~ flip v3m4 m)) &
-	(solJv %~ fmap (jumpQ %~ flip v3m4 m)) &
-	(solXv %~ fmap (swchP %~ flip v3m4 m)) &
-	(solUv %~ fmap (ballP %~ flip v3m4 m)) &
-	(solWv %~ fmap (viewP %~ flip v3m4 m)) &
-	(solWv %~ fmap (viewQ %~ flip v3m4 m)) &
+	(solVv %~ fmap (vertP %~ m4v3 m)) &
+	(solPv %~ fmap (pathP %~ m4v3 m)) &
+	-- TODO:
+	--(solPv %~ fmap (pathE %~ (\q -> (\v -> (qasv4.~v) & q) . TODO . mv4 m . rotate3 . qToSr . (^.qasv4) $ q))) &  -- Convert quaternion rotation to rotation matrix, mat mul, then convert back to quaternion.
+	(solHv %~ fmap (itemP %~ m4v3 m)) &
+	(solZv %~ fmap (goalP %~ m4v3 m)) &
+	(solJv %~ fmap (jumpP %~ m4v3 m)) &
+	(solJv %~ fmap (jumpQ %~ m4v3 m)) &
+	(solXv %~ fmap (swchP %~ m4v3 m)) &
+	(solUv %~ fmap (ballP %~ m4v3 m)) &
+	(solWv %~ fmap (viewP %~ m4v3 m)) &
+	(solWv %~ fmap (viewQ %~ m4v3 m)) &
 	id
 
 -- | Invert mapc's swapping of y and z axes and negation to in terms I like to

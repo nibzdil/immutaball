@@ -89,6 +89,7 @@ module Immutaball.Share.Math
 		v4to3,
 		v3to4,
 		mv3,
+		m4v3,
 		mv4,
 		vm3,
 		vm4,
@@ -726,6 +727,9 @@ mv4 m v = Vec4 (d4 (m^.r0_4) v) (d4 (m^.r1_4) v) (d4 (m^.r2_4) v) (d4 (m^.r3_4) 
 -- getting an equivalent vector.
 mv3 :: (Num a) => Mat3 a -> Vec3 a -> Vec3 a
 mv3 m v = Vec3 (d3 (m^.r0_3) v) (d3 (m^.r1_3) v) (d3 (m^.r2_3) v)
+
+m4v3 :: (Num a, Fractional a) => Mat4 a -> Vec3 a -> Vec3 a
+m4v3 m v = v4to3 . mv4 m . v3to4 $ v
 
 -- | (The vector is interpreted as a 1x4 matrix.)
 --

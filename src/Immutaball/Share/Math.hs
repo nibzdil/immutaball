@@ -152,7 +152,18 @@ module Immutaball.Share.Math
 		perspective,
 		perspectivePure,
 		fov,
-		fovPure
+		fovPure,
+
+		rv2,
+		rv3,
+		rv4,
+		zv2,
+		zv3,
+		zv4,
+		rm3,
+		rm4,
+		zm3,
+		zm4
 	) where
 
 import Prelude ()
@@ -1451,3 +1462,40 @@ fov t = perspective $ Vec3 0.0 0.0 (1 / tan (t/2))
 
 fovPure :: (Fractional a, Floating a) => a -> Mat4 a
 fovPure t = perspectivePure $ Vec3 0.0 0.0 (1 / tan (t/2))
+
+rv2 :: a -> Vec2 a
+rv2 z = Vec2 z z
+
+rv3 :: a -> Vec3 a
+rv3 z = Vec3 z z z
+
+rv4 :: a -> Vec4 a
+rv4 z = Vec4 z z z z
+
+zv2 :: (Fractional a) => Vec2 a
+zv2 = rv2 0.0
+
+zv3 :: (Fractional a) => Vec3 a
+zv3 = rv3 0.0
+
+zv4 :: (Fractional a) => Vec4 a
+zv4 = rv4 0.0
+
+rm3 :: a -> Mat3 a
+rm3 z = Mat3 $ Vec3
+	(rv3 z)
+	(rv3 z)
+	(rv3 z)
+
+rm4 :: a -> Mat4 a
+rm4 z = Mat4 $ Vec4
+	(rv4 z)
+	(rv4 z)
+	(rv4 z)
+	(rv4 z)
+
+zm3 :: (Fractional a) => Mat3 a
+zm3 = rm3 0.0
+
+zm4 :: (Fractional a) => Mat4 a
+zm4 = rm4 0.0

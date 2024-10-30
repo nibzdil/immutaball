@@ -12,10 +12,13 @@ module Immutaball.Ball.Game
 		ChallengeModeState(..), cmsTotalCoins, cmsTotalTimeCs, cmsTotalDeaths,
 		initialChallengeModeState,
 
-		GameState(..), gsTimeElapsed, gsPaused, gsPreview, gsBallPos,
-			gsBallVel, gsSolRaw, gsSol, gsSolAttributes, gsCameraAngle,
-			gsCameraMode, gsCoinState, gsSwitchState, gsPathState,
-			gsTeleporterState, gsGoalState,
+		GameMode(..), AsGameMode(..),
+		isPlaying, isFallOut, isTimesUp, isWin, isPaused, isIntermission,
+			isGameEnded, isGameFailed, isGameRunning,
+		GameState(..), gsGameMode, gsTimeElapsed, gsPaused, gsPreview,
+			gsBallPos, gsBallVel, gsSolRaw, gsSol, gsSolAttributes,
+			gsCameraAngle, gsCameraMode, gsCoinState, gsSwitchState,
+			gsPathState, gsTeleporterState, gsGoalState,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
 			csCoinCollectedAt, csCoinsUncollected,
@@ -57,7 +60,59 @@ initialChallengeModeState = ChallengeModeState {
 	_cmsTotalDeaths = 0
 }
 
+data GameMode =
+	  Playing
+	| FallOut
+	| TimesUp
+	| Win
+	| Paused
+	| Intermission
+	deriving (Eq, Ord, Enum, Bounded, Show)
+makeClassyPrisms ''GameMode
+
+isPlaying :: GameMode -> Bool
+isPlaying Playing = True
+isPlaying _       = False
+
+isFallOut :: GameMode -> Bool
+isFallOut FallOut = True
+isFallOut _       = False
+
+isTimesUp :: GameMode -> Bool
+isTimesUp TimesUp = True
+isTimesUp _       = False
+
+isWin :: GameMode -> Bool
+isWin Win = True
+isWin _   = False
+
+isPaused :: GameMode -> Bool
+isPaused Paused = True
+isPaused _      = False
+
+isIntermission :: GameMode -> Bool
+isIntermission Intermission = True
+isIntermission _            = False
+
+isGameEnded :: GameMode -> Bool
+isGameEnded FallOut = True
+isGameEnded TimesUp = True
+isGameEnded Win     = True
+isGameEnded _       = False
+
+isGameFailed :: GameMode -> Bool
+isGameFailed FallOut = True
+isGameFailed TimesUp = True
+isGameFailed _       = False
+
+isGameRunning :: GameMode -> Bool
+isGameRunning Playing = True
+isGameRunning _       = False
+
 data GameState = GameState {
+	-- | Are we playing, won, fell out, etc.?
+	_gsGameMode :: GameMode,
+
 	-- | Game time elapsed.
 	_gsTimeElapsed :: Double,
 	-- | Is paused.
@@ -148,6 +203,8 @@ makeLenses ''GoalState
 
 initialGameState :: Neverballrc -> Bool -> LevelIB -> GameState
 initialGameState neverballrc hasLevelBeenCompleted sol = fix $ \gs -> GameState {
+	_gsGameMode    = Intermission,
+
 	_gsTimeElapsed = 0.0,
 	_gsPaused      = False,
 	_gsPreview     = Just 0.0,

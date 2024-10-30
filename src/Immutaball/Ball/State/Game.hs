@@ -5,20 +5,58 @@
 -- Play.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE TemplateHaskell, Arrows #-}
 
+-- | Game state and immutaball state interface.
 module Immutaball.Ball.State.Game
 	(
+		GameRequest(..), giRequest, giIBStateContext, grRequest,
+		GameResponse(..), goGameEvents, goIBStateContext, grGameEvents,
+		GameEvent(..), AsGameEvent(..),
 		stepGame
 	) where
 
 import Prelude ()
-import Immutaball.Prelude
+--import Immutaball.Prelude
+
+import Control.Arrow
+import Control.Lens
 
 import Immutaball.Ball.Game
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 
--- | Clock step.
-stepGame :: Wire ImmutaballM ((Double, GameState), IBStateContext) (GameState, IBStateContext)
-stepGame = error "TODO: unimplemented."
+-- TODO: implement.
+
+data GameRequest = GameRequest {
+	_giRequest        :: Request,
+	_giIBStateContext :: IBStateContext
+}
+makeLenses ''GameRequest
+grRequest :: Lens' GameRequest Request
+grRequest = giRequest
+
+data GameResponse = GameResponse {
+	_goGameEvents     :: [GameEvent],
+	_goIBStateContext :: IBStateContext
+}
+--makeLenses ''GameResponse
+
+data GameEvent =
+	  NewGameMode GameMode
+	-- | PlaceholderEvent
+makeLenses ''GameResponse
+makeClassyPrisms ''GameEvent
+
+grGameEvents :: Lens' GameResponse [GameEvent]
+grGameEvents = goGameEvents
+
+-- | Step the game.
+-- TODO: implement.
+stepGame :: Wire ImmutaballM GameRequest GameResponse
+stepGame = proc gr -> do
+	returnA -< GameResponse {
+		_goGameEvents = [],
+		_goIBStateContext = (gr^.giIBStateContext)
+	}

@@ -191,17 +191,24 @@ data Texc = Texc {
 makeLenses ''Texc
 
 data Offs = Offs {
+	-- | Not s and t as in texture coords x and y, but t and s as it
+	-- translation and scale.  Neverball sols ignore texture angle.
 	_offsTi :: Int32,
 	_offsSi :: Int32,
+	-- | Vertex.
 	_offsVi :: Int32
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Offs
 
 data Geom = Geom {
+	-- | Material index (base texture).
 	_geomMi :: Int32,
+	-- | Triangle vertex 1 (Offs).
 	_geomOi :: Int32,
+	-- | Triangle vertex 2.
 	_geomOj :: Int32,
+	-- | Triangle vertex 3.
 	_geomOk :: Int32
 }
 	deriving (Eq, Ord, Show)

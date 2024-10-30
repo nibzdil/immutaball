@@ -17,6 +17,7 @@ module Immutaball.Share.Level.Base
 		pathFlagOriented,
 		pathFlagParented,
 		mtrlFlagAlphaTest,
+		lumpFlagDetail,
 		Mtrl(..), mtrlD, mtrlA, mtrlS, mtrlE, mtrlH, mtrlAngle, mtrlFl, mtrlF,
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
@@ -133,6 +134,9 @@ pathFlagParented = 2
 mtrlFlagAlphaTest :: Int32
 mtrlFlagAlphaTest = 1 `shiftL` 9
 
+lumpFlagDetail :: Int32
+lumpFlagDetail = 1
+
 data Mtrl = Mtrl {
 	-- | Diffuse color.
 	_mtrlD :: Vec4 Double,
@@ -215,7 +219,7 @@ data Geom = Geom {
 makeLenses ''Geom
 
 data Lump = Lump {
-	-- | Lump flags.
+	-- | Lump flags.  In particular lumpFlagDetail == 1.
 	_lumpFl :: Int32,
 	_lumpV0 :: Int32,
 	_lumpVc :: Int32,

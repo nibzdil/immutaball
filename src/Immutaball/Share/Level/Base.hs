@@ -233,6 +233,23 @@ data Lump = Lump {
 	deriving (Eq, Ord, Show)
 makeLenses ''Lump
 
+-- | Three-part plane partitioning.
+--
+-- Normally the lumps are sorted while the nodes are being created.  Each
+-- non-leaf node has 3 ranges in the sorted lumps, each range represented by a
+-- Each node corresponds to 1) the range of all lumps in front of the plane
+-- (ni), 2) all lumps on the plane (the node's direct l0 and lc range), and 3)
+-- all lumps behind the plane (nj).
+--
+-- At 8 or so or fewer nodes, the base case is reached with a Nothing ni and nj
+-- and si (represented by -1), and l0 and lc still represents the range of lumps.
+--
+-- Thus a node is like a node in a binary tree with its own unique range / span
+-- of the lumps, and the nodes uniquely and comprehensively span the range of
+-- lumps.
+--
+-- Now each body is a collection of lumps that follows the same path; it's like
+-- a set of lumps.  Each body has a BSP partitioning with Nodes.
 data Node = Node {
 	_nodeSi :: Int32,
 	_nodeNi :: Int32,

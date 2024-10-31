@@ -132,6 +132,7 @@ common executable-components
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.Level
 		Immutaball.Share.Level.Analysis
+		Immutaball.Share.Level.Analysis.LowLevel
 		Immutaball.Share.Level.Attributes
 		Immutaball.Share.Level.Base
 		Immutaball.Share.Level.Parser
@@ -198,6 +199,7 @@ library
 		Immutaball.Share.ImmutaballIO.SDLIO
 		Immutaball.Share.Level
 		Immutaball.Share.Level.Analysis
+		Immutaball.Share.Level.Analysis.LowLevel
 		Immutaball.Share.Level.Attributes
 		Immutaball.Share.Level.Base
 		Immutaball.Share.Level.Parser

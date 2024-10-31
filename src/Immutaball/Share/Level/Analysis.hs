@@ -13,7 +13,8 @@ module Immutaball.Share.Level.Analysis
 		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis,
 		sar, sap,
 		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
-			sraGeomDataGPU, sraLumpData, sraLumpDataGPU,
+			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
+			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -62,14 +63,30 @@ data SolRenderAnalysis = SolRenderAnalysis {
 
 	-- | Get all triangles of the SOL.
 	-- Represented as vi, vj, vk, ti, tj, tk, si, sj, sk.
+	-- (Note we don't include mtrl (base texture) data here; the renderer can
+	-- handle that with passes of up to 16 textures at once, recovering the
+	-- geom index.)
 	_sraGeomData    :: Array Int32 Int32,
 	_sraGeomDataGPU :: GLData,
 
-	-- | Range of geoms: g0, gc.
+	-- | Each lump is range of geoms: g0, gc.
+	--
+	-- (Each geom is a set of textured triangles.)
 	_sraLumpData    :: Array Int32 Int32,
-	_sraLumpDataGPU :: GLData
+	_sraLumpDataGPU :: GLData,
 
-	-- TODO: path, body.
+	-- | Path doubles: start position x y and z (3 doubles); path ints: next path, smooth flag (2 ints).
+	_sraPathDoublesData    :: Array Int32 Double,
+	_sraPathDoublesDataGPU :: GLData,
+	_sraPathInt32sData     :: Array Int32 Int32,
+	_sraPathInt32sDataGPU  :: GLData
+
+	-- TODO: body.
+	-- | Body data: .
+	-- When rendering, the renderer can use a uniform to tell the GPU what path
+	-- the body is currently on, and the linear interpolation (0 to 1) for that
+	-- path.  The GPU can also use the body's initial path to determine the
+	-- relative positioning of the path when performing interpolation.
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -96,14 +113,20 @@ mkSolAnalysis sol = fix $ \_sa -> SolAnalysis {
 
 mkSolRenderAnalysis :: Sol -> SolRenderAnalysis
 mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
-	_sraVertexData    = genArray (0, 3 * (sol^.solVc)) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
+	_sraVertexData    = genArray (0, 3 * (sol^.solVc) - 1) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
 	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
 
-	_sraGeomData    = genArray (0, 9 * (sol^.solGc)) $ \idx -> divMod idx 9 & \(gi, ridx) -> geomRelIdx gi ridx,
+	_sraGeomData    = genArray (0, 9 * (sol^.solGc) - 1) $ \idx -> divMod idx 9 & \(gi, ridx) -> geomRelIdx gi ridx,
 	_sraGeomDataGPU = gpuEncodeArray (sra^.sraGeomData),
 
-	_sraLumpData    = genArray (0, 2 * (sol^.solLc)) $ \idx -> divMod idx 2 & \(li, ridx) -> lumpRelIdx li ridx,
-	_sraLumpDataGPU = gpuEncodeArray (sra^.sraLumpData)
+	_sraLumpData    = genArray (0, 2 * (sol^.solLc) - 1) $ \idx -> divMod idx 2 & \(li, ridx) -> lumpRelIdx li ridx,
+	_sraLumpDataGPU = gpuEncodeArray (sra^.sraLumpData),
+
+	_sraPathDoublesData    = genArray (0, 3 * (sol^.solPc) - 1) $ \idx -> divMod idx 3 & \(pi_, ridx) -> pathDoubleRelIdx pi_ ridx,
+	_sraPathDoublesDataGPU = gpuEncodeArray (sra^.sraPathDoublesData),
+
+	_sraPathInt32sData    = genArray (0, 2 * (sol^.solPc) - 1) $ \idx -> divMod idx 2 & \(pi_, ridx) -> pathInt32RelIdx pi_ ridx,
+	_sraPathInt32sDataGPU = gpuEncodeArray (sra^.sraPathInt32sData)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -128,6 +151,17 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 		lumpRelIdx li 0    = ((sol^.solLv) ! li)^.lumpG0  -- g0
 		lumpRelIdx li 1    = ((sol^.solLv) ! li)^.lumpGc  -- gc
 		lumpRelIdx li ridx = error $ "Internal error: mkSolRenderAnalysis^.lumpRelIdx: unrecognized ridx " ++ show ridx ++ " (li " ++ show li ++ ")."
+
+		pathDoubleRelIdx :: Int32 -> Int32 -> Double
+		pathDoubleRelIdx pi_ 0    = ((sol^.solPv) ! pi_)^.pathP.x3  -- pathP.x3
+		pathDoubleRelIdx pi_ 1    = ((sol^.solPv) ! pi_)^.pathP.y3  -- pathP.y3
+		pathDoubleRelIdx pi_ 2    = ((sol^.solPv) ! pi_)^.pathP.z3  -- pathP.z3
+		pathDoubleRelIdx pi_ ridx = error $ "Internal error: mkSolRenderAnalysis^.pathDoubleRelIdx: unrecognized ridx " ++ show ridx ++ " (pi " ++ show pi_ ++ ")."
+
+		pathInt32RelIdx :: Int32 -> Int32 -> Int32
+		pathInt32RelIdx pi_ 0    = ((sol^.solPv) ! pi_)^.pathPi  -- pathPi
+		pathInt32RelIdx pi_ 1    = ((sol^.solPv) ! pi_)^.pathS   -- pathS
+		pathInt32RelIdx pi_ ridx = error $ "Internal error: mkSolRenderAnalysis^.pathInt32RelIdx: unrecognized ridx " ++ show ridx ++ " (pi " ++ show pi_ ++ ")."
 
 mkSolPhysicsAnalysis :: Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _sol = fix $ \_spa -> SolPhysicsAnalysis {

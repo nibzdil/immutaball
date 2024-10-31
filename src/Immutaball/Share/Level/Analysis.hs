@@ -96,6 +96,8 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- Bodies are sets of lumps that follow the same path.
 	_sraBodyData     :: Array Int32 Int32,
 	_sraBodyDataGPU  :: GLData
+
+	-- TODO: passes of draw elements, first by transparency, and then by textures (we can handle up to 16 textures at once).
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis

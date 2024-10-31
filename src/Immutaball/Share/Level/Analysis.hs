@@ -12,7 +12,8 @@ module Immutaball.Share.Level.Analysis
 	(
 		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis,
 		sar, sap,
-		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData, sraGeomDataGPU,
+		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
+			sraGeomDataGPU, sraLumpData, sraLumpDataGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -62,7 +63,11 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- | Get all triangles of the SOL.
 	-- Represented as vi, vj, vk, ti, tj, tk, si, sj, sk.
 	_sraGeomData    :: Array Int32 Int32,
-	_sraGeomDataGPU :: GLData
+	_sraGeomDataGPU :: GLData,
+
+	-- | Range of geoms: g0, gc.
+	_sraLumpData    :: Array Int32 Int32,
+	_sraLumpDataGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -93,7 +98,10 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
 
 	_sraGeomData    = genArray (0, 9 * (sol^.solGc)) $ \idx -> divMod idx 9 & \(gi, ridx) -> geomRelIdx gi ridx,
-	_sraGeomDataGPU = gpuEncodeArray (sra^.sraGeomData)
+	_sraGeomDataGPU = gpuEncodeArray (sra^.sraGeomData),
+
+	_sraLumpData    = genArray (0, 2 * (sol^.solLc)) $ \idx -> divMod idx 2 & \(li, ridx) -> lumpRelIdx li ridx,
+	_sraLumpDataGPU = gpuEncodeArray (sra^.sraLumpData)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -113,6 +121,11 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 		geomRelIdx gi 7    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsSi)  -- s2
 		geomRelIdx gi 8    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsSi)  -- s3
 		geomRelIdx gi ridx = error $ "Internal error: mkSolRenderAnalysis^.geomRelIdx: unrecognized ridx " ++ show ridx ++ " (gi " ++ show gi ++ ")."
+
+		lumpRelIdx :: Int32 -> Int32 -> Int32
+		lumpRelIdx li 0    = ((sol^.solLv) ! li)^.lumpG0  -- g0
+		lumpRelIdx li 1    = ((sol^.solLv) ! li)^.lumpGc  -- gc
+		lumpRelIdx li ridx = error $ "Internal error: mkSolRenderAnalysis^.lumpRelIdx: unrecognized ridx " ++ show ridx ++ " (li " ++ show li ++ ")."
 
 mkSolPhysicsAnalysis :: Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _sol = fix $ \_spa -> SolPhysicsAnalysis {

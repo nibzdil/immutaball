@@ -36,6 +36,7 @@ import Data.Int
 import Data.Maybe
 
 import Control.Lens
+import Control.Parallel
 import Data.Array.IArray
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -205,7 +206,10 @@ makeLenses ''TeleporterState
 makeLenses ''GoalState
 
 initialGameState :: Neverballrc -> Bool -> LevelIB -> GameState
-initialGameState neverballrc hasLevelBeenCompleted sol = fix $ \gs -> GameState {
+initialGameState neverballrc hasLevelBeenCompleted sol = fix $ \gs ->
+	let solAnalysis = mkSolAnalysis (gs^.gsSol) in
+	par solAnalysis $
+	GameState {
 	_gsGameMode    = Intermission,
 
 	_gsTimeElapsed = 0.0,
@@ -217,7 +221,7 @@ initialGameState neverballrc hasLevelBeenCompleted sol = fix $ \gs -> GameState 
 	_gsSolRaw        = sol,
 	_gsSol           = transformSol restoreSolTransformation (gs^.gsSol),
 	_gsSolAttributes = mkSolAttributes (gs^.gsSol),
-	_gsSolAnalysis   = mkSolAnalysis   (gs^.gsSol),
+	_gsSolAnalysis   = solAnalysis,
 
 	_gsCameraAngle = 0.0,
 	_gsCameraMode  = fromIntegral $ (neverballrc^.camera),

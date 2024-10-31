@@ -29,5 +29,5 @@ data SolAnalysis = SolAnalysis {
 makeLenses ''SolAnalysis
 
 mkSolAnalysis :: Sol -> SolAnalysis
-mkSolAnalysis sol = fix $ \_sa -> SolAnalysis {
+mkSolAnalysis _sol = fix $ \_sa -> SolAnalysis {
 }

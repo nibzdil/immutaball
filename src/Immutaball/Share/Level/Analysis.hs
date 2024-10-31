@@ -15,6 +15,7 @@ module Immutaball.Share.Level.Analysis
 		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
+			sraBodyData, sraBodyDataGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -79,14 +80,18 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	_sraPathDoublesData    :: Array Int32 Double,
 	_sraPathDoublesDataGPU :: GLData,
 	_sraPathInt32sData     :: Array Int32 Int32,
-	_sraPathInt32sDataGPU  :: GLData
+	_sraPathInt32sDataGPU  :: GLData,
 
-	-- TODO: body.
-	-- | Body data: .
+	-- | Body data: initial translation path and l0 and lc (lumps), 3 ints.
+	--
 	-- When rendering, the renderer can use a uniform to tell the GPU what path
 	-- the body is currently on, and the linear interpolation (0 to 1) for that
 	-- path.  The GPU can also use the body's initial path to determine the
 	-- relative positioning of the path when performing interpolation.
+	--
+	-- Bodies are sets of lumps that follow the same path.
+	_sraBodyData     :: Array Int32 Int32,
+	_sraBodyDataGPU  :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -126,7 +131,10 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 	_sraPathDoublesDataGPU = gpuEncodeArray (sra^.sraPathDoublesData),
 
 	_sraPathInt32sData    = genArray (0, 2 * (sol^.solPc) - 1) $ \idx -> divMod idx 2 & \(pi_, ridx) -> pathInt32RelIdx pi_ ridx,
-	_sraPathInt32sDataGPU = gpuEncodeArray (sra^.sraPathInt32sData)
+	_sraPathInt32sDataGPU = gpuEncodeArray (sra^.sraPathInt32sData),
+
+	_sraBodyData    = genArray (0, 3 * (sol^.solBc) - 1) $ \idx -> divMod idx 3 & \(bi, ridx) -> bodyRelIdx bi ridx,
+	_sraBodyDataGPU = gpuEncodeArray (sra^.sraBodyData)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -162,6 +170,12 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 		pathInt32RelIdx pi_ 0    = ((sol^.solPv) ! pi_)^.pathPi  -- pathPi
 		pathInt32RelIdx pi_ 1    = ((sol^.solPv) ! pi_)^.pathS   -- pathS
 		pathInt32RelIdx pi_ ridx = error $ "Internal error: mkSolRenderAnalysis^.pathInt32RelIdx: unrecognized ridx " ++ show ridx ++ " (pi " ++ show pi_ ++ ")."
+
+		bodyRelIdx :: Int32 -> Int32 -> Int32
+		bodyRelIdx bi 0    = ((sol^.solBv) ! bi)^.bodyP0  -- bodyP0
+		bodyRelIdx bi 1    = ((sol^.solBv) ! bi)^.bodyG0  -- bodyG0
+		bodyRelIdx bi 2    = ((sol^.solBv) ! bi)^.bodyGc  -- bodyGc
+		bodyRelIdx bi ridx = error $ "Internal error: mkSolRenderAnalysis^.bodyRelIdx: unrecognized ridx " ++ show ridx ++ " (bi " ++ show bi ++ ")."
 
 mkSolPhysicsAnalysis :: Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _sol = fix $ \_spa -> SolPhysicsAnalysis {

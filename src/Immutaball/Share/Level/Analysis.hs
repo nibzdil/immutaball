@@ -68,6 +68,8 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- | Range of geoms: g0, gc.
 	_sraLumpData    :: Array Int32 Int32,
 	_sraLumpDataGPU :: GLData
+
+	-- TODO: path, body.
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis

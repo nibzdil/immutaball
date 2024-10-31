@@ -31,6 +31,7 @@ import Data.Int
 import Control.Lens
 import Data.Array.IArray
 
+import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.Level.Analysis.LowLevel
 import Immutaball.Share.Level.Base
@@ -113,14 +114,14 @@ sar = saRenderAnalysis
 sap :: Lens' SolAnalysis SolPhysicsAnalysis
 sap = saPhysicsAnalysis
 
-mkSolAnalysis :: Sol -> SolAnalysis
-mkSolAnalysis sol = fix $ \_sa -> SolAnalysis {
-	_saRenderAnalysis  = mkSolRenderAnalysis  sol,
-	_saPhysicsAnalysis = mkSolPhysicsAnalysis sol
+mkSolAnalysis :: IBContext' a -> Sol -> SolAnalysis
+mkSolAnalysis cxt sol = fix $ \_sa -> SolAnalysis {
+	_saRenderAnalysis  = mkSolRenderAnalysis  cxt sol,
+	_saPhysicsAnalysis = mkSolPhysicsAnalysis cxt sol
 }
 
-mkSolRenderAnalysis :: Sol -> SolRenderAnalysis
-mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
+mkSolRenderAnalysis :: IBContext' a -> Sol -> SolRenderAnalysis
+mkSolRenderAnalysis _cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraVertexData    = genArray (0, 3 * (sol^.solVc) - 1) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
 	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
 
@@ -180,6 +181,6 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 		bodyRelIdx bi 2    = ((sol^.solBv) ! bi)^.bodyGc  -- bodyGc
 		bodyRelIdx bi ridx = error $ "Internal error: mkSolRenderAnalysis^.bodyRelIdx: unrecognized ridx " ++ show ridx ++ " (bi " ++ show bi ++ ")."
 
-mkSolPhysicsAnalysis :: Sol -> SolPhysicsAnalysis
-mkSolPhysicsAnalysis _sol = fix $ \_spa -> SolPhysicsAnalysis {
+mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
+mkSolPhysicsAnalysis _cxt _sol = fix $ \_spa -> SolPhysicsAnalysis {
 }

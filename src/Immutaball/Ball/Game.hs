@@ -42,6 +42,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import Immutaball.Share.Config
+import Immutaball.Share.Context
 import Immutaball.Share.Level.Analysis
 import Immutaball.Share.Level.Attributes
 import Immutaball.Share.Level.Base
@@ -205,9 +206,9 @@ makeLenses ''PathState
 makeLenses ''TeleporterState
 makeLenses ''GoalState
 
-initialGameState :: Neverballrc -> Bool -> LevelIB -> GameState
-initialGameState neverballrc hasLevelBeenCompleted sol = fix $ \gs ->
-	let solAnalysis = mkSolAnalysis (gs^.gsSol) in
+initialGameState :: IBContext' a -> Neverballrc -> Bool -> LevelIB -> GameState
+initialGameState cxt neverballrc hasLevelBeenCompleted sol = fix $ \gs ->
+	let solAnalysis = mkSolAnalysis cxt (gs^.gsSol) in
 	par solAnalysis $
 	GameState {
 	_gsGameMode    = Intermission,

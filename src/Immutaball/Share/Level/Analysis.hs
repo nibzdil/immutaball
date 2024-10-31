@@ -99,7 +99,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
 
--- | Extra data o the sol useful for rendering.
+-- | Extra data of the sol useful for physics.
 data SolPhysicsAnalysis = SolPhysicsAnalysis {
 }
 	deriving (Eq, Ord, Show)

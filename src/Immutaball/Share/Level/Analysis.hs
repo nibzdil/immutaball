@@ -12,7 +12,7 @@ module Immutaball.Share.Level.Analysis
 	(
 		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis,
 		sar, sap,
-		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, --sraGeomData,
+		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData, sraGeomDataGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -45,21 +45,24 @@ data SolAnalysis = SolAnalysis {
 
 -- sar, sap
 
--- | Extra data o the sol useful for rendering.
+-- | Extra data of the sol useful for rendering.
+--
+-- We reorder the data a bit.
 data SolRenderAnalysis = SolRenderAnalysis {
 	-- | The basis of 'sraVertexData'.
 	--
 	-- It's an array of the concatenation of x y and z.  *3 index gets the start index, to x.
-	_sraVertexData :: Array Int32 Double,
-
+	_sraVertexData    :: Array Int32 Double,
 	-- | You can use an SSBO to upload the vertex array as a GLData
 	-- (sized bytestring), and then use that SSBO in the shader.
 	--
 	-- The shaders can usefully use the current array of vertices.
-	_sraVertexDataGPU :: GLData
+	_sraVertexDataGPU :: GLData,
 
 	-- | Get all triangles of the SOL.
-	--_sraGeomData :: GLData
+	-- Represented as vi, vj, vk, ti, tj, tk, si, sj, sk.
+	_sraGeomData    :: Array Int32 Int32,
+	_sraGeomDataGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -87,7 +90,10 @@ mkSolAnalysis sol = fix $ \_sa -> SolAnalysis {
 mkSolRenderAnalysis :: Sol -> SolRenderAnalysis
 mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 	_sraVertexData    = genArray (0, 3 * (sol^.solVc)) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
-	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData)
+	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
+
+	_sraGeomData    = genArray (0, 9 * (sol^.solGc)) $ \idx -> divMod idx 9 & \(gi, ridx) -> geomRelIdx gi ridx,
+	_sraGeomDataGPU = gpuEncodeArray (sra^.sraGeomData)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -95,6 +101,18 @@ mkSolRenderAnalysis sol = fix $ \sra -> SolRenderAnalysis {
 		lcoord3 1 = y3
 		lcoord3 2 = z3
 		lcoord3 x = error $ "Internal error: mkSolRenderAnalysis^.lcoord: unrecognized coord number " ++ show x ++ "."
+
+		geomRelIdx :: Int32 -> Int32 -> Int32
+		geomRelIdx gi 0    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsVi)  -- v1 (first vertex of the triangle)
+		geomRelIdx gi 1    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsVi)  -- v2 (second vertex of the triangle)
+		geomRelIdx gi 2    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsVi)  -- v3 (third vertex of the triangle)
+		geomRelIdx gi 3    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsTi)  -- t1 (texture translation)
+		geomRelIdx gi 4    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsTi)  -- t2 (texture translation)
+		geomRelIdx gi 5    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsTi)  -- t3 (texture translation)
+		geomRelIdx gi 6    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsSi)  -- s1 (texture scale)
+		geomRelIdx gi 7    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsSi)  -- s2
+		geomRelIdx gi 8    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsSi)  -- s3
+		geomRelIdx gi ridx = error $ "Internal error: mkSolRenderAnalysis^.geomRelIdx: unrecognized ridx " ++ show ridx ++ " (gi " ++ show gi ++ ")."
 
 mkSolPhysicsAnalysis :: Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _sol = fix $ \_spa -> SolPhysicsAnalysis {

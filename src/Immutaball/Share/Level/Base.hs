@@ -195,7 +195,7 @@ data Texc = Texc {
 makeLenses ''Texc
 
 data Offs = Offs {
-	-- | Not s and t as in texture coords x and y, but t and s as it
+	-- | Not s and t as in texture coords x and y, but t and s as in
 	-- translation and scale.  Neverball sols ignore texture angle.
 	_offsTi :: Int32,
 	_offsSi :: Int32,

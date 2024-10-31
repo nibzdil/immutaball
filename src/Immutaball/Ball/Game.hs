@@ -17,8 +17,8 @@ module Immutaball.Ball.Game
 			isGameEnded, isGameFailed, isGameRunning,
 		GameState(..), gsGameMode, gsTimeElapsed, gsPaused, gsPreview,
 			gsBallPos, gsBallVel, gsSolRaw, gsSol, gsSolAttributes,
-			gsCameraAngle, gsCameraMode, gsCoinState, gsSwitchState,
-			gsPathState, gsTeleporterState, gsGoalState,
+			gsSolAnalysis, gsCameraAngle, gsCameraMode, gsCoinState,
+			gsSwitchState, gsPathState, gsTeleporterState, gsGoalState,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
 			csCoinCollectedAt, csCoinsUncollected,
@@ -41,6 +41,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import Immutaball.Share.Config
+import Immutaball.Share.Level.Analysis
 import Immutaball.Share.Level.Attributes
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Level.Utils
@@ -130,6 +131,8 @@ data GameState = GameState {
 	_gsSol :: LevelIB,
 	-- | Read metadata from the sol.
 	_gsSolAttributes :: SolAttributes,
+	-- | Optionally make our own analysis from the SOL.
+	_gsSolAnalysis :: SolAnalysis,
 
 	-- | The position of the camera, as a counter-clock-wise angle relative to
 	-- the starting camera position of looking toward the positive y axis, with
@@ -214,6 +217,7 @@ initialGameState neverballrc hasLevelBeenCompleted sol = fix $ \gs -> GameState 
 	_gsSolRaw        = sol,
 	_gsSol           = transformSol restoreSolTransformation (gs^.gsSol),
 	_gsSolAttributes = mkSolAttributes (gs^.gsSol),
+	_gsSolAnalysis   = mkSolAnalysis   (gs^.gsSol),
 
 	_gsCameraAngle = 0.0,
 	_gsCameraMode  = fromIntegral $ (neverballrc^.camera),

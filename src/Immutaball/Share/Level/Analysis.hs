@@ -51,6 +51,9 @@ data SolAnalysis = SolAnalysis {
 -- | Extra data of the sol useful for rendering.
 --
 -- We reorder the data a bit.
+--
+-- We have 5 arrays of data for the GPU that can be uploaded and accesses as 5
+-- SSBOs.
 data SolRenderAnalysis = SolRenderAnalysis {
 	-- | The basis of 'sraVertexData'.
 	--

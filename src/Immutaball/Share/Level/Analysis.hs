@@ -32,6 +32,7 @@ import Data.Int
 import Control.Lens
 import Data.Array.IArray
 
+import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.Level.Analysis.LowLevel
@@ -147,7 +148,7 @@ mkSolAnalysis cxt sol = fix $ \_sa -> SolAnalysis {
 }
 
 mkSolRenderAnalysis :: IBContext' a -> Sol -> SolRenderAnalysis
-mkSolRenderAnalysis _cxt sol = fix $ \sra -> SolRenderAnalysis {
+mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraVertexData    = genArray (0, 3 * (sol^.solVc) - 1) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
 	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
 
@@ -166,8 +167,8 @@ mkSolRenderAnalysis _cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraBodyData    = genArray (0, 3 * (sol^.solBc) - 1) $ \idx -> divMod idx 3 & \(bi, ridx) -> bodyRelIdx bi ridx,
 	_sraBodyDataGPU = gpuEncodeArray (sra^.sraBodyData),
 
-	_sraOpaqueGeoms      = _,
-	_sraTransparentGeoms = _
+	_sraOpaqueGeoms      = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) False) . zip [0..] $ elems (sol^.solBv),
+	_sraTransparentGeoms = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) True ) . zip [0..] $ elems (sol^.solBv)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -209,6 +210,9 @@ mkSolRenderAnalysis _cxt sol = fix $ \sra -> SolRenderAnalysis {
 		bodyRelIdx bi 1    = ((sol^.solBv) ! bi)^.bodyG0  -- bodyG0
 		bodyRelIdx bi 2    = ((sol^.solBv) ! bi)^.bodyGc  -- bodyGc
 		bodyRelIdx bi ridx = error $ "Internal error: mkSolRenderAnalysis^.bodyRelIdx: unrecognized ridx " ++ show ridx ++ " (bi " ++ show bi ++ ")."
+
+		passGeom :: Integer -> Bool -> (Int32, Body) -> [GeomPass]
+		passGeom maxTextures transparent (bi, b) = _
 
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _cxt _sol = fix $ \_spa -> SolPhysicsAnalysis {

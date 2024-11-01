@@ -16,7 +16,7 @@ module Immutaball.Share.Level.Analysis
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
 			sraBodyData, sraBodyDataGPU, sraOpaqueGeoms, sraTransparentGeoms,
-		GeomPass(..), gpBi, gpMv, gpTextures, gpGv,
+		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGv, gpGvGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -115,10 +115,12 @@ data GeomPass = GeomPass {
 
 	-- | For each geom, provide an index 0-15 of the 'gpMv' array.
 	-- This array is of equal size with 'gpGv'.
-	_gpTextures :: Array Int32 Int32,
+	_gpTextures    :: Array Int32 Int32,
+	_gpTexturesGPU :: GLData,
 
 	-- | The textured triangles to draw.
-	_gpGv :: Array Int32 Int32
+	_gpGv    :: Array Int32 Int32,
+	_gpGvGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis

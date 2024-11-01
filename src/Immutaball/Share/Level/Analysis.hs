@@ -15,7 +15,8 @@ module Immutaball.Share.Level.Analysis
 		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
-			sraBodyData, sraBodyDataGPU,
+			sraBodyData, sraBodyDataGPU, sraOpaqueGeoms, sraTransparentGeoms,
+		GeomPass(..), gpBi, gpMv, gpTextures, gpGv,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -95,9 +96,29 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	--
 	-- Bodies are sets of lumps that follow the same path.
 	_sraBodyData     :: Array Int32 Int32,
-	_sraBodyDataGPU  :: GLData
+	_sraBodyDataGPU  :: GLData,
 
-	-- TODO: passes of draw elements, first by transparency, and then by textures (we can handle up to 16 textures at once).
+	-- | A grouping of all opaque geoms by 16 textures at a time.
+	_sraOpaqueGeoms      :: [GeomPass],
+	_sraTransparentGeoms :: [GeomPass]
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''SolRenderAnalysis
+
+-- | A subset of geometry that can be rendered in a single pass.
+data GeomPass = GeomPass {
+	-- | Body.
+	_gpBi :: Int32,
+
+	-- | Materials used in this pass; up to array of 16.
+	_gpMv :: Array Int32 Int32,
+
+	-- | For each geom, provide an index 0-15 of the 'gpMv' array.
+	-- This array is of equal size with 'gpGv'.
+	_gpTextures :: Array Int32 Int32,
+
+	-- | The textured triangles to draw.
+	_gpGv :: Array Int32 Int32
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -108,6 +129,7 @@ data SolPhysicsAnalysis = SolPhysicsAnalysis {
 	deriving (Eq, Ord, Show)
 makeLenses ''SolAnalysis
 makeLenses ''SolRenderAnalysis
+makeLenses ''GeomPass
 makeLenses ''SolPhysicsAnalysis
 
 sar :: Lens' SolAnalysis SolRenderAnalysis
@@ -140,7 +162,10 @@ mkSolRenderAnalysis _cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraPathInt32sDataGPU = gpuEncodeArray (sra^.sraPathInt32sData),
 
 	_sraBodyData    = genArray (0, 3 * (sol^.solBc) - 1) $ \idx -> divMod idx 3 & \(bi, ridx) -> bodyRelIdx bi ridx,
-	_sraBodyDataGPU = gpuEncodeArray (sra^.sraBodyData)
+	_sraBodyDataGPU = gpuEncodeArray (sra^.sraBodyData),
+
+	_sraOpaqueGeoms      = _,
+	_sraTransparentGeoms = _
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a

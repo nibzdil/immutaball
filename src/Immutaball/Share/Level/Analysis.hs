@@ -227,28 +227,28 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 						Nothing -> do
 							idxs <- get
 							let nextIdx = fromIntegral $ M.size idxs
-							put $ M.insert mi nextIdx mi idxs
+							put $ M.insert mi nextIdx idxs
 							return ([mi], nextIdx)
 
 				wholeGpTextures' = map (`mod` maxTextures) wholeGpTextures
 
-				gpGvPasses      = chunksOf maxTextures wholeGpGv
-				gpMvPasses      = chunksOf maxTextures wholeGpMv
-				gpTexturePasses = chunksOf maxTextures wholeGpTextures'
+				gpGvPasses       = chunksOf maxTextures wholeGpGv
+				gpMvPasses       = chunksOf maxTextures wholeGpMv
+				gpTexturesPasses = chunksOf maxTextures wholeGpTextures'
 
 				listArray' xs = listArray (0, fromIntegral (length xs) - 1) xs
 
 				gpGvPasses'       = map listArray' gpGvPasses
 				gpMvPasses'       = map listArray' gpMvPasses
-				gpTexturesPasses' = map listArray' gpTexturesPasses'
+				gpTexturesPasses' = map listArray' gpTexturesPasses
 
 				geomPasses = flip map (zip3 gpGvPasses' gpMvPasses' gpTexturesPasses') $
-					\(gpGvPass, gpMvPass, gpTexturePass) -> fix $ \gp -> GeomPass {
+					\(gpGvPass, gpMvPass, gpTexturesPass) -> fix $ \gp -> GeomPass {
 						_gpBi = bi,
 
 						_gpMv = gpMvPass,
 
-						_gpTextures    = gpTexturesPass,
+						_gpTextures    = fromIntegral <$> gpTexturesPass,
 						_gpTexturesGPU = gpuEncodeArray (gp^.gpTextures),
 
 						_gpGv    = gpGvPass,

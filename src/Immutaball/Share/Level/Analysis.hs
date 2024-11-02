@@ -232,6 +232,7 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 
 				wholeGpTextures' = map (`mod` maxTextures) wholeGpTextures
 
+				-- TODO FIXME: only chunks mv; use as many gv as possible.
 				gpGvPasses       = chunksOf maxTextures wholeGpGv
 				gpMvPasses       = chunksOf maxTextures wholeGpMv
 				gpTexturesPasses = chunksOf maxTextures wholeGpTextures'

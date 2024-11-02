@@ -26,11 +26,15 @@ module Immutaball.Share.Level.Analysis
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Arrow
+import Control.Monad
 import Data.Function hiding (id, (.))
 import Data.Int
 
 import Control.Lens
+import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
+import qualified Data.Map.Lazy as M
 
 import Immutaball.Share.Config
 import Immutaball.Share.Context
@@ -38,6 +42,7 @@ import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.Level.Analysis.LowLevel
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
+import Immutaball.Share.Utils
 
 data SolAnalysis = SolAnalysis {
 	-- | Extra analysis of the sol useful for rendering.
@@ -212,7 +217,43 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		bodyRelIdx bi ridx = error $ "Internal error: mkSolRenderAnalysis^.bodyRelIdx: unrecognized ridx " ++ show ridx ++ " (bi " ++ show bi ++ ")."
 
 		passGeom :: Integer -> Bool -> (Int32, Body) -> [GeomPass]
-		passGeom maxTextures transparent (bi, b) = _
+		passGeom maxTextures transparent (bi, b) = geomPasses
+			where
+				-- First make a single GeomPass - a single array structure that we will later split up by 16.
+				wholeGpGv = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				(wholeGpMv, wholeGpTextures) = first concat . flip evalState M.empty . forM wholeGpGv $ \gi -> let g = (sol^.solGv) ! gi in let mi = g^.geomMi in
+					gets (M.lookup mi) >>= \midx -> case midx of
+						Just idx -> return ([], idx)
+						Nothing -> do
+							idxs <- get
+							let nextIdx = fromIntegral $ M.size idxs
+							put $ M.insert mi nextIdx mi idxs
+							return ([mi], nextIdx)
+
+				wholeGpTextures' = map (`mod` maxTextures) wholeGpTextures
+
+				gpGvPasses      = chunksOf maxTextures wholeGpGv
+				gpMvPasses      = chunksOf maxTextures wholeGpMv
+				gpTexturePasses = chunksOf maxTextures wholeGpTextures'
+
+				listArray' xs = listArray (0, fromIntegral (length xs) - 1) xs
+
+				gpGvPasses'       = map listArray' gpGvPasses
+				gpMvPasses'       = map listArray' gpMvPasses
+				gpTexturesPasses' = map listArray' gpTexturesPasses'
+
+				geomPasses = flip map (zip3 gpGvPasses' gpMvPasses' gpTexturesPasses') $
+					\(gpGvPass, gpMvPass, gpTexturePass) -> fix $ \gp -> GeomPass {
+						_gpBi = bi,
+
+						_gpMv = gpMvPass,
+
+						_gpTextures    = gpTexturesPass,
+						_gpTexturesGPU = gpuEncodeArray (gp^.gpTextures),
+
+						_gpGv    = gpGvPass,
+						_gpGvGPU = gpuEncodeArray (gp^.gpGv)
+					}
 
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _cxt _sol = fix $ \_spa -> SolPhysicsAnalysis {

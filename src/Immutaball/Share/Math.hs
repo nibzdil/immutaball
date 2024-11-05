@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, InstanceSigs, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances, FlexibleContexts #-}
 
 -- | Dependent types might make for a funner linear algebra implementation, so
 -- I just stick with what's most applicable for our uses and goals here.
@@ -59,6 +59,8 @@ module Immutaball.Share.Math
 		v3magnitude,
 		v4normalize,
 		v4magnitude,
+		identity3,
+		identity4,
 		Rect(..), rectp1, rectp2,
 		rectLowerLeft,
 		rectUpperRight,
@@ -163,7 +165,12 @@ module Immutaball.Share.Math
 		rm3,
 		rm4,
 		zm3,
-		zm4
+		zm4,
+
+		MView,
+		MViewd,
+		MView'(..), mviewPos, mviewTarget, mviewFov,
+		viewMat
 	) where
 
 import Prelude ()
@@ -488,6 +495,28 @@ v4magnitude (Vec4 x y z w) = sqrt $ x*x + y*y + z*z + w*w
 
 v4normalize :: (Num a, Floating a) => Vec4 a -> Vec4 a
 v4normalize v = (1/v4magnitude v) `sv4` v
+
+identity3 :: (Num a, Fractional a) => Mat3 a
+identity3 = Mat3 $ Vec3
+	(Vec3 1.0 0.0 0.0)
+	(Vec3 0.0 1.0 0.0)
+	(Vec3 0.0 0.0 1.0)
+
+identity4 :: (Num a, Fractional a) => Mat4 a
+identity4 = Mat4 $ Vec4
+	(Vec4 1.0 0.0 0.0 0.0)
+	(Vec4 0.0 1.0 0.0 0.0)
+	(Vec4 0.0 0.0 1.0 0.0)
+	(Vec4 0.0 0.0 0.0 1.0)
+
+instance (Num a, Fractional a) => Semigroup (Mat3 a) where
+	(<>) = mm3
+instance (Num a, Fractional a) => Semigroup (Mat4 a) where
+	(<>) = mm4
+instance (Num a, Fractional a) => Monoid (Mat3 a) where
+	mempty = identity3
+instance (Num a, Fractional a) => Monoid (Mat4 a) where
+	mempty = identity4
 
 data Rect a = Rect {
 	_rectp1 :: Vec2 a,
@@ -1499,3 +1528,22 @@ zm3 = rm3 0.0
 
 zm4 :: (Fractional a) => Mat4 a
 zm4 = rm4 0.0
+
+type MView = MViewd
+
+type MViewd = MView' Double
+data MView' a = MView {
+	_mviewPos    :: Vec3 a,
+	_mviewTarget :: Vec3 a,
+	-- | Whole fov (not half).
+	_mviewFov    :: a
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''MView'
+
+-- | Translate, then rotate, then fov.
+viewMat :: (Num a, Fractional a, Floating a) => MView' a -> Mat4 a
+viewMat v =
+	translate3 (v^.mviewPos) <>
+	tilt3      (v^.mviewTarget) <>
+	fov        (v^.mviewFov)

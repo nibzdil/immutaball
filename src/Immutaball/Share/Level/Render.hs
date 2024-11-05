@@ -5,10 +5,34 @@
 -- Level/Render.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE Arrows #-}
 
 module Immutaball.Share.Level.Render
 	(
+		renderLevel
 	) where
 
 import Prelude ()
---import Immutaball.Prelude
+import Immutaball.Prelude
+
+import Control.Arrow
+import Control.Lens
+
+import Immutaball.Share.Level.Analysis
+import Immutaball.Share.Level.Base
+import Immutaball.Share.Math
+import Immutaball.Share.State
+import Immutaball.Share.State.Context
+import Immutaball.Share.Wire
+
+-- | TODO: implement.
+renderLevel :: SolWithAnalysis -> Wire ImmutaballM (MView, IBStateContext) IBStateContext
+renderLevel swa = proc (_camera, cxt0) -> do
+	let _unused = (sol, sa)  -- TODO
+	returnA -< cxt0
+	where
+		sol :: Sol
+		sol = swa^.swaSol
+
+		sa :: SolAnalysis
+		sa = swa^.swaSa

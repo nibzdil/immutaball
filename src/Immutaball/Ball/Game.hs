@@ -213,53 +213,53 @@ initialGameState cxt neverballrc hasLevelBeenCompleted sol = fix $ \gs ->
 	let solAnalysis = mkSolAnalysis cxt (gs^.gsSol) in
 	par solAnalysis $
 	GameState {
-	_gsGameMode    = Intermission,
+		_gsGameMode    = Intermission,
 
-	_gsTimeElapsed = 0.0,
-	_gsPaused      = False,
-	_gsPreview     = Just 0.0,
-	_gsBallPos     = ((^.ballP) <$> ((gs^.gsSol.solUv) !? 0)) & fromMaybe (Vec3 0.0 0.0 0.0),
-	_gsBallVel     = Vec3 0.0 0.0 0.0,
+		_gsTimeElapsed = 0.0,
+		_gsPaused      = False,
+		_gsPreview     = Just 0.0,
+		_gsBallPos     = ((^.ballP) <$> ((gs^.gsSol.solUv) !? 0)) & fromMaybe (Vec3 0.0 0.0 0.0),
+		_gsBallVel     = Vec3 0.0 0.0 0.0,
 
-	_gsSolRaw        = sol,
-	_gsSol           = transformSol restoreSolTransformation (gs^.gsSol),
-	_gsSolAttributes = mkSolAttributes (gs^.gsSol),
-	_gsSolAnalysis   = solAnalysis,
-	_gsSwa           = SolWithAnalysis {
-		_swaSol = (gs^.gsSol),
-		_swaSa  = solAnalysis
-	},
+		_gsSolRaw        = sol,
+		_gsSol           = transformSol restoreSolTransformation (gs^.gsSol),
+		_gsSolAttributes = mkSolAttributes (gs^.gsSol),
+		_gsSolAnalysis   = solAnalysis,
+		_gsSwa           = SolWithAnalysis {
+			_swaSol = (gs^.gsSol),
+			_swaSa  = solAnalysis
+		},
 
-	_gsCameraAngle = 0.0,
-	_gsCameraMode  = fromIntegral $ (neverballrc^.camera),
+		_gsCameraAngle = 0.0,
+		_gsCameraMode  = fromIntegral $ (neverballrc^.camera),
 
-	_gsCoinState = CoinState {
-		_csCoinsCollected = M.fromList [(k, v) | v <- return False, k <- range . bounds $ (gs^.gsSol.solHv)],
+		_gsCoinState = CoinState {
+			_csCoinsCollected = M.fromList [(k, v) | v <- return False, k <- range . bounds $ (gs^.gsSol.solHv)],
 
-		_csTotalCollected   = 0,
-		_csTotalUncollected = (gs^.gsCoinState.csTotalCoinValue),
-		_csTotalCoinValue   = sum [v | coin <- elems (gs^.gsSol.solHv), v <- return . fromIntegral $ (coin^.itemN)],
-		_csCoinCollectedAt  = M.empty,
-		_csCoinsUncollected = S.fromList . range . bounds $ (gs^.gsSol.solHv)
-	},
-	_gsSwitchState = SwitchState {
-		_xsSwitchesEnabled = M.fromList [(k, v) | k <- range . bounds $ (gs^.gsSol.solXv), x <- return $ (gs^.gsSol.solXv) ! k, v <- return $ (x^.swchF) /= 0],
-		_xsSwitchesTimers  = M.fromList [(k, v) | k <- range . bounds $ (gs^.gsSol.solXv), x <- return $ (gs^.gsSol.solXv) ! k, v <- return $ (x^.swchT)],
+			_csTotalCollected   = 0,
+			_csTotalUncollected = (gs^.gsCoinState.csTotalCoinValue),
+			_csTotalCoinValue   = sum [v | coin <- elems (gs^.gsSol.solHv), v <- return . fromIntegral $ (coin^.itemN)],
+			_csCoinCollectedAt  = M.empty,
+			_csCoinsUncollected = S.fromList . range . bounds $ (gs^.gsSol.solHv)
+		},
+		_gsSwitchState = SwitchState {
+			_xsSwitchesEnabled = M.fromList [(k, v) | k <- range . bounds $ (gs^.gsSol.solXv), x <- return $ (gs^.gsSol.solXv) ! k, v <- return $ (x^.swchF) /= 0],
+			_xsSwitchesTimers  = M.fromList [(k, v) | k <- range . bounds $ (gs^.gsSol.solXv), x <- return $ (gs^.gsSol.solXv) ! k, v <- return $ (x^.swchT)],
 
-		_xsBallInAnySwitch = False,
-		_xsBallInSwitch    = M.fromList [(k, v) | v <- return False, k <- range . bounds $ (gs^.gsSol.solXv)]
-	},
-	_gsPathState = PathState {
-		_psPathsTimeElapsed = M.fromList [(k, v) | v <- return 0, k <- range . bounds $ (gs^.gsSol.solPv)],
-		_psPathsGoing       = M.fromList [(k, v) | k <- range . bounds $ (gs^.gsSol.solPv), p <- return $ (gs^.gsSol.solPv) ! k, v <- return $ (p^.pathF) /= 0]
-	},
-	_gsTeleporterState = TeleporterState {
-		_jsBallInAnyTeleporter = False,
-		_jsBallBeingTeleported = Nothing
-	},
-	_gsGoalState = GoalState {
-		_zsCoinUnlocked  = 0 >= (gs^.gsSolAttributes.saGoal),
-		_zsStartUnlocked = (not (neverballrc^.lockGoals)) && hasLevelBeenCompleted,
-		_zsUnlocked      = (gs^.gsGoalState.zsCoinUnlocked) || (gs^.gsGoalState.zsStartUnlocked)
+			_xsBallInAnySwitch = False,
+			_xsBallInSwitch    = M.fromList [(k, v) | v <- return False, k <- range . bounds $ (gs^.gsSol.solXv)]
+		},
+		_gsPathState = PathState {
+			_psPathsTimeElapsed = M.fromList [(k, v) | v <- return 0, k <- range . bounds $ (gs^.gsSol.solPv)],
+			_psPathsGoing       = M.fromList [(k, v) | k <- range . bounds $ (gs^.gsSol.solPv), p <- return $ (gs^.gsSol.solPv) ! k, v <- return $ (p^.pathF) /= 0]
+		},
+		_gsTeleporterState = TeleporterState {
+			_jsBallInAnyTeleporter = False,
+			_jsBallBeingTeleported = Nothing
+		},
+		_gsGoalState = GoalState {
+			_zsCoinUnlocked  = 0 >= (gs^.gsSolAttributes.saGoal),
+			_zsStartUnlocked = (not (neverballrc^.lockGoals)) && hasLevelBeenCompleted,
+			_zsUnlocked      = (gs^.gsGoalState.zsCoinUnlocked) || (gs^.gsGoalState.zsStartUnlocked)
+		}
 	}
-}

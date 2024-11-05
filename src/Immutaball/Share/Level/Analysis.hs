@@ -16,7 +16,7 @@ module Immutaball.Share.Level.Analysis
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
 			sraBodyData, sraBodyDataGPU, sraOpaqueGeoms, sraTransparentGeoms,
-		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGv, gpGvGPU,
+		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
@@ -27,8 +27,10 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Monad
+import Data.Bits
 import Data.Function hiding (id, (.))
 import Data.Int
+import Data.Maybe
 
 import Control.Lens
 import Control.Monad.Trans.State.Lazy
@@ -119,13 +121,14 @@ data GeomPass = GeomPass {
 	_gpMv :: Array Int32 Int32,
 
 	-- | For each geom, provide an index 0-15 of the 'gpMv' array.
-	-- This array is of equal size with 'gpGv'.
+	-- This array is of equal size with 'gpGis'.
 	_gpTextures    :: Array Int32 Int32,
 	_gpTexturesGPU :: GLData,
 
 	-- | The textured triangles to draw.
-	_gpGv    :: Array Int32 Int32,
-	_gpGvGPU :: GLData
+	-- Array of geom indices.
+	_gpGis    :: Array Int32 Int32,
+	_gpGisGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -226,13 +229,20 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		-- That's the purpose of this function.  Partition into partitions
 		-- (each partition is a GeomPass).  Each geom is a textured triangle to
 		-- draw, BTW.  Each GeomPass is a partition as we described.
+		--
+		-- Finally, the caller first takes all partitions on all
+		-- non-transparent geometry, then take all partitions on all
+		-- transparent geometry (i.e. that supports an alpha test (technically
+		-- could still be opaque but just has alpha / transparency enabled)).
 		passGeom :: Integer -> Bool -> (Int32, Body) -> [GeomPass]
-		-- TODO: don't ignore transparent.
 		passGeom maxTextures transparent (bi, b) = geomPasses
 			where
 				-- First make a single GeomPass - a single array structure that we will later split up by 16.
-				wholeGpGv = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
-				wholeGpMvTextures = concatFirst . flip evalState M.empty . forM wholeGpGv $ \gi -> let g = (sol^.solGv) ! gi in let mi = g^.geomMi in
+				wholeGpGis = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				wholeGpGisTransparent = flip filter wholeGpGis $ \gi ->
+					let g = (sol^.solGv) ! gi in let mi = g^.geomMi in let mtrl = (sol^.solMv) ! mi in
+					(((mtrl^.mtrlFl) .&. mtrlFlagAlphaTest) /= 0) == transparent
+				(wholeGpMvTextures, miToTexture) = flip runState M.empty . fmap concatFirst . forM wholeGpGisTransparent $ \gi -> let g = (sol^.solGv) ! gi in let mi = g^.geomMi in
 					gets (M.lookup mi) >>= \midx -> case midx of
 						Just idx -> return ([], idx)
 						Nothing -> do
@@ -240,7 +250,7 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 							let nextIdx = fromIntegral $ M.size idxs
 							put $ M.insert mi nextIdx idxs
 							return ([mi], nextIdx)
-				(wholeGpMv, wholeGpTextures) = split wholeGpMvTextures
+				(wholeGpMv, _wholeGpTextures) = split wholeGpMvTextures
 
 				-- (We could pre-process the whole textures list, but it's
 				-- convenient to process the index list at the same time that we
@@ -252,20 +262,22 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 				-- mtrl represented in the current pass.  (gv/mv pairings
 				-- should be preserved, not end up between different partitions,
 				-- since they make up an aggregate structure.)
-				gpMvPasses       = chunksOf maxTextures wholeGpMv
-				gpGvPasses       = flip map (zip [0..] gpMvPasses) $ \(_idx :: Integer,  mvPass) -> flip filter wholeGpGv $ \gi -> (((sol^.solGv) ! gi)^.geomMi) `elem` mvPass
-				gpTexturesPasses = flip map (zip [0..] gpMvPasses) $ \( idx :: Integer, _mvPass) -> map (`mod` maxTextures) . filter (\mi -> mi `div` maxTextures == idx) $ wholeGpTextures
-				-- For gpGvPasses and gpTexturePasses, we could also process wholeGpMvtextures in one go:
-				--(_gpGvPasses2, _gpTexturePasses2) = split …
+				gpMvPasses          = chunksOf maxTextures wholeGpMv
+				gpGisTexturesPasses = flip map gpMvPasses $ \mvPass ->
+					let gisPass = flip filter wholeGpGisTransparent $ \gi -> (((sol^.solGv) ! gi)^.geomMi) `elem` mvPass in
+					let err mi = error $ "Internal error: mkSolRenderAnalysis^.geomPasses: we thought we were tracking mtrl texture indices, but we couldn't find a texture index for mtrl i " ++ show mi ++ "." in
+					flip map gisPass $ \gi -> (gi, let g = (sol^.solGv) ! gi in let mi = g^.geomMi in fi $ (fromMaybe (err mi) $ M.lookup mi miToTexture) `mod` maxTextures)
+				(fi :: Integer -> Int32) = fromIntegral
+				(gpGisPasses, gpTexturesPasses) = split . map split $ gpGisTexturesPasses
 
 				listArray' xs = listArray (0, fromIntegral (length xs) - 1) xs
 
-				gpGvPasses'       = map listArray' gpGvPasses
+				gpGisPasses'      = map listArray' gpGisPasses
 				gpMvPasses'       = map listArray' gpMvPasses
 				gpTexturesPasses' = map listArray' gpTexturesPasses
 
-				geomPasses = flip map (zip3 gpGvPasses' gpMvPasses' gpTexturesPasses') $
-					\(gpGvPass, gpMvPass, gpTexturesPass) -> fix $ \gp -> GeomPass {
+				geomPasses = flip map (zip3 gpGisPasses' gpMvPasses' gpTexturesPasses') $
+					\(gpGisPass, gpMvPass, gpTexturesPass) -> fix $ \gp -> GeomPass {
 						_gpBi = bi,
 
 						_gpMv = gpMvPass,
@@ -273,8 +285,8 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 						_gpTextures    = fromIntegral <$> gpTexturesPass,
 						_gpTexturesGPU = gpuEncodeArray (gp^.gpTextures),
 
-						_gpGv    = gpGvPass,
-						_gpGvGPU = gpuEncodeArray (gp^.gpGv)
+						_gpGis    = gpGisPass,
+						_gpGisGPU = gpuEncodeArray (gp^.gpGis)
 					}
 
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis

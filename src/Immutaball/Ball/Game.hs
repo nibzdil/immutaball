@@ -17,7 +17,7 @@ module Immutaball.Ball.Game
 			isGameEnded, isGameFailed, isGameRunning,
 		GameState(..), gsGameMode, gsTimeElapsed, gsPaused, gsPreview,
 			gsBallPos, gsBallVel, gsSolRaw, gsSol, gsSolAttributes,
-			gsSolAnalysis, gsCameraAngle, gsCameraMode, gsCoinState,
+			gsSolAnalysis, gsSwa, gsCameraAngle, gsCameraMode, gsCoinState,
 			gsSwitchState, gsPathState, gsTeleporterState, gsGoalState,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
@@ -135,6 +135,8 @@ data GameState = GameState {
 	_gsSolAttributes :: SolAttributes,
 	-- | Optionally make our own analysis from the SOL.
 	_gsSolAnalysis :: SolAnalysis,
+	-- | Convenience pairing of the sol with the analysis.
+	_gsSwa :: SolWithAnalysis,
 
 	-- | The position of the camera, as a counter-clock-wise angle relative to
 	-- the starting camera position of looking toward the positive y axis, with
@@ -223,6 +225,10 @@ initialGameState cxt neverballrc hasLevelBeenCompleted sol = fix $ \gs ->
 	_gsSol           = transformSol restoreSolTransformation (gs^.gsSol),
 	_gsSolAttributes = mkSolAttributes (gs^.gsSol),
 	_gsSolAnalysis   = solAnalysis,
+	_gsSwa           = SolWithAnalysis {
+		_swaSol = (gs^.gsSol),
+		_swaSa  = solAnalysis
+	},
 
 	_gsCameraAngle = 0.0,
 	_gsCameraMode  = fromIntegral $ (neverballrc^.camera),

@@ -10,6 +10,7 @@
 -- | Optionally, we can add our own extra information about a level file.
 module Immutaball.Share.Level.Analysis
 	(
+		SolWithAnalysis(..), swaSol, swaSa,
 		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis,
 		sar, sap,
 		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
@@ -44,6 +45,13 @@ import Immutaball.Share.Level.Analysis.LowLevel
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
+
+data SolWithAnalysis = SolWithAnalysis {
+	_swaSol :: Sol,
+	_swaSa  :: SolAnalysis
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''SolWithAnalysis
 
 data SolAnalysis = SolAnalysis {
 	-- | Extra analysis of the sol useful for rendering.
@@ -137,6 +145,7 @@ data GeomPass = GeomPass {
 data SolPhysicsAnalysis = SolPhysicsAnalysis {
 }
 	deriving (Eq, Ord, Show)
+makeLenses ''SolWithAnalysis
 makeLenses ''SolAnalysis
 makeLenses ''SolRenderAnalysis
 makeLenses ''GeomPass

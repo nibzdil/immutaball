@@ -26,7 +26,6 @@ module Immutaball.Share.Level.Analysis
 import Prelude ()
 import Immutaball.Prelude
 
-import Control.Arrow
 import Control.Monad
 import Data.Function hiding (id, (.))
 import Data.Int
@@ -216,12 +215,24 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		bodyRelIdx bi 2    = ((sol^.solBv) ! bi)^.bodyGc  -- bodyGc
 		bodyRelIdx bi ridx = error $ "Internal error: mkSolRenderAnalysis^.bodyRelIdx: unrecognized ridx " ++ show ridx ++ " (bi " ++ show bi ++ ")."
 
+		-- | It'd be nice to be able to render the whole scene in a single
+		-- pass, but since our shader only handles 16 textures at once, split
+		-- up mtrl (mv) textures into chunks of up to 16, and then for each chunk
+		-- of mtrls, take the portion of all of the scene we render that uses a
+		-- texture material in that chunk.  It partitions the scene (i.e. it
+		-- partitions the geom array gv) into partitions each of which only use
+		-- up to 16 textures.
+		--
+		-- That's the purpose of this function.  Partition into partitions
+		-- (each partition is a GeomPass).  Each geom is a textured triangle to
+		-- draw, BTW.  Each GeomPass is a partition as we described.
 		passGeom :: Integer -> Bool -> (Int32, Body) -> [GeomPass]
+		-- TODO: don't ignore transparent.
 		passGeom maxTextures transparent (bi, b) = geomPasses
 			where
 				-- First make a single GeomPass - a single array structure that we will later split up by 16.
 				wholeGpGv = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
-				(wholeGpMv, wholeGpTextures) = first concat . flip evalState M.empty . forM wholeGpGv $ \gi -> let g = (sol^.solGv) ! gi in let mi = g^.geomMi in
+				wholeGpMvTextures = concatFirst . flip evalState M.empty . forM wholeGpGv $ \gi -> let g = (sol^.solGv) ! gi in let mi = g^.geomMi in
 					gets (M.lookup mi) >>= \midx -> case midx of
 						Just idx -> return ([], idx)
 						Nothing -> do
@@ -229,13 +240,23 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 							let nextIdx = fromIntegral $ M.size idxs
 							put $ M.insert mi nextIdx idxs
 							return ([mi], nextIdx)
+				(wholeGpMv, wholeGpTextures) = split wholeGpMvTextures
 
-				wholeGpTextures' = map (`mod` maxTextures) wholeGpTextures
+				-- (We could pre-process the whole textures list, but it's
+				-- convenient to process the index list at the same time that we
+				-- chunk it up.)
+				--wholeGpTextures' = map (`mod` maxTextures) wholeGpTextures
 
-				-- TODO FIXME: only chunks mv; use as many gv as possible.
-				gpGvPasses       = chunksOf maxTextures wholeGpGv
+				-- Split up unique materials mv into pass chunks of 16, and
+				-- split up gv and mv indices where the gv/mv pair points to a
+				-- mtrl represented in the current pass.  (gv/mv pairings
+				-- should be preserved, not end up between different partitions,
+				-- since they make up an aggregate structure.)
 				gpMvPasses       = chunksOf maxTextures wholeGpMv
-				gpTexturesPasses = chunksOf maxTextures wholeGpTextures'
+				gpGvPasses       = flip map (zip [0..] gpMvPasses) $ \(_idx :: Integer,  mvPass) -> flip filter wholeGpGv $ \gi -> (((sol^.solGv) ! gi)^.geomMi) `elem` mvPass
+				gpTexturesPasses = flip map (zip [0..] gpMvPasses) $ \( idx :: Integer, _mvPass) -> map (`mod` maxTextures) . filter (\mi -> mi `div` maxTextures == idx) $ wholeGpTextures
+				-- For gpGvPasses and gpTexturePasses, we could also process wholeGpMvtextures in one go:
+				--(_gpGvPasses2, _gpTexturePasses2) = split …
 
 				listArray' xs = listArray (0, fromIntegral (length xs) - 1) xs
 

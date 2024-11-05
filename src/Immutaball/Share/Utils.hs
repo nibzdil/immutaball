@@ -36,7 +36,10 @@ module Immutaball.Share.Utils
 		closeFirstIO,
 		closeSecondIO,
 		withOpenFirstIO,
-		withOpenSecondIO
+		withOpenSecondIO,
+		concatFirst,
+		swap,
+		split
 	) where
 
 import Prelude ()
@@ -153,3 +156,12 @@ withOpenFirstIO f = closeFirstIO . f . openFirstIO
 
 withOpenSecondIO :: (Arrow a) => (a (b0, ()) (c0, ()) -> a (b1, ()) (c1, ())) -> (a b0 c0 -> a b1 c1)
 withOpenSecondIO f = closeSecondIO . f . openSecondIO
+
+concatFirst :: [([a], b)] -> [(a, b)]
+concatFirst = concat . map (\(ys, b) -> map (\y -> (y, b)) ys)
+
+swap :: (a, b) -> (b, a)
+swap (a, b) = (b, a)
+
+split :: [(a, b)] -> ([a], [b])
+split xs = (map fst xs, map snd xs)

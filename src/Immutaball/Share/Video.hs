@@ -18,6 +18,8 @@ module Immutaball.Share.Video
 		sdlCreateImmutaballShaderWith,
 
 		shaderEnableSceneDataLocation,
+		shaderSSBOTexturesLocation,
+		shaderSSBOGisLocation,
 
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
@@ -131,6 +133,12 @@ sdlCreateImmutaballShaderWith sdlMgr to_ =
 
 shaderEnableSceneDataLocation :: GLint
 shaderEnableSceneDataLocation = fromIntegral (16 :: Integer)
+
+shaderSSBOTexturesLocation :: GLint
+shaderSSBOTexturesLocation = fromIntegral (17 :: Integer)
+
+shaderSSBOGisLocation :: GLint
+shaderSSBOGisLocation = fromIntegral (18 :: Integer)
 
 -- * Shader: low level
 

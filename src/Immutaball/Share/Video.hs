@@ -17,6 +17,8 @@ module Immutaball.Share.Video
 		sdlCreateImmutaballShader,
 		sdlCreateImmutaballShaderWith,
 
+		shaderEnableSceneDataLocation,
+
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
 			ibshProgram, ibshPipeline,
@@ -126,6 +128,9 @@ sdlCreateImmutaballShader sdlMgr =
 sdlCreateImmutaballShaderWith :: SDLManagerHandle -> TMVar ImmutaballShaderHandle -> ImmutaballIOF ()
 sdlCreateImmutaballShaderWith sdlMgr to_ =
 	attachLifetime sdlMgr (initImmutaballShader sdlMgr) (freeImmutaballShader sdlMgr) to_ ()
+
+shaderEnableSceneDataLocation :: GLint
+shaderEnableSceneDataLocation = fromIntegral (16 :: Integer)
 
 -- * Shader: low level
 

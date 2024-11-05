@@ -39,7 +39,11 @@ module Immutaball.Share.Utils
 		withOpenSecondIO,
 		concatFirst,
 		swap,
-		split
+		split,
+		trueAsIntegralI,
+		falseAsIntegralI,
+		trueAsIntegral,
+		falseAsIntegral
 	) where
 
 import Prelude ()
@@ -165,3 +169,15 @@ swap (a, b) = (b, a)
 
 split :: [(a, b)] -> ([a], [b])
 split xs = (map fst xs, map snd xs)
+
+trueAsIntegralI :: Integer
+trueAsIntegralI = 1
+
+falseAsIntegralI :: Integer
+falseAsIntegralI = 0
+
+trueAsIntegral :: (Integral i) => i
+trueAsIntegral = fromIntegral $ trueAsIntegralI
+
+falseAsIntegral :: (Integral i) => i
+falseAsIntegral = fromIntegral $ falseAsIntegralI

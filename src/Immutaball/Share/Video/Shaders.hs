@@ -57,6 +57,8 @@ fragmentShader = unlines $
 		"in      vec2 vertexTexCoords;",
 		"in flat int  vertexTexLayer;",
 		"",
+		"layout(location = 16) uniform int       enableSceneData;",
+		"",
 		"layout(location =  0) uniform sampler2D texture0;",
 		"layout(location =  1) uniform sampler2D texture1;",
 		"layout(location =  2) uniform sampler2D texture2;",

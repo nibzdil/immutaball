@@ -228,10 +228,6 @@ data WidgetResponse id =
 	deriving (Eq, Ord, Show)
 makeClassyPrisms ''WidgetResponse
 
--- TODO: handle mouse input.
--- TODO: paint.
--- TODO: GUISetText, which clears old text cache if nobody else refers.  Option to hold onto cache.
-
 mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id, IBStateContext) (WidgetResponse id, IBStateContext)
 mkGUI initialWidgets = proc (request, cxtn) -> do
 	-- Set up widgets.

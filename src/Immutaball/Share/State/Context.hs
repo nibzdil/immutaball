@@ -56,6 +56,11 @@ module Immutaball.Share.State.Context
 		precacheMtrlsIB,
 		precacheMtrlsDirect,
 
+		checkPrecacheMisc,
+		precacheMisc,
+		precacheMiscIB,
+		precacheMiscDirect,
+
 		lifetimeSetTexturesSSBO,
 		lifetimeSetGisSSBO
 	) where
@@ -256,7 +261,8 @@ requireGLAllocatedTextures = proc cxt0 -> do
 			() <- monadic -< liftIBIO $ attachLifetime (cxt0^.ibContext.ibSDLManagerHandle) (pure ()) (\() -> void $ ibFreeAllTextures cxt1) unusedTo_ ()
 			--returnA -< (glAllocatedTextures, cxt1)
 			cxt2 <- checkPrecacheMtrls -< cxt1
-			returnA -< (glAllocatedTextures, cxt2)
+			cxt3 <- checkPrecacheMisc -< cxt2
+			returnA -< (glAllocatedTextures, cxt3)
 
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
 requireMisc =
@@ -685,6 +691,57 @@ precacheMtrlsDirect = proc cxtn -> do
 	where cachingRenderMtrl' = proc (mtrl, cxt) -> do
 		cxtnp1 <- cachingRenderMtrl -< (mtrl, cxt)
 		() <- monadic -< liftIBIO . BasicIBIOF $ DelayUs (100*1000) ()
+		returnA -< cxtnp1
+
+-- | If the context enables precaching misc when setting up allocated textures, spawn a thread to perform misc precaching.
+checkPrecacheMisc :: Wire ImmutaballM IBStateContext IBStateContext
+checkPrecacheMisc = proc cxtn -> do
+	--cxtnp1 <- if' (cxtn^.ibContext.ibStaticConfig.x'cfgPrecacheMisc) precacheMisc returnA -<< cxtn
+	cxtnp1 <- replaceNow $ (proc (_cxt, doPrecacheMisc) -> do
+		returnA -< if' (not doPrecacheMisc) (arr fst) $ proc (cxt2, _doPrecacheMisc) -> do
+			precacheMisc -< cxt2
+		) -< (cxtn, (cxtn^.ibContext.ibStaticConfig.x'cfgPrecacheMisc))
+	returnA -< cxtnp1
+
+-- | Spawn a thread to perform misc precaching.
+precacheMisc :: Wire ImmutaballM IBStateContext IBStateContext
+precacheMisc = proc cxtn -> do
+	cxtnp1      <- requireVideo               -< cxtn
+	(_, cxtnp2) <- requireGLTextureNames      -< cxtnp1
+	(_, cxtnp3) <- requireGLTextTextures      -< cxtnp2
+	(_, cxtnp4) <- requireGLAllocatedTextures -< cxtnp3
+	(_, cxtnp5) <- requireFont                -< cxtnp4
+
+	-- TODO: the former uses async concurrency so exceptions are noticed and so
+	-- on, which would be preferable, but FIXME it causes an exception to be
+	-- thrown when the application quits.  Use the latter in the meantime.
+	--() <- monadic -< liftIBIO $ forkIBIOF (void $ precacheMiscIB cxtnp5) (pure ())
+	() <- monadic -< liftIBIO . JoinIBIOF . BasicIBIOF $ ForkIO (void $ precacheMiscIB cxtnp5) (pure ())
+
+	returnA -< cxtnp5
+
+-- | The misc precaching thread.
+--
+-- Ensure the STM resources have been allocated before calling.
+precacheMiscIB :: IBStateContext -> ImmutaballIOF IBStateContext
+precacheMiscIB cxt0 = ((\w -> fst <$> stepImmutaballWire w cxt0)) $ precacheMiscDirect
+
+precacheMiscDirect :: Wire ImmutaballM IBStateContext IBStateContext
+precacheMiscDirect = proc cxtn -> do
+	-- Just precache common timer texts: ":" and "00" through "99".
+	let showI i = show (i :: Integer)
+	let texts = map T.pack . concat $
+		[
+			[":"],
+			[r | d1 <- [0..9], d2_ <- [0..9], r <- return $ showI d1 ++ showI d2_],
+			[]
+		]
+
+	foldrA (proc (text, cxt) -> snd <$> cachingRenderText' -< (text, cxt)) -< (cxtn, texts)
+	-- Delay 11ms between materials to not congest the SDL manager thread.
+	where cachingRenderText' = proc (text, cxt) -> do
+		cxtnp1 <- cachingRenderText -< (text, cxt)
+		() <- monadic -< liftIBIO . BasicIBIOF $ DelayUs (11*1000) ()
 		returnA -< cxtnp1
 
 -- | Set OpenGL SSBO: upload its buffer data, and assign the resource for

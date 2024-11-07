@@ -10,8 +10,9 @@
 -- | Optionally, we can add our own extra information about a level file.
 module Immutaball.Share.Level.Analysis
 	(
-		SolWithAnalysis(..), swaSol, swaSa,
+		SolWithAnalysis(..), swaSol, swaSa, swaMeta,
 		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis,
+		SolMeta(..), smPath, smLevelSet,
 		sar, sap,
 		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
@@ -38,6 +39,7 @@ import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
 import qualified Data.Map.Lazy as M
 
+import Immutaball.Ball.LevelSets
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
@@ -47,8 +49,9 @@ import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
 data SolWithAnalysis = SolWithAnalysis {
-	_swaSol :: Sol,
-	_swaSa  :: SolAnalysis
+	_swaSol  :: Sol,
+	_swaSa   :: SolAnalysis,
+	_swaMeta :: SolMeta
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolWithAnalysis
@@ -62,6 +65,16 @@ data SolAnalysis = SolAnalysis {
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolAnalysis
+
+data SolMeta = SolMeta {
+	-- | The path to the sol.
+	_smPath :: String,
+
+	-- | Whether the sol is as a level set containing the sol.
+	_smLevelSet :: Maybe LevelSet
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''SolMeta
 
 -- sar, sap
 
@@ -147,6 +160,7 @@ data SolPhysicsAnalysis = SolPhysicsAnalysis {
 	deriving (Eq, Ord, Show)
 makeLenses ''SolWithAnalysis
 makeLenses ''SolAnalysis
+makeLenses ''SolMeta
 makeLenses ''SolRenderAnalysis
 makeLenses ''GeomPass
 makeLenses ''SolPhysicsAnalysis

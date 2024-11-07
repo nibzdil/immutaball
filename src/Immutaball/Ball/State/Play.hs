@@ -26,30 +26,50 @@ import Control.Lens
 --import qualified Data.Map as M
 import qualified SDL.Raw.Enum as Raw
 
+import Immutaball.Ball.Game
 import Immutaball.Ball.LevelSets
+import Immutaball.Ball.State.Game
+import Immutaball.Share.Config
 import Immutaball.Share.GUI
 import Immutaball.Share.Level
---import Immutaball.Share.Math
+import Immutaball.Share.Math
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
 -- TODO:
-mkPlayState :: LevelSet -> LevelIB -> (Either IBContext IBStateContext -> Immutaball) -> Either IBContext IBStateContext -> Immutaball
-mkPlayState _levelSet _level mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing . openSecondI $ proc (Identity request) -> do
+mkPlayState :: Maybe LevelSet -> String -> LevelIB -> (Either IBContext IBStateContext -> Immutaball) -> Either IBContext IBStateContext -> Immutaball
+mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing . openSecondI $ proc (Identity request) -> do
 	rec
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
 
+		-- GUI.
 		(_guiResponse, cxtnp1) <- mkGUI playGui -< (GUIDrive request, cxtn)
 		let response = ContinueResponse
 
 		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
 		let isBack = isEsc
 
-		() <- finishFrame -< (request, cxtnp1)
-		cxt <- returnA -< cxtnp1
+		-- Set up and step the game.
+		-- TODO: implement hasLevelBeenCompleted bool.
+		let theInitialGameState = initialGameState (cxtnp1^.ibContext) (cxtnp1^.ibNeverballrc) False mlevelSet levelPath level
+		--lastGameState <- delay theInitialGameState -< gameState
+		lastGameState <- delayWith -< (gameState, theInitialGameState)
+		(GameResponse _gameEvents gameState cxtnp2) <- stepGame -< GameRequest request lastGameState cxtnp1
+
+		-- Render the scene.
+		-- TODO: orient properly.
+		let (mview :: MView) = MView {
+			_mviewPos    = Vec3 0.0 0.0 0.0,
+			_mviewTarget = Vec3 0.0 1.0 0.0,
+			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
+		}
+		cxtnp3 <- renderLevel -< ((mview, (gameState^.gsSwa)), cxtnp2)
+
+		() <- finishFrame -< (request, cxtnp3)
+		cxt <- returnA -< cxtnp3
 
 	-- Switch on Back button.
 	let switchTo = if' (not isBack) Nothing . Just . openSecondI $ mkBack (Right cxt)

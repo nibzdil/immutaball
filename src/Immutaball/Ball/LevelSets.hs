@@ -40,6 +40,7 @@ data ChallengeModeScores = ChallengeModeScores {
 	_cmsBestTimes :: (Integer, Integer, Integer),
 	_cmsMostCoins :: (Integer, Integer, Integer)
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''ChallengeModeScores
 
 data LevelSet = LevelSet {
@@ -56,6 +57,7 @@ data LevelSet = LevelSet {
 	-- | ["map-foo/level.sol", …]
 	_lsLevels :: [String]
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''LevelSet
 
 data LevelSets = LevelSets {
@@ -65,6 +67,7 @@ data LevelSets = LevelSets {
 	-- | Map of ‘set-foo.txt’ to the level set.
 	_lsLevelSets    :: M.Map String LevelSet
 }
+	deriving (Eq, Ord, Show)
 makeLenses ''LevelSets
 
 -- | Get level sets or fail.

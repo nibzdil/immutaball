@@ -10,8 +10,8 @@
 -- | Game state and immutaball state interface.
 module Immutaball.Ball.State.Game
 	(
-		GameRequest(..), giRequest, giIBStateContext, grRequest,
-		GameResponse(..), goGameEvents, goIBStateContext, grGameEvents,
+		GameRequest(..), giRequest, giGameState, giIBStateContext, grRequest,
+		GameResponse(..), goGameEvents, goGameState, goIBStateContext, grGameEvents,
 		GameEvent(..), AsGameEvent(..),
 		stepGame
 	) where
@@ -31,6 +31,7 @@ import Immutaball.Share.Wire
 
 data GameRequest = GameRequest {
 	_giRequest        :: Request,
+	_giGameState      :: GameState,
 	_giIBStateContext :: IBStateContext
 }
 makeLenses ''GameRequest
@@ -39,6 +40,7 @@ grRequest = giRequest
 
 data GameResponse = GameResponse {
 	_goGameEvents     :: [GameEvent],
+	_goGameState      :: GameState,
 	_goIBStateContext :: IBStateContext
 }
 --makeLenses ''GameResponse
@@ -58,5 +60,6 @@ stepGame :: Wire ImmutaballM GameRequest GameResponse
 stepGame = proc gr -> do
 	returnA -< GameResponse {
 		_goGameEvents = [],
+		_goGameState = (gr^.giGameState),
 		_goIBStateContext = (gr^.giIBStateContext)
 	}

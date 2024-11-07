@@ -82,11 +82,15 @@ mkLevelSelectState levelSet mkBack baseCxt0 = closeSecondI . switch . fromImmuta
 	(toLevelContents :: Maybe BL.ByteString) <- monadic -< maybe (pure Nothing) (\mcontents -> liftIBIO . ThrowIO ||| pure . Just $ mcontents) $ mtoLevelContents
 	let (toLevelParse :: Maybe (Either LevelIBParseException LevelIB)) = parseLevelFile' <$> toLevelPath <*> toLevelContents
 	(toLevel :: Maybe LevelIB) <- monadic -< maybe (pure Nothing) (liftIBIO . ThrowIO ||| pure . Just) $ toLevelParse
+	let (toLevelPathLevel :: Maybe (String, LevelIB)) = (,) <$> toLevelPath <*> toLevel
 
 	-- Switch to a level.
+	let switchTo0 = flip fmap toLevelPathLevel $ \(levelPath, level) -> openSecondI $ Play.mkPlayState (Just levelSet) levelPath level (mkLevelSelectState levelSet mkBack) (Right cxt)
+	{-
 	let switchTo0 = flip fmap toLevel $ \level -> openSecondI $ Play.mkPlayState levelSet level (mkLevelSelectState levelSet mkBack) (Right cxt)
 	{-
 	let switchTo0 = if' (isJust toLevel) Nothing   . Just . openSecondI $ mkPlayState levelSet level (mkLevelSelectState levelSet mkBack) (Right cxt)
+	-}
 	-}
 	-- Switch on Back button.
 	let switchTo  = if' (not    isBack ) switchTo0 . Just . openSecondI $ mkBack (Right cxt)

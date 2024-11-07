@@ -26,13 +26,13 @@ import Immutaball.Share.State.Context
 import Immutaball.Share.Wire
 
 -- | TODO: implement.
-renderLevel :: SolWithAnalysis -> Wire ImmutaballM (MView, IBStateContext) IBStateContext
-renderLevel swa = proc (_camera, cxt0) -> do
-	let _unused = (sol, sa)  -- TODO
-	returnA -< cxt0
-	where
+renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis), IBStateContext) IBStateContext
+renderLevel = proc ((_camera, swa), cxt0) -> do
+	let
 		sol :: Sol
 		sol = swa^.swaSol
 
 		sa :: SolAnalysis
 		sa = swa^.swaSa
+	let _unused = (sol, sa)  -- TODO
+	returnA -< cxt0

@@ -12,6 +12,7 @@ module Immutaball.Share.State.Context
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
 			ibSDLGLContext, ibSDLFont, ibShader, ibGLTextureNames,
 			ibGLTextTextures, ibGLAllocatedTextures, ibSSBOTextures, ibSSBOGis,
+			ibCurrentlyLoadedSol,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
@@ -21,6 +22,7 @@ module Immutaball.Share.State.Context
 		requireGLTextTextures,
 		requireGLMtrlTextures,
 		requireGLAllocatedTextures,
+		requireLoadedSolStorage,
 		requireMisc,
 		requireBasics,
 		finishFrame,
@@ -132,7 +134,9 @@ data IBStateContext = IBStateContext {
 	_ibGLAllocatedTextures :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
 
 	_ibSSBOTextures :: Maybe (TMVar GLuint),
-	_ibSSBOGis      :: Maybe (TMVar GLuint)
+	_ibSSBOGis      :: Maybe (TMVar GLuint),
+
+	_ibCurrentlyLoadedSol :: Maybe (TMVar String)
 }
 makeLenses ''IBStateContext
 
@@ -151,7 +155,8 @@ initialStateCxt cxt = IBStateContext {
 	_ibGLMtrlTextures      = Nothing,
 	_ibGLAllocatedTextures = Nothing,
 	_ibSSBOTextures        = Nothing,
-	_ibSSBOGis             = Nothing
+	_ibSSBOGis             = Nothing,
+	_ibCurrentlyLoadedSol  = Nothing
 }
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
@@ -264,8 +269,18 @@ requireGLAllocatedTextures = proc cxt0 -> do
 			cxt3 <- checkPrecacheMisc -< cxt2
 			returnA -< (glAllocatedTextures, cxt3)
 
+requireLoadedSolStorage :: Wire ImmutaballM IBStateContext (TMVar String, IBStateContext)
+requireLoadedSolStorage = proc cxt0 -> do
+	case (cxt0^.ibCurrentlyLoadedSol) of
+		Just mcurrentlyLoadedSol -> returnA -< (mcurrentlyLoadedSol, cxt0)
+		Nothing -> do
+			mcurrentlyLoadedSol <- monadic -< liftIBIO $ Atomically (newEmptyTMVar) id
+			let cxt1 = cxt0 & (ibCurrentlyLoadedSol.~Just mcurrentlyLoadedSol)
+			returnA -< (mcurrentlyLoadedSol, cxt1)
+
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
 requireMisc =
+	snd <$> requireLoadedSolStorage <<<
 	snd <$> requireShader <<< snd <$> requireGLAllocatedTextures <<<
 	snd <$> requireGLMtrlTextures <<<
 	snd <$> requireGLTextTextures <<< snd <$> requireGLTextureNames <<<

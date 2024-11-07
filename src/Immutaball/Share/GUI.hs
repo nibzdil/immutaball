@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, Arrows, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExplicitForAll, InstanceSigs, ScopedTypeVariables, FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell, Arrows, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, ExplicitForAll, InstanceSigs, ScopedTypeVariables, FlexibleContexts, RankNTypes #-}
 
 module Immutaball.Share.GUI
 	(
@@ -24,6 +24,12 @@ module Immutaball.Share.GUI
 		Widget(..), AsWidget(..),
 
 		-- * wires
+		SetTextOptions,
+		SetTextOptionsBuilder,
+		SetTextOptions'(..), stoHoldCache,
+		defaultSetTextOptions,
+		buildSetTextOptions,
+		defaultSetTextOptionsBuilder,
 		WidgetRequest(..), AsWidgetRequest(..),
 		WidgetResponse(..), AsWidgetResponse(..),
 		mkGUI,
@@ -54,6 +60,7 @@ import Control.Arrow
 --import Data.Functor.Identity
 import Control.Monad
 import Control.Monad.ST
+import Data.Function hiding (id, (.))
 import Data.List
 import Data.Maybe
 import Foreign.Storable (sizeOf, Storable)
@@ -173,12 +180,46 @@ instance HasWparent (Widget id) id where
 
 -- * wires
 
+type SetTextOptions = SetTextOptions' Identity
+type SetTextOptionsBuilder = SetTextOptions' Maybe
+data SetTextOptions' f = SetTextOptions {
+	-- | Request the cache of the old text is not cleared.
+	_stoHoldCache :: f Bool
+}
+	--deriving (Eq, Ord, Show)
+makeLenses ''SetTextOptions'
+
+defaultSetTextOptions :: SetTextOptions
+defaultSetTextOptions = SetTextOptions {
+	_stoHoldCache = Identity False
+}
+
+buildSetTextOptions :: SetTextOptionsBuilder -> SetTextOptions
+buildSetTextOptions sto = SetTextOptions {
+	_stoHoldCache = orDef stoHoldCache defaultSetTextOptions sto
+}
+	where
+		orDef :: (forall f. Lens' (SetTextOptions' f) (f a)) -> SetTextOptions -> SetTextOptionsBuilder -> Identity a
+		orDef l def opt = fromMaybe (def^.l) $ Identity <$> (opt^.l)
+
+instance Semigroup SetTextOptionsBuilder where
+	a <> b = SetTextOptions {
+		_stoHoldCache = (a^.stoHoldCache) <|> (b^.stoHoldCache)
+	}
+instance Monoid SetTextOptionsBuilder where
+	mempty = defaultSetTextOptionsBuilder
+
+defaultSetTextOptionsBuilder :: SetTextOptionsBuilder
+defaultSetTextOptionsBuilder = SetTextOptions {
+	_stoHoldCache = Nothing
+}
+
 data WidgetRequest id =
 	  GUIDrive Request
-	| GUISetText id String
+	| GUISetText id String SetTextOptions
 	| GUISetFocus id
 	| ResetGUI [Widget id]
-	deriving (Eq, Ord, Show)
+	--deriving (Eq, Ord, Show)
 makeClassyPrisms ''WidgetRequest
 
 data WidgetResponse id =
@@ -194,14 +235,49 @@ makeClassyPrisms ''WidgetResponse
 mkGUI :: forall id. (Eq id, Ord id) => [Widget id] -> Wire ImmutaballM (WidgetRequest id, IBStateContext) (WidgetResponse id, IBStateContext)
 mkGUI initialWidgets = proc (request, cxtn) -> do
 	-- Set up widgets.
-	resetWidgets <- returnA -< const Nothing ||| Just $ matching _ResetGUI request
-	widgets <- hold initialWidgets -< resetWidgets
+	rec
+		directResetWidgets <- returnA -< const Nothing ||| Just $ matching _ResetGUI request
+		msetText <- returnA -< const Nothing ||| Just $ matching _GUISetText request
 
-	-- On reset, clear the text cache; we're the only user.
+		lastWidgets <- delay initialWidgets -< widgets
+		let setTextResetWidgets' = flip fmap msetText $ \(setTextId, setTextText, sto) ->
+			-- (This is just a simple map, but the form can be a useful pattern for more complicated processing.)
+			-- (Also, for more advanced GUIs with lots af widgets, it would
+			-- likely be useful to have a separate map overlay layer of override
+			-- texts or other more efficient and better performing structures than
+			-- a direct list we reconstruct in its entirety on text update, but
+			-- our GUIs are probably simple enough that is probably good enough
+			-- for us.)
+			let
+				setText (LabelWidget  w)  val = LabelWidget  $ w & (text .~ val)
+				setText (ButtonWidget w)  val = ButtonWidget $ w & (text .~ val)
+				setText w                _val = w
+				getText (LabelWidget  w)      = w^.text
+				getText (ButtonWidget w)      = w^.text
+				getText _w                    = "" in
+			(\f -> f lastWidgets []) . fix $ \process remaining oldTexts_ -> case remaining of
+				[]     -> ([], oldTexts_)
+				(w:ws) ->
+					let (w', oldTexts') = if' ((w^.wid) /= setTextId) (w, oldTexts_) $
+						(setText w setTextText, if' (not . runIdentity $ sto^.stoHoldCache) oldTexts_ $ getText w : oldTexts_) in
+					--w' : process ws
+					first (w' :) $ process ws oldTexts'
+		let setTextResetWidgets = fmap fst setTextResetWidgets'
+		let oldTexts = fromMaybe [] $ fmap snd setTextResetWidgets'
+		let resetWidgets = directResetWidgets <|> setTextResetWidgets
+		widgets <- hold initialWidgets -< resetWidgets
+
+	-- On direct reset, clear the text cache; we're the only user.
 	cxtnp1 <- returnA ||| clearTextCache -< const cxtn +++ const cxtn $ matching _ResetGUI request
 	-- On the first step, clear the text cache; we're the only user.
 	isFirst <- delay True -< returnA False
 	cxtnp2 <- returnA ||| clearTextCache -< if' (not isFirst) Left Right cxtnp1
+
+	-- On clearing old texts, remove the old text.  (We could hold onto an
+	-- S.Set of currently active texts, but if there's still another text texture
+	-- referring to it, it'll simply be regenerated, so it's a small cost we can
+	-- handle.)
+	cxtnp3 <- foldrA uncacheText -< (cxtnp2, T.pack <$> oldTexts)
 
 	-- Analyze widgets.
 	widgetsReq  <- returnA -< resetWidgets
@@ -222,7 +298,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 			Vec2
 				( lerp (-1.0) (1.0) (     ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.width ) :: Double) (fromIntegral x)) )
 				( lerp (-1.0) (1.0) (flip ilerp (0.0 :: Double) (fromIntegral (cxt_^.ibNeverballrc.height) :: Double) (fromIntegral y)) )
-	let newMousePos = (const Nothing ||| Just . convertPoint cxtnp2) . matching (_GUIDrive . _Point) $ request
+	let newMousePos = (const Nothing ||| Just . convertPoint cxtnp3) . matching (_GUIDrive . _Point) $ request
 	(_mousePos, mouseFocus) <- hold (Vec2 (-1.1) (1.1), Nothing) -< flip fmap newMousePos $ \pos ->
 		let widgetsUnderMouse = M.keys . M.filterWithKey (\wid_ r -> ((isSelectable <$> flip M.lookup widgetBy wid_) == Just True) && isInRect r pos) $ geometry in
 		let mwidgetUnderMouse = safeHead widgetsUnderMouse in
@@ -253,9 +329,9 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 
 	-- Paint.
 	currentFocusWid <- returnA -< fromMaybe (error "Internal error: mkGUI: currentFocus not in widgetIdx.") $ (^.wid) <$> flip M.lookup widgetIdx currentFocus
-	cxtnp3 <- case request of
-		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, currentFocusWid, t, cxtnp2)
-		_ -> returnA -< cxtnp2
+	cxtnp4 <- case request of
+		GUIDrive (Paint t) -> guiPaint -< (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, currentFocusWid, t, cxtnp3)
+		_ -> returnA -< cxtnp3
 
 	-- Set up response.
 	let responseOnAction = (maybe NoWidgetAction id $ WidgetAction . (^.wid) <$> flip M.lookup widgetIdx currentFocus)
@@ -267,7 +343,7 @@ mkGUI initialWidgets = proc (request, cxtn) -> do
 			if' (mouseFocus == Just currentFocus) responseOnAction $
 			NoWidgetAction
 		_ -> NoWidgetAction
-	returnA -< (response, cxtnp3)
+	returnA -< (response, cxtnp4)
 	where
 		mkWidgetsAnalysis' = mkWidgetsAnalysis initialWidgets
 		_warn :: String -> Wire ImmutaballM () ()

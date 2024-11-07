@@ -18,6 +18,7 @@ module Immutaball.Share.Level.Analysis
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
 			sraBodyData, sraBodyDataGPU, sraOpaqueGeoms, sraTransparentGeoms,
+			sraGcArray, sraGcArrayGPU,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
@@ -128,7 +129,19 @@ data SolRenderAnalysis = SolRenderAnalysis {
 
 	-- | A grouping of all opaque geoms by 16 textures at a time.
 	_sraOpaqueGeoms      :: [GeomPass],
-	_sraTransparentGeoms :: [GeomPass]
+	_sraTransparentGeoms :: [GeomPass],
+
+	-- | A convenience identity array of all geom indices.
+	--
+	-- This is convenient since it allows a convenient rendering pass to be
+	-- performed by calling glDrawArrays with an index and count into this
+	-- array, and the shaders can do the rest of the work.
+	_sraGcArray    :: Array Int32 Int32,
+	_sraGcArrayGPU :: GLData
+
+	-- TODO: now compose and aggregate the geom pass data, for the shaders.
+
+	-- _sraOpaqueGeoms :: []
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -198,7 +211,10 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraBodyDataGPU = gpuEncodeArray (sra^.sraBodyData),
 
 	_sraOpaqueGeoms      = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) False) . zip [0..] $ elems (sol^.solBv),
-	_sraTransparentGeoms = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) True ) . zip [0..] $ elems (sol^.solBv)
+	_sraTransparentGeoms = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) True ) . zip [0..] $ elems (sol^.solBv),
+
+	_sraGcArray    = genArray (0, (sol^.solGc) - 1) $ \idx -> idx,
+	_sraGcArrayGPU = gpuEncodeArray (sra^.sraGcArray)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a

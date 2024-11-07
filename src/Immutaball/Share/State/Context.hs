@@ -11,7 +11,7 @@ module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
 			ibSDLGLContext, ibSDLFont, ibShader, ibGLTextureNames,
-			ibGLTextTextures, ibGLAllocatedTextures,
+			ibGLTextTextures, ibGLAllocatedTextures, ibSSBOTextures, ibSSBOGis,
 		initialStateCxt,
 		stateContextStorage,
 		requireVideo,
@@ -54,7 +54,10 @@ module Immutaball.Share.State.Context
 		checkPrecacheMtrls,
 		precacheMtrls,
 		precacheMtrlsIB,
-		precacheMtrlsDirect
+		precacheMtrlsDirect,
+
+		lifetimeSetTexturesSSBO,
+		lifetimeSetGisSSBO
 	) where
 
 import Prelude ()
@@ -121,7 +124,10 @@ data IBStateContext = IBStateContext {
 	-- | By tracking allocated textures, we can attach their lifetimes to the
 	-- SDL Manager thread to automatically clean them up upon quit.
 	-- 'createTexture' and 'freeTexture' use this interface.
-	_ibGLAllocatedTextures :: Maybe (TVar (S.Set GLuint, S.Set GLuint))
+	_ibGLAllocatedTextures :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
+
+	_ibSSBOTextures :: Maybe (TMVar GLuint),
+	_ibSSBOGis      :: Maybe (TMVar GLuint)
 }
 makeLenses ''IBStateContext
 
@@ -138,7 +144,9 @@ initialStateCxt cxt = IBStateContext {
 	_ibGLTextureNames      = Nothing,
 	_ibGLTextTextures      = Nothing,
 	_ibGLMtrlTextures      = Nothing,
-	_ibGLAllocatedTextures = Nothing
+	_ibGLAllocatedTextures = Nothing,
+	_ibSSBOTextures        = Nothing,
+	_ibSSBOGis             = Nothing
 }
 
 stateContextStorage :: IBStateContext -> Wire ImmutaballM (Maybe IBStateContext) IBStateContext
@@ -678,3 +686,132 @@ precacheMtrlsDirect = proc cxtn -> do
 		cxtnp1 <- cachingRenderMtrl -< (mtrl, cxt)
 		() <- monadic -< liftIBIO . BasicIBIOF $ DelayUs (100*1000) ()
 		returnA -< cxtnp1
+
+-- | Set OpenGL SSBO: upload its buffer data, and assign the resource for
+-- freeing when the SDL manager thread quits.  If there is already an active
+-- OpenGL SSBO buffer set when a new one is set, the old one is freed.
+lifetimeSetTexturesSSBO :: Wire ImmutaballM (GLData, IBStateContext) IBStateContext
+lifetimeSetTexturesSSBO = proc (data_, cxtn) -> do
+	-- First create and upload the SSBO before we expose its ID in the ssbo
+	-- storage in the IBStateContext for ability to be freed.
+	let sdlGL1' = liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+	newSSBO <- monadic -< sdlGL1' $ do
+		-- Create the buffer.
+		newSSBO <- unSingleton <$> GLGenBuffers 1 id
+
+		-- Upload the data and assign the location (17).
+		GLBindBuffer     GL_SHADER_STORAGE_BUFFER newSSBO ()
+		GLBufferData     GL_SHADER_STORAGE_BUFFER data_ GL_STATIC_DRAW ()
+		GLBindBufferBase GL_SHADER_STORAGE_BUFFER shaderSSBOTexturesLocation newSSBO ()
+		GLBindBuffer     GL_SHADER_STORAGE_BUFFER 0 ()
+
+		-- Return the handle.
+		return newSSBO
+
+	let
+		freeSSBO :: TMVar GLuint -> ImmutaballIOF ()
+		freeSSBO assbo = do
+			mssbo <- Atomically (tryTakeTMVar assbo) id
+			case mssbo of
+				Nothing -> pure ()
+				Just ssbo -> freeSSBO' ssbo
+		freeSSBO' :: GLuint -> ImmutaballIOF ()
+		freeSSBO' ssbo = sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle) $ do
+			GLDeleteBuffers [ssbo] ()
+
+	-- Require an ssbo identifier storage.
+	--
+	-- If the ssbo identifier storage is new, attach a lifetime manager to free
+	-- it when the SDL manager quits.
+	let mssb0 = cxtn^.ibSSBOTextures
+	(ssbo1, isIdStorageNewlyAllocated) <- monadic -< liftIBIO . flip Atomically id $ do
+		case mssb0 of
+			(Just ssbo) -> return (ssbo, False)
+			(Nothing) -> do
+				ssbo <- newTMVar newSSBO
+				return (ssbo, True)
+	trivialResourceMetaStorage <- monadic -< liftIBIO $ Atomically (newTMVar ()) id  -- The resource is nothing but a destructor that frees the ssbo1.
+	() <- monadic -< if' (not isIdStorageNewlyAllocated) (pure ()) .
+		liftIBIO $ attachLifetime (cxtn^.ibContext.ibSDLManagerHandle) (pure ()) (\() -> void $ freeSSBO ssbo1) trivialResourceMetaStorage ()
+	let cxtnp1 = cxtn & (ibSSBOTextures.~Just ssbo1)
+
+	-- Now swap out the current buffer storage.  If there is already one,
+	-- remember the old one we removed so that we are the one to free it.
+	moldSSBO <- monadic -< liftIBIO . flip Atomically id $ do
+		moldSSBO <- tryTakeTMVar ssbo1
+		putTMVar ssbo1 newSSBO
+		return moldSSBO
+	() <- monadic -< liftIBIO $ do
+		case moldSSBO of
+			(Nothing) -> pure ()
+			(Just oldSSBO) -> if' (isIdStorageNewlyAllocated && oldSSBO == newSSBO) (pure ()) $ do
+				freeSSBO' oldSSBO
+
+	-- Now return the stored ssbo identifier.
+	returnA -< (cxtnp1)
+	where
+		unSingleton [me] = me
+		unSingleton _    = error "Internal error: lifetimeSetTexturesSSBO expected a single result from GLGenBuffers."
+
+lifetimeSetGisSSBO :: Wire ImmutaballM (GLData, IBStateContext) IBStateContext
+lifetimeSetGisSSBO = proc (data_, cxtn) -> do
+	-- First create and upload the SSBO before we expose its ID in the ssbo
+	-- storage in the IBStateContext for ability to be freed.
+	let sdlGL1' = liftIBIO . sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
+	newSSBO <- monadic -< sdlGL1' $ do
+		-- Create the buffer.
+		newSSBO <- unSingleton <$> GLGenBuffers 1 id
+
+		-- Upload the data and assign the location (17).
+		GLBindBuffer     GL_SHADER_STORAGE_BUFFER newSSBO ()
+		GLBufferData     GL_SHADER_STORAGE_BUFFER data_ GL_STATIC_DRAW ()
+		GLBindBufferBase GL_SHADER_STORAGE_BUFFER shaderSSBOGisLocation newSSBO ()
+		GLBindBuffer     GL_SHADER_STORAGE_BUFFER 0 ()
+
+		-- Return the handle.
+		return newSSBO
+
+	let
+		freeSSBO :: TMVar GLuint -> ImmutaballIOF ()
+		freeSSBO assbo = do
+			mssbo <- Atomically (tryTakeTMVar assbo) id
+			case mssbo of
+				Nothing -> pure ()
+				Just ssbo -> freeSSBO' ssbo
+		freeSSBO' :: GLuint -> ImmutaballIOF ()
+		freeSSBO' ssbo = sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle) $ do
+			GLDeleteBuffers [ssbo] ()
+
+	-- Require an ssbo identifier storage.
+	--
+	-- If the ssbo identifier storage is new, attach a lifetime manager to free
+	-- it when the SDL manager quits.
+	let mssb0 = cxtn^.ibSSBOGis
+	(ssbo1, isIdStorageNewlyAllocated) <- monadic -< liftIBIO . flip Atomically id $ do
+		case mssb0 of
+			(Just ssbo) -> return (ssbo, False)
+			(Nothing) -> do
+				ssbo <- newTMVar newSSBO
+				return (ssbo, True)
+	trivialResourceMetaStorage <- monadic -< liftIBIO $ Atomically (newTMVar ()) id  -- The resource is nothing but a destructor that frees the ssbo1.
+	() <- monadic -< if' (not isIdStorageNewlyAllocated) (pure ()) .
+		liftIBIO $ attachLifetime (cxtn^.ibContext.ibSDLManagerHandle) (pure ()) (\() -> void $ freeSSBO ssbo1) trivialResourceMetaStorage ()
+	let cxtnp1 = cxtn & (ibSSBOGis.~Just ssbo1)
+
+	-- Now swap out the current buffer storage.  If there is already one,
+	-- remember the old one we removed so that we are the one to free it.
+	moldSSBO <- monadic -< liftIBIO . flip Atomically id $ do
+		moldSSBO <- tryTakeTMVar ssbo1
+		putTMVar ssbo1 newSSBO
+		return moldSSBO
+	() <- monadic -< liftIBIO $ do
+		case moldSSBO of
+			(Nothing) -> pure ()
+			(Just oldSSBO) -> if' (isIdStorageNewlyAllocated && oldSSBO == newSSBO) (pure ()) $ do
+				freeSSBO' oldSSBO
+
+	-- Now return the stored ssbo identifier.
+	returnA -< (cxtnp1)
+	where
+		unSingleton [me] = me
+		unSingleton _    = error "Internal error: lifetimeSetGisSSBO expected a single result from GLGenBuffers."

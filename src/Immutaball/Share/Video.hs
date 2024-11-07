@@ -134,10 +134,10 @@ sdlCreateImmutaballShaderWith sdlMgr to_ =
 shaderEnableSceneDataLocation :: GLint
 shaderEnableSceneDataLocation = fromIntegral (16 :: Integer)
 
-shaderSSBOTexturesLocation :: GLint
+shaderSSBOTexturesLocation :: GLuint
 shaderSSBOTexturesLocation = fromIntegral (17 :: Integer)
 
-shaderSSBOGisLocation :: GLint
+shaderSSBOGisLocation :: GLuint
 shaderSSBOGisLocation = fromIntegral (18 :: Integer)
 
 -- * Shader: low level

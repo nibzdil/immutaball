@@ -43,7 +43,8 @@ module Immutaball.Share.Utils
 		trueAsIntegralI,
 		falseAsIntegralI,
 		trueAsIntegral,
-		falseAsIntegral
+		falseAsIntegral,
+		deconsMaybe
 	) where
 
 import Prelude ()
@@ -181,3 +182,7 @@ trueAsIntegral = fromIntegral $ trueAsIntegralI
 
 falseAsIntegral :: (Integral i) => i
 falseAsIntegral = fromIntegral $ falseAsIntegralI
+
+deconsMaybe :: r -> (a -> r) -> Maybe a -> r
+deconsMaybe withNothing _ (Nothing) = withNothing
+deconsMaybe _ withJust    (Just a)  = withJust a

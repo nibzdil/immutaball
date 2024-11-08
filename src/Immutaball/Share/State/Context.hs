@@ -133,6 +133,11 @@ data IBStateContext = IBStateContext {
 	-- 'createTexture' and 'freeTexture' use this interface.
 	_ibGLAllocatedTextures :: Maybe (TVar (S.Set GLuint, S.Set GLuint)),
 
+	-- TODO: oops, these ssbos should be aggregate, not for each geom, and also
+	-- there are more ssbos, and secondly a VBO for the convenience gc.  So
+	-- probably move this to a _mapping of locations to_ GLuint ssbos, and for
+	-- the second the convenience GC VBO so we can tell the shader what indices
+	-- we want to draw and so on.
 	_ibSSBOTextures :: Maybe (TMVar GLuint),
 	_ibSSBOGis      :: Maybe (TMVar GLuint),
 

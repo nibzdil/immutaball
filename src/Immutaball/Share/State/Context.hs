@@ -69,7 +69,9 @@ module Immutaball.Share.State.Context
 		freeElemVAOAndBufIB,
 		setSSBO,
 		setElemVAOAndBuf,
-		getElemVAOAndBuf
+		getElemVAOAndBuf,
+
+		setCurrentlyLoadedSOL
 	) where
 
 import Prelude ()
@@ -925,3 +927,16 @@ getElemVAOAndBuf = proc cxtn -> do
 	(melemVAOAndBuf, cxtnp1) <- requireElemVAOAndBuf -< cxtn
 	maelemVAOAndBuf <- monadic -< liftIBIO . flip Atomically id $ tryReadTMVar (melemVAOAndBuf)
 	returnA -< (maelemVAOAndBuf, cxtnp1)
+
+-- | Set the currently loaded sol, retrieving the old one.
+--
+-- The old one can be checked for equality with the new one to determine if
+-- we're on a new SOL.
+setCurrentlyLoadedSOL :: Wire ImmutaballM (String, IBStateContext) (Maybe String, IBStateContext)
+setCurrentlyLoadedSOL = proc (identifyingPath, cxtn) -> do
+	(mloadedSol, cxtnp1) <- requireLoadedSolStorage -< cxtn
+	moldIdentifyingPath <- monadic -< liftIBIO . flip Atomically id $ do
+		moldIdentifyingPath <- tryTakeTMVar mloadedSol
+		putTMVar mloadedSol identifyingPath
+		return moldIdentifyingPath
+	returnA -< (moldIdentifyingPath, cxtnp1)

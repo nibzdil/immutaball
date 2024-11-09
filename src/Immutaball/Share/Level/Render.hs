@@ -28,6 +28,7 @@ import Immutaball.Share.Math
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
+import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
 -- | TODO: implement.
@@ -47,5 +48,13 @@ renderLevel = proc ((_camera, swa, _gs), cxtn) -> do
 	returnA -< cxtnp2
 
 renderSetupNewLevel :: Wire ImmutaballM (SolWithAnalysis, IBStateContext) IBStateContext
-renderSetupNewLevel = proc (_swa, cxtn) -> do
-	returnA -< cxtn
+renderSetupNewLevel = proc (swa, cxtn) -> do
+	let sra = swa^.swaSa.saRenderAnalysis
+
+	-- Upload SSBOs.
+	cxtnp1 <- setSSBO -< ((shaderSSBOVertexDataLocation, sra^.sraVertexDataGPU), cxtn)
+	-- TODO:
+
+	let cxt = cxtnp1
+
+	returnA -< cxt

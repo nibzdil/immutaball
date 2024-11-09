@@ -29,6 +29,7 @@ module Immutaball.Share.Level.Analysis
 			sraGeomPassMvRanges, sraGeomPassTexturesRanges,
 			sraGeomPassGisRanges, sraGeomPassMvRangesGPU,
 			sraGeomPassTexturesRangesGPU, sraGeomPassGisRangesGPU,
+			sraGeomPassBis, sraGeomPassBisGPU,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
@@ -94,7 +95,7 @@ data SolMeta = SolMeta {
 --
 -- We reorder the data a bit.
 --
--- We have 13 arrays of data for the GPU that can be uploaded and accesses as 5
+-- We have 14 arrays of data for the GPU that can be uploaded and accesses as 5
 -- SSBOs.
 data SolRenderAnalysis = SolRenderAnalysis {
 	-- | The basis of 'sraVertexData'.
@@ -184,9 +185,11 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- | The GPU encoded data.
 	_sraGeomPassMvRangesGPU       :: GLData,
 	_sraGeomPassTexturesRangesGPU :: GLData,
-	_sraGeomPassGisRangesGPU      :: GLData
+	_sraGeomPassGisRangesGPU      :: GLData,
 
-	-- TODO: array of bodies (bis) for each geom pass!
+	-- | Array of body indices for each geompass.
+	_sraGeomPassBis    :: Array Int32 Int32,
+	_sraGeomPassBisGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -322,7 +325,10 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	-- | The GPU encoded data.
 	_sraGeomPassMvRangesGPU       = gpuEncodeArray (sra^.sraGeomPassMvRanges),
 	_sraGeomPassTexturesRangesGPU = gpuEncodeArray (sra^.sraGeomPassTexturesRanges),
-	_sraGeomPassGisRangesGPU      = gpuEncodeArray (sra^.sraGeomPassGisRanges)
+	_sraGeomPassGisRangesGPU      = gpuEncodeArray (sra^.sraGeomPassGisRanges),
+
+	_sraGeomPassBis    = listArray'_ $ [bi | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, bi <- return (geomPass^.gpBi)],
+	_sraGeomPassBisGPU = gpuEncodeArray (sra^.sraGeomPassBis)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a

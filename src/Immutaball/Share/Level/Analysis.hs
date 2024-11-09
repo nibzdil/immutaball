@@ -22,7 +22,13 @@ module Immutaball.Share.Level.Analysis
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
 			sraBodyData, sraBodyDataGPU, sraOpaqueGeoms, sraTransparentGeoms,
-			sraGcArray, sraGcArrayGPU, sraNumOpaqueGeomPasses, sraNumTransparentGeomPasses,
+			sraGcArray, sraGcArrayGPU, sraNumOpaqueGeomPasses,
+			sraNumTransparentGeomPasses, sraNumGeomPasses, sraAllGeomPassMv,
+			sraAllGeomPassTextures, sraAllGeomPassGis, sraAllGeomPassMvGPU,
+			sraAllGeomPassTexturesGPU, sraAllGeomPassGisGPU,
+			sraGeomPassMvRanges, sraGeomPassTexturesRanges,
+			sraGeomPassGisRanges, sraGeomPassMvRangesGPU,
+			sraGeomPassTexturesRangesGPU, sraGeomPassGisRangesGPU,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
@@ -147,11 +153,38 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- Now aggregate the GeomPass lists, so they can be conveniently uploaded
 	-- to the GPU in whole.
 	_sraNumOpaqueGeomPasses      :: Integer,
-	_sraNumTransparentGeomPasses :: Integer
+	_sraNumTransparentGeomPasses :: Integer,
+	_sraNumGeomPasses            :: Integer,
 
-	-- TODO: now compose and aggregate the geom pass data, for the shaders.
+	-- The aggregate GeomPass mv, and gi&texture list arrays.
 
-	-- _sraOpaqueGeoms :: []
+	-- | Concatenation of all geom pass gpMvs.
+	_sraAllGeomPassMv       :: Array Int32 Int32,
+	-- | Concatenation of all geom pass gpTextures.
+	_sraAllGeomPassTextures :: Array Int32 Int32,
+	-- | Concatenation of all geom pass gpGis.
+	_sraAllGeomPassGis      :: Array Int32 Int32,
+
+	-- | The GPU encoded data.
+	_sraAllGeomPassMvGPU       :: GLData,
+	-- | The GPU encoded data.
+	_sraAllGeomPassTexturesGPU :: GLData,
+	-- | The GPU encoded data.
+	_sraAllGeomPassGisGPU      :: GLData,
+
+	-- | For each geompass we have an elem pair that represents a range of the
+	-- aggregate sraAllGeomPassMv array.  We can tell the GPU what geom pass we
+	-- are on, and it can have access to gpMv for that GeomPass.  For each
+	-- geompass, we add 2 elems: the starting index, and the count.
+	_sraGeomPassMvRanges       :: Array Int32 Int32,
+	-- | Same but for sraAllGeomPassTextures.
+	_sraGeomPassTexturesRanges :: Array Int32 Int32,
+	_sraGeomPassGisRanges      :: Array Int32 Int32,
+
+	-- | The GPU encoded data.
+	_sraGeomPassMvRangesGPU       :: GLData,
+	_sraGeomPassTexturesRangesGPU :: GLData,
+	_sraGeomPassGisRangesGPU      :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -227,7 +260,67 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraGcArrayGPU = gpuEncodeArray (sra^.sraGcArray),
 
 	_sraNumOpaqueGeomPasses      = genericLength (sra^.sraOpaqueGeoms),
-	_sraNumTransparentGeomPasses = genericLength (sra^.sraTransparentGeoms)
+	_sraNumTransparentGeomPasses = genericLength (sra^.sraTransparentGeoms),
+	_sraNumGeomPasses            = (sra^.sraNumOpaqueGeomPasses) + (sra^.sraNumTransparentGeomPasses),
+
+	_sraAllGeomPassMv       = listArray'_ $ [mi |      geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, mi      <- elems (geomPass^.gpMv)      ],
+	_sraAllGeomPassTextures = listArray'_ $ [texture | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, texture <- elems (geomPass^.gpTextures)],
+	_sraAllGeomPassGis      = listArray'_ $ [gi |      geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, gi      <- elems (geomPass^.gpGis)     ],
+
+	_sraAllGeomPassMvGPU       = gpuEncodeArray (sra^.sraAllGeomPassMv),
+	_sraAllGeomPassTexturesGPU = gpuEncodeArray (sra^.sraAllGeomPassTextures),
+	_sraAllGeomPassGisGPU      = gpuEncodeArray (sra^.sraAllGeomPassGis),
+
+	_sraGeomPassMvRanges       = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
+		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
+			case opaqueGeomPassesRemaining of
+				[] -> []
+				(opaqueGeomPass:remaining) ->
+					let arrayLen = fromIntegral . rangeSize . bounds in
+					let passLen = arrayLen (opaqueGeomPass^.gpMv) in
+					accumLength : passLen : me (remaining, accumLength + passLen)) ++
+		(flip fix ((sra^.sraTransparentGeoms), 0) $ \me (transparentGeomPassesRemaining, accumLength) ->
+			case transparentGeomPassesRemaining of
+				[] -> []
+				(transparentGeomPass:remaining) ->
+					let arrayLen = fromIntegral . rangeSize . bounds in
+					let passLen = arrayLen (transparentGeomPass^.gpMv) in
+					accumLength : passLen : me (remaining, accumLength + passLen)),
+	_sraGeomPassTexturesRanges = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
+		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
+			case opaqueGeomPassesRemaining of
+				[] -> []
+				(opaqueGeomPass:remaining) ->
+					let arrayLen = fromIntegral . rangeSize . bounds in
+					let passLen = arrayLen (opaqueGeomPass^.gpTextures) in
+					accumLength : passLen : me (remaining, accumLength + passLen)) ++
+		(flip fix ((sra^.sraTransparentGeoms), 0) $ \me (transparentGeomPassesRemaining, accumLength) ->
+			case transparentGeomPassesRemaining of
+				[] -> []
+				(transparentGeomPass:remaining) ->
+					let arrayLen = fromIntegral . rangeSize . bounds in
+					let passLen = arrayLen (transparentGeomPass^.gpTextures) in
+					accumLength : passLen : me (remaining, accumLength + passLen)),
+	_sraGeomPassGisRanges      = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
+		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
+			case opaqueGeomPassesRemaining of
+				[] -> []
+				(opaqueGeomPass:remaining) ->
+					let arrayLen = fromIntegral . rangeSize . bounds in
+					let passLen = arrayLen (opaqueGeomPass^.gpGis) in
+					accumLength : passLen : me (remaining, accumLength + passLen)) ++
+		(flip fix ((sra^.sraTransparentGeoms), 0) $ \me (transparentGeomPassesRemaining, accumLength) ->
+			case transparentGeomPassesRemaining of
+				[] -> []
+				(transparentGeomPass:remaining) ->
+					let arrayLen = fromIntegral . rangeSize . bounds in
+					let passLen = arrayLen (transparentGeomPass^.gpGis) in
+					accumLength : passLen : me (remaining, accumLength + passLen)),
+
+	-- | The GPU encoded data.
+	_sraGeomPassMvRangesGPU       = gpuEncodeArray (sra^.sraGeomPassMvRanges),
+	_sraGeomPassTexturesRangesGPU = gpuEncodeArray (sra^.sraGeomPassTexturesRanges),
+	_sraGeomPassGisRangesGPU      = gpuEncodeArray (sra^.sraGeomPassGisRanges)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -340,6 +433,8 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 						_gpGis    = gpGisPass,
 						_gpGisGPU = gpuEncodeArray (gp^.gpGis)
 					}
+
+		listArray'_ xs = listArray (0, genericLength xs - 1) xs
 
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _cxt _sol = fix $ \_spa -> SolPhysicsAnalysis {

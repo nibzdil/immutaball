@@ -7,6 +7,9 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE Arrows #-}
 
+-- | TODO: split shared render into shared and ball render.
+--
+-- Currently this uses ball game state.
 module Immutaball.Share.Level.Render
 	(
 		renderLevel
@@ -18,6 +21,7 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Lens
 
+import Immutaball.Ball.Game
 import Immutaball.Share.Level.Analysis
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
@@ -27,8 +31,8 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
 -- | TODO: implement.
-renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis), IBStateContext) IBStateContext
-renderLevel = proc ((_camera, swa), cxtn) -> do
+renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
+renderLevel = proc ((_camera, swa, _gs), cxtn) -> do
 	let levelPath = swa^.swaMeta.smPath
 	(mlastLevelPath, cxtnp1) <- setCurrentlyLoadedSOL -< (levelPath, cxtn)
 	let newLevel = Just levelPath == mlastLevelPath

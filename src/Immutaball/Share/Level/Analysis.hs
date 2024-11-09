@@ -18,7 +18,7 @@ module Immutaball.Share.Level.Analysis
 			sraGeomDataGPU, sraLumpData, sraLumpDataGPU, sraPathDoublesData,
 			sraPathDoublesDataGPU, sraPathInt32sData, sraPathInt32sDataGPU,
 			sraBodyData, sraBodyDataGPU, sraOpaqueGeoms, sraTransparentGeoms,
-			sraGcArray, sraGcArrayGPU,
+			sraGcArray, sraGcArrayGPU, sraNumOpaqueGeomPasses, sraNumTransparentGeomPasses,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
@@ -38,6 +38,7 @@ import Data.Maybe
 import Control.Lens
 import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
+import Data.List
 import qualified Data.Map.Lazy as M
 
 import Immutaball.Ball.LevelSets
@@ -137,7 +138,12 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- performed by calling glDrawArrays with an index and count into this
 	-- array, and the shaders can do the rest of the work.
 	_sraGcArray    :: Array Int32 Int32,
-	_sraGcArrayGPU :: GLData
+	_sraGcArrayGPU :: GLData,
+
+	-- Now aggregate the GeomPass lists, so they can be conveniently uploaded
+	-- to the GPU in whole.
+	_sraNumOpaqueGeomPasses      :: Integer,
+	_sraNumTransparentGeomPasses :: Integer
 
 	-- TODO: now compose and aggregate the geom pass data, for the shaders.
 
@@ -214,7 +220,10 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraTransparentGeoms = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) True ) . zip [0..] $ elems (sol^.solBv),
 
 	_sraGcArray    = genArray (0, (sol^.solGc) - 1) $ \idx -> idx,
-	_sraGcArrayGPU = gpuEncodeArray (sra^.sraGcArray)
+	_sraGcArrayGPU = gpuEncodeArray (sra^.sraGcArray),
+
+	_sraNumOpaqueGeomPasses      = genericLength (sra^.sraOpaqueGeoms),
+	_sraNumTransparentGeomPasses = genericLength (sra^.sraTransparentGeoms)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a

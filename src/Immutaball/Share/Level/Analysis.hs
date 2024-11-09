@@ -94,7 +94,7 @@ data SolMeta = SolMeta {
 --
 -- We reorder the data a bit.
 --
--- We have 5 arrays of data for the GPU that can be uploaded and accesses as 5
+-- We have 13 arrays of data for the GPU that can be uploaded and accesses as 5
 -- SSBOs.
 data SolRenderAnalysis = SolRenderAnalysis {
 	-- | The basis of 'sraVertexData'.

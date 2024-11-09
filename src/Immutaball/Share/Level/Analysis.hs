@@ -8,6 +8,10 @@
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables, RankNTypes #-}
 
 -- | Optionally, we can add our own extra information about a level file.
+--
+-- TODO: add a type variable for LevelSet in SolMeta to to remove ball
+-- (Ball.LevelSets) dependency from Shared.  Use ‘SolMeta'’, and in Ball have
+-- ‘type SolMeta = SolMeta' LevelSet’.
 module Immutaball.Share.Level.Analysis
 	(
 		SolWithAnalysis(..), swaSol, swaSa, swaMeta,

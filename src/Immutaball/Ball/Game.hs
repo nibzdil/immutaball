@@ -223,7 +223,7 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 		_gsBallVel     = Vec3 0.0 0.0 0.0,
 
 		_gsSolRaw        = sol,
-		_gsSol           = transformSol restoreSolTransformation (gs^.gsSol),
+		_gsSol           = transformSol restoreSolTransformation (gs^.gsSolRaw),
 		_gsSolAttributes = mkSolAttributes (gs^.gsSol),
 		_gsSolAnalysis   = solAnalysis,
 		_gsSwa           = SolWithAnalysis {

@@ -238,8 +238,7 @@ mkSolAnalysis cxt sol = fix $ \_sa -> SolAnalysis {
 mkSolRenderAnalysis :: IBContext' a -> Sol -> SolRenderAnalysis
 mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraVertexData    = genArray (0, 3 * (sol^.solVc) - 1) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
-	--_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
-	_sraVertexDataGPU = (sol^.solVc) `seq` gpuEncodeArray $ listArray'_ [0,0],  -- (sol^.solVc) Crashes.  Weird.  TODO FIXME
+	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
 
 	_sraGeomData    = genArray (0, 9 * (sol^.solGc) - 1) $ \idx -> divMod idx 9 & \(gi, ridx) -> geomRelIdx gi ridx,
 	_sraGeomDataGPU = gpuEncodeArray (sra^.sraGeomData),

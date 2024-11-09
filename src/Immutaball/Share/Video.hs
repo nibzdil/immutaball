@@ -18,8 +18,19 @@ module Immutaball.Share.Video
 		sdlCreateImmutaballShaderWith,
 
 		shaderEnableSceneDataLocation,
-		shaderSSBOTexturesLocation,
-		shaderSSBOGisLocation,
+		shaderSSBOVertexDataLocation,
+		shaderSSBOGeomDataLocation,
+		shaderSSBOLumpDataLocation,
+		shaderSSBOPathDoublesDataLocation,
+		shaderSSBOPathInt32sDataLocation,
+		shaderSSBOBodyDataLocation,
+		shaderSSBOGcDataLocation,
+		shaderSSBOAllGeomPassMvDataLocation,
+		shaderSSBOAllGeomPassTexturesDataLocation,
+		shaderSSBOAllGeomPassGisDataLocation,
+		shaderSSBOGeomPassMvRangesDataLocation,
+		shaderSSBOGeomPassTexturesRangesDataLocation,
+		shaderSSBOGeomPassGisRangesDataLocation,
 
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
@@ -134,11 +145,44 @@ sdlCreateImmutaballShaderWith sdlMgr to_ =
 shaderEnableSceneDataLocation :: GLint
 shaderEnableSceneDataLocation = fromIntegral (16 :: Integer)
 
-shaderSSBOTexturesLocation :: GLuint
-shaderSSBOTexturesLocation = fromIntegral (17 :: Integer)
+shaderSSBOVertexDataLocation :: GLuint
+shaderSSBOVertexDataLocation = fromIntegral (17 :: Integer)
 
-shaderSSBOGisLocation :: GLuint
-shaderSSBOGisLocation = fromIntegral (18 :: Integer)
+shaderSSBOGeomDataLocation :: GLuint
+shaderSSBOGeomDataLocation = fromIntegral (18 :: Integer)
+
+shaderSSBOLumpDataLocation :: GLuint
+shaderSSBOLumpDataLocation = fromIntegral (19 :: Integer)
+
+shaderSSBOPathDoublesDataLocation :: GLuint
+shaderSSBOPathDoublesDataLocation = fromIntegral (20 :: Integer)
+
+shaderSSBOPathInt32sDataLocation :: GLuint
+shaderSSBOPathInt32sDataLocation = fromIntegral (21 :: Integer)
+
+shaderSSBOBodyDataLocation :: GLuint
+shaderSSBOBodyDataLocation = fromIntegral (22 :: Integer)
+
+shaderSSBOGcDataLocation :: GLuint
+shaderSSBOGcDataLocation = fromIntegral (23 :: Integer)
+
+shaderSSBOAllGeomPassMvDataLocation :: GLuint
+shaderSSBOAllGeomPassMvDataLocation = fromIntegral (24 :: Integer)
+
+shaderSSBOAllGeomPassTexturesDataLocation :: GLuint
+shaderSSBOAllGeomPassTexturesDataLocation = fromIntegral (25 :: Integer)
+
+shaderSSBOAllGeomPassGisDataLocation :: GLuint
+shaderSSBOAllGeomPassGisDataLocation = fromIntegral (26 :: Integer)
+
+shaderSSBOGeomPassMvRangesDataLocation :: GLuint
+shaderSSBOGeomPassMvRangesDataLocation = fromIntegral (27 :: Integer)
+
+shaderSSBOGeomPassTexturesRangesDataLocation :: GLuint
+shaderSSBOGeomPassTexturesRangesDataLocation = fromIntegral (28 :: Integer)
+
+shaderSSBOGeomPassGisRangesDataLocation :: GLuint
+shaderSSBOGeomPassGisRangesDataLocation = fromIntegral (29 :: Integer)
 
 -- * Shader: low level
 

@@ -268,9 +268,9 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraNumTransparentGeomPasses = genericLength (sra^.sraTransparentGeoms),
 	_sraNumGeomPasses            = (sra^.sraNumOpaqueGeomPasses) + (sra^.sraNumTransparentGeomPasses),
 
-	_sraAllGeomPassMv       = listArray'_ $ [mi |      geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, mi      <- elems (geomPass^.gpMv)      ],
+	_sraAllGeomPassMv       = listArray'_ $ [mi      | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, mi      <- elems (geomPass^.gpMv)      ],
 	_sraAllGeomPassTextures = listArray'_ $ [texture | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, texture <- elems (geomPass^.gpTextures)],
-	_sraAllGeomPassGis      = listArray'_ $ [gi |      geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, gi      <- elems (geomPass^.gpGis)     ],
+	_sraAllGeomPassGis      = listArray'_ $ [gi      | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, gi      <- elems (geomPass^.gpGis)     ],
 
 	_sraAllGeomPassMvGPU       = gpuEncodeArray (sra^.sraAllGeomPassMv),
 	_sraAllGeomPassTexturesGPU = gpuEncodeArray (sra^.sraAllGeomPassTextures),

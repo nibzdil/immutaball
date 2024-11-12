@@ -68,7 +68,7 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	cxtnp14 <- setSSBO -< ((shaderSSBOGeomPassBisDataLocation,            sra^.sraGeomPassBisGPU),               cxtnp13)
 
 	-- Upload elems vao and buf.
-	cxtnp15 <- setElemVAOAndBuf -< (sra^.sraGcArrayGPU, cxtn14)
+	cxtnp15 <- setElemVAOAndBuf -< (sra^.sraGcArrayGPU, cxtnp14)
 
 	let cxt = cxtnp15
 

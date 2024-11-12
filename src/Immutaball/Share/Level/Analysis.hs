@@ -393,9 +393,12 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		passGeom :: Integer -> Bool -> (Int32, Body) -> [GeomPass]
 		passGeom maxTextures transparent (bi, b) = geomPasses
 			where
+				indirection :: Int32 -> Int32
+				indirection idx = (sol^.solIv) ! idx
+
 				-- First make a single GeomPass - a single array structure that we will later split up by 16.
-				--wholeGpGis = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
-				wholeGpGis = D.trace (printf "DEBUG0: wholeGpGis for bi %d: g0, gc: %d, %d; solBc, solGc (%d, %d)." (bi) (b^.bodyG0) (b^.bodyGc) (sol^.solBc) (sol^.solGc)) $ [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				wholeGpGis = map indirection [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				--wholeGpGis = D.trace (printf "DEBUG0: wholeGpGis for bi %d: g0, gc: %d, %d; solBc, solGc (%d, %d)." (bi) (b^.bodyG0) (b^.bodyGc) (sol^.solBc) (sol^.solGc)) $ map indirection [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
 				wholeGpGisTransparent = flip filter wholeGpGis $ \gi ->
 					let g = (sol^.solGv) ! gi in let mi = g^.geomMi in let mtrl = (sol^.solMv) ! mi in
 					(((mtrl^.mtrlFl) .&. mtrlFlagAlphaTest) /= 0) == transparent

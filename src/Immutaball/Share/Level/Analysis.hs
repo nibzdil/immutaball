@@ -61,6 +61,9 @@ import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
+import Debug.Trace as D------------------------------------------------- TODO --------------------------
+import Text.Printf
+
 data SolWithAnalysis = SolWithAnalysis {
 	_swaSol  :: Sol,
 	_swaSa   :: SolAnalysis,
@@ -391,7 +394,8 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		passGeom maxTextures transparent (bi, b) = geomPasses
 			where
 				-- First make a single GeomPass - a single array structure that we will later split up by 16.
-				wholeGpGis = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				--wholeGpGis = [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				wholeGpGis = D.trace (printf "DEBUG0: wholeGpGis for bi %d: g0, gc: %d, %d; solBc, solGc (%d, %d)." (bi) (b^.bodyG0) (b^.bodyGc) (sol^.solBc) (sol^.solGc)) $ [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
 				wholeGpGisTransparent = flip filter wholeGpGis $ \gi ->
 					let g = (sol^.solGv) ! gi in let mi = g^.geomMi in let mtrl = (sol^.solMv) ! mi in
 					(((mtrl^.mtrlFl) .&. mtrlFlagAlphaTest) /= 0) == transparent

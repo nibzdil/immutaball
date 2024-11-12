@@ -71,7 +71,9 @@ module Immutaball.Share.State.Context
 		setElemVAOAndBuf,
 		getElemVAOAndBuf,
 
-		setCurrentlyLoadedSOL
+		setCurrentlyLoadedSOL,
+
+		setTransformation
 	) where
 
 import Prelude ()
@@ -90,6 +92,7 @@ import qualified Codec.Picture.Types as JP
 import Control.Lens
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
+import Data.Array.IArray
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BL
@@ -940,3 +943,13 @@ setCurrentlyLoadedSOL = proc (identifyingPath, cxtn) -> do
 		putTMVar mloadedSol identifyingPath
 		return moldIdentifyingPath
 	returnA -< (moldIdentifyingPath, cxtnp1)
+
+-- | Row-major.
+setTransformation :: Wire ImmutaballM (Mat4 Double, IBStateContext) IBStateContext
+setTransformation = proc (_mat@(Mat4 rows), cxtn) -> do
+	let matArray = listArray (0, 15) [val | r <- [rows^.x4, rows^.y4, rows^.z4, rows^.w4], val <- [r^.x4, r^.y4, r^.z4, r^.w4]]
+	let matArrayGPU = gpuEncodeArray matArray
+
+	cxtnp1 <- setSSBO -< ((shaderSSBOTransformationLocation, matArrayGPU), cxtn)
+
+	returnA -< cxtnp1

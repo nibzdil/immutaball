@@ -34,10 +34,13 @@ import Immutaball.Share.Wire
 -- | TODO: implement.
 renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
 renderLevel = proc ((_camera, swa, _gs), cxtn) -> do
+	-- Set up.
 	let levelPath = swa^.swaMeta.smPath
 	(mlastLevelPath, cxtnp1) <- setCurrentlyLoadedSOL -< (levelPath, cxtn)
 	let newLevel = Just levelPath == mlastLevelPath
 	cxtnp2 <- returnA ||| renderSetupNewLevel -< if' (not newLevel) (Left cxtnp1) (Right (swa, cxtnp1))
+
+	-- Render the scene.
 	let
 		sol :: Sol
 		sol = swa^.swaSol
@@ -45,7 +48,11 @@ renderLevel = proc ((_camera, swa, _gs), cxtn) -> do
 		sa :: SolAnalysis
 		sa = swa^.swaSa
 	let _unused = (sol, sa)  -- TODO
-	returnA -< cxtnp2
+
+	-- Return the state context.
+
+	let cxt = cxtnp2
+	returnA -< cxt
 
 renderSetupNewLevel :: Wire ImmutaballM (SolWithAnalysis, IBStateContext) IBStateContext
 renderSetupNewLevel = proc (swa, cxtn) -> do
@@ -70,6 +77,11 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	-- Upload elems vao and buf.
 	cxtnp15 <- setElemVAOAndBuf -< (sra^.sraGcArrayGPU, cxtnp14)
 
-	let cxt = cxtnp15
+	-- Pre-initialize the transformation matrix with the identity.
+	cxtnp16 <- setTransformation -< (identity4, cxtnp15)
+
+	-- Return the state context.
+
+	let cxt = cxtnp16
 
 	returnA -< cxt

@@ -7,36 +7,60 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- | gpuEncodeArray and reverseRowsImage.
 module Immutaball.Share.Video.LowLevel
 	(
+		gpuEncodeArray,
 		reverseRowsImage,
 		reverseRowsImageBuilderRows,
 		reverseRowsImageBuilderBytes,
 		reverseRowsImageLowLevel
 	) where
 
+-- Prelude imports.
 import Prelude ()
 import Immutaball.Prelude
 
+-- base imports.
 import Control.Arrow
 import Control.Monad
+import qualified Data.Array.Unsafe
 import Data.Function hiding (id, (.))
+import Data.Int
 import Data.Word
+import Foreign.C.Types
+import Foreign.Marshal
+import Foreign.Ptr
+import Foreign.Storable
 
+-- external imports.
+import Data.Array.IArray
+import Data.Array.Storable
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as BB
 --import qualified Data.ByteString.Builder.Extra as BB
 import qualified Data.ByteString.Lazy as BL
 
+-- internal (local) imports.
+import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
--- reverseRowsImage low-level imports.
+-- Low-level imports.
 import qualified Data.ByteString.Unsafe as UnsafeBS
-import Foreign.Marshal
-import Foreign.Ptr
-import Foreign.Storable
 import System.IO.Unsafe (unsafePerformIO)
+
+gpuEncodeArray :: forall a. (Storable a) => Array Int32 a -> GLData
+gpuEncodeArray array_ = unsafePerformIO $ do
+	(storableArray :: StorableArray Int32 a) <- Data.Array.Unsafe.unsafeThaw array_
+	bs <- withStorableArray storableArray $ \(ptr :: Ptr a) -> do
+		let (bsPtr :: Ptr CChar) = castPtr ptr
+		let (numElems :: Int) = rangeSize . bounds $ array_
+		let (bsLen :: Int) = numElems * sizeOf ((array_ ! 0)  :: a)
+		bs <- BS.packCStringLen (bsPtr, bsLen)
+		return bs
+	let data_ = bsToGLData bs
+	return $ data_
 
 reverseRowsImage :: (WidthHeightI, BS.ByteString) -> BS.ByteString
 --reverseRowsImage = reverseRowsImageLowLevel

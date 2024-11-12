@@ -13,6 +13,7 @@ module Immutaball.Share.Level.Analysis.LowLevel
 		gpuEncodeArray
 	) where
 
+{-
 -- Prelude imports.
 import Prelude ()
 import Immutaball.Prelude
@@ -34,7 +35,24 @@ import Immutaball.Share.ImmutaballIO.GLIO
 
 -- Low-level imports.
 import System.IO.Unsafe (unsafePerformIO)
+-}
 
+-- Prelude imports.
+import Prelude ()
+--import Immutaball.Prelude
+
+-- base imports.
+import Data.Int
+import Foreign.Storable
+
+-- external imports.
+import Data.Array.IArray
+
+-- internal (local) imports.
+import Immutaball.Share.ImmutaballIO.GLIO
+import qualified Immutaball.Share.Video.LowLevel
+
+{-
 gpuEncodeArray :: forall a. (Storable a) => Array Int32 a -> GLData
 gpuEncodeArray array_ = unsafePerformIO $ do
 	(storableArray :: StorableArray Int32 a) <- Data.Array.Unsafe.unsafeThaw array_
@@ -46,3 +64,8 @@ gpuEncodeArray array_ = unsafePerformIO $ do
 		return bs
 	let data_ = bsToGLData bs
 	return $ data_
+-}
+
+-- | This has been moved to Video.LowLevel.
+gpuEncodeArray :: forall a. (Storable a) => Array Int32 a -> GLData
+gpuEncodeArray = Immutaball.Share.Video.LowLevel.gpuEncodeArray

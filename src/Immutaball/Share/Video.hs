@@ -32,6 +32,7 @@ module Immutaball.Share.Video
 		shaderSSBOGeomPassTexturesRangesDataLocation,
 		shaderSSBOGeomPassGisRangesDataLocation,
 		shaderSSBOGeomPassBisDataLocation,
+		shaderSSBOTransformationLocation,
 
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
@@ -53,7 +54,8 @@ module Immutaball.Share.Video
 		checkGLErrorsIB,
 		glErrType,
 		glChecked,
-		numToGL_TEXTUREi
+		numToGL_TEXTUREi,
+		gpuEncodeArray
 	) where
 
 import Prelude ()
@@ -187,6 +189,9 @@ shaderSSBOGeomPassGisRangesDataLocation = fromIntegral (29 :: Integer)
 
 shaderSSBOGeomPassBisDataLocation :: GLuint
 shaderSSBOGeomPassBisDataLocation = fromIntegral (30 :: Integer)
+
+shaderSSBOTransformationLocation :: GLuint
+shaderSSBOTransformationLocation = fromIntegral (31 :: Integer)
 
 -- * Shader: low level
 

@@ -66,7 +66,8 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 			_mviewTarget = Vec3 0.0 1.0 0.0,
 			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
 		}
-		cxtnp3 <- renderLevel -< ((mview, (gameState^.gsSwa), gameState), cxtnp2)
+		isPaint <- returnA -< ((const False) ||| (const True)) . matching (_Paint) $ request
+		cxtnp3 <- returnA ||| renderLevel -< if' (not isPaint) (Left cxtnp2) (Right $ ((mview, (gameState^.gsSwa), gameState), cxtnp2))
 
 		() <- finishFrame -< (request, cxtnp3)
 		cxt <- returnA -< cxtnp3

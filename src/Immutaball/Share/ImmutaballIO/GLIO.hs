@@ -928,7 +928,7 @@ hglShaderSource shader strings0 = do
 				glShaderSource shader numStrings (castPtr cstrPtr) (castPtr lensPtr)
 		-- bytestring could really use a .UTF8 module, rather than just .Char8.
 		truncateChar :: Char -> Word8
-		truncateChar = toEnum . fromEnum
+		truncateChar = toEnum . (min 255) . fromEnum
 
 hglGenProgramPipelines :: GLsizei -> IO [GLuint]
 hglGenProgramPipelines numNames = do

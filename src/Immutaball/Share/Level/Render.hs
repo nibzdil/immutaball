@@ -53,7 +53,7 @@ renderLevel = proc ((camera, swa, gs), cxtn) -> do
 	-- Set up.
 	let levelPath = swa^.swaMeta.smPath
 	(mlastLevelPath, cxtnp1) <- setCurrentlyLoadedSOL -< (levelPath, cxtn)
-	let newLevel = Just levelPath == mlastLevelPath
+	let newLevel = not $ Just levelPath == mlastLevelPath
 	cxtnp2 <- returnA ||| renderSetupNewLevel -< if' (not newLevel) (Left cxtnp1) (Right (swa, cxtnp1))
 
 	-- Render the scene.

@@ -79,6 +79,8 @@ vertexShader = unlines $
 		"\tdouble ssboTransformationData[];",
 		"};",
 		"",
+		"layout(location = 32) uniform int sceneGeomPassIdx;",
+		"",
 		"// Required for linking with GL_PROGRAM_SEPARABLE apparently.",
 		"out gl_PerVertex {",
 		"\tvec4  gl_Position;",

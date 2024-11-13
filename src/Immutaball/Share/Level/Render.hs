@@ -24,6 +24,8 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Monad
 import Data.Int
+import Data.Ix
+import Data.Maybe
 
 import Control.Lens
 import Data.Array.IArray
@@ -83,7 +85,7 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	cxtnp14 <- setSSBO -< ((shaderSSBOGeomPassBisDataLocation,            sra^.sraGeomPassBisGPU),               cxtnp13)
 
 	-- Upload elems vao and buf.
-	cxtnp15 <- setElemVAOAndBuf -< (sra^.sraGcArrayGPU, cxtnp14)
+	cxtnp15 <- setElemVAOAndBuf -< (sra^.sraGcArrayGPU, True, cxtnp14)
 
 	-- Pre-initialize the transformation matrix with the identity.
 	cxtnp16 <- setTransformation -< (identity4, cxtnp15)
@@ -113,7 +115,10 @@ renderScene = proc ((camera, swa, gs), cxtn) -> do
 		sra = sa^.saRenderAnalysis
 	let _unused = (sol)
 
-	let geomPasses = map (\gp -> (swa, gs, False, gp)) (sra^.sraOpaqueGeoms) ++ map (\gp -> (swa, gs, True, gp)) (sra^.sraTransparentGeoms)
+	let
+		ourFlatten :: (Int32, (SolWithAnalysis, GameState, Bool, GeomPass)) -> (Int32, SolWithAnalysis, GameState, Bool, GeomPass)
+		ourFlatten (a, (b, c, d, e)) = (a, b, c, d, e)
+	let geomPasses = map ourFlatten . zip [0..] $ map (\gp -> (swa, gs, False, gp)) (sra^.sraOpaqueGeoms) ++ map (\gp -> (swa, gs, True, gp)) (sra^.sraTransparentGeoms)
 	cxtnp2 <- foldrA renderGeomPass -< (cxtnp1, geomPasses)
 
 	-- Return the state context.
@@ -126,8 +131,8 @@ renderScene = proc ((camera, swa, gs), cxtn) -> do
 		transformationMatrix view_ = viewMat view_
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
-renderGeomPass :: Wire ImmutaballM ((SolWithAnalysis, GameState, Bool, GeomPass), IBStateContext) IBStateContext
-renderGeomPass = proc ((swa, gs, isAlpha, gp), cxtn) -> do
+renderGeomPass :: Wire ImmutaballM ((Int32, SolWithAnalysis, GameState, Bool, GeomPass), IBStateContext) IBStateContext
+renderGeomPass = proc ((geomPassIdx, swa, _gs, isAlpha, gp), cxtn) -> do
 	-- Setup.
 	let sdlGL1'_ = sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 	let sdlGL1' = liftIBIO . sdlGL1'_
@@ -155,11 +160,53 @@ renderGeomPass = proc ((swa, gs, isAlpha, gp), cxtn) -> do
 					GLBindTexture GL_TEXTURE_2D glTexture ()
 
 	-- Render all geometry in this geom pass.
+	(melemVAOAndBuf, cxtnp2) <- getElemVAOAndBuf -< cxtnp1
+	let elemVAOAndBuf = fromMaybe (error "Internal error: renderGeomPass expected elem vao and buf to be present, but it's missing!") melemVAOAndBuf
+	let (elemVAO, _elemBuf) = elemVAOAndBuf
+	let (renderGeomPassScene :: GLIOF ()) = do
+		-- Tell the shaders to enable the scene data.
+		GLUniform1i shaderEnableSceneDataLocation trueAsIntegral ()
 
-	-- TODO
+		-- Tell the shaders what geom pass to use.
+		GLUniform1i (shaderSceneGeomPassIdxLocation) (fromIntegral geomPassIdx) ()
+
+		-- Tell the shaders to render this pass's geometries.  It will handle the rest; it already has the geom pass data we uploaded upon setup.
+		GLBindVertexArray elemVAO ()
+
+		-- Use the vao to tell the shader to draw the geometry.
+		let numGpGis = rangeSize . bounds $ gp^.gpGis
+		GLDrawArrays GL_TRIANGLES 0 (fromIntegral numGpGis) ()
+
+	let (alphaSetup :: GLIOF ()) = do
+		GLEnable GL_DEPTH_TEST ()
+		if isAlpha
+			then do
+				GLEnable GL_BLEND ()
+				GLDepthMask GL_FALSE ()
+				GLBlendEquationSeparate GL_FUNC_ADD GL_FUNC_ADD ()
+				GLBlendFuncSeparate GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA GL_ONE GL_ZERO ()
+			else do
+				GLDisable GL_BLEND ()
+				GLDepthMask GL_TRUE ()
+	let (alphaFinish :: GLIOF ()) = do
+		if isAlpha
+			then do
+				GLDisable GL_BLEND ()
+				GLDepthMask GL_TRUE ()
+			else do
+				GLDisable GL_BLEND ()
+				GLDepthMask GL_TRUE ()
+
+	-- Now aggregate the rendering to render the geom pass.
+	let (renderGeomPassGL :: GLIOF ()) = do
+		alphaSetup
+		assignTextures
+		renderGeomPassScene
+		alphaFinish
+	() <- monadic -< sdlGL1' renderGeomPassGL
 
 	-- Return the state context.
-	let cxt = cxtnp1
+	let cxt = cxtnp2
 	returnA -< cxt
 
 	where

@@ -173,6 +173,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		--mkGLDrawElements,
 		--mkGLDrawElementsData,
 		mkGLDrawElementsRaw,
+		mkGLDrawArrays,
 		mkGLGetString,
 		mkGLGetStringi,
 
@@ -347,7 +348,8 @@ data GLIOF me =
 	-- | GLDrawElements     GLenum [GLuint]              me
 	-- Oops, data is an offset, not an actual pointer.  Disable.
 	-- | GLDrawElementsData GLenum GLsizei GLenum GLData me
-	| GLDrawElementsRaw GLenum GLsizei GLenum Integer me
+	| GLDrawElementsRaw GLenum GLsizei GLenum  Integer me
+	| GLDrawArrays      GLenum GLint   GLsizei         me
 
 	| GLGetString  GLenum        (BS.ByteString -> me)
 	| GLGetStringi GLenum GLuint (BS.ByteString -> me)
@@ -480,6 +482,7 @@ instance Functor GLIOF where
 	--fmap f (GLDrawElements     mode             indices_ withUnit) = GLDrawElements     mode             indices_ (f withUnit)
 	--fmap f (GLDrawElementsData mode count type_ indices_ withUnit) = GLDrawElementsData mode count type_ indices_ (f withUnit)
 	fmap f (GLDrawElementsRaw mode count type_ offset withUnit) = GLDrawElementsRaw mode count type_ offset (f withUnit)
+	fmap f (GLDrawArrays      mode first count        withUnit) = GLDrawArrays      mode first count        (f withUnit)
 
 	fmap f (GLGetString  name        withString) = GLGetString  name        (f . withString)
 	fmap f (GLGetStringi name index_ withString) = GLGetStringi name index_ (f . withString)
@@ -673,6 +676,7 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		--y@( GLDrawElements     _mode              _indices me) -> putMVar mme me >> return y
 		--y@( GLDrawElementsData _mode _count _type _indices me) -> putMVar mme me >> return y
 		y@( GLDrawElementsRaw _mode _count _type _offset   me) -> putMVar mme me >> return y
+		y@( GLDrawArrays      _mode _first _count          me) -> putMVar mme me >> return y
 
 		_y@(GLGetString  name        withString) -> return $ GLGetString  name        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withString)
 		_y@(GLGetStringi name index_ withString) -> return $ GLGetStringi name index_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withString)
@@ -816,6 +820,7 @@ runGLIOIO (GLDisableVertexAttribArray       index_ glio) = glDisableVertexAttrib
 --runGLIOIO (GLDrawElements     mode             indices_ glio) = hglDrawElements     mode             indices_ >> glio
 --runGLIOIO (GLDrawElementsData mode count type_ indices_ glio) = hglDrawElementsData mode count type_ indices_ >> glio
 runGLIOIO (GLDrawElementsRaw mode count type_ offset    glio) = hglDrawElementsRaw mode count type_ offset    >> glio
+runGLIOIO (GLDrawArrays      mode first count           glio) = glDrawArrays       mode first count           >> glio
 
 runGLIOIO (GLGetString  name        withString) = hglGetString  name        >>= withString
 runGLIOIO (GLGetStringi name index_ withString) = hglGetStringi name index_ >>= withString
@@ -1511,6 +1516,9 @@ mkGLDrawElementsData mode count type_ indices_ glio = Fixed $ GLDrawElementsData
 
 mkGLDrawElementsRaw :: GLenum -> GLsizei -> GLenum -> Integer -> GLIO -> GLIO
 mkGLDrawElementsRaw mode count type_ offset glio = Fixed $ GLDrawElementsRaw mode count type_ offset glio
+
+mkGLDrawArrays :: GLenum -> GLint -> GLsizei -> GLIO -> GLIO
+mkGLDrawArrays mode first count glio = Fixed $ GLDrawArrays mode first count glio
 
 mkGLGetString :: GLenum -> (BS.ByteString -> GLIO) -> GLIO
 mkGLGetString name withString = Fixed $ GLGetString name withString

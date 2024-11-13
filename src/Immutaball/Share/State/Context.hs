@@ -83,8 +83,10 @@ import Control.Arrow
 import Control.Monad
 import Data.Bits
 import Data.Either
+import Data.Int
 import Data.List
 import Data.Maybe
+import Foreign.Storable
 import Text.Printf
 
 import qualified Codec.Picture as JP
@@ -880,8 +882,9 @@ setSSBO = proc ((location, data_), cxtn) -> do
 		unSingleton [me] = me
 		unSingleton _    = error "Internal error: setSSBO expected a single result from GLGenBuffers."
 
-setElemVAOAndBuf :: Wire ImmutaballM (GLData, IBStateContext) IBStateContext
-setElemVAOAndBuf = proc (data_, cxtn) -> do
+-- | Bool: set int32 vertex attrib?
+setElemVAOAndBuf :: Wire ImmutaballM (GLData, Bool, IBStateContext) IBStateContext
+setElemVAOAndBuf = proc (data_, setAttrib, cxtn) -> do
 	(melemVAOAndBuf, cxtnp1) <- requireElemVAOAndBuf -< cxtn
 	let sdlh = (cxtnp1^.ibContext.ibSDLManagerHandle)
 
@@ -899,6 +902,11 @@ setElemVAOAndBuf = proc (data_, cxtn) -> do
 		GLBufferData GL_ELEMENT_ARRAY_BUFFER data_   GL_DYNAMIC_DRAW ()
 
 		let newElemVAOAndBuf = (elemVao, elemBuf)
+
+		when setAttrib $ do
+			let (si :: GLsizei) = fromIntegral $ sizeOf (error "Internal error: setElemVAOAndBuf: sizeOf accessed its argument!" :: Int32)
+			GLVertexAttribIPointer 0 1 GL_INT si 0 ()
+			GLEnableVertexAttribArray 0 ()
 
 		return newElemVAOAndBuf
 

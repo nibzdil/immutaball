@@ -143,7 +143,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	_sraOpaqueGeoms      :: [GeomPass],
 	_sraTransparentGeoms :: [GeomPass],
 
-	-- | A convenience identity array of all geom indices.
+	-- | A convenience identity array of length 3 * num all geom indices.
 	--
 	-- This is convenient since it allows a convenient rendering pass to be
 	-- performed by calling glDrawArrays with an index and count into this
@@ -261,7 +261,7 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraOpaqueGeoms      = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) False) . zip [0..] $ elems (sol^.solBv),
 	_sraTransparentGeoms = concat . filter (not . null) . map (passGeom (cxt^.ibStaticConfig.x'cfgMaxPassTextures) True ) . zip [0..] $ elems (sol^.solBv),
 
-	_sraGcArray    = genArray (0, (sol^.solGc) - 1) $ \idx -> idx,
+	_sraGcArray    = genArray (0, 3 * (sol^.solGc) - 1) $ \idx -> idx,
 	_sraGcArrayGPU = gpuEncodeArray (sra^.sraGcArray),
 
 	_sraNumOpaqueGeomPasses      = genericLength (sra^.sraOpaqueGeoms),

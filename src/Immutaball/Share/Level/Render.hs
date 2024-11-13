@@ -175,7 +175,7 @@ renderGeomPass = proc ((geomPassIdx, swa, _gs, isAlpha, gp), cxtn) -> do
 
 		-- Use the vao to tell the shader to draw the geometry.
 		let numGpGis = rangeSize . bounds $ gp^.gpGis
-		GLDrawArrays GL_TRIANGLES 0 (fromIntegral numGpGis) ()
+		GLDrawArrays GL_TRIANGLES 0 (fromIntegral (3 * numGpGis)) ()
 
 	let (alphaSetup :: GLIOF ()) = do
 		GLEnable GL_DEPTH_TEST ()

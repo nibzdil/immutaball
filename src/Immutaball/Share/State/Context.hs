@@ -906,7 +906,7 @@ setElemVAOAndBuf = proc (data_, setAttrib, cxtn) -> do
 		when setAttrib $ do
 			let (si :: GLsizei) = fromIntegral $ sizeOf (error "Internal error: setElemVAOAndBuf: sizeOf accessed its argument!" :: Int32)
 			GLVertexAttribIPointer 4 1 GL_INT si 0 ()  -- 4: location of ‘elem’ in the shader.
-			GLEnableVertexAttribArray 0 ()
+			GLEnableVertexAttribArray 4 ()
 
 		return newElemVAOAndBuf
 

@@ -178,23 +178,28 @@ renderGeomPass = proc ((geomPassIdx, swa, _gs, isAlpha, gp), cxtn) -> do
 		GLDrawArrays GL_TRIANGLES 0 (fromIntegral (3 * numGpGis)) ()
 
 	let (alphaSetup :: GLIOF ()) = do
-		GLEnable GL_DEPTH_TEST ()
 		if isAlpha
 			then do
 				GLEnable GL_BLEND ()
-				GLDepthMask GL_FALSE ()
 				GLBlendEquationSeparate GL_FUNC_ADD GL_FUNC_ADD ()
 				GLBlendFuncSeparate GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA GL_ONE GL_ZERO ()
+
+				GLEnable GL_DEPTH_TEST ()
+				GLDepthMask GL_FALSE ()
 			else do
 				GLDisable GL_BLEND ()
+
+				GLEnable GL_DEPTH_TEST ()
 				GLDepthMask GL_TRUE ()
 	let (alphaFinish :: GLIOF ()) = do
 		if isAlpha
 			then do
 				GLDisable GL_BLEND ()
+
 				GLDepthMask GL_TRUE ()
 			else do
 				GLDisable GL_BLEND ()
+
 				GLDepthMask GL_TRUE ()
 
 	-- Now aggregate the rendering to render the geom pass.

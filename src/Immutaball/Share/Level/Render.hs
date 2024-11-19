@@ -119,7 +119,7 @@ renderScene = proc ((camera, swa, gs), cxtn) -> do
 		ourFlatten :: (Int32, (SolWithAnalysis, GameState, Bool, GeomPass)) -> (Int32, SolWithAnalysis, GameState, Bool, GeomPass)
 		ourFlatten (a, (b, c, d, e)) = (a, b, c, d, e)
 	let geomPasses = map ourFlatten . zip [0..] $ map (\gp -> (swa, gs, False, gp)) (sra^.sraOpaqueGeoms) ++ map (\gp -> (swa, gs, True, gp)) (sra^.sraTransparentGeoms)
-	cxtnp2 <- foldrA renderGeomPass -< (cxtnp1, geomPasses)
+	cxtnp2 <- foldlA renderGeomPass -< (cxtnp1, geomPasses)
 
 	-- Return the state context.
 	let cxt = cxtnp2
@@ -131,8 +131,8 @@ renderScene = proc ((camera, swa, gs), cxtn) -> do
 		transformationMatrix view_ = viewMat view_
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
-renderGeomPass :: Wire ImmutaballM ((Int32, SolWithAnalysis, GameState, Bool, GeomPass), IBStateContext) IBStateContext
-renderGeomPass = proc ((geomPassIdx, swa, _gs, isAlpha, gp), cxtn) -> do
+renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext
+renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 	-- Setup.
 	let sdlGL1'_ = sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 	let sdlGL1' = liftIBIO . sdlGL1'_

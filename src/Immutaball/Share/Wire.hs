@@ -48,6 +48,8 @@ module Immutaball.Share.Wire
 		multistep,
 		foldrA,
 		foldrListA,
+		foldlA,
+		foldlListA,
 		constA,
 		nopA,
 		wave
@@ -307,6 +309,17 @@ foldrListA reduce = proc (reduction0, xs) -> do
 	case xs of
 		[] -> returnA -< reduction0
 		(x:rest) -> reduce <<< second (foldrListA reduce) -< (x, (reduction0, rest))
+
+foldlA :: (Foldable t, Monad m, MonadFix m) => Wire m (b, a) b -> Wire m (b, t a) b
+foldlA reduce = foldlListA reduce <<< second (arr toList)
+
+foldlListA :: (Monad m, MonadFix m) => Wire m (b, a) b -> Wire m (b, [a]) b
+foldlListA reduce = proc (reduction0, xs) -> do
+	--foldl reduce reduction0 [] = reduction0
+	--foldl reduce reduction0 (x:rest) = foldl reduce (reduce reduction0 x) rest
+	case xs of
+		[] -> returnA -< reduction0
+		(x:rest) -> foldlListA reduce <<< first reduce -< ((reduction0, x), rest)
 
 constA :: (Arrow a) => c -> a b c
 constA c = arr (const c)

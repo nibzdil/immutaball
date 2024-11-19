@@ -908,6 +908,9 @@ setElemVAOAndBuf = proc (data_, setAttrib, cxtn) -> do
 			GLVertexAttribIPointer 4 1 GL_INT si 0 ()  -- 4: location of ‘elem’ in the shader.
 			GLEnableVertexAttribArray 4 ()
 
+		-- Unbind the VAO.
+		GLBindVertexArray 0 ()
+
 		return newElemVAOAndBuf
 
 	-- Now set the new elemvaoandbuf storage, noting if we removed an old

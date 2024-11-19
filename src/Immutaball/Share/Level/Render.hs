@@ -177,6 +177,9 @@ renderGeomPass = proc ((geomPassIdx, swa, _gs, isAlpha, gp), cxtn) -> do
 		let numGpGis = rangeSize . bounds $ gp^.gpGis
 		GLDrawArrays GL_TRIANGLES 0 (fromIntegral (3 * numGpGis)) ()
 
+		-- Unbind the VAO.
+		GLBindVertexArray 0 ()
+
 	let (alphaSetup :: GLIOF ()) = do
 		if isAlpha
 			then do

@@ -85,7 +85,7 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	cxtnp14 <- setSSBO -< ((shaderSSBOGeomPassBisDataLocation,            sra^.sraGeomPassBisGPU),               cxtnp13)
 
 	-- Upload elems vao and buf.
-	cxtnp15 <- setElemVAOAndBuf -< (sra^.sraGcArrayGPU, True, cxtnp14)
+	cxtnp15 <- setElemVaoVboEbo -< (sra^.sraGcArrayGPU, True, cxtnp14)
 
 	-- Pre-initialize the transformation matrix with the identity.
 	cxtnp16 <- setTransformation -< (identity4, cxtnp15)
@@ -160,9 +160,9 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 					GLBindTexture GL_TEXTURE_2D glTexture ()
 
 	-- Render all geometry in this geom pass.
-	(melemVAOAndBuf, cxtnp2) <- getElemVAOAndBuf -< cxtnp1
-	let elemVAOAndBuf = fromMaybe (error "Internal error: renderGeomPass expected elem vao and buf to be present, but it's missing!") melemVAOAndBuf
-	let (elemVAO, _elemBuf) = elemVAOAndBuf
+	(melemVaoVboEbo, cxtnp2) <- getElemVaoVboEbo -< cxtnp1
+	let elemVaoVboEbo = fromMaybe (error "Internal error: renderGeomPass expected elem vao and buf to be present, but it's missing!") melemVaoVboEbo
+	let (elemVao, _elemVbo, _elemEbo) = elemVaoVboEbo
 	let (renderGeomPassScene :: GLIOF ()) = do
 		-- Tell the shaders to enable the scene data.
 		GLUniform1i shaderEnableSceneDataLocation trueAsIntegral ()
@@ -171,7 +171,7 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 		GLUniform1i (shaderSceneGeomPassIdxLocation) (fromIntegral geomPassIdx) ()
 
 		-- Tell the shaders to render this pass's geometries.  It will handle the rest; it already has the geom pass data we uploaded upon setup.
-		GLBindVertexArray elemVAO ()
+		GLBindVertexArray elemVao ()
 
 		-- Use the vao to tell the shader to draw the geometry.
 		let numGpGis = rangeSize . bounds $ gp^.gpGis

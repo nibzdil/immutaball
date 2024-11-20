@@ -11,7 +11,7 @@ module Immutaball.Share.State.Context
 	(
 		IBStateContext(..), ibContext, ibNeverballrc, ibSDLWindow,
 			ibSDLGLContext, ibSDLFont, ibShader, ibGLTextureNames,
-			ibGLTextTextures, ibGLAllocatedTextures, ibSSBOs, ibElemVAOAndBuf,
+			ibGLTextTextures, ibGLAllocatedTextures, ibSSBOs, ibElemVaoVboEbo,
 			ibCurrentlyLoadedSol,
 		initialStateCxt,
 		stateContextStorage,
@@ -65,11 +65,11 @@ module Immutaball.Share.State.Context
 
 		freeSSBOs,
 		freeSSBOsIB,
-		freeElemVAOAndBuf,
-		freeElemVAOAndBufIB,
+		freeElemVaoVboEbo,
+		freeElemVaoVboEboIB,
 		setSSBO,
-		setElemVAOAndBuf,
-		getElemVAOAndBuf,
+		setElemVaoVboEbo,
+		getElemVaoVboEbo,
 
 		setCurrentlyLoadedSOL,
 
@@ -152,7 +152,8 @@ data IBStateContext = IBStateContext {
 	_ibSSBOs :: Maybe (TVar (M.Map GLuint GLuint)),
 	-- | The VAO is like a ‘full’ array: the header/meta info and the pointer
 	-- to the second part of this, which is the raw data, just the array itself.
-	_ibElemVAOAndBuf :: Maybe (TMVar (GLuint, GLuint)),
+	-- This is VAO, VBO, EBO.
+	_ibElemVaoVboEbo :: Maybe (TMVar (GLuint, GLuint, GLuint)),
 
 	_ibCurrentlyLoadedSol :: Maybe (TMVar String)
 }
@@ -173,7 +174,7 @@ initialStateCxt cxt = IBStateContext {
 	_ibGLMtrlTextures      = Nothing,
 	_ibGLAllocatedTextures = Nothing,
 	_ibSSBOs               = Nothing,
-	_ibElemVAOAndBuf       = Nothing,
+	_ibElemVaoVboEbo       = Nothing,
 	_ibCurrentlyLoadedSol  = Nothing
 }
 
@@ -301,19 +302,19 @@ requireSSBOs = proc cxt0 -> do
 			let cxt1 = cxt0 & (ibSSBOs.~Just ssbos)
 			returnA -< (ssbos, cxt1)
 
-requireElemVAOAndBuf :: Wire ImmutaballM IBStateContext (TMVar (GLuint, GLuint), IBStateContext)
-requireElemVAOAndBuf = proc cxt0 -> do
+requireElemVaoVboEbo :: Wire ImmutaballM IBStateContext (TMVar (GLuint, GLuint, GLuint), IBStateContext)
+requireElemVaoVboEbo = proc cxt0 -> do
 	let sdlh = (cxt0^.ibContext.ibSDLManagerHandle)
-	case (cxt0^.ibElemVAOAndBuf) of
-		Just elemVAOAndBuf -> returnA -< (elemVAOAndBuf, cxt0)
+	case (cxt0^.ibElemVaoVboEbo) of
+		Just elemVaoVboEbo -> returnA -< (elemVaoVboEbo, cxt0)
 		Nothing -> do
-			elemVAOAndBuf <- monadic -< liftIBIO $ Atomically (newEmptyTMVar) id
+			elemVaoVboEbo <- monadic -< liftIBIO $ Atomically (newEmptyTMVar) id
 
 			trivialResourceMetaStorage <- monadic -< liftIBIO $ Atomically (newTMVar ()) id  -- The resource is nothing but a destructor that frees the ssbo1.
-			() <- monadic -< liftIBIO $ attachLifetime sdlh (pure ()) (\() -> void $ freeElemVAOAndBufIB sdlh elemVAOAndBuf) trivialResourceMetaStorage ()
+			() <- monadic -< liftIBIO $ attachLifetime sdlh (pure ()) (\() -> void $ freeElemVaoVboEboIB sdlh elemVaoVboEbo) trivialResourceMetaStorage ()
 
-			let cxt1 = cxt0 & (ibElemVAOAndBuf.~Just elemVAOAndBuf)
-			returnA -< (elemVAOAndBuf, cxt1)
+			let cxt1 = cxt0 & (ibElemVaoVboEbo.~Just elemVaoVboEbo)
+			returnA -< (elemVaoVboEbo, cxt1)
 
 requireLoadedSolStorage :: Wire ImmutaballM IBStateContext (TMVar String, IBStateContext)
 requireLoadedSolStorage = proc cxt0 -> do
@@ -327,7 +328,7 @@ requireLoadedSolStorage = proc cxt0 -> do
 requireMisc :: Wire ImmutaballM IBStateContext IBStateContext
 requireMisc =
 	snd <$> requireLoadedSolStorage <<<
-	snd <$> requireElemVAOAndBuf <<<
+	snd <$> requireElemVaoVboEbo <<<
 	snd <$> requireSSBOs <<<
 	snd <$> requireShader <<< snd <$> requireGLAllocatedTextures <<<
 	snd <$> requireGLMtrlTextures <<<
@@ -824,21 +825,22 @@ freeSSBOsIB sdlh ssbos = do
 		forM_ ssbosVals $ \(_location, ssbo) -> do
 			GLDeleteBuffers [ssbo] ()
 
-freeElemVAOAndBuf :: Wire ImmutaballM IBStateContext IBStateContext
-freeElemVAOAndBuf = proc cxtn -> do
-	(melemVAOAndBuf, cxtnp1) <- requireElemVAOAndBuf -< cxtn
-	() <- monadic -< liftIBIO $ freeElemVAOAndBufIB (cxtn^.ibContext.ibSDLManagerHandle) melemVAOAndBuf
+freeElemVaoVboEbo :: Wire ImmutaballM IBStateContext IBStateContext
+freeElemVaoVboEbo = proc cxtn -> do
+	(melemVaoVboEbo, cxtnp1) <- requireElemVaoVboEbo -< cxtn
+	() <- monadic -< liftIBIO $ freeElemVaoVboEboIB (cxtn^.ibContext.ibSDLManagerHandle) melemVaoVboEbo
 	returnA -< cxtnp1
 
-freeElemVAOAndBufIB :: SDLManagerHandle -> TMVar (GLuint, GLuint) -> ImmutaballIOF ()
-freeElemVAOAndBufIB sdlh elemVAOAndBuf = do
-	mvaoAndBuf <- Atomically (tryTakeTMVar elemVAOAndBuf) id
-	case mvaoAndBuf of
+freeElemVaoVboEboIB :: SDLManagerHandle -> TMVar (GLuint, GLuint, GLuint) -> ImmutaballIOF ()
+freeElemVaoVboEboIB sdlh elemVaoVboEbo = do
+	mvaoVboEbo <- Atomically (tryTakeTMVar elemVaoVboEbo) id
+	case mvaoVboEbo of
 		Nothing -> return ()
-		Just vaoAndBuf -> sdlGL1 sdlh $ do
-			let (elemVao, elemBuf) = vaoAndBuf
-			GLDeleteBuffers      [elemBuf] ()
+		Just vaoVboEbo -> sdlGL1 sdlh $ do
+			let (elemVao, elemVbo, elemEbo) = vaoVboEbo
 			GLDeleteVertexArrays [elemVao] ()
+			GLDeleteBuffers      [elemVbo] ()
+			GLDeleteBuffers      [elemEbo] ()
 
 setSSBO :: Wire ImmutaballM ((GLuint, GLData), IBStateContext) IBStateContext
 setSSBO = proc ((location, data_), cxtn) -> do
@@ -883,25 +885,29 @@ setSSBO = proc ((location, data_), cxtn) -> do
 		unSingleton _    = error "Internal error: setSSBO expected a single result from GLGenBuffers."
 
 -- | Bool: set int32 vertex attrib?
-setElemVAOAndBuf :: Wire ImmutaballM (GLData, Bool, IBStateContext) IBStateContext
-setElemVAOAndBuf = proc (data_, setAttrib, cxtn) -> do
-	(melemVAOAndBuf, cxtnp1) <- requireElemVAOAndBuf -< cxtn
+setElemVaoVboEbo :: Wire ImmutaballM (GLData, Bool, IBStateContext) IBStateContext
+setElemVaoVboEbo = proc (data_, setAttrib, cxtn) -> do
+	(melemVaoVboEbo, cxtnp1) <- requireElemVaoVboEbo -< cxtn
 	let sdlh = (cxtnp1^.ibContext.ibSDLManagerHandle)
 
 	-- First create a new vao and buf, before exposing its ID to possible
 	-- concurrency problems.
-	newElemVAOAndBuf <- monadic -< liftIBIO . sdlGL1 sdlh $ do
+	newElemVaoVboEbo <- monadic -< liftIBIO . sdlGL1 sdlh $ do
 		-- Create a new array and raw buffer of the array.
 		elemVao <- unSingleton <$> GLGenVertexArrays 1 id
-		elemBuf <- unSingleton <$> GLGenBuffers      1 id
+		elemVbo <- unSingleton <$> GLGenBuffers      1 id
+		elemEbo <- unSingleton <$> GLGenBuffers      1 id
 
 		-- Set the data, making it available for upload to the GPU.
 		GLBindVertexArray elemVao ()
 
-		GLBindBuffer GL_ELEMENT_ARRAY_BUFFER elemBuf                 ()
+		GLBindBuffer GL_ELEMENT_ARRAY_BUFFER elemEbo                 ()
 		GLBufferData GL_ELEMENT_ARRAY_BUFFER data_   GL_DYNAMIC_DRAW ()
 
-		let newElemVAOAndBuf = (elemVao, elemBuf)
+		GLBindBuffer GL_ARRAY_BUFFER elemVbo                 ()
+		GLBufferData GL_ARRAY_BUFFER data_   GL_DYNAMIC_DRAW ()
+
+		let newElemVaoVboEbo = (elemVao, elemVbo, elemEbo)
 
 		when setAttrib $ do
 			let (si :: GLsizei) = fromIntegral $ sizeOf (error "Internal error: setElemVAOAndBuf: sizeOf accessed its argument!" :: Int32)
@@ -911,23 +917,24 @@ setElemVAOAndBuf = proc (data_, setAttrib, cxtn) -> do
 		-- Unbind the VAO.
 		GLBindVertexArray 0 ()
 
-		return newElemVAOAndBuf
+		return newElemVaoVboEbo
 
 	-- Now set the new elemvaoandbuf storage, noting if we removed an old
 	-- reference so we can free the resource.
-	moldElemVAOAndBuf <- monadic -< liftIBIO . flip Atomically id $ do
-		moldElemVAOAndBuf <- tryTakeTMVar melemVAOAndBuf
-		putTMVar melemVAOAndBuf newElemVAOAndBuf
-		return $ moldElemVAOAndBuf
+	moldElemVaoVboEbo <- monadic -< liftIBIO . flip Atomically id $ do
+		moldElemVaoVboEbo <- tryTakeTMVar melemVaoVboEbo
+		putTMVar melemVaoVboEbo newElemVaoVboEbo
+		return $ moldElemVaoVboEbo
 
 	-- Free an old elemvaobuf if we removed the reference.  Free the resource
 	-- without a resource leak.
-	() <- monadic -< case moldElemVAOAndBuf of
+	() <- monadic -< case moldElemVaoVboEbo of
 		Nothing -> pure ()
-		Just oldElemVAOAndBuf -> liftIBIO . sdlGL1 sdlh $ do
-			let (elemVao, elemBuf) = oldElemVAOAndBuf
-			GLDeleteBuffers      [elemBuf] ()
+		Just oldElemVaoVboEbo -> liftIBIO . sdlGL1 sdlh $ do
+			let (elemVao, elemVbo, elemEbo) = oldElemVaoVboEbo
 			GLDeleteVertexArrays [elemVao] ()
+			GLDeleteBuffers      [elemVbo] ()
+			GLDeleteBuffers      [elemEbo] ()
 
 	-- Return the new state context with the updated storage.
 	returnA -< cxtnp1
@@ -936,11 +943,11 @@ setElemVAOAndBuf = proc (data_, setAttrib, cxtn) -> do
 		unSingleton [me] = me
 		unSingleton _    = error "Internal error: setElemVAOAndBuf expected a single result from GLGenVertexArrays or GLGenBuffers."
 
-getElemVAOAndBuf :: Wire ImmutaballM IBStateContext (Maybe (GLuint, GLuint), IBStateContext)
-getElemVAOAndBuf = proc cxtn -> do
-	(melemVAOAndBuf, cxtnp1) <- requireElemVAOAndBuf -< cxtn
-	maelemVAOAndBuf <- monadic -< liftIBIO . flip Atomically id $ tryReadTMVar (melemVAOAndBuf)
-	returnA -< (maelemVAOAndBuf, cxtnp1)
+getElemVaoVboEbo :: Wire ImmutaballM IBStateContext (Maybe (GLuint, GLuint, GLuint), IBStateContext)
+getElemVaoVboEbo = proc cxtn -> do
+	(melemVaoVboEbo, cxtnp1) <- requireElemVaoVboEbo -< cxtn
+	maelemVaoVboEbo <- monadic -< liftIBIO . flip Atomically id $ tryReadTMVar (melemVaoVboEbo)
+	returnA -< (maelemVaoVboEbo, cxtnp1)
 
 -- | Set the currently loaded sol, retrieving the old one.
 --

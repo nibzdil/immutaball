@@ -121,7 +121,7 @@ vertexShader = unlines $
 		"\tint geomPassGi0      = ssboGeomPassGisRangesData[2*sceneGeomPassIdx+0];",
 		"\tint geomPassGic      = ssboGeomPassGisRangesData[2*sceneGeomPassIdx+1];",
 		"",
-		"\tint texture = ssboGeomPassGisRangesData[2*sceneGeomPassIdx+1];",
+		"\tint texture = ssboGeomPassTexturesRangesData[2*sceneGeomPassIdx+1];",
 		"\tint gi      = ssboGeomPassGisRangesData[2*sceneGeomPassIdx+1];",
 		"",
 		"\tint whichVert = elem % 3;",

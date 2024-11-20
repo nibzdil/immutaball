@@ -158,7 +158,10 @@ vertexShader = unlines $
 		"",
 		"\tint out_texLayer = texture;",
 		"",
-		"\tgl_Position = out_gl_Position;",
+		--"\tgl_Position = out_gl_Position;",
+		"\tgl_Position = whichVert==0?vec4(0.0,0.0,0.0,1.0):(whichVert==1?vec4(0.0,1.0,0.0,1.0):vec4(1.0,1.0,0.0,1.0));",  -- TODO DEBUG
+		--"\tgl_Position = vfuntransformed;",  -- TODO DEBUG
+		--"\tgl_Position = (sceneGeomPassIdx%3)==0?vec4(0.0,0.0,0.0,1.0):((sceneGeomPassIdx%3)==1?vec4(0.0,1.0,0.0,1.0):vec4(1.0,1.0,0.0,1.0));",  -- TODO DEBUG
 		"\tvertexModulateColor = out_modulateColor;",
 		"\tvertexTexCoords = out_texCoords;",
 		"\tvertexTexLayer = out_texLayer;",

@@ -394,8 +394,11 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 				indirection :: Int32 -> Int32
 				indirection idx = (sol^.solIv) ! idx
 
+				wholeGpGisDirect = map indirection [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				wholeGpGisLumps = map indirection [r | li <- [b^.bodyL0 .. b^.bodyL0 + b^.bodyLc - 1], l <- return $ ((sol^.solLv) ! li), gi <- [l^.lumpG0 .. l^.lumpG0 + l^.lumpGc - 1], r <- return gi]
+
 				-- First make a single GeomPass - a single array structure that we will later split up by 16.
-				wholeGpGis = map indirection [b^.bodyG0 .. b^.bodyG0 + b^.bodyGc - 1]
+				wholeGpGis = wholeGpGisDirect ++ wholeGpGisLumps
 				wholeGpGisTransparent = flip filter wholeGpGis $ \gi ->
 					let g = (sol^.solGv) ! gi in let mi = g^.geomMi in let mtrl = (sol^.solMv) ! mi in
 					(((mtrl^.mtrlFl) .&. mtrlFlagAlphaTest) /= 0) == transparent

@@ -197,6 +197,7 @@ makeLenses ''Texc
 data Offs = Offs {
 	-- | Not s and t as in texture coords x and y, but t and s as in
 	-- translation and scale.  Neverball sols ignore texture angle.
+	-- TODO FIXME: actually si I think is side, and ti is texture coordinates.
 	_offsTi :: Int32,
 	_offsSi :: Int32,
 	-- | Vertex.

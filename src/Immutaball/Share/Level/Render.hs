@@ -47,6 +47,10 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+-- TODO DEBUG:
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
+
 -- | TODO: implement.
 renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
 renderLevel = proc ((camera, swa, gs), cxtn) -> do
@@ -89,6 +93,10 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 
 	-- Pre-initialize the transformation matrix with the identity.
 	cxtnp16 <- setTransformation -< (identity4, cxtnp15)
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: sra is " ++ show sra) ()
+	let solGeoms = map (^.geomMi) $ (elems (swa^.swaSol.solGv))
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: all sol geom mis is " ++ show solGeoms) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: renderSetupNewLevel: all sol mv is " ++ show (swa^.swaSol.solMv)) ()
 
 	-- Return the state context.
 

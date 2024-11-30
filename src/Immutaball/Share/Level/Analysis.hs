@@ -128,7 +128,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	_sraPathInt32sData     :: Array Int32 Int32,
 	_sraPathInt32sDataGPU  :: GLData,
 
-	-- | Body data: initial translation path and l0 and lc (lumps), 3 ints.
+	-- | Body data: initial translation path and g0 and gc (lumps), 3 ints.
 	--
 	-- When rendering, the renderer can use a uniform to tell the GPU what path
 	-- the body is currently on, and the linear interpolation (0 to 1) for that
@@ -190,6 +190,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- | Array of body indices for each geompass.
 	_sraGeomPassBis    :: Array Int32 Int32,
 	_sraGeomPassBisGPU :: GLData
+	-- TODO: actually look at body's geoms _and_ lump geoms, not just direct body geom.
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis

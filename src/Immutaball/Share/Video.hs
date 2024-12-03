@@ -34,6 +34,7 @@ module Immutaball.Share.Video
 		shaderSSBOGeomPassBisDataLocation,
 		shaderSSBOTransformationLocation,
 		shaderSceneGeomPassIdxLocation,
+		shaderSSBOTexcoordsDoubleDataLocation,
 
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
@@ -196,6 +197,9 @@ shaderSSBOTransformationLocation = fromIntegral (31 :: Integer)
 
 shaderSceneGeomPassIdxLocation :: GLint
 shaderSceneGeomPassIdxLocation = fromIntegral (32 :: Integer)
+
+shaderSSBOTexcoordsDoubleDataLocation :: GLuint
+shaderSSBOTexcoordsDoubleDataLocation = fromIntegral (33 :: Integer)
 
 -- * Shader: low level
 

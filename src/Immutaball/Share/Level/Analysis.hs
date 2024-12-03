@@ -29,7 +29,8 @@ module Immutaball.Share.Level.Analysis
 			sraGeomPassMvRanges, sraGeomPassTexturesRanges,
 			sraGeomPassGisRanges, sraGeomPassMvRangesGPU,
 			sraGeomPassTexturesRangesGPU, sraGeomPassGisRangesGPU,
-			sraGeomPassBis, sraGeomPassBisGPU,
+			sraGeomPassBis, sraGeomPassBisGPU, sraTexcoordsDoubleData,
+			sraTexcoordsDoubleDataGPU,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
 		SolPhysicsAnalysis(..),
 		mkSolAnalysis,
@@ -189,8 +190,14 @@ data SolRenderAnalysis = SolRenderAnalysis {
 
 	-- | Array of body indices for each geompass.
 	_sraGeomPassBis    :: Array Int32 Int32,
-	_sraGeomPassBisGPU :: GLData
-	-- TODO: actually look at body's geoms _and_ lump geoms, not just direct body geom.
+	_sraGeomPassBisGPU :: GLData,
+
+	-- | Array of texcoords concatenating, e.g. s0 t0 s1 t1 s2 t2 … sn tn
+	-- The shader can use the vertex data to look up the ti, and then double it
+	-- to get the base index for the 2 tex coord doubles (x and y for textures
+	-- are often conventionally called s and t).
+	_sraTexcoordsDoubleData    :: Array Int32 Double,
+	_sraTexcoordsDoubleDataGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
@@ -329,7 +336,10 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraGeomPassGisRangesGPU      = gpuEncodeArray (sra^.sraGeomPassGisRanges),
 
 	_sraGeomPassBis    = listArray'_ $ [bi | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, bi <- return (geomPass^.gpBi)],
-	_sraGeomPassBisGPU = gpuEncodeArray (sra^.sraGeomPassBis)
+	_sraGeomPassBisGPU = gpuEncodeArray (sra^.sraGeomPassBis),
+
+	_sraTexcoordsDoubleData    = genArray (0, 2 * (sol^.solTc) - 1) $ \idx -> divMod idx 2 & \(ti, ridx) -> texcRelIdx ti ridx,
+	_sraTexcoordsDoubleDataGPU = gpuEncodeArray (sra^.sraTexcoordsDoubleData)
 }
 	where
 		lcoord3 :: (Integral i, Show i) => i -> Lens' (Vec3 a) a
@@ -342,13 +352,18 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		geomRelIdx gi 0    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsVi)  -- v1 (first vertex of the triangle)
 		geomRelIdx gi 1    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsVi)  -- v2 (second vertex of the triangle)
 		geomRelIdx gi 2    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsVi)  -- v3 (third vertex of the triangle)
-		geomRelIdx gi 3    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsTi)  -- t1 (texture translation)
-		geomRelIdx gi 4    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsTi)  -- t2 (texture translation)
-		geomRelIdx gi 5    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsTi)  -- t3 (texture translation)
-		geomRelIdx gi 6    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsSi)  -- s1 (texture scale)
+		geomRelIdx gi 3    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsTi)  -- t1 (tex coords index)
+		geomRelIdx gi 4    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsTi)  -- t2
+		geomRelIdx gi 5    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsTi)  -- t3
+		geomRelIdx gi 6    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOi)^.offsSi)  -- s1 (side (plane) index)
 		geomRelIdx gi 7    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOj)^.offsSi)  -- s2
 		geomRelIdx gi 8    = ((sol^.solOv) ! (((sol^.solGv) ! gi)^.geomOk)^.offsSi)  -- s3
 		geomRelIdx gi ridx = error $ "Internal error: mkSolRenderAnalysis^.geomRelIdx: unrecognized ridx " ++ show ridx ++ " (gi " ++ show gi ++ ")."
+
+		texcRelIdx :: Int32 -> Int32 -> Double
+		texcRelIdx ti 0    = (((sol^.solTv) ! ti)^.texcU.x2)  -- s (texture x coord)
+		texcRelIdx ti 1    = (((sol^.solTv) ! ti)^.texcU.y2)  -- t (texture y coord)
+		texcRelIdx ti ridx = error $ "Internal error: mkSolRenderAnalysis^.texcRelIdx: unrecognized ridx " ++ show ridx ++ " (ti " ++ show ti ++ ")."
 
 		lumpRelIdx :: Int32 -> Int32 -> Int32
 		lumpRelIdx li 0    = ((sol^.solLv) ! li)^.lumpG0  -- g0

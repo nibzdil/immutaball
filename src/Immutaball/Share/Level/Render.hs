@@ -87,20 +87,23 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	cxtnp12 <- setSSBO -< ((shaderSSBOGeomPassTexturesRangesDataLocation, sra^.sraGeomPassTexturesRangesGPU),    cxtnp11)
 	cxtnp13 <- setSSBO -< ((shaderSSBOGeomPassGisRangesDataLocation,      sra^.sraGeomPassGisRangesGPU),         cxtnp12)
 	cxtnp14 <- setSSBO -< ((shaderSSBOGeomPassBisDataLocation,            sra^.sraGeomPassBisGPU),               cxtnp13)
+	cxtnp15 <- setSSBO -< ((shaderSSBOTexcoordsDoubleDataLocation,        sra^.sraTexcoordsDoubleDataGPU),       cxtnp14)
 
 	-- Upload elems vao and buf.
-	cxtnp15 <- setElemVaoVboEbo -< (sra^.sraGcArrayGPU, True, cxtnp14)
+	cxtnp16 <- setElemVaoVboEbo -< (sra^.sraGcArrayGPU, True, cxtnp15)
 
 	-- Pre-initialize the transformation matrix with the identity.
-	cxtnp16 <- setTransformation -< (identity4, cxtnp15)
+	cxtnp17 <- setTransformation -< (identity4, cxtnp16)
 	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: sra is " ++ show sra) ()
 	let solGeoms = map (^.geomMi) $ (elems (swa^.swaSol.solGv))
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: all sol geom mis is " ++ show solGeoms) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: renderSetupNewLevel: all sol mv is " ++ show (swa^.swaSol.solMv)) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: sol path is " ++ show (swa^.swaMeta.smPath)) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: renderSetupNewLevel: all sol geom mis is " ++ show solGeoms) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: renderSetupNewLevel: all sol mv is " ++ show (swa^.swaSol.solMv)) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3") ()
 
 	-- Return the state context.
 
-	let cxt = cxtnp16
+	let cxt = cxtnp17
 
 	returnA -< cxt
 

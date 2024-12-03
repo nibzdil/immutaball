@@ -195,11 +195,11 @@ shaderSSBOGeomPassBisDataLocation = fromIntegral (30 :: Integer)
 shaderSSBOTransformationLocation :: GLuint
 shaderSSBOTransformationLocation = fromIntegral (31 :: Integer)
 
-shaderSceneGeomPassIdxLocation :: GLint
-shaderSceneGeomPassIdxLocation = fromIntegral (32 :: Integer)
-
 shaderSSBOTexcoordsDoubleDataLocation :: GLuint
-shaderSSBOTexcoordsDoubleDataLocation = fromIntegral (33 :: Integer)
+shaderSSBOTexcoordsDoubleDataLocation = fromIntegral (32 :: Integer)
+
+shaderSceneGeomPassIdxLocation :: GLint
+shaderSceneGeomPassIdxLocation = fromIntegral (33 :: Integer)
 
 -- * Shader: low level
 

@@ -41,6 +41,7 @@ module Immutaball.Share.Level.Analysis
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Arrow
 import Control.Monad
 import Data.Bits
 import Data.Function hiding (id, (.))
@@ -316,21 +317,26 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 					let passLen = arrayLen (transparentGeomPass^.gpTextures) in
 					accumLength : passLen : me (remaining, accumLength + passLen)),
 	_sraGeomPassGisRanges      = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
-		-- TODO: transparent starts at 0!  Should keep adding length.
-		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
-			case opaqueGeomPassesRemaining of
-				[] -> []
-				(opaqueGeomPass:remaining) ->
-					let arrayLen = fromIntegral . rangeSize . bounds in
-					let passLen = arrayLen (opaqueGeomPass^.gpGis) in
-					accumLength : passLen : me (remaining, accumLength + passLen)) ++
-		(flip fix ((sra^.sraTransparentGeoms), 0) $ \me (transparentGeomPassesRemaining, accumLength) ->
-			case transparentGeomPassesRemaining of
-				[] -> []
-				(transparentGeomPass:remaining) ->
-					let arrayLen = fromIntegral . rangeSize . bounds in
-					let passLen = arrayLen (transparentGeomPass^.gpGis) in
-					accumLength : passLen : me (remaining, accumLength + passLen)),
+		-- TODO: transparent starts at 0!  Should keep adding length.  Now other 2 too.
+		let
+			(opaqueGis, opaqueAccumLength) =
+				(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
+					case opaqueGeomPassesRemaining of
+						[] -> ([], accumLength)
+						(opaqueGeomPass:remaining) ->
+							let arrayLen = fromIntegral . rangeSize . bounds in
+							let passLen = arrayLen (opaqueGeomPass^.gpGis) in
+							first (\xs -> accumLength : passLen : xs) $ me (remaining, accumLength + passLen))
+			(transparentGis, _transparentAccumLength) =
+				(flip fix ((sra^.sraTransparentGeoms), opaqueAccumLength) $ \me (transparentGeomPassesRemaining, accumLength) ->
+					case transparentGeomPassesRemaining of
+						[] -> ([], accumLength)
+						(transparentGeomPass:remaining) ->
+							let arrayLen = fromIntegral . rangeSize . bounds in
+							let passLen = arrayLen (transparentGeomPass^.gpGis) in
+							first (\xs -> accumLength : passLen : xs) $ me (remaining, accumLength + passLen))
+		in
+			opaqueGis ++ transparentGis,
 
 	-- | The GPU encoded data.
 	_sraGeomPassMvRangesGPU       = gpuEncodeArray (sra^.sraGeomPassMvRanges),

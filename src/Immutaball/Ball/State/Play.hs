@@ -70,7 +70,7 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 			_mviewTarget = Vec3 0.0 1.0 0.0,
 			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
 		}
-		let (maybeView :: Maybe View) = (level^.solWv) !? 0
+		let (maybeView :: Maybe View) = (lastGameState^.gsSol.solWv) !? 0
 		let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 			_mviewPos    = view_^.viewP,
 			_mviewTarget = view_^.viewQ,

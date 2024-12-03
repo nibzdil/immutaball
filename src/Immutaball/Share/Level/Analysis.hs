@@ -316,6 +316,7 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 					let passLen = arrayLen (transparentGeomPass^.gpTextures) in
 					accumLength : passLen : me (remaining, accumLength + passLen)),
 	_sraGeomPassGisRanges      = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
+		-- TODO: transparent starts at 0!  Should keep adding length.
 		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
 			case opaqueGeomPassesRemaining of
 				[] -> []

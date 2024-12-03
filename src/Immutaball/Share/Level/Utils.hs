@@ -8,6 +8,8 @@
 
 module Immutaball.Share.Level.Utils
 	(
+		postprocessSol,
+		miscProcessSol,
 		transformSol,
 		restoreSolTransformation,
 		restoreSolTransformationSimple,
@@ -21,8 +23,18 @@ import Control.Lens
 
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
+import Immutaball.Share.Utils
 
 -- TODO: implement.
+
+-- | ‘transformSol’ and ‘miscProcessSol’.
+postprocessSol :: Mat4 Double -> Sol -> Sol
+postprocessSol m sol = miscProcessSol . transformSol m $ sol
+
+-- | Replace ‘default’ with ‘mtrl/invisible’ for all mtrl paths.
+miscProcessSol :: Sol -> Sol
+miscProcessSol sol = sol &
+	(solMv %~ fmap (mtrlF %~ (\p -> if' (p /= "default") p "mtrl/invisible")))
 
 -- | Apply a transformation to all positions in a Sol.
 --

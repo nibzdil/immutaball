@@ -39,6 +39,10 @@ import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
 import Immutaball.Share.Wire
 
+-- TODO DEBUG
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
+
 -- TODO:
 mkPlayState :: Maybe LevelSet -> String -> LevelIB -> (Either IBContext IBStateContext -> Immutaball) -> Either IBContext IBStateContext -> Immutaball
 mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . fromImmutaballSingleWith Nothing . openSecondI $ proc (Identity request) -> do
@@ -72,6 +76,9 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 			_mviewTarget = view_^.viewQ,
 			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
 		}
+		-- TODO DEBUG
+		() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: mview is " ++ show (mview)) ()
+		() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: viewMat mview is " ++ show (viewMat mview)) ()
 		isPaint <- returnA -< ((const False) ||| (const True)) . matching (_Paint) $ request
 		cxtnp3 <- returnA ||| renderLevel -< if' (not isPaint) (Left cxtnp2) (Right $ ((mview, (gameState^.gsSwa), gameState), cxtnp2))
 

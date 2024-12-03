@@ -74,7 +74,7 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 			_mviewPos    = view_^.viewP,
 			_mviewTarget = view_^.viewQ,
-			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
+			_mviewFov    = (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov) * (360.0/tau)  -- TODO fix fov.
 		}
 		-- TODO DEBUG
 		() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: mview is " ++ show (mview)) ()

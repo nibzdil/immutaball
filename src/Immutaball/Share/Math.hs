@@ -1018,12 +1018,14 @@ tilt3 = m3to4 . tilt3Simple
 
 -- | 'tilt3' without homogeneous coordinates.
 tilt3Simple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
-tilt3Simple z = Mat3 $ Vec3
+tilt3Simple z_ = Mat3 $ Vec3
 	-- new x axis                 new y axis              new z axis
 	(Vec3 (sqrt$ 1 - sq_ (z^.x3)) 0.0                     (z^.x3))
 	(Vec3 0.0                     (sqrt$ 1 - sq_ (z^.y3)) (z^.y3))
 	(Vec3 (             -(z^.x3)) (             -(z^.y3)) (z^.z3))
-	where sq_ a = a * a
+	where
+		sq_ a = a * a
+		z = v3normalize z_
 
 tilt3Reverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
 tilt3Reverse = m3to4 . tilt3ReverseSimple

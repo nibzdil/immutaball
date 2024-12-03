@@ -74,6 +74,7 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 			_mviewPos    = view_^.viewP,
 			_mviewTarget = view_^.viewQ,
+			-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
 			_mviewFov    = let deg = 2.0 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov) in deg * (360.0/tau)  -- TODO fix fov; ratio is reversed but gets usable results.
 		}
 		-- TODO DEBUG

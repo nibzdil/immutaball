@@ -48,7 +48,7 @@ vertexShader = unlines $
 		"\t float ssboPathDoublesData[];",
 		"};",
 		"layout(std430, binding = 21) buffer layoutSSBOPathInt32sData {",
-		"\tdouble ssboPathInt32sData[];",
+		"\tint ssboPathInt32sData[];",
 		"};",
 		"layout(std430, binding = 22) buffer layoutSSBOBodyData {",
 		"\tint ssboBodyData[];",

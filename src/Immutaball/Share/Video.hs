@@ -205,12 +205,13 @@ shaderSceneGeomPassIdxLocation :: GLint
 shaderSceneGeomPassIdxLocation = fromIntegral (33 :: Integer)
 
 -- | Whether the shaders use doubles or floats for the SSBOs.
-type ShaderDoubleType = Double
+--type ShaderDoubleType = Double
+type ShaderDoubleType = Float
 
 -- | Convert Doubles to the Double type the shaders use for SSBOs.
 toShaderDoubleType :: Double -> ShaderDoubleType
---toShaderDoubleType = realToFrac
-toShaderDoubleType = id
+--toShaderDoubleType = id
+toShaderDoubleType = realToFrac
 
 -- * Shader: low level
 

@@ -287,37 +287,46 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraAllGeomPassGisGPU      = gpuEncodeArray (sra^.sraAllGeomPassGis),
 
 	_sraGeomPassMvRanges       = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
-		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
-			case opaqueGeomPassesRemaining of
-				[] -> []
-				(opaqueGeomPass:remaining) ->
-					let arrayLen = fromIntegral . rangeSize . bounds in
-					let passLen = arrayLen (opaqueGeomPass^.gpMv) in
-					accumLength : passLen : me (remaining, accumLength + passLen)) ++
-		(flip fix ((sra^.sraTransparentGeoms), 0) $ \me (transparentGeomPassesRemaining, accumLength) ->
-			case transparentGeomPassesRemaining of
-				[] -> []
-				(transparentGeomPass:remaining) ->
-					let arrayLen = fromIntegral . rangeSize . bounds in
-					let passLen = arrayLen (transparentGeomPass^.gpMv) in
-					accumLength : passLen : me (remaining, accumLength + passLen)),
+		let
+			(opaqueMv, opaqueAccumLength) =
+				(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
+					case opaqueGeomPassesRemaining of
+						[] -> ([], accumLength)
+						(opaqueGeomPass:remaining) ->
+							let arrayLen = fromIntegral . rangeSize . bounds in
+							let passLen = arrayLen (opaqueGeomPass^.gpMv) in
+							first (\xs -> accumLength : passLen : xs) $ me (remaining, accumLength + passLen))
+			(transparentMv, _transparentAccumLength) =
+				(flip fix ((sra^.sraTransparentGeoms), opaqueAccumLength) $ \me (transparentGeomPassesRemaining, accumLength) ->
+					case transparentGeomPassesRemaining of
+						[] -> ([], accumLength)
+						(transparentGeomPass:remaining) ->
+							let arrayLen = fromIntegral . rangeSize . bounds in
+							let passLen = arrayLen (transparentGeomPass^.gpMv) in
+							first (\xs -> accumLength : passLen : xs) $ me (remaining, accumLength + passLen))
+		in
+			opaqueMv ++ transparentMv,
 	_sraGeomPassTexturesRanges = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
-		(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
-			case opaqueGeomPassesRemaining of
-				[] -> []
-				(opaqueGeomPass:remaining) ->
-					let arrayLen = fromIntegral . rangeSize . bounds in
-					let passLen = arrayLen (opaqueGeomPass^.gpTextures) in
-					accumLength : passLen : me (remaining, accumLength + passLen)) ++
-		(flip fix ((sra^.sraTransparentGeoms), 0) $ \me (transparentGeomPassesRemaining, accumLength) ->
-			case transparentGeomPassesRemaining of
-				[] -> []
-				(transparentGeomPass:remaining) ->
-					let arrayLen = fromIntegral . rangeSize . bounds in
-					let passLen = arrayLen (transparentGeomPass^.gpTextures) in
-					accumLength : passLen : me (remaining, accumLength + passLen)),
+		let
+			(opaqueTextures, opaqueAccumLength) =
+				(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->
+					case opaqueGeomPassesRemaining of
+						[] -> ([], accumLength)
+						(opaqueGeomPass:remaining) ->
+							let arrayLen = fromIntegral . rangeSize . bounds in
+							let passLen = arrayLen (opaqueGeomPass^.gpTextures) in
+							first (\xs -> accumLength : passLen : xs) $ me (remaining, accumLength + passLen))
+			(transparentTextures, _transparentAccumLength) =
+				(flip fix ((sra^.sraTransparentGeoms), opaqueAccumLength) $ \me (transparentGeomPassesRemaining, accumLength) ->
+					case transparentGeomPassesRemaining of
+						[] -> ([], accumLength)
+						(transparentGeomPass:remaining) ->
+							let arrayLen = fromIntegral . rangeSize . bounds in
+							let passLen = arrayLen (transparentGeomPass^.gpTextures) in
+							first (\xs -> accumLength : passLen : xs) $ me (remaining, accumLength + passLen))
+		in
+			opaqueTextures ++ transparentTextures,
 	_sraGeomPassGisRanges      = listArray (0, 2 * fromIntegral (sra^.sraNumGeomPasses) - 1) $
-		-- TODO: transparent starts at 0!  Should keep adding length.  Now other 2 too.
 		let
 			(opaqueGis, opaqueAccumLength) =
 				(flip fix ((sra^.sraOpaqueGeoms), 0) $ \me (opaqueGeomPassesRemaining, accumLength) ->

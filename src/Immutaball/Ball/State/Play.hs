@@ -23,6 +23,7 @@ import Control.Lens
 --import Data.Functor.Identity
 
 --import Control.Lens
+import Data.Array.IArray
 --import qualified Data.Map as M
 import qualified SDL.Raw.Enum as Raw
 
@@ -60,10 +61,15 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		(GameResponse _gameEvents gameState cxtnp2) <- stepGame -< GameRequest request lastGameState cxtnp1
 
 		-- Render the scene.
-		-- TODO: orient properly.
-		let (mview :: MView) = MView {
+		let (mviewDefault :: MView) = MView {
 			_mviewPos    = Vec3 0.0 0.0 0.0,
 			_mviewTarget = Vec3 0.0 1.0 0.0,
+			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
+		}
+		let (maybeView :: Maybe View) = (level^.solWv) !? 0
+		let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
+			_mviewPos    = view_^.viewP,
+			_mviewTarget = view_^.viewQ,
 			_mviewFov    = 2 * (fromIntegral $ cxtnp2^.ibNeverballrc.viewFov)
 		}
 		isPaint <- returnA -< ((const False) ||| (const True)) . matching (_Paint) $ request

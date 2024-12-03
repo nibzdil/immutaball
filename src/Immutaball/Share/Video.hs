@@ -36,6 +36,9 @@ module Immutaball.Share.Video
 		shaderSceneGeomPassIdxLocation,
 		shaderSSBOTexcoordsDoubleDataLocation,
 
+		ShaderDoubleType,
+		toShaderDoubleType,
+
 		-- * Shader: low level
 		ImmutaballShaderHandle(..), ibshVertexShader, ibshFragmentShader,
 			ibshProgram, ibshPipeline,
@@ -200,6 +203,14 @@ shaderSSBOTexcoordsDoubleDataLocation = fromIntegral (32 :: Integer)
 
 shaderSceneGeomPassIdxLocation :: GLint
 shaderSceneGeomPassIdxLocation = fromIntegral (33 :: Integer)
+
+-- | Whether the shaders use doubles or floats for the SSBOs.
+type ShaderDoubleType = Double
+
+-- | Convert Doubles to the Double type the shaders use for SSBOs.
+toShaderDoubleType :: Double -> ShaderDoubleType
+--toShaderDoubleType = realToFrac
+toShaderDoubleType = id
 
 -- * Shader: low level
 

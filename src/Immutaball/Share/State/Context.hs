@@ -965,7 +965,7 @@ setCurrentlyLoadedSOL = proc (identifyingPath, cxtn) -> do
 -- | Row-major.
 setTransformation :: Wire ImmutaballM (Mat4 Double, IBStateContext) IBStateContext
 setTransformation = proc (_mat@(Mat4 rows), cxtn) -> do
-	let matArray = listArray (0, 15) [val | r <- [rows^.x4, rows^.y4, rows^.z4, rows^.w4], val <- [r^.x4, r^.y4, r^.z4, r^.w4]]
+	let matArray = listArray (0, 15) [val' | r <- [rows^.x4, rows^.y4, rows^.z4, rows^.w4], val <- [r^.x4, r^.y4, r^.z4, r^.w4], val' <- return $ toShaderDoubleType val]
 	let matArrayGPU = gpuEncodeArray matArray
 
 	cxtnp1 <- setSSBO -< ((shaderSSBOTransformationLocation, matArrayGPU), cxtn)

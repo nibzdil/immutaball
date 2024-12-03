@@ -57,10 +57,11 @@ import Immutaball.Ball.LevelSets
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
-import Immutaball.Share.Level.Analysis.LowLevel
+--import Immutaball.Share.Level.Analysis.LowLevel
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
+import Immutaball.Share.Video
 
 data SolWithAnalysis = SolWithAnalysis {
 	_swaSol  :: Sol,
@@ -102,7 +103,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- | The basis of 'sraVertexData'.
 	--
 	-- It's an array of the concatenation of x y and z.  *3 index gets the start index, to x.
-	_sraVertexData    :: Array Int32 Double,
+	_sraVertexData    :: Array Int32 ShaderDoubleType,
 	-- | You can use an SSBO to upload the vertex array as a GLData
 	-- (sized bytestring), and then use that SSBO in the shader.
 	--
@@ -124,7 +125,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	_sraLumpDataGPU :: GLData,
 
 	-- | Path doubles: start position x y and z (3 doubles); path ints: next path, smooth flag (2 ints).
-	_sraPathDoublesData    :: Array Int32 Double,
+	_sraPathDoublesData    :: Array Int32 ShaderDoubleType,
 	_sraPathDoublesDataGPU :: GLData,
 	_sraPathInt32sData     :: Array Int32 Int32,
 	_sraPathInt32sDataGPU  :: GLData,
@@ -196,7 +197,7 @@ data SolRenderAnalysis = SolRenderAnalysis {
 	-- The shader can use the vertex data to look up the ti, and then double it
 	-- to get the base index for the 2 tex coord doubles (x and y for textures
 	-- are often conventionally called s and t).
-	_sraTexcoordsDoubleData    :: Array Int32 Double,
+	_sraTexcoordsDoubleData    :: Array Int32 ShaderDoubleType,
 	_sraTexcoordsDoubleDataGPU :: GLData
 }
 	deriving (Eq, Ord, Show)
@@ -248,7 +249,7 @@ mkSolAnalysis cxt sol = fix $ \_sa -> SolAnalysis {
 
 mkSolRenderAnalysis :: IBContext' a -> Sol -> SolRenderAnalysis
 mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
-	_sraVertexData    = genArray (0, 3 * (sol^.solVc) - 1) $ \idx -> divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
+	_sraVertexData    = genArray (0, 3 * (sol^.solVc) - 1) $ \idx -> toShaderDoubleType $ divMod idx 3 & \(vi, coord) -> ((sol^.solVv) ! vi)^.(vertP.lcoord3 coord),
 	_sraVertexDataGPU = gpuEncodeArray (sra^.sraVertexData),
 
 	_sraGeomData    = genArray (0, 9 * (sol^.solGc) - 1) $ \idx -> divMod idx 9 & \(gi, ridx) -> geomRelIdx gi ridx,
@@ -257,7 +258,7 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraLumpData    = genArray (0, 2 * (sol^.solLc) - 1) $ \idx -> divMod idx 2 & \(li, ridx) -> lumpRelIdx li ridx,
 	_sraLumpDataGPU = gpuEncodeArray (sra^.sraLumpData),
 
-	_sraPathDoublesData    = genArray (0, 3 * (sol^.solPc) - 1) $ \idx -> divMod idx 3 & \(pi_, ridx) -> pathDoubleRelIdx pi_ ridx,
+	_sraPathDoublesData    = genArray (0, 3 * (sol^.solPc) - 1) $ \idx -> toShaderDoubleType $ divMod idx 3 & \(pi_, ridx) -> pathDoubleRelIdx pi_ ridx,
 	_sraPathDoublesDataGPU = gpuEncodeArray (sra^.sraPathDoublesData),
 
 	_sraPathInt32sData    = genArray (0, 2 * (sol^.solPc) - 1) $ \idx -> divMod idx 2 & \(pi_, ridx) -> pathInt32RelIdx pi_ ridx,
@@ -338,7 +339,7 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 	_sraGeomPassBis    = listArray'_ $ [bi | geomPasses <- [sra^.sraOpaqueGeoms, sra^.sraTransparentGeoms], geomPass <- geomPasses, bi <- return (geomPass^.gpBi)],
 	_sraGeomPassBisGPU = gpuEncodeArray (sra^.sraGeomPassBis),
 
-	_sraTexcoordsDoubleData    = genArray (0, 2 * (sol^.solTc) - 1) $ \idx -> divMod idx 2 & \(ti, ridx) -> texcRelIdx ti ridx,
+	_sraTexcoordsDoubleData    = genArray (0, 2 * (sol^.solTc) - 1) $ \idx -> toShaderDoubleType $ divMod idx 2 & \(ti, ridx) -> texcRelIdx ti ridx,
 	_sraTexcoordsDoubleDataGPU = gpuEncodeArray (sra^.sraTexcoordsDoubleData)
 }
 	where

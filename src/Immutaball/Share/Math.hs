@@ -1546,6 +1546,6 @@ makeLenses ''MView'
 -- | Translate, then rotate, then fov.
 viewMat :: (Num a, Fractional a, Floating a) => MView' a -> Mat4 a
 viewMat v =
-	translate3 (v^.mviewPos) <>
+	fov        (v^.mviewFov) <>
 	tilt3      ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
-	fov        (v^.mviewFov)
+	translate3 (v^.mviewPos)

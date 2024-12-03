@@ -25,8 +25,6 @@ import Immutaball.Share.Level.Base
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
--- TODO: implement.
-
 -- | ‘transformSol’ and ‘miscProcessSol’.
 postprocessSol :: Mat4 Double -> Sol -> Sol
 postprocessSol m sol = miscProcessSol . transformSol m $ sol

@@ -13,7 +13,8 @@ module Immutaball.Ball.State.Game
 		GameRequest(..), giRequest, giGameState, giIBStateContext, grRequest,
 		GameResponse(..), goGameEvents, goGameState, goIBStateContext, grGameEvents,
 		GameEvent(..), AsGameEvent(..),
-		stepGame
+		stepGame,
+		renderBall
 	) where
 
 import Prelude ()
@@ -63,3 +64,10 @@ stepGame = proc gr -> do
 		_goGameState = (gr^.giGameState),
 		_goIBStateContext = (gr^.giIBStateContext)
 	}
+
+renderBall :: Wire ImmutaballM (GameState, IBStateContext) IBStateContext
+renderBall = proc (_gs, cxtn) -> do
+	-- TODO
+
+	let cxt = cxtn
+	returnA -< cxt

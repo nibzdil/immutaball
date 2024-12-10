@@ -20,6 +20,9 @@ module Immutaball.Share.Video
 		shaderEnableSceneDataLocation,
 		shaderEnableBallDataLocation,
 		shaderBallRadiusLocation,
+		shaderBallPosLocation,
+		shaderBallRotLocation,
+		shaderBallNumTrianglesLocation,
 		shaderSSBOVertexDataLocation,
 		shaderSSBOGeomDataLocation,
 		shaderSSBOLumpDataLocation,
@@ -160,6 +163,15 @@ shaderEnableBallDataLocation = fromIntegral (34 :: Integer)
 
 shaderBallRadiusLocation :: GLint
 shaderBallRadiusLocation = fromIntegral (35 :: Integer)
+
+shaderBallNumTrianglesLocation :: GLint
+shaderBallNumTrianglesLocation = fromIntegral (36 :: Integer)
+
+shaderBallPosLocation :: GLint
+shaderBallPosLocation = fromIntegral (37 :: Integer)
+
+shaderBallRotLocation :: GLint
+shaderBallRotLocation = fromIntegral (38 :: Integer)
 
 shaderSSBOVertexDataLocation :: GLuint
 shaderSSBOVertexDataLocation = fromIntegral (17 :: Integer)

@@ -16,9 +16,10 @@ module Immutaball.Ball.Game
 		isPlaying, isFallOut, isTimesUp, isWin, isPaused, isIntermission,
 			isGameEnded, isGameFailed, isGameRunning,
 		GameState(..), gsGameMode, gsTimeElapsed, gsPaused, gsPreview,
-			gsBallPos, gsBallVel, gsSolRaw, gsSol, gsSolAttributes,
-			gsSolAnalysis, gsSwa, gsCameraAngle, gsCameraMode, gsCoinState,
-			gsSwitchState, gsPathState, gsTeleporterState, gsGoalState,
+			gsBallPos, gsBallVel, gsBallRot, gsBallRadius, gsSolRaw, gsSol,
+			gsSolAttributes, gsSolAnalysis, gsSwa, gsCameraAngle, gsCameraMode,
+			gsCoinState, gsSwitchState, gsPathState, gsTeleporterState,
+			gsGoalState,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
 			csCoinCollectedAt, csCoinsUncollected,
@@ -127,6 +128,10 @@ data GameState = GameState {
 	_gsBallPos :: Vec3 Double,
 	-- | The velocity of the ball.
 	_gsBallVel :: Vec3 Double,
+	-- | The rotation of the ball about each axis.
+	_gsBallRot :: Vec3 Double,
+	-- | The radius of the ball.
+	_gsBallRadius :: Double,
 
 	-- | Directly parsed sol, level file.
 	_gsSolRaw :: LevelIB,
@@ -221,6 +226,8 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 		_gsPreview     = Just 0.0,
 		_gsBallPos     = ((^.ballP) <$> ((gs^.gsSol.solUv) !? 0)) & fromMaybe (Vec3 0.0 0.0 0.0),
 		_gsBallVel     = Vec3 0.0 0.0 0.0,
+		_gsBallRot     = Vec3 0.0 0.0 0.0,
+		_gsBallRadius  = ((^.ballR) <$> ((gs^.gsSol.solUv) !? 0)) & fromMaybe (1.0),
 
 		_gsSolRaw        = sol,
 		_gsSol           = postprocessSol restoreSolTransformation (gs^.gsSolRaw),

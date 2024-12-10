@@ -35,7 +35,7 @@ import Immutaball.Ball.Game
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
-import Immutaball.Share.Level.Base
+import Immutaball.Share.Math
 import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
@@ -97,13 +97,6 @@ renderBall = proc (gs, cxtn) -> do
 	let ballElemVaoVboEbo = fromMaybe (error "Internal error: renderBall expected elem vao and buf to be present, but it's missing!") mballElemVaoVboEbo
 	let (ballElemVao, _ballElemVbo, _ballElemEbo) = ballElemVaoVboEbo
 
-	let uv = (gs^.gsSol.solUv)
-	let u0 = fromMaybe (error "Error: renderBall expected the sol to have a ball, but it's missing!") $ uv !? 0
-	let u0r = u0^.ballR
-
-	let (ballRadius :: Double) = u0r
-	let (ballRadiusf :: GLfloat) = realToFrac ballRadius
-
 	let (renderBallDirect :: GLIOF ()) = do
 		-- Tell the shaders to disable the scene data.
 		GLUniform1i shaderEnableSceneDataLocation falseAsIntegral ()
@@ -111,7 +104,17 @@ renderBall = proc (gs, cxtn) -> do
 		GLUniform1i shaderEnableBallDataLocation trueAsIntegral ()
 
 		-- Tell the shaders the ball radius.
+		let (ballRadiusf :: GLfloat) = realToFrac $ gs^.gsBallRadius
 		GLUniform1f shaderBallRadiusLocation ballRadiusf ()
+		-- Tell the shaders the ball num triangles.
+		let (ballNumTriangles :: Integer) = cxtnp2^.ibContext.ibStaticConfig.x'cfgBallTriangles
+		GLUniform1i shaderBallNumTrianglesLocation (fromIntegral ballNumTriangles) ()
+		-- Tell the shaders the ball position.
+		let (ballPosX :: GLfloat, ballPosY :: GLfloat, ballPosZ :: GLfloat) = (realToFrac $ gs^.gsBallPos.x3, realToFrac $ gs^.gsBallPos.y3, realToFrac $ gs^.gsBallPos.z3)
+		GLUniform3f shaderBallPosLocation ballPosX ballPosY ballPosZ ()
+		-- Tell the shaders the ball rotation.
+		let (ballRotX :: GLfloat, ballRotY :: GLfloat, ballRotZ :: GLfloat) = (realToFrac $ gs^.gsBallRot.x3, realToFrac $ gs^.gsBallRot.y3, realToFrac $ gs^.gsBallRot.z3)
+		GLUniform3f shaderBallRotLocation ballRotX ballRotY ballRotZ ()
 
 		-- Tell the shaders to render the ball's triangles' vertices.  The
 		-- shader for now will just directly draw a basic ball.
@@ -119,7 +122,7 @@ renderBall = proc (gs, cxtn) -> do
 		GLBindVertexArray ballElemVao ()
 
 		-- Use the vao to tell the shader to draw the geometry.
-		let (ballNumTriangles :: Integer) = cxtnp2^.ibContext.ibStaticConfig.x'cfgBallTriangles
+		--let (ballNumTriangles :: Integer) = cxtnp2^.ibContext.ibStaticConfig.x'cfgBallTriangles
 		GLDrawArrays GL_TRIANGLES 0 (fromIntegral (3 * ballNumTriangles)) ()
 
 		-- Unbind the VAO.

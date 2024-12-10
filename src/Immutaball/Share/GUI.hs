@@ -565,6 +565,8 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 	() <- monadic -< sdlGL1' $ do
 		-- Before the paint, disable scene data.
 		GLUniform1i shaderEnableSceneDataLocation falseAsIntegral ()
+		-- Tell the shaders we are not drawing the ball right now.
+		GLUniform1i shaderEnableBallDataLocation falseAsIntegral ()
 
 		-- First set the 16 texture name uniforms, and make them active.
 		forM_ (zip [0..] $ map (^._2._1._2) paintWidgets) $ \(idx, texture) -> do

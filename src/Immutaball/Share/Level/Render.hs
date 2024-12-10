@@ -177,6 +177,8 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 	let (renderGeomPassScene :: GLIOF ()) = do
 		-- Tell the shaders to enable the scene data.
 		GLUniform1i shaderEnableSceneDataLocation trueAsIntegral ()
+		-- Tell the shaders we are not drawing the ball right now.
+		GLUniform1i shaderEnableBallDataLocation falseAsIntegral ()
 
 		-- Tell the shaders what geom pass to use.
 		GLUniform1i (shaderSceneGeomPassIdxLocation) (fromIntegral geomPassIdx) ()

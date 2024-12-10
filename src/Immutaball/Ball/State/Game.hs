@@ -14,7 +14,8 @@ module Immutaball.Ball.State.Game
 		GameResponse(..), goGameEvents, goGameState, goIBStateContext, grGameEvents,
 		GameEvent(..), AsGameEvent(..),
 		stepGame,
-		renderBall
+		renderBall,
+		renderBallSetup
 	) where
 
 import Prelude ()
@@ -26,11 +27,16 @@ import Data.Maybe
 import Control.Arrow
 import Control.Lens
 import Data.Array.IArray
+import Graphics.GL.Compatibility45
+--import Graphics.GL.Core45
+import Graphics.GL.Types
 
 import Immutaball.Ball.Game
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
+import Immutaball.Share.Level.Base
+import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
@@ -84,9 +90,77 @@ renderBall = proc (gs, cxtn) -> do
 	hasInit <- delay False -< returnA True
 	cxtnp1 <- arr snd ||| renderBallSetup -< if' hasInit Left Right (gs, cxtn)
 
-	-- TODO
+	let sdlGL1' = liftIBIO . sdlGL1 (cxtnp1^.ibContext.ibSDLManagerHandle)
 
-	let cxt = cxtnp1
+	-- Render the ball.
+	(mballElemVaoVboEbo, cxtnp2) <- getBallElemVaoVboEbo -< cxtnp1
+	let ballElemVaoVboEbo = fromMaybe (error "Internal error: renderBall expected elem vao and buf to be present, but it's missing!") mballElemVaoVboEbo
+	let (ballElemVao, _ballElemVbo, _ballElemEbo) = ballElemVaoVboEbo
+
+	let uv = (gs^.gsSol.solUv)
+	let u0 = fromMaybe (error "Error: renderBall expected the sol to have a ball, but it's missing!") $ uv !? 0
+	let u0r = u0^.ballR
+
+	let (ballRadius :: Double) = u0r
+	let (ballRadiusf :: GLfloat) = realToFrac ballRadius
+
+	let (renderBallDirect :: GLIOF ()) = do
+		-- Tell the shaders to disable the scene data.
+		GLUniform1i shaderEnableSceneDataLocation falseAsIntegral ()
+		-- Tell the shaders we are drawing the ball right now.
+		GLUniform1i shaderEnableBallDataLocation trueAsIntegral ()
+
+		-- Tell the shaders the ball radius.
+		GLUniform1f shaderBallRadiusLocation ballRadiusf ()
+
+		-- Tell the shaders to render the ball's triangles' vertices.  The
+		-- shader for now will just directly draw a basic ball.
+		-- (TODO: support more than just basic ball.)
+		GLBindVertexArray ballElemVao ()
+
+		-- Use the vao to tell the shader to draw the geometry.
+		let (ballNumTriangles :: Integer) = cxtnp2^.ibContext.ibStaticConfig.x'cfgBallTriangles
+		GLDrawArrays GL_TRIANGLES 0 (fromIntegral (3 * ballNumTriangles)) ()
+
+		-- Unbind the VAO.
+		GLBindVertexArray 0 ()
+	-- We're not using textures for the basic ball; the shader can calculate the color.
+	let (assignTextures :: GLIOF ()) = return ()
+	-- Enable transparency for the ball.
+	let (isAlpha :: Bool) = True
+	let (alphaSetup :: GLIOF ()) = do
+		if isAlpha
+			then do
+				GLEnable GL_BLEND ()
+				GLBlendEquationSeparate GL_FUNC_ADD GL_FUNC_ADD ()
+				GLBlendFuncSeparate GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA GL_ONE GL_ZERO ()
+
+				GLEnable GL_DEPTH_TEST ()
+				GLDepthMask GL_FALSE ()
+			else do
+				GLDisable GL_BLEND ()
+
+				GLEnable GL_DEPTH_TEST ()
+				GLDepthMask GL_TRUE ()
+	let (alphaFinish :: GLIOF ()) = do
+		if isAlpha
+			then do
+				GLDisable GL_BLEND ()
+
+				GLDepthMask GL_TRUE ()
+			else do
+				GLDisable GL_BLEND ()
+
+				GLDepthMask GL_TRUE ()
+
+	let (doRenderBall :: GLIOF ()) = do
+		alphaSetup
+		assignTextures
+		renderBallDirect
+		alphaFinish
+	() <- monadic -< sdlGL1' doRenderBall
+
+	let cxt = cxtnp2
 	returnA -< cxt
 
 renderBallSetup :: Wire ImmutaballM (GameState, IBStateContext) IBStateContext

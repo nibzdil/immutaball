@@ -18,6 +18,8 @@ module Immutaball.Share.Video
 		sdlCreateImmutaballShaderWith,
 
 		shaderEnableSceneDataLocation,
+		shaderEnableBallDataLocation,
+		shaderBallRadiusLocation,
 		shaderSSBOVertexDataLocation,
 		shaderSSBOGeomDataLocation,
 		shaderSSBOLumpDataLocation,
@@ -152,6 +154,12 @@ sdlCreateImmutaballShaderWith sdlMgr to_ =
 
 shaderEnableSceneDataLocation :: GLint
 shaderEnableSceneDataLocation = fromIntegral (16 :: Integer)
+
+shaderEnableBallDataLocation :: GLint
+shaderEnableBallDataLocation = fromIntegral (34 :: Integer)
+
+shaderBallRadiusLocation :: GLint
+shaderBallRadiusLocation = fromIntegral (35 :: Integer)
 
 shaderSSBOVertexDataLocation :: GLuint
 shaderSSBOVertexDataLocation = fromIntegral (17 :: Integer)

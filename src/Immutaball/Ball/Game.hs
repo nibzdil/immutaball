@@ -128,7 +128,7 @@ data GameState = GameState {
 	_gsBallPos :: Vec3 Double,
 	-- | The velocity of the ball.
 	_gsBallVel :: Vec3 Double,
-	-- | The rotation of the ball about each axis.
+	-- | The rotation of the ball about each axis.  Radians.
 	_gsBallRot :: Vec3 Double,
 	-- | The radius of the ball.
 	_gsBallRadius :: Double,

@@ -97,6 +97,11 @@ renderBall = proc (gs, cxtn) -> do
 	let ballElemVaoVboEbo = fromMaybe (error "Internal error: renderBall expected elem vao and buf to be present, but it's missing!") mballElemVaoVboEbo
 	let (ballElemVao, _ballElemVbo, _ballElemEbo) = ballElemVaoVboEbo
 
+	-- TODO: set the transformation matrix explicitly.  For now we take
+	-- advantage of the fact that the transformation matrix hasn't been updated
+	-- since the scene was drawn (before the ball was), so just conveniently
+	-- implicitly re-use the transformation matrix in the meantime.
+
 	let (renderBallDirect :: GLIOF ()) = do
 		-- Tell the shaders to disable the scene data.
 		GLUniform1i shaderEnableSceneDataLocation falseAsIntegral ()

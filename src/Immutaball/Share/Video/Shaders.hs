@@ -213,6 +213,7 @@ vertexShader = unlines $
 		"\tint divisionsInOneCol = divisionsInOneRow;",
 		"\tint trianglesInOneCol = trianglesInOneRow;",
 		"",
+		"\t// 4 points for 3 triangles: inner p0, inner p1, outer p0, outer p1.",
 		"\tint whichPoint = whichVert + whichTriPart;",
 		"\tbool p0 = whichPoint == 0;",
 		"\tbool p1 = whichPoint == 1;",

@@ -1544,6 +1544,7 @@ data MView' a = MView {
 makeLenses ''MView'
 
 -- | Translate, then rotate, then fov.
+-- TODO: I think camera to target for tilt is y axis, not z axis.
 viewMat :: (Num a, Fractional a, Floating a) => MView' a -> Mat4 a
 viewMat v =
 	fov        (v^.mviewFov) <>

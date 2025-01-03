@@ -1,3 +1,12 @@
+# Work in progress
+
+So far there is only basic functionality, although much of the skeleton is in
+place.  There is only a basic GUI, and the renderer has barely been started,
+and the gameplay has not been implemented, except for representations of game
+state.  Once the renderer has more full basic functionality, then it will be
+more convenient to implement at least basic gameplay functionality.  Audio has
+not been implemented yet.
+
 # Immutaball
 
 Immutaball is a rewrite of Neverball in Haskell.  It is useful for gaming and

@@ -16,7 +16,7 @@ module Immutaball.Share.Config
 			immutaballFontSize, sdlManagerStaticConfig, glManagerStaticConfig,
 			x'cfgUseExistingSDLManager, x'cfgUseExistingGLManager,
 			x'cfgMaxPassTextures, x'cfgPrecacheMtrls, x'cfgPrecacheMisc,
-			x'cfgBallTriangles,
+			x'cfgBallTriangles, x'cfgDebugFreeCamera,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -105,7 +105,9 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- when setting up allocated textures.
 	_x'cfgPrecacheMisc :: Bool,
 
-	_x'cfgBallTriangles :: Integer
+	_x'cfgBallTriangles :: Integer,
+
+	_x'cfgDebugFreeCamera :: Bool
 }
 makeLenses ''StaticConfig'
 
@@ -140,7 +142,9 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgPrecacheMtrls = True,
 	_x'cfgPrecacheMisc  = True,
 
-	_x'cfgBallTriangles = 8 * 64  -- 512
+	_x'cfgBallTriangles = 8 * 64,  -- 512
+
+	_x'cfgDebugFreeCamera = False
 }
 
 type Neverballrc = Config

@@ -12,10 +12,14 @@
 module Immutaball.Share.Math
 	(
 		Vec2(..), x2, y2,
+		rv2,
 		pv2,
 		sv2,
 		minusv2,
 		d2,
+		co2,
+		fr2,
+		cm2,
 		r2,
 		t2,
 		Vec3(..), x3, y3, z3,
@@ -23,11 +27,18 @@ module Immutaball.Share.Math
 		sv3,
 		minusv3,
 		d3,
+		co3,
+		fr3,
+		cm3,
 		Vec4(..), x4, y4, z4, w4,
+		rv4,
 		pv4,
 		sv4,
 		minusv4,
 		d4,
+		co4,
+		fr4,
+		cm4,
 		Mat3(..), getMat3,
 		Mat4(..), getMat4,
 		r0_3,
@@ -156,9 +167,6 @@ module Immutaball.Share.Math
 		fov,
 		fovPure,
 
-		rv2,
-		rv3,
-		rv4,
 		zv2,
 		zv3,
 		zv4,
@@ -196,6 +204,18 @@ instance Functor Vec2 where
 
 instance Field1 (Vec2 a) (Vec2 a) a a where _1 = x2
 instance Field2 (Vec2 a) (Vec2 a) a a where _2 = y2
+
+-- | Component-wise multiplication and abs instance.
+instance (Num a) => Num (Vec2 a) where
+	(+) = pv2
+	(-) = minusv2
+	fromInteger = rv2 . fromInteger
+	abs = fmap abs
+	(*) = cm2
+	signum = fmap signum
+
+rv2 :: a -> Vec2 a
+rv2 z = Vec2 z z
 
 pv2 :: (Num a) => Vec2 a -> Vec2 a -> Vec2 a
 pv2 (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax + bx) (ay + by)
@@ -241,6 +261,18 @@ t2 = lens getter (flip setter)
 d2 :: (Num a) => Vec2 a -> Vec2 a -> a
 d2 (Vec2 ax ay) (Vec2 bx by) = ax*bx + ay*by
 
+-- | Component-wise binary operation.
+co2 :: (a -> a -> a) -> Vec2 a -> Vec2 a -> Vec2 a
+co2 (+*) (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax +* bx) (ay +* by)
+
+-- | Component-wise foldr.
+fr2 :: (a -> acc -> acc) -> acc -> Vec2 a -> acc
+fr2 f z (Vec2 x y) = foldr f z [x, y]
+
+-- | Component-wise multiplication.
+cm2 :: (Num a) => Vec2 a -> Vec2 a -> Vec2 a
+cm2 = co2 (*)
+
 data Vec3 a = Vec3 {
 	_x3 :: a,
 	_y3 :: a,
@@ -257,6 +289,18 @@ instance Field1 (Vec3 a) (Vec3 a) a a where _1 = x3
 instance Field2 (Vec3 a) (Vec3 a) a a where _2 = y3
 instance Field3 (Vec3 a) (Vec3 a) a a where _3 = z3
 
+-- | Component-wise multiplication and abs instance.
+instance (Num a) => Num (Vec3 a) where
+	(+) = pv3
+	(-) = minusv3
+	fromInteger = rv3 . fromInteger
+	abs = fmap abs
+	(*) = cm3
+	signum = fmap signum
+
+rv3 :: a -> Vec3 a
+rv3 z = Vec3 z z z
+
 pv3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
 pv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax + bx) (ay + by) (az + bz)
 
@@ -268,6 +312,18 @@ minusv3 (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax - bx) (ay - by) (az - bz)
 
 d3 :: (Num a) => Vec3 a -> Vec3 a -> a
 d3 (Vec3 ax ay az) (Vec3 bx by bz) = ax*bx + ay*by + az*bz
+
+-- | Component-wise binary operation.
+co3 :: (a -> a -> a) -> Vec3 a -> Vec3 a -> Vec3 a
+co3 (+*) (Vec3 ax ay az) (Vec3 bx by bz) = Vec3 (ax +* bx) (ay +* by) (az +* bz)
+
+-- | Component-wise foldr.
+fr3 :: (a -> acc -> acc) -> acc -> Vec3 a -> acc
+fr3 f z0 (Vec3 x y z) = foldr f z0 [x, y, z]
+
+-- | Component-wise multiplication.
+cm3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
+cm3 = co3 (*)
 
 data Vec4 a = Vec4 {
 	_x4 :: a,
@@ -287,6 +343,18 @@ instance Field2 (Vec4 a) (Vec4 a) a a where _2 = y4
 instance Field3 (Vec4 a) (Vec4 a) a a where _3 = z4
 instance Field4 (Vec4 a) (Vec4 a) a a where _4 = w4
 
+-- | Component-wise multiplication and abs instance.
+instance (Num a) => Num (Vec4 a) where
+	(+) = pv4
+	(-) = minusv4
+	fromInteger = rv4 . fromInteger
+	abs = fmap abs
+	(*) = cm4
+	signum = fmap signum
+
+rv4 :: a -> Vec4 a
+rv4 z = Vec4 z z z z
+
 pv4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
 pv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax + bx) (ay + by) (az + bz) (aw + bw)
 
@@ -298,6 +366,18 @@ minusv4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax - bx) (ay - by) (az - b
 
 d4 :: (Num a) => Vec4 a -> Vec4 a -> a
 d4 (Vec4 ax ay az aw) (Vec4 bx by bz bw) = ax*bx + ay*by + az*bz + aw*bw
+
+-- | Component-wise binary operation.
+co4 :: (a -> a -> a) -> Vec4 a -> Vec4 a -> Vec4 a
+co4 (+*) (Vec4 ax ay az aw) (Vec4 bx by bz bw) = Vec4 (ax +* bx) (ay +* by) (az +* bz) (aw +* bw)
+
+-- | Component-wise foldr.
+fr4 :: (a -> acc -> acc) -> acc -> Vec4 a -> acc
+fr4 f z0 (Vec4 x y z w) = foldr f z0 [x, y, z, w]
+
+-- | Component-wise multiplication.
+cm4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
+cm4 = co4 (*)
 
 -- | Row-major, like C.
 newtype Mat3 a = Mat3 { _getMat3 :: Vec3 (Vec3 a) }
@@ -1493,15 +1573,6 @@ fov t = perspective $ Vec3 0.0 0.0 (1 / tan (t/2))
 
 fovPure :: (Fractional a, Floating a) => a -> Mat4 a
 fovPure t = perspectivePure $ Vec3 0.0 0.0 (1 / tan (t/2))
-
-rv2 :: a -> Vec2 a
-rv2 z = Vec2 z z
-
-rv3 :: a -> Vec3 a
-rv3 z = Vec3 z z z
-
-rv4 :: a -> Vec4 a
-rv4 z = Vec4 z z z z
 
 zv2 :: (Fractional a) => Vec2 a
 zv2 = rv2 0.0

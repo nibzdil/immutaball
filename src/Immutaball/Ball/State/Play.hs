@@ -73,6 +73,8 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let (maybeView :: Maybe View) = (lastGameState^.gsSol.solWv) !? 0
 		-- TODO: debug free camera
 		let (debugViewPos, debugViewTarget) = (zv3, zv3)
+		--debugViewPos <- integrate 0 -< 
+		--let debugViewTarget = zv3  -- TODO: move mouse to aim
 		let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 			_mviewPos    = (view_^.viewP) `pv3` debugViewPos,
 			_mviewTarget = (view_^.viewQ) `pv3` debugViewTarget,

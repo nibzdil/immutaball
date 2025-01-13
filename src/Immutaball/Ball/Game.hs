@@ -304,7 +304,7 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 }
 	where
 		theView :: MView
-		theView = 
+		theView =
 			let (mviewDefault :: MView) = MView {
 				_mviewPos    = Vec3 0.0 0.0 0.0,
 				_mviewTarget = Vec3 0.0 1.0 0.0,

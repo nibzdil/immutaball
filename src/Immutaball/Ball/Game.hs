@@ -19,7 +19,8 @@ module Immutaball.Ball.Game
 			gsBallPos, gsBallVel, gsBallRot, gsBallRadius, gsSolRaw, gsSol,
 			gsSolAttributes, gsSolAnalysis, gsSwa, gsCameraAngle, gsCameraMode,
 			gsCoinState, gsSwitchState, gsPathState, gsTeleporterState,
-			gsGoalState, gsDebugState, {- gsAnalysis, -}
+			gsGoalState, gsGravityState, gsDebugState, gsInputState,
+			{- gsAnalysis, -}
 		GameStateAnalysis(..), gsaView,
 		mkGameStateAnalysis,
 		initialGameState,
@@ -29,6 +30,7 @@ module Immutaball.Ball.Game
 		PathState(..), psPathsTimeElapsed, psPathsGoing,
 		TeleporterState(..), jsBallInAnyTeleporter, jsBallBeingTeleported,
 		GoalState(..), zsCoinUnlocked, zsStartUnlocked, zsUnlocked,
+		GravityState(..), gravsTiltRightRadians, gravsTiltForwardRadians,
 		GameDebugState(..), gdsCameraDebugOn, gdsCameraPosOffset,
 			gdsCameraAimRightRadians, gdsCameraAimUpRadians,
 		GameInputState(..), ginsRightOn, ginsLeftOn, ginsForwardOn, ginsBackwardOn, ginsVertUpOn, ginsVertDownOn
@@ -163,6 +165,8 @@ data GameState = GameState {
 	_gsTeleporterState :: TeleporterState,
 	_gsGoalState :: GoalState,
 
+	_gsGravityState :: GravityState,
+
 	_gsDebugState :: GameDebugState,
 
 	_gsInputState :: GameInputState
@@ -232,6 +236,13 @@ data GoalState = GoalState {
 	deriving (Eq, Ord, Show)
 --makeLenses ''GoalState
 
+data GravityState = GravityState {
+	_gravsTiltRightRadians   :: Double,
+	_gravsTiltForwardRadians :: Double
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''GravityState
+
 data GameDebugState = GameDebugState {
 	_gdsCameraDebugOn  :: Bool,
 	_gdsCameraPosOffset :: Vec3 Double,
@@ -260,6 +271,7 @@ makeLenses ''SwitchState
 makeLenses ''PathState
 makeLenses ''TeleporterState
 makeLenses ''GoalState
+makeLenses ''GravityState
 makeLenses ''GameDebugState
 makeLenses ''GameInputState
 
@@ -322,6 +334,11 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 			_zsCoinUnlocked  = 0 >= (gs^.gsSolAttributes.saGoal),
 			_zsStartUnlocked = (not (neverballrc^.lockGoals)) && hasLevelBeenCompleted,
 			_zsUnlocked      = (gs^.gsGoalState.zsCoinUnlocked) || (gs^.gsGoalState.zsStartUnlocked)
+		},
+
+		_gsGravityState = GravityState {
+			_gravsTiltRightRadians   = 0.0,
+			_gravsTiltForwardRadians = 0.0
 		},
 
 		_gsDebugState = GameDebugState {

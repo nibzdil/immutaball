@@ -10,6 +10,7 @@
 module Immutaball.Ball.State.Play
 	(
 		mkPlayState,
+		debugFreeCameraVector,
 		PlayWidget(..), AsPlayWidget(..),
 		playGui
 	) where
@@ -50,19 +51,28 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
 
-		-- GUI.
-		(_guiResponse, cxtnp1) <- mkGUI playGui -< (GUIDrive request, cxtn)
-		let response = ContinueResponse
-
-		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
-		let isBack = isEsc
-
 		-- Set up and step the game.
 		-- TODO: implement hasLevelBeenCompleted bool.
 		let theInitialGameState = initialGameState (cxtnp1^.ibContext) (cxtnp1^.ibNeverballrc) False mlevelSet levelPath level
 		--lastGameState <- delay theInitialGameState -< gameState
 		lastGameState <- delayWith -< (gameState, theInitialGameState)
 		(GameResponse _gameEvents gameState cxtnp2) <- stepGame -< GameRequest request lastGameState cxtnp1
+
+		-- Handle input.
+		-- TODO
+
+		-- On clock, handle extra processing, like debug camera view.
+		-- TODO
+
+		-- On paint, render the scene.
+		-- TODO
+
+		-- GUI.  Positioned after scene rendering.
+		(_guiResponse, cxtnp1) <- mkGUI playGui -< (GUIDrive request, cxtn)
+		let response = ContinueResponse
+
+		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
+		let isBack = isEsc
 
 		-- Render the scene.
 		let (mviewDefault :: MView) = MView {
@@ -73,7 +83,9 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let (maybeView :: Maybe View) = (lastGameState^.gsSol.solWv) !? 0
 		-- TODO: debug free camera
 		let (debugViewPos, debugViewTarget) = (zv3, zv3)
-		--debugViewPos <- integrate 0 -< 
+		--dt <- differentiate -< t
+		--dp <- arr (((dt * 0.03) *) <$>) <<< debugFreeCameraVector -< request
+		--debugViewPos <- integrate 0 -< dp
 		--let debugViewTarget = zv3  -- TODO: move mouse to aim
 		let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 			_mviewPos    = (view_^.viewP) `pv3` debugViewPos,
@@ -95,6 +107,11 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 	returnA -< (Identity response, switchTo)
 
 	where cxt0 = either initialStateCxt id baseCxt0
+
+-- | TODO
+debugFreeCameraVector :: Wire ImmutaballM Request (Vec3 Double)
+debugFreeCameraVector = proc _request -> do
+	returnA -< zv3
 
 data PlayWidget =
 	  PlayRoot

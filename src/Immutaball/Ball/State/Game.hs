@@ -17,7 +17,9 @@ module Immutaball.Ball.State.Game
 		renderBall,
 		renderBallSetup,
 		stepGameInput,
-		stepGameClock
+		stepGameInputMovement,
+		stepGameClock,
+		stepGameClockDebugFreeCamera
 	) where
 
 import Prelude ()
@@ -259,5 +261,38 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 
 -- | Step a frame of the game state on clock.
 stepGameClock :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
-stepGameClock = proc (gsn, _dt, cxtn) -> do
-	returnA -< (gsn, cxtn)
+stepGameClock = proc (gsn, dt, cxtn) -> do
+	-- Step debug camera.
+	(gsnp1, cxtnp1) <- returnA ||| stepGameClockDebugFreeCamera -<
+		if' (not $ gsn^.gsDebugState.gdsCameraDebugOn)
+			(Left  (gsn, cxtn))
+			(Right (gsn, dt, cxtn))
+
+	-- Identity output.
+	let gs = gsnp1
+	let cxt = cxtn
+
+	-- Return.
+	returnA -< (gs, cxt)
+
+stepGameClockDebugFreeCamera :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
+stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
+	-- FRP architecture note: we have access to both 1) local state (FRP) and
+	-- 2) the  relatively global game state.  If we wanted, we could use FRP to
+	-- make a wire (time-varying value) that outputs the free camera position
+	-- offset value, and just unconditionally set the game state, disregarding
+	-- its input.  We could also instead not use FRP but just calculate the
+	-- next state.
+	--
+	-- To demonstrate capabilities, I instead take a third, hybrid approach:
+	-- both.  Use FRP to calculate a diff locally, and then apply that diff to
+	-- the state (relatively) globally.
+
+	-- TODO: step free camera.
+
+	-- Identity output.
+	let gs = gsn
+	let cxt = cxtn
+
+	-- Return.
+	returnA -< (gs, cxt)

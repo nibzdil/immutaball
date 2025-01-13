@@ -30,7 +30,8 @@ module Immutaball.Ball.Game
 		TeleporterState(..), jsBallInAnyTeleporter, jsBallBeingTeleported,
 		GoalState(..), zsCoinUnlocked, zsStartUnlocked, zsUnlocked,
 		GameDebugState(..), gdsCameraDebugOn, gdsCameraPosOffset,
-			gdsCameraAimRightRadians, gdsCameraAimUpRadians
+			gdsCameraAimRightRadians, gdsCameraAimUpRadians,
+		GameInputState(..), ginsRightOn, ginsLeftOn, ginsForwardOn, ginsBackwardOn, ginsVertUpOn, ginsVertDownOn
 	) where
 
 import Prelude ()
@@ -162,7 +163,9 @@ data GameState = GameState {
 	_gsTeleporterState :: TeleporterState,
 	_gsGoalState :: GoalState,
 
-	_gsDebugState :: GameDebugState
+	_gsDebugState :: GameDebugState,
+
+	_gsInputState :: GameInputState
 
 	{-
 	-- | Composite data e.g. for the play state to know where the camera is,
@@ -238,6 +241,18 @@ data GameDebugState = GameDebugState {
 	deriving (Eq, Ord, Show)
 --makeLenses ''GameDebugState
 
+-- | For input with greater preservation.
+data GameInputState = GameInputState {
+	_ginsRightOn    :: Bool,  -- Right arrow pressed?
+	_ginsLeftOn     :: Bool,  -- Left arrow pressed?
+	_ginsForwardOn  :: Bool,  -- Up arrow?
+	_ginsBackwardOn :: Bool,  -- Down arrow?
+	_ginsVertUpOn   :: Bool,  -- Spacebar?  (Not used in regular gameplay.)
+	_ginsVertDownOn :: Bool   -- ‘c’ for qwerty crouch to move down?  (Not used in regular gameplay.)
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''GameDebugState
+
 makeLenses ''GameState
 makeLenses ''GameStateAnalysis
 makeLenses ''CoinState
@@ -246,6 +261,7 @@ makeLenses ''PathState
 makeLenses ''TeleporterState
 makeLenses ''GoalState
 makeLenses ''GameDebugState
+makeLenses ''GameInputState
 
 initialGameState :: IBContext' a -> Neverballrc -> Bool -> Maybe LevelSet -> String -> LevelIB -> GameState
 initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = fix $ \gs ->
@@ -313,6 +329,15 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 			_gdsCameraPosOffset       = zv3,
 			_gdsCameraAimRightRadians = 0.0,
 			_gdsCameraAimUpRadians    = 0.0
+		},
+
+		_gsInputState = GameInputState {
+			_ginsRightOn    = False,
+			_ginsLeftOn     = False,
+			_ginsForwardOn  = False,
+			_ginsBackwardOn = False,
+			_ginsVertUpOn   = False,
+			_ginsVertDownOn = False
 		}
 
 		{-

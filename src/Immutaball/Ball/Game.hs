@@ -29,8 +29,8 @@ module Immutaball.Ball.Game
 		PathState(..), psPathsTimeElapsed, psPathsGoing,
 		TeleporterState(..), jsBallInAnyTeleporter, jsBallBeingTeleported,
 		GoalState(..), zsCoinUnlocked, zsStartUnlocked, zsUnlocked,
-		GameDebugState(..), gdsCameraPosOffset, gdsCameraAimRightRadians,
-			gdsCameraAimUpRadians
+		GameDebugState(..), gdsCameraDebugOn, gdsCameraPosOffset,
+			gdsCameraAimRightRadians, gdsCameraAimUpRadians
 	) where
 
 import Prelude ()
@@ -55,6 +55,7 @@ import Immutaball.Share.Level.Base
 import Immutaball.Share.Level.Utils
 import Immutaball.Share.Math
 import Immutaball.Share.State.Context
+import Immutaball.Share.Utils
 
 data ChallengeModeState = ChallengeModeState {
 	_cmsTotalCoins  :: Integer,
@@ -229,6 +230,7 @@ data GoalState = GoalState {
 --makeLenses ''GoalState
 
 data GameDebugState = GameDebugState {
+	_gdsCameraDebugOn  :: Bool,
 	_gdsCameraPosOffset :: Vec3 Double,
 	_gdsCameraAimRightRadians :: Double,
 	_gdsCameraAimUpRadians :: Double
@@ -307,6 +309,7 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 		},
 
 		_gsDebugState = GameDebugState {
+			_gdsCameraDebugOn         = False,
 			_gdsCameraPosOffset       = zv3,
 			_gdsCameraAimRightRadians = 0.0,
 			_gdsCameraAimUpRadians    = 0.0
@@ -330,12 +333,9 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 				_mviewFov    = 2 * (fromIntegral $ cxt^.ibNeverballrc.viewFov)
 			} in
 			let (maybeView :: Maybe View) = (gs^.gsSol.solWv) !? 0 in
-			-- TODO: debug free camera
-			let (debugViewPos, debugViewTarget) = (zv3, zv3) in
-			--dt <- differentiate -< t
-			--dp <- arr (((dt * 0.03) *) <$>) <<< debugFreeCameraVector -< request
-			--debugViewPos <- integrate 0 -< dp
-			--let debugViewTarget = zv3  -- TODO: move mouse to aim
+			-- TODO: move mouse to aim; just use zv3 for now on the right side (no aiming supported yet).
+			let gds = gs^.gsDebugState in
+			let (debugViewPos, debugViewTarget) = if' (not (gds^.gdsCameraDebugOn)) (zv3, zv3) $ (gds^.gdsCameraPosOffset, zv3) in
 			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 				_mviewPos    = (view_^.viewP) `pv3` debugViewPos,
 				_mviewTarget = (view_^.viewQ) `pv3` debugViewTarget,

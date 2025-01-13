@@ -59,17 +59,18 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		-- Render the scene.
 		let (mview :: MView) = gameStateAnalysis^.gsaView
 		isPaint <- returnA -< ((const False) ||| (const True)) . matching (_Paint) $ request
-		cxtnp2 <- returnA ||| renderLevel -< if' (not isPaint) (Left cxtnp1) (Right $ ((mview, (gameState^.gsSwa), gameState), cxtnp2))
+		cxtnp2 <- returnA ||| renderLevel -< if' (not isPaint) (Left cxtnp1) (Right $ ((mview, (gameState^.gsSwa), gameState), cxtnp1))
+		cxtnp3 <- returnA ||| renderBall -< if' (not isPaint) (Left cxtnp1) (Right $ (gameState, cxtnp2))
 
 		-- GUI.  Positioned after scene rendering.
-		(_guiResponse, cxtnp3) <- mkGUI playGui -< (GUIDrive request, cxtnp2)
+		(_guiResponse, cxtnp4) <- mkGUI playGui -< (GUIDrive request, cxtnp3)
 		let response = ContinueResponse
 
 		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
 		let isBack = isEsc
 
-		() <- finishFrame -< (request, cxtnp3)
-		cxt <- returnA -< cxtnp3
+		() <- finishFrame -< (request, cxtnp4)
+		cxt <- returnA -< cxtnp4
 
 	-- Switch on Back button.
 	let switchTo = if' (not isBack) Nothing . Just . openSecondI $ mkBack (Right cxt)

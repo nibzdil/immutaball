@@ -15,7 +15,9 @@ module Immutaball.Ball.State.Game
 		GameEvent(..), AsGameEvent(..),
 		stepGame,
 		renderBall,
-		renderBallSetup
+		renderBallSetup,
+		stepGameInput,
+		stepGameClock
 	) where
 
 import Prelude ()
@@ -71,18 +73,31 @@ grGameEvents :: Lens' GameResponse [GameEvent]
 grGameEvents = goGameEvents
 
 -- | Step the game.
--- TODO: implement.
+-- TODO: finish implementing.
 stepGame :: Wire ImmutaballM GameRequest GameResponse
 stepGame = proc gr -> do
+	let request = gr^.giRequest
+	let cxtn = gr^.giIBStateContext
 
-	-- TODO step game.
+	-- Get starting game state.
+	let (gsn :: GameState) = (gr^.giGameState)
 
-	-- TODO render ball.
+	-- Handle input (in request).  (With many possibly input requests, stepGameInput itself handles delegation of this.)
+	(gsnp1, cxtnp1) <- stepGameInput -< (gsn, request, cxtn)
 
+	-- Step the game on clock request.  (Only one request is clock; handle it here it.)
+	mdt <- returnA -< const Nothing ||| Just $ matching _Clock request
+	(gsnp2, cxtnp2) <- returnA ||| stepGameClock -< maybe (Left (gsnp1, cxtnp1)) (\dt -> Right (gsn, dt, cxtnp1)) $ mdt
+
+	-- Identify new game state.
+	let (gs :: GameState) = gsnp2
+	let (cxt :: IBStateContext) = cxtnp2
+
+	-- Return results.
 	returnA -< GameResponse {
-		_goGameEvents = [],
-		_goGameState = (gr^.giGameState),
-		_goIBStateContext = (gr^.giIBStateContext)
+		_goGameEvents = [],  -- TODO: detect new game mode.
+		_goGameState = gs,
+		_goIBStateContext = cxt
 	}
 
 renderBall :: Wire ImmutaballM (GameState, IBStateContext) IBStateContext
@@ -194,3 +209,13 @@ renderBallSetup = proc (_gs0, cxtn) -> do
 
 	let cxt = cxtnp2
 	returnA -< cxt
+
+-- | Handle input.
+stepGameInput :: Wire ImmutaballM (GameState, Request, IBStateContext) (GameState, IBStateContext)
+stepGameInput = proc (gsn, _request, cxtn) -> do
+	returnA -< (gsn, cxtn)
+
+-- | Step a frame of the game state on clock.
+stepGameClock :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
+stepGameClock = proc (gsn, _dt, cxtn) -> do
+	returnA -< (gsn, cxtn)

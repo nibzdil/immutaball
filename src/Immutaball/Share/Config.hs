@@ -16,7 +16,8 @@ module Immutaball.Share.Config
 			immutaballFontSize, sdlManagerStaticConfig, glManagerStaticConfig,
 			x'cfgUseExistingSDLManager, x'cfgUseExistingGLManager,
 			x'cfgMaxPassTextures, x'cfgPrecacheMtrls, x'cfgPrecacheMisc,
-			x'cfgBallTriangles, x'cfgDebugFreeCamera,
+			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
+			x'cfgVertDownKey,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -46,6 +47,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Lens
+import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.GLManager
@@ -107,7 +109,12 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 
 	_x'cfgBallTriangles :: Integer,
 
-	_x'cfgDebugFreeCamera :: Bool
+	-- | Whether to allow entering debug free camera mode.
+	_x'cfgDebugFreeCamera :: Bool,
+
+	-- | Debug free camera: move vertically up and down (e.g. spacebar and c as in jump and crouch).
+	_x'cfgVertUpKey :: Int,
+	_x'cfgVertDownKey :: Int
 }
 makeLenses ''StaticConfig'
 
@@ -144,7 +151,10 @@ defaultStaticConfig = StaticConfig {
 
 	_x'cfgBallTriangles = 8 * 64,  -- 512
 
-	_x'cfgDebugFreeCamera = False
+	_x'cfgDebugFreeCamera = False,
+
+	_x'cfgVertUpKey   = fromIntegral Raw.SDLK_SPACE,
+	_x'cfgVertDownKey = fromIntegral Raw.SDLK_c
 }
 
 type Neverballrc = Config

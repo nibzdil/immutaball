@@ -212,8 +212,39 @@ renderBallSetup = proc (_gs0, cxtn) -> do
 
 -- | Handle input.
 stepGameInput :: Wire ImmutaballM (GameState, Request, IBStateContext) (GameState, IBStateContext)
-stepGameInput = proc (gsn, _request, cxtn) -> do
-	returnA -< (gsn, cxtn)
+stepGameInput = proc (gsn, request, cxtn) -> do
+
+	-- Handle forward, right, etc., movement.
+	(gsnp1, cxtnp1) <- stepGameInputMovement -< (gsn, request, cxtn)
+
+	-- Identify output.
+	let cxt = cxtnp1
+	let gs = gsnp1
+
+	-- Return.
+	returnA -< (gs, cxt)
+
+stepGameInputMovement :: Wire ImmutaballM (GameState, Request, IBStateContext) (GameState, IBStateContext)
+stepGameInputMovement = proc (gsn, request, cxtn) -> do
+	let update = case request of
+		(Keybd char down) ->
+			if' (char == cxtn^.ibNeverballrc.keyForward)                  (gsInputState.ginsForwardOn  .~ down) .
+			if' (char == cxtn^.ibNeverballrc.keyBackward)                 (gsInputState.ginsBackwardOn .~ down) .
+			if' (char == cxtn^.ibNeverballrc.keyLeft)                     (gsInputState.ginsLeftOn     .~ down) .
+			if' (char == cxtn^.ibNeverballrc.keyRight)                    (gsInputState.ginsRightOn    .~ down) .
+			if' (char == cxtn^.ibContext.ibStaticConfig.x'cfgVertUpKey)   (gsInputState.ginsVertUpOn   .~ down) .
+			if' (char == cxtn^.ibContext.ibStaticConfig.x'cfgVertDownKey) (gsInputState.ginsVertDownOn .~ down) $
+			id
+		_ -> id
+
+	let gsnp1 = gsn & update
+
+	-- Identity output.
+	let gs = gsnp1
+	let cxt = cxtn
+
+	-- Return.
+	returnA -< (gs, cxt)
 
 -- | Step a frame of the game state on clock.
 stepGameClock :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)

@@ -21,7 +21,7 @@ module Immutaball.Ball.Game
 			gsCoinState, gsSwitchState, gsPathState, gsTeleporterState,
 			gsGoalState, gsGravityState, gsDebugState, gsInputState,
 			{- gsAnalysis, -}
-		GameStateAnalysis(..), gsaView,
+		GameStateAnalysis(..), gsaView, gsaNetRightForwardJump,
 		mkGameStateAnalysis,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
@@ -182,7 +182,9 @@ data GameState = GameState {
 
 data GameStateAnalysis = GameStateAnalysis {
 	-- | Where the camera is.
-	_gsaView :: MView
+	_gsaView :: MView,
+	-- | Net movement from input state: -1 for opposite, 0 for neutral, 1 for On.
+	_gsaNetRightForwardJump :: (Integer, Integer, Integer)
 }
 	deriving (Eq, Ord, Show)
 
@@ -364,7 +366,8 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 
 mkGameStateAnalysis :: IBStateContext -> GameState -> GameStateAnalysis
 mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
-	_gsaView = theView
+	_gsaView                = theView,
+	_gsaNetRightForwardJump = theNetRightForwardJump
 }
 	where
 		theView :: MView
@@ -390,3 +393,16 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: viewMat mview is " ++ show (viewMat mview)) ()
 			-}
 			mview
+
+		theNetRightForwardJump :: (Integer, Integer, Integer)
+		theNetRightForwardJump = (netRight, netForward, netVertUp)
+			where
+				netOf :: Bool -> Bool -> Integer
+				netOf True  False = -1
+				netOf False False =  0
+				netOf False True  =  1
+				netOf True  True  =  0
+
+				netRight   = netOf (gs^.gsInputState.ginsLeftOn)     (gs^.gsInputState.ginsRightOn)
+				netForward = netOf (gs^.gsInputState.ginsBackwardOn) (gs^.gsInputState.ginsForwardOn)
+				netVertUp  = netOf (gs^.gsInputState.ginsVertDownOn) (gs^.gsInputState.ginsVertUpOn)

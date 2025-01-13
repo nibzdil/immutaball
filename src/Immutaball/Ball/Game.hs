@@ -19,7 +19,7 @@ module Immutaball.Ball.Game
 			gsBallPos, gsBallVel, gsBallRot, gsBallRadius, gsSolRaw, gsSol,
 			gsSolAttributes, gsSolAnalysis, gsSwa, gsCameraAngle, gsCameraMode,
 			gsCoinState, gsSwitchState, gsPathState, gsTeleporterState,
-			gsGoalState, {- gsAnalysis, -}
+			gsGoalState, gsDebugState, {- gsAnalysis, -}
 		GameStateAnalysis(..), gsaView,
 		mkGameStateAnalysis,
 		initialGameState,
@@ -28,7 +28,9 @@ module Immutaball.Ball.Game
 		SwitchState(..), xsSwitchesEnabled, xsSwitchesTimers, xsBallInAnySwitch, xsBallInSwitch,
 		PathState(..), psPathsTimeElapsed, psPathsGoing,
 		TeleporterState(..), jsBallInAnyTeleporter, jsBallBeingTeleported,
-		GoalState(..), zsCoinUnlocked, zsStartUnlocked, zsUnlocked
+		GoalState(..), zsCoinUnlocked, zsStartUnlocked, zsUnlocked,
+		GameDebugState(..), gdsCameraPosOffset, gdsCameraAimRightRadians,
+			gdsCameraAimUpRadians
 	) where
 
 import Prelude ()
@@ -157,7 +159,9 @@ data GameState = GameState {
 	_gsSwitchState :: SwitchState,
 	_gsPathState :: PathState,
 	_gsTeleporterState :: TeleporterState,
-	_gsGoalState :: GoalState
+	_gsGoalState :: GoalState,
+
+	_gsDebugState :: GameDebugState
 
 	{-
 	-- | Composite data e.g. for the play state to know where the camera is,
@@ -224,6 +228,14 @@ data GoalState = GoalState {
 	deriving (Eq, Ord, Show)
 --makeLenses ''GoalState
 
+data GameDebugState = GameDebugState {
+	_gdsCameraPosOffset :: Vec3 Double,
+	_gdsCameraAimRightRadians :: Double,
+	_gdsCameraAimUpRadians :: Double
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''GameDebugState
+
 makeLenses ''GameState
 makeLenses ''GameStateAnalysis
 makeLenses ''CoinState
@@ -231,6 +243,7 @@ makeLenses ''SwitchState
 makeLenses ''PathState
 makeLenses ''TeleporterState
 makeLenses ''GoalState
+makeLenses ''GameDebugState
 
 initialGameState :: IBContext' a -> Neverballrc -> Bool -> Maybe LevelSet -> String -> LevelIB -> GameState
 initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = fix $ \gs ->
@@ -291,6 +304,12 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 			_zsCoinUnlocked  = 0 >= (gs^.gsSolAttributes.saGoal),
 			_zsStartUnlocked = (not (neverballrc^.lockGoals)) && hasLevelBeenCompleted,
 			_zsUnlocked      = (gs^.gsGoalState.zsCoinUnlocked) || (gs^.gsGoalState.zsStartUnlocked)
+		},
+
+		_gsDebugState = GameDebugState {
+			_gdsCameraPosOffset       = zv3,
+			_gdsCameraAimRightRadians = 0.0,
+			_gdsCameraAimUpRadians    = 0.0
 		}
 
 		{-

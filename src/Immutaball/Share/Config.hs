@@ -17,7 +17,7 @@ module Immutaball.Share.Config
 			x'cfgUseExistingSDLManager, x'cfgUseExistingGLManager,
 			x'cfgMaxPassTextures, x'cfgPrecacheMtrls, x'cfgPrecacheMisc,
 			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
-			x'cfgVertDownKey,
+			x'cfgVertDownKey, x'cfgFreeCameraToggleKey,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -113,8 +113,9 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	_x'cfgDebugFreeCamera :: Bool,
 
 	-- | Debug free camera: move vertically up and down (e.g. spacebar and c as in jump and crouch).
-	_x'cfgVertUpKey :: Int,
-	_x'cfgVertDownKey :: Int
+	_x'cfgVertUpKey           :: Int,
+	_x'cfgVertDownKey         :: Int,
+	_x'cfgFreeCameraToggleKey :: Int
 }
 makeLenses ''StaticConfig'
 
@@ -154,7 +155,8 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgDebugFreeCamera = False,
 
 	_x'cfgVertUpKey   = fromIntegral Raw.SDLK_SPACE,
-	_x'cfgVertDownKey = fromIntegral Raw.SDLK_c
+	_x'cfgVertDownKey = fromIntegral Raw.SDLK_c,
+	_x'cfgFreeCameraToggleKey = fromIntegral Raw.SDLK_f
 }
 
 type Neverballrc = Config

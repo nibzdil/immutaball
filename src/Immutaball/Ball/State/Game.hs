@@ -226,6 +226,7 @@ stepGameInput = proc (gsn, request, cxtn) -> do
 
 stepGameInputMovement :: Wire ImmutaballM (GameState, Request, IBStateContext) (GameState, IBStateContext)
 stepGameInputMovement = proc (gsn, request, cxtn) -> do
+	-- Movement.
 	let update = case request of
 		(Keybd char down) ->
 			if' (char == cxtn^.ibNeverballrc.keyForward)                  (gsInputState.ginsForwardOn  .~ down) .
@@ -239,8 +240,18 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 
 	let gsnp1 = gsn & update
 
+	-- Toggle debug camera view.
+	let freeCamToggleUpdate = if' (not $ cxtn^.ibContext.ibStaticConfig.x'cfgDebugFreeCamera) id $
+		case request of
+			(Keybd char True) ->
+				if' (char == cxtn^.ibContext.ibStaticConfig.x'cfgFreeCameraToggleKey) (gsDebugState.gdsCameraDebugOn %~ not) $
+				id
+			_ -> id
+
+	let gsnp2 = gsnp1 & freeCamToggleUpdate
+
 	-- Identity output.
-	let gs = gsnp1
+	let gs = gsnp2
 	let cxt = cxtn
 
 	-- Return.

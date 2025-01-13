@@ -5,7 +5,7 @@
 -- Game.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
 
 module Immutaball.Ball.Game
 	(
@@ -19,7 +19,9 @@ module Immutaball.Ball.Game
 			gsBallPos, gsBallVel, gsBallRot, gsBallRadius, gsSolRaw, gsSol,
 			gsSolAttributes, gsSolAnalysis, gsSwa, gsCameraAngle, gsCameraMode,
 			gsCoinState, gsSwitchState, gsPathState, gsTeleporterState,
-			gsGoalState,
+			gsGoalState, {- gsAnalysis, -}
+		GameStateAnalysis(..), gsaView,
+		mkGameStateAnalysis,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
 			csCoinCollectedAt, csCoinsUncollected,
@@ -50,6 +52,7 @@ import Immutaball.Share.Level.Attributes
 import Immutaball.Share.Level.Base
 import Immutaball.Share.Level.Utils
 import Immutaball.Share.Math
+import Immutaball.Share.State.Context
 
 data ChallengeModeState = ChallengeModeState {
 	_cmsTotalCoins  :: Integer,
@@ -155,9 +158,23 @@ data GameState = GameState {
 	_gsPathState :: PathState,
 	_gsTeleporterState :: TeleporterState,
 	_gsGoalState :: GoalState
+
+	{-
+	-- | Composite data e.g. for the play state to know where the camera is,
+	-- built from game state data.
+	_gsAnalysis :: GameStateAnalysis
+	-}
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''GameState
+
+data GameStateAnalysis = GameStateAnalysis {
+	-- | Where the camera is.
+	_gsaView :: MView
+}
+	deriving (Eq, Ord, Show)
+
+--mkGameStateAnalysis
 
 data CoinState = CoinState {
 	_csCoinsCollected :: M.Map Int32 Bool,
@@ -208,6 +225,7 @@ data GoalState = GoalState {
 --makeLenses ''GoalState
 
 makeLenses ''GameState
+makeLenses ''GameStateAnalysis
 makeLenses ''CoinState
 makeLenses ''SwitchState
 makeLenses ''PathState
@@ -274,4 +292,40 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 			_zsStartUnlocked = (not (neverballrc^.lockGoals)) && hasLevelBeenCompleted,
 			_zsUnlocked      = (gs^.gsGoalState.zsCoinUnlocked) || (gs^.gsGoalState.zsStartUnlocked)
 		}
+
+		{-
+		_gsAnalysis = mkGameStateAnalysis gs,
+		-}
 	}
+
+mkGameStateAnalysis :: IBStateContext -> GameState -> GameStateAnalysis
+mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
+	_gsaView = theView
+}
+	where
+		theView :: MView
+		theView = 
+			let (mviewDefault :: MView) = MView {
+				_mviewPos    = Vec3 0.0 0.0 0.0,
+				_mviewTarget = Vec3 0.0 1.0 0.0,
+				_mviewFov    = 2 * (fromIntegral $ cxt^.ibNeverballrc.viewFov)
+			} in
+			let (maybeView :: Maybe View) = (gs^.gsSol.solWv) !? 0 in
+			-- TODO: debug free camera
+			let (debugViewPos, debugViewTarget) = (zv3, zv3) in
+			--dt <- differentiate -< t
+			--dp <- arr (((dt * 0.03) *) <$>) <<< debugFreeCameraVector -< request
+			--debugViewPos <- integrate 0 -< dp
+			--let debugViewTarget = zv3  -- TODO: move mouse to aim
+			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
+				_mviewPos    = (view_^.viewP) `pv3` debugViewPos,
+				_mviewTarget = (view_^.viewQ) `pv3` debugViewTarget,
+				-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
+				_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (360.0/tau)  -- TODO fix fov; ratio is reversed but gets usable results.
+			} in
+			{-
+			-- TODO DEBUG
+			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: mview is " ++ show (mview)) ()
+			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: viewMat mview is " ++ show (viewMat mview)) ()
+			-}
+			mview

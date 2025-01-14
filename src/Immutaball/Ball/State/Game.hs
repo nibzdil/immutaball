@@ -47,6 +47,10 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+-- TODO DEBUG
+import Immutaball.Share.ImmutaballIO
+import Immutaball.Share.ImmutaballIO.BasicIO
+
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -279,7 +283,7 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 --
 -- Check whether this mode is enabled before using this wire.
 --
--- TODO: movement is currently on more absolute position; make it relative to aim.
+-- TODO: movement is currently on more absolute position; make it relative to aim.  (Possibly is it worth adding a config for old behaviour though?)
 stepGameClockDebugFreeCamera :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
 stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	let gsa    = mkGameStateAnalysis cxtn gsn
@@ -305,6 +309,10 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	-- State (global).
 	let posOffsetUpdate = gsDebugState.gdsCameraPosOffset %~ (+ posOffsetDiff)
 	let gsnp1 = gsn & posOffsetUpdate
+
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: stepping free camera.") ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: stepping free camera diff is " ++ show (posOffsetDiff)) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: stepping free camera integrated is is " ++ show (posOffset)) ()
 
 	-- Identity output.
 	let gs = gsnp1

@@ -65,7 +65,7 @@ controlImmutaball cxt0 immutaball0 =
 		nextFrame :: Integer -> [Event] -> Immutaball -> ImmutaballIO
 		nextFrame usNm1 queuedEvents immutaballN =
 			mkBIO . GetUs $ \usN ->
-			let dus = max 0 $ usNm1 - usN in
+			let dus = max 0 $ usN - usNm1 in
 			let ds = (fromInteger dus / 1000000.0)  :: Double in
 			let usNm1pMinClockPeriod = usNm1 + (max 0 . round $ 1000000.0 * maybe 0 id (cxt0^.ibStaticConfig.minClockPeriod)) in
 			if' (usN < usNm1pMinClockPeriod) (mkBIO . DelayUs (usNm1pMinClockPeriod - usN)) id .
@@ -175,8 +175,8 @@ stepEventNoMaxClockPeriod cxt event immutaballN withImmutaballNp1 =
 			withImmutaballNp1 immutaballN
 
 stepClock :: IBContext -> Double -> Integer -> Immutaball -> (Immutaball -> ImmutaballIO) -> ImmutaballIO
-stepClock cxt du us immutaballN withImmutaballNp1 =
-	let mresponse = stepWire immutaballN (pure $ Clock du) in
+stepClock cxt ds us immutaballN withImmutaballNp1 =
+	let mresponse = stepWire immutaballN (pure $ Clock ds) in
 	processStepResult cxt mresponse $ \immutaballNp1 ->
 	let mresponse_ = stepWire immutaballNp1 (pure . Paint $ (fromIntegral us) / 1000000.0) in
 	if' (cxt^.ibHeadless)

@@ -152,7 +152,7 @@ defaultStaticConfig = StaticConfig {
 
 	_x'cfgBallTriangles = 8 * 64,  -- 512
 
-	-- TODO:
+	-- TODO disable again after debugging by setting to False:
 	--_x'cfgDebugFreeCamera = False,
 	_x'cfgDebugFreeCamera = True,
 

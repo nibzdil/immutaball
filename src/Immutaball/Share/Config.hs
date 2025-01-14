@@ -152,7 +152,9 @@ defaultStaticConfig = StaticConfig {
 
 	_x'cfgBallTriangles = 8 * 64,  -- 512
 
-	_x'cfgDebugFreeCamera = False,
+	-- TODO:
+	--_x'cfgDebugFreeCamera = False,
+	_x'cfgDebugFreeCamera = True,
 
 	_x'cfgVertUpKey   = fromIntegral Raw.SDLK_SPACE,
 	_x'cfgVertDownKey = fromIntegral Raw.SDLK_c,

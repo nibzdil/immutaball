@@ -270,13 +270,22 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 
 	-- Identity output.
 	let gs = gsnp1
-	let cxt = cxtn
+	let cxt = cxtnp1
 
 	-- Return.
 	returnA -< (gs, cxt)
 
+-- | Step the debug free camera.
+--
+-- Check whether this mode is enabled before using this wire.
+--
+-- TODO: movement is currently on more absolute position; make it relative to aim.
 stepGameClockDebugFreeCamera :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
 stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
+	let gsa    = mkGameStateAnalysis cxtn gsn
+	let netMov = gsa^.gsaNetRightForwardJump
+	let (netRight, netForward, netJump) = netMov
+
 	-- FRP architecture note: we have access to both 1) local state (FRP) and
 	-- 2) the  relatively global game state.  If we wanted, we could use FRP to
 	-- make a wire (time-varying value) that outputs the free camera position
@@ -288,11 +297,23 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	-- both.  Use FRP to calculate a diff locally, and then apply that diff to
 	-- the state (relatively) globally.
 
-	-- TODO: step free camera.
+	let (netMovementVec :: Vec3 Double) = Vec3 (fromIntegral netRight) (fromIntegral netForward) (fromIntegral netJump)
+	posOffset <- integrate zv3 -< (dt * freeCameraSpeed) `sv3` netMovementVec
+
+	-- FRP (local).
+	posOffsetDiff <- differentiate -< posOffset
+	-- State (global).
+	let posOffsetUpdate = gsDebugState.gdsCameraPosOffset %~ (+ posOffsetDiff)
+	let gsnp1 = gsn & posOffsetUpdate
 
 	-- Identity output.
-	let gs = gsn
+	let gs = gsnp1
 	let cxt = cxtn
 
 	-- Return.
 	returnA -< (gs, cxt)
+
+	where
+		-- Units per second.
+		freeCameraSpeed :: Double
+		freeCameraSpeed = 1.0

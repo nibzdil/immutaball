@@ -315,6 +315,8 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: stepping free camera integrated is " ++ show (posOffset)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3: dt is " ++ show (dt)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG4: netMov is " ++ show (netMov)) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG5: posOffset " ++ show (posOffset)) ()
+	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG6: posOffset integral value is " ++ show ((dt * freeCameraSpeed) `sv3` netMovementVec)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG$: ===") ()
 
 	-- Identity output.

@@ -310,14 +310,14 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	let posOffsetUpdate = gsDebugState.gdsCameraPosOffset %~ (+ posOffsetDiff)
 	let gsnp1 = gsn & posOffsetUpdate
 
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: stepping free camera.") ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: stepping free camera diff is " ++ show (posOffsetDiff)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: stepping free camera integrated is " ++ show (posOffset)) ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: stepping free camera.") ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: stepping free camera diff is " ++ show (posOffsetDiff)) ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: stepping free camera integrated is " ++ show (posOffset)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3: dt is " ++ show (dt)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG4: netMov is " ++ show (netMov)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG5: posOffset " ++ show (posOffset)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG6: posOffset integral value is " ++ show ((dt * freeCameraSpeed) `sv3` netMovementVec)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG7: netMovementVec is " ++ show (netMovementVec)) ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG4: netMov is " ++ show (netMov)) ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG5: posOffset " ++ show (posOffset)) ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG6: posOffset integral value is " ++ show ((dt * freeCameraSpeed) `sv3` netMovementVec)) ()
+	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG7: netMovementVec is " ++ show (netMovementVec)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG$: ===") ()
 
 	-- Identity output.

@@ -378,15 +378,20 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 				_mviewFov    = 2 * (fromIntegral $ cxt^.ibNeverballrc.viewFov)
 			} in
 			let (maybeView :: Maybe View) = (gs^.gsSol.solWv) !? 0 in
-			-- TODO: move mouse to aim; just use zv3 for now on the right side (no aiming supported yet).
 			let gds = gs^.gsDebugState in
-			let (debugViewPos, debugViewTarget) = if' (not (gds^.gdsCameraDebugOn)) (zv3, zv3) $ (gds^.gdsCameraPosOffset, zv3) in
-			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
-				_mviewPos    = (view_^.viewP) `pv3` debugViewPos,
-				_mviewTarget = (view_^.viewQ) `pv3` debugViewTarget `pv3` debugViewPos,
-				-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
-				_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (360.0/tau)  -- TODO fix fov; ratio is reversed but gets usable results.
-			} in
+			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
+				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
+				let rotatedTargetQDiff = targetQDiff in  -- TODO rotate to aim; just identity for now (no aiming yet).
+
+				let ddebugViewTarget' = (view_^.viewQ) `minusv3` ((view_^.viewP) `pv3` rotatedTargetQDiff) in
+
+				let (ddebugViewPos, ddebugViewTarget) = if' (not (gds^.gdsCameraDebugOn)) (zv3, zv3) $ (gds^.gdsCameraPosOffset, ddebugViewTarget') in
+				MView {
+					_mviewPos    = (view_^.viewP) `pv3` ddebugViewPos,
+					_mviewTarget = (view_^.viewQ) `pv3` ddebugViewTarget,
+					-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
+					_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (360.0/tau)  -- TODO fix fov; ratio is reversed but gets usable results.
+				} in
 			{-
 			-- TODO DEBUG
 			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: mview is " ++ show (mview)) ()

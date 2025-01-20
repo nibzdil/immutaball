@@ -383,7 +383,7 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			let (debugViewPos, debugViewTarget) = if' (not (gds^.gdsCameraDebugOn)) (zv3, zv3) $ (gds^.gdsCameraPosOffset, zv3) in
 			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ -> MView {
 				_mviewPos    = (view_^.viewP) `pv3` debugViewPos,
-				_mviewTarget = (view_^.viewQ) `pv3` debugViewTarget,
+				_mviewTarget = (view_^.viewQ) `pv3` debugViewTarget `pv3` debugViewPos,
 				-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
 				_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (360.0/tau)  -- TODO fix fov; ratio is reversed but gets usable results.
 			} in

@@ -252,8 +252,33 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 
 	let gsnp2 = gsnp1 & freeCamToggleUpdate
 
-	-- Identity output.
-	let gs = gsnp2
+	-- Free camera aiming.
+	-- mouse sense gives int in pixels for a full circle rotation, except we also scale rotation amount by curMouseSpeed (the 2 speeds are multiplied (although neverballrc is reciprocal)).
+	let (curMouseSpeed :: Double) = 4.0
+	let (curMouseSense :: Int) = cxtn^.ibNeverballrc.mouseSense
+	let updateFreeAim = if' (not $ gsnp2^.gsDebugState.gdsCameraDebugOn) id $ case request of
+		(Point _x _y dx dy) ->
+			let (dxd :: Double) = fromIntegral dx in
+			let (dyd :: Double) = fromIntegral dy in
+
+			let (drawCirclesX :: Double) = dxd / fromIntegral curMouseSense in
+			let (drawCirclesY :: Double) = dyd / fromIntegral curMouseSense in
+
+			let (drawRadiansX :: Double) = tau * drawCirclesX in
+			let (drawRadiansY :: Double) = tau * drawCirclesY in
+
+			let (dradiansX :: Double) = curMouseSpeed * drawRadiansX in
+			let (dradiansY :: Double) = curMouseSpeed * drawRadiansY in
+
+			(gsDebugState.gdsCameraAimRightRadians %~ (+ dradiansX)) .
+			(gsDebugState.gdsCameraAimUpRadians    %~ (+ dradiansY)) .
+			id
+		_ -> id
+
+	let gsnp3 = gsnp2 & updateFreeAim
+
+	-- Identify output.
+	let gs = gsnp3
 	let cxt = cxtn
 
 	-- Return.
@@ -316,4 +341,4 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	where
 		-- Units per second.
 		freeCameraSpeed :: Double
-		freeCameraSpeed = 1.0
+		freeCameraSpeed = 2.0

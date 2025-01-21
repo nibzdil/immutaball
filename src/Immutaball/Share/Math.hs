@@ -139,6 +139,10 @@ module Immutaball.Share.Math
 		tilt3zSimple,
 		tilt3zReverse,
 		tilt3zReverseSimple,
+		tilt3y,
+		tilt3ySimple,
+		tilt3yReverse,
+		tilt3yReverseSimple,
 		rotate3,
 		rotate3Simple,
 		rotate3Simple_,
@@ -1113,6 +1117,28 @@ tilt3zReverse = m3to4 . tilt3zReverseSimple
 tilt3zReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
 tilt3zReverseSimple (Vec3 x y z) = tilt3zSimple $ Vec3 (-x) (-y) z
 
+-- | Rotate horizontally (xy plane around z axis), then rotate vertically by
+-- treating x and y as a single number by magnitude and rotating with z.
+tilt3y :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3y = m3to4 . tilt3ySimple
+
+-- | 'tilt3y' without homogeneous coordinates.
+tilt3ySimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3ySimple y_ = Mat3 $ Vec3
+	-- new x axis                 new y axis              new z axis
+	( Vec3 (sqrt$ 1 - sq_ (y^.x3)) (y^.x3)                0.0                     )
+	( Vec3 0.0                     (y^.y3)                (sqrt$ 1 - sq_ (y^.z3)) )
+	( Vec3 (             -(y^.x3)) (y^.z3)                (             -(y^.z3)) )
+	where
+		sq_ a = a * a
+		y = v3normalize y_
+
+tilt3yReverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3yReverse = m3to4 . tilt3yReverseSimple
+
+tilt3yReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3yReverseSimple (Vec3 x y z) = tilt3ySimple $ Vec3 (-x) y (-z)
+
 -- | Rotate x radians about the axis pointing in direction, which intersects the origin.
 --
 -- One way to solve this is to compose tilting to the axis, then rotating the x
@@ -1615,9 +1641,8 @@ data MView' a = MView {
 makeLenses ''MView'
 
 -- | Translate, then rotate, then fov.
--- TODO: I think camera to target for tilt is y axis, not z axis.
 viewMat :: (Num a, Fractional a, Floating a) => MView' a -> Mat4 a
 viewMat v =
 	fov        (v^.mviewFov) <>
-	tilt3z     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>  -- TODO tilt3y
+	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
 	translate3 (v^.mviewPos)

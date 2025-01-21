@@ -276,8 +276,8 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 		_ -> id
 
 	-- Cap: let net view be capped later in 'mkGameStateAnalysis', since there might already be a vertical aim to target.
-	let _updateCapFreeAimUpDisabled = gsDebugState.gdsCameraAimUpRadians %~ (min (tau/2) . max (-tau/2))
-	let updateCapFreeAimUp = id
+	-- But also cap here at twice the radius to allow full movement.
+	let updateCapFreeAimUp = gsDebugState.gdsCameraAimUpRadians %~ (min (2 * tau/2) . max (-2 * tau/2))
 
 	let gsnp3 = gsnp2 & updateCapFreeAimUp . updateFreeAim
 

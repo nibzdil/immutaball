@@ -5,7 +5,7 @@
 -- Test.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, ScopedTypeVariables #-}
 
 module Test.Immutaball.Share.Math.Test
 	(
@@ -30,7 +30,7 @@ import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.HUnit hiding ((@?=), assertBool)
---import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck
 
 import Immutaball.Share.Math
 import Test.Immutaball.Share.Math.Orphans ()
@@ -105,6 +105,12 @@ tests = testGroup "Immutaball.Share.Math" $
 					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3` bv)] @?= True,
 				testCase "each axis unit vector equality checks correctly with each" $
 					eqEachEach True eq3 [right3, forward3, up3] @?= True
+			],
+
+		testGroup "eqEachEach for vecs and mats" $
+			[
+				testProperty "eqEachEach random vec2" $
+					\(vals :: [Vec2 Double]) -> eqEachEach False eq2 vals
 			],
 
 		testGroup "3D pointing orientation utils (aiming)" $

@@ -382,7 +382,15 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
 				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
 				let horizRotatedTargetQDiff = rotatexySimple (gs^.gsDebugState.gdsCameraAimRightRadians) `mv3` targetQDiff in
-				let rotatedTargetQDiff = horizRotatedTargetQDiff in  -- TODO rotate vertically to aim; just identity for now (no vert aiming yet).
+				-- Finally, vertically rotate.  Treat x and y as a single number by magnitude and rotate with z.  TODO refactor (probably into a Math.hs new function).
+				let (xy, z) = (Vec2 (horizRotatedTargetQDiff^.x3) (horizRotatedTargetQDiff^.y3), horizRotatedTargetQDiff^.z3) in
+				let xyz = Vec2 (xy^.r2) z in
+				let xyzRotated = xyz & t2 %~ (+ (gs^.gsDebugState.gdsCameraAimUpRadians)) in
+				let xyzRotatedCapped = xyzRotated & t2 %~ (min (tau/2)) . (max (-tau/2)) in
+				--let (Vec2 x' y', z') = (((xyzRotatedCapped^.x2)/(xy^.r2)) `sv2` xy, xyzRotatedCapped^.y2) in
+				let (Vec2 x' y', z') = (xy & r2 .~ (xyzRotatedCapped^.x2), xyzRotatedCapped^.y2) in
+				--let rotatedTargetQDiff = horizRotatedTargetQDiff in
+				let rotatedTargetQDiff = Vec3 x' y' z' in
 
 				let ddebugViewTarget' = (view_^.viewQ) `minusv3` ((view_^.viewP) `pv3` rotatedTargetQDiff) in
 

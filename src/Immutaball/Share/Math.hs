@@ -135,10 +135,10 @@ module Immutaball.Share.Math
 		scale3Simple,
 		scale4,
 		translate3,
-		tilt3,
-		tilt3Simple,
-		tilt3Reverse,
-		tilt3ReverseSimple,
+		tilt3z,
+		tilt3zSimple,
+		tilt3zReverse,
+		tilt3zReverseSimple,
 		rotate3,
 		rotate3Simple,
 		rotate3Simple_,
@@ -1093,12 +1093,12 @@ translate3 v = Mat4 $ Vec4
 -- The xz plane for the new x axis about the y axis is similar.  It starts (1,0).  Add angle -asin (z^.x).
 --   (cos(-asin (z^.x)), sin(-asin (z^.x)))
 -- = (sqrt (1 - (z^.x)^2), -(z^.x))
-tilt3 :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
-tilt3 = m3to4 . tilt3Simple
+tilt3z :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3z = m3to4 . tilt3zSimple
 
--- | 'tilt3' without homogeneous coordinates.
-tilt3Simple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
-tilt3Simple z_ = Mat3 $ Vec3
+-- | 'tilt3z' without homogeneous coordinates.
+tilt3zSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3zSimple z_ = Mat3 $ Vec3
 	-- new x axis                 new y axis              new z axis
 	(Vec3 (sqrt$ 1 - sq_ (z^.x3)) 0.0                     (z^.x3))
 	(Vec3 0.0                     (sqrt$ 1 - sq_ (z^.y3)) (z^.y3))
@@ -1107,11 +1107,11 @@ tilt3Simple z_ = Mat3 $ Vec3
 		sq_ a = a * a
 		z = v3normalize z_
 
-tilt3Reverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
-tilt3Reverse = m3to4 . tilt3ReverseSimple
+tilt3zReverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3zReverse = m3to4 . tilt3zReverseSimple
 
-tilt3ReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
-tilt3ReverseSimple (Vec3 x y z) = tilt3Simple $ Vec3 (-x) (-y) z
+tilt3zReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3zReverseSimple (Vec3 x y z) = tilt3zSimple $ Vec3 (-x) (-y) z
 
 -- | Rotate x radians about the axis pointing in direction, which intersects the origin.
 --
@@ -1619,5 +1619,5 @@ makeLenses ''MView'
 viewMat :: (Num a, Fractional a, Floating a) => MView' a -> Mat4 a
 viewMat v =
 	fov        (v^.mviewFov) <>
-	tilt3      ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
+	tilt3z     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
 	translate3 (v^.mviewPos)

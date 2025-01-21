@@ -1307,7 +1307,7 @@ rotatexz = m3to4 . rotatexzSimple
 rotateyz :: (Floating a) => a -> Mat4 a
 rotateyz = m3to4 . rotateyzSimple
 
--- | Aim right.
+-- | Aim left.
 rotatexySimple :: (Floating a) => a -> Mat3 a
 rotatexySimple t = Mat3 $ Vec3
 	(Vec3 c    s   0.0)
@@ -1315,7 +1315,7 @@ rotatexySimple t = Mat3 $ Vec3
 	(Vec3 0.0  0.0 1.0)
 	where (c, s) = (cos t, sin t)
 
--- | Tilt right.
+-- | Tilt left.
 rotatexzSimple :: (Floating a) => a -> Mat3 a
 rotatexzSimple t = Mat3 $ Vec3
 	(Vec3 c    0.0 s  )
@@ -1758,14 +1758,16 @@ aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
 
 	where
 		-- First rotate horizontally.  tx becomes 0.
-		rotateHorizToTarget   = rotatexySimple   horizCWAngle
+		rotateHorizToTarget   = rotatexySimple   horizCCWAngle
 		-- Third rotate horizontally back.
-		unrotateHorizToTarget = rotatexySimple (-horizCWAngle)
+		unrotateHorizToTarget = rotatexySimple (-horizCCWAngle)
 		-- Second rotate in plane yz around x axis.
 		rotateVertically = rotateyzSimple (-radiansUp')
 
-		-- Angle when aiming right.
-		horizCWAngle = -(Vec2 tx ty ^. t2)
+		-- Angle when aiming right.  CW relative to 0,1 in radians.
+		horizCWAngle  = -((Vec2 tx ty ^. t2) - (Vec2 0.0 1.0 ^. t2))
+		-- Negate angle.
+		horizCCWAngle = -horizCWAngle
 
 		-- In order to perform clamping, get a copy of a partially transformed target (only 1st transformation).
 		yz = let (Vec3 _x y z) = (`mv3` target) $ rotateHorizToTarget in Vec2 y z

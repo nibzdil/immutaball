@@ -158,6 +158,18 @@ tests = testGroup "Immutaball.Share.Math" $
 					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0)) (show $ (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0))) $
 					aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0) @?= True,
 				testCase "aim right 30 degrees" $
-					aimHoriz3DSimple (circle/12) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) @?= True
+					aimHoriz3DSimple (circle/12) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) @?= True,
+
+				testCase "look 45 deg up from 30 deg right" $
+					-- length of Vec2 x y should be equal to z here, so that it's a right angle.
+					-- prenormalized:
+					-- 	  (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) (sqrt $ x^2 + y^2))
+					-- 	= (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) (sqrt $ 1/4 + 3/4))
+					-- 	= (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 1.0)
+					-- prenormalized^.r: sqrt (1/4 + 3/4 + 1^2) = sqrt (1 + 1) = sqrt 2
+					-- normalized:
+					-- 	  (Vec3 (1.0      / 2.0) (sqrt 3.0 / 2.0) 1.0             ) / sqrt 2
+					-- 	= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))
+					aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) `eq3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= True
 			]
 	]

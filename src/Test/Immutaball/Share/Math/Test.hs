@@ -19,6 +19,7 @@ module Test.Immutaball.Share.Math.Test
 		up3,
 		eq3Duplicate,
 		zint,
+		zdouble,
 		eqEachEach
 	) where
 
@@ -59,6 +60,9 @@ eq3Duplicate a b = abs ((b - a)^.r3) <= smalld
 -- | Helps resolve default type to Integer warnings when using ‘0’.
 zint :: Integer
 zint = 0
+
+zdouble :: Double
+zdouble = 0.0
 
 -- | Given a list of values possibly known to already be unique, return a bool
 -- that is True if the equality comparison on each possible pairing of values
@@ -109,8 +113,33 @@ tests = testGroup "Immutaball.Share.Math" $
 
 		testGroup "eqEachEach for vecs and mats" $
 			[
-				testProperty "eqEachEach random vec2" $
-					\(vals :: [Vec2 Double]) -> eqEachEach False eq2 vals
+				testGroup "randomly generated" $
+					[
+						testProperty "eqEachEach random vec2" $
+							\(vals :: [Vec2 Double]) -> eqEachEach False eq2 vals,
+						testProperty "eqEachEach random vec3" $
+							\(vals :: [Vec3 Double]) -> eqEachEach False eq3 vals,
+						testProperty "eqEachEach random vec4" $
+							\(vals :: [Vec4 Double]) -> eqEachEach False eq4 vals,
+						testProperty "eqEachEach random mat3" $
+							\(vals :: [Mat3 Double]) -> eqEachEach False eqm3 vals,
+						testProperty "eqEachEach random mat4" $
+							\(vals :: [Mat4 Double]) -> eqEachEach False eqm4 vals
+					],
+
+				testGroup "fixed" $
+					[
+						testCase "eqEachEach fixed vec2" $
+							eqEachEach True eq2 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True,
+						testCase "eqEachEach fixed vec3" $
+							eqEachEach True eq3 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True,
+						testCase "eqEachEach fixed vec4" $
+							eqEachEach True eq4 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True,
+						testCase "eqEachEach fixed mat3" $
+							eqEachEach True eqm3 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True,
+						testCase "eqEachEach fixed mat4" $
+							eqEachEach True eqm4 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True
+					]
 			],
 
 		testGroup "3D pointing orientation utils (aiming)" $

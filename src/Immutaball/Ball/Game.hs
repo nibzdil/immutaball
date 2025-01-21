@@ -381,7 +381,8 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			let gds = gs^.gsDebugState in
 			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
 				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
-				let rotatedTargetQDiff = targetQDiff in  -- TODO rotate to aim; just identity for now (no aiming yet).
+				let horizRotatedTargetQDiff = rotatexySimple (gs^.gsDebugState.gdsCameraAimRightRadians) `mv3` targetQDiff in
+				let rotatedTargetQDiff = horizRotatedTargetQDiff in  -- TODO rotate vertically to aim; just identity for now (no vert aiming yet).
 
 				let ddebugViewTarget' = (view_^.viewQ) `minusv3` ((view_^.viewP) `pv3` rotatedTargetQDiff) in
 

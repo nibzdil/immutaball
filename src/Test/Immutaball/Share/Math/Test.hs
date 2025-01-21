@@ -37,7 +37,7 @@ import Test.Tasty.QuickCheck
 import Immutaball.Share.Math
 import Test.Immutaball.Share.Math.Orphans ()
 
--- TODO: remove debugging when done.
+-- TODO: remove debugging imports when done.
 import Debug.Trace as D------------------------------------------------------ TODO
 import Text.Printf
 

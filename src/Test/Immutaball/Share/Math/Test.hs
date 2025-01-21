@@ -17,7 +17,8 @@ module Test.Immutaball.Share.Math.Test
 		right3,
 		forward3,
 		up3,
-		eq3
+		eq3,
+		zint
 	) where
 
 --import Control.Arrow
@@ -53,6 +54,10 @@ up3 = Vec3 0.0 0.0 1.0
 eq3 :: Vec3 Double -> Vec3 Double -> Bool
 eq3 a b = abs ((b - a)^.r3) <= smalld
 
+-- | Helps resolve default type to Integer warnings when using ‘0’.
+zint :: Integer
+zint = 0
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math" $
 	[
@@ -64,7 +69,9 @@ tests = testGroup "Immutaball.Share.Math" $
 				testCase "right3 == right3" $
 					right3 `eq3` right3 @?= True,
 				testCase "right3 /= forward3" $
-					right3 `eq3` forward3 @?= False
+					right3 `eq3` forward3 @?= False,
+				testCase "each axis unit vector equality checks correctly with each" $
+					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3` bv)] @?= True
 			],
 
 		testGroup "3D pointing orientation utils (aiming)" $

@@ -17,7 +17,7 @@ module Test.Immutaball.Share.Math.Test
 		right3,
 		forward3,
 		up3,
-		eq3,
+		eq3Duplicate,
 		zint
 	) where
 
@@ -51,8 +51,8 @@ forward3 = Vec3 0.0 1.0 0.0
 up3 :: Vec3 Double
 up3 = Vec3 0.0 0.0 1.0
 
-eq3 :: Vec3 Double -> Vec3 Double -> Bool
-eq3 a b = abs ((b - a)^.r3) <= smalld
+eq3Duplicate :: Vec3 Double -> Vec3 Double -> Bool
+eq3Duplicate a b = abs ((b - a)^.r3) <= smalld
 
 -- | Helps resolve default type to Integer warnings when using ‘0’.
 zint :: Integer
@@ -65,6 +65,16 @@ tests = testGroup "Immutaball.Share.Math" $
 			simpleConstant @?= 3,
 
 		testGroup "meta tests" $
+			[
+				testCase "right3 == right3" $
+					right3 `eq3Duplicate` right3 @?= True,
+				testCase "right3 /= forward3" $
+					right3 `eq3Duplicate` forward3 @?= False,
+				testCase "each axis unit vector equality checks correctly with each" $
+					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3Duplicate` bv)] @?= True
+			],
+
+		testGroup "eq3 tests" $
 			[
 				testCase "right3 == right3" $
 					right3 `eq3` right3 @?= True,

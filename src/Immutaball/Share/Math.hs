@@ -162,6 +162,11 @@ module Immutaball.Share.Math
 		smallf,
 		SmallNum(..),
 		equivalentSmall,
+		eq2,
+		eq3,
+		eq4,
+		eqm3,
+		eqm4,
 		rankNonzerov4,
 		rankNonzerov3,
 		inversem4,
@@ -216,6 +221,12 @@ instance Functor Vec2 where
 
 instance Field1 (Vec2 a) (Vec2 a) a a where _1 = x2
 instance Field2 (Vec2 a) (Vec2 a) a a where _2 = y2
+
+instance Applicative Vec2 where
+	pure :: a -> Vec2 a
+	pure = rv2
+	(<*>) :: Vec2 (a -> b) -> Vec2 a -> Vec2 b
+	(Vec2 fx fy) <*> (Vec2 x y) = Vec2 (fx x) (fy y)
 
 -- | Component-wise multiplication and abs instance.
 instance (Num a) => Num (Vec2 a) where
@@ -301,6 +312,12 @@ instance Field1 (Vec3 a) (Vec3 a) a a where _1 = x3
 instance Field2 (Vec3 a) (Vec3 a) a a where _2 = y3
 instance Field3 (Vec3 a) (Vec3 a) a a where _3 = z3
 
+instance Applicative Vec3 where
+	pure :: a -> Vec3 a
+	pure = rv3
+	(<*>) :: Vec3 (a -> b) -> Vec3 a -> Vec3 b
+	(Vec3 fx fy fz) <*> (Vec3 x y z) = Vec3 (fx x) (fy y) (fz z)
+
 -- | Component-wise multiplication and abs instance.
 instance (Num a) => Num (Vec3 a) where
 	(+) = pv3
@@ -370,6 +387,12 @@ instance Field1 (Vec4 a) (Vec4 a) a a where _1 = x4
 instance Field2 (Vec4 a) (Vec4 a) a a where _2 = y4
 instance Field3 (Vec4 a) (Vec4 a) a a where _3 = z4
 instance Field4 (Vec4 a) (Vec4 a) a a where _4 = w4
+
+instance Applicative Vec4 where
+	pure :: a -> Vec4 a
+	pure = rv4
+	(<*>) :: Vec4 (a -> b) -> Vec4 a -> Vec4 b
+	(Vec4 fx fy fz fw) <*> (Vec4 x y z w) = Vec4 (fx x) (fy y) (fz z) (fw w)
 
 -- | Component-wise multiplication and abs instance.
 instance (Num a) => Num (Vec4 a) where
@@ -447,6 +470,17 @@ instance Field1 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _1 = r0_4
 instance Field2 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _2 = r1_4
 instance Field3 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _3 = r2_4
 instance Field4 (Mat4 a) (Mat4 a) (Vec4 a) (Vec4 a) where _4 = r3_4
+
+instance Applicative Mat3 where
+	pure :: a -> Mat3 a
+	pure z = let reps = rv3 z in Mat3 $ rv3 reps
+	(<*>) :: Mat3 (a -> b) -> Mat3 a -> Mat3 b
+	(Mat3 frows) <*> (Mat3 rows) = Mat3 $ ((<*>) <$> frows) <*> rows
+instance Applicative Mat4 where
+	pure :: a -> Mat4 a
+	pure z = let reps = rv4 z in Mat4 $ rv4 reps
+	(<*>) :: Mat4 (a -> b) -> Mat4 a -> Mat4 b
+	(Mat4 frows) <*> (Mat4 rows) = Mat4 $ ((<*>) <$> frows) <*> rows
 
 r0_3 :: Lens' (Mat3 a) (Vec3 a)
 r0_3 = getMat3.x3
@@ -1337,6 +1371,21 @@ instance {-# OVERLAPPABLE #-} (Fractional a) => SmallNum a where smallNum = real
 
 equivalentSmall :: (SmallNum a, Ord a, Num a) => a -> a -> Bool
 equivalentSmall x y = abs (y - x) <= smallNum
+
+eq2 :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Vec2 a -> Bool
+eq2 a b = (b - a)^.r2 <= smallNum
+
+eq3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec3 a -> Vec3 a -> Bool
+eq3 a b = (b - a)^.r3 <= smallNum
+
+eq4 :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Vec4 a -> Bool
+eq4 a b = (b - a)^.r4 <= smallNum
+
+eqm3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Mat3 a -> Mat3 a -> Bool
+eqm3 a b = let (Mat3 rows) = abs <$> ((-) <$> b <*> a) in ((^.r3) <$> rows)^.r3 <= smallNum
+
+eqm4 :: (SmallNum a, Ord a, Num a, RealFloat a) => Mat4 a -> Mat4 a -> Bool
+eqm4 a b = let (Mat4 rows) = abs <$> ((-) <$> b <*> a) in ((^.r4) <$> rows)^.r4 <= smallNum
 
 rankNonzerov4 :: (SmallNum a, Ord a, Num a) => Vec4 a -> Integer
 rankNonzerov4 (Vec4 x y z w)

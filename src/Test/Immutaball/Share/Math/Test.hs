@@ -14,11 +14,16 @@ module Test.Immutaball.Share.Math.Test
 		tests,
 
 		simpleConstant,
+		right3,
+		forward3,
+		up3,
+		eq3
 	) where
 
-import Control.Arrow
-import Data.Functor.Identity
+--import Control.Arrow
+--import Data.Functor.Identity
 
+import Control.Lens
 import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
@@ -36,9 +41,33 @@ testsMain = defaultMain tests
 simpleConstant :: Integer
 simpleConstant = 3
 
+right3 :: Vec3 Double
+right3 = Vec3 1.0 0.0 0.0
+
+forward3 :: Vec3 Double
+forward3 = Vec3 0.0 1.0 0.0
+
+up3 :: Vec3 Double
+up3 = Vec3 0.0 0.0 1.0
+
+eq3 :: Vec3 Double -> Vec3 Double -> Bool
+eq3 a b = abs ((b - a)^.r3) <= smalld
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math" $
 	[
 		testCase "simpleConstant == 3" $
-			simpleConstant @?= 3
+			simpleConstant @?= 3,
+
+		testGroup "meta tests" $
+			[
+				testCase "right3 == right3" $
+					right3 `eq3` right3 @?= True,
+				testCase "right3 /= forward3" $
+					right3 `eq3` forward3 @?= False
+			],
+
+		testGroup "3D pointing orientation utils (aiming)" $
+			[
+			]
 	]

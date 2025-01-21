@@ -30,6 +30,7 @@ module Immutaball.Share.Math
 		co3,
 		fr3,
 		cm3,
+		r3,
 		Vec4(..), x4, y4, z4, w4,
 		rv4,
 		pv4,
@@ -39,6 +40,7 @@ module Immutaball.Share.Math
 		co4,
 		fr4,
 		cm4,
+		r4,
 		Mat3(..), getMat3,
 		Mat4(..), getMat4,
 		r0_3,
@@ -335,6 +337,22 @@ fr3 f z0 (Vec3 x y z) = foldr f z0 [x, y, z]
 cm3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
 cm3 = co3 (*)
 
+-- | Magnitude of a vector.
+r3 :: forall a. (RealFloat a) => Lens' (Vec3 a) a
+r3 = lens getter (flip setter)
+	where
+		getter :: Vec3 a -> a
+		getter (Vec3 x y z) = sqrt (x*x + y*y + z*z)
+		setter :: a -> Vec3 a -> Vec3 a
+		setter r1 v@(Vec3 x y z)
+			| (x, y, z) == (0.0, 0.0, 0.0) = Vec3 0.0 0.0 0.0
+			| r0 == 0.0                    = Vec3 0.0 0.0 0.0
+			| isNaN s || isInfinite s      = Vec3 0.0 0.0 0.0
+			| otherwise                    = Vec3 (s*x) (s*y) (s*z)
+			where
+				r0 = getter v
+				s  = r1/r0
+
 data Vec4 a = Vec4 {
 	_x4 :: a,
 	_y4 :: a,
@@ -388,6 +406,22 @@ fr4 f z0 (Vec4 x y z w) = foldr f z0 [x, y, z, w]
 -- | Component-wise multiplication.
 cm4 :: (Num a) => Vec4 a -> Vec4 a -> Vec4 a
 cm4 = co4 (*)
+
+-- | Magnitude of a vector.
+r4 :: forall a. (RealFloat a) => Lens' (Vec4 a) a
+r4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> a
+		getter (Vec4 x y z w) = sqrt (x*x + y*y + z*z + w*w)
+		setter :: a -> Vec4 a -> Vec4 a
+		setter r1 v@(Vec4 x y z w)
+			| (x, y, z, w) == (0.0, 0.0, 0.0, 0.0) = Vec4 0.0 0.0 0.0 0.0
+			| r0 == 0.0                            = Vec4 0.0 0.0 0.0 0.0
+			| isNaN s || isInfinite s              = Vec4 0.0 0.0 0.0 0.0
+			| otherwise                            = Vec4 (s*x) (s*y) (s*z) (s*w)
+			where
+				r0 = getter v
+				s  = r1/r0
 
 -- | Row-major, like C.
 newtype Mat3 a = Mat3 { _getMat3 :: Vec3 (Vec3 a) }
@@ -1320,37 +1354,37 @@ rankNonzerov3 (Vec3 x y z)
 	| otherwise        = 0
 
 sortRowsRankNonzerom4 :: (SmallNum a, Ord a, Num a) => Mat4 a -> Mat4 a
-sortRowsRankNonzerom4 (Mat4 (Vec4 r0 r1 r2_ r3)) =
+sortRowsRankNonzerom4 (Mat4 (Vec4 r0 r1 r2_ r3_)) =
 	-- Merge sort.
 	if' (rn0 <= rn1) (
 		if' (rn2 <= rn3) (
 			-- Now merge (max 3 comparisons).
 			if' (rn0 <= rn2) (
 				if' (rn1 <= rn2) (
-					m4 r0 r1 r2_ r3
+					m4 r0 r1 r2_ r3_
 				) (
-					if' (rn1 <= rn3) (m4 r0 r2_ r1 r3) (m4 r0 r2_ r3 r1)
+					if' (rn1 <= rn3) (m4 r0 r2_ r1 r3_) (m4 r0 r2_ r3_ r1)
 				)
 			) (
 				if' (rn0 <= rn3) (
-					if' (rn1 <= rn3) (m4 r2_ r0 r1 r3) (m4 r2_ r0 r3 r1)
+					if' (rn1 <= rn3) (m4 r2_ r0 r1 r3_) (m4 r2_ r0 r3_ r1)
 				) (
-					m4 r2_ r3 r0 r1
+					m4 r2_ r3_ r0 r1
 				)
 			)
 		) (
-			-- Copy and swap r3 and r2_.
+			-- Copy and swap r3_ and r2_.
 			if' (rn0 <= rn3) (
 				if' (rn1 <= rn3) (
-					m4 r0 r1 r3 r2_
+					m4 r0 r1 r3_ r2_
 				) (
-					if' (rn1 <= rn2) (m4 r0 r3 r1 r2_) (m4 r0 r3 r2_ r1)
+					if' (rn1 <= rn2) (m4 r0 r3_ r1 r2_) (m4 r0 r3_ r2_ r1)
 				)
 			) (
 				if' (rn0 <= rn2) (
-					if' (rn1 <= rn2) (m4 r3 r0 r1 r2_) (m4 r3 r0 r2_ r1)
+					if' (rn1 <= rn2) (m4 r3_ r0 r1 r2_) (m4 r3_ r0 r2_ r1)
 				) (
-					m4 r3 r2_ r0 r1
+					m4 r3_ r2_ r0 r1
 				)
 			)
 		)
@@ -1359,29 +1393,29 @@ sortRowsRankNonzerom4 (Mat4 (Vec4 r0 r1 r2_ r3)) =
 		if' (rn2 <= rn3) (
 			if' (rn1 <= rn2) (
 				if' (rn0 <= rn2) (
-					m4 r0 r1 r2_ r3
+					m4 r0 r1 r2_ r3_
 				) (
-					if' (rn0 <= rn3) (m4 r0 r2_ r1 r3) (m4 r0 r2_ r3 r1)
+					if' (rn0 <= rn3) (m4 r0 r2_ r1 r3_) (m4 r0 r2_ r3_ r1)
 				)
 			) (
 				if' (rn1 <= rn3) (
-					if' (rn0 <= rn3) (m4 r2_ r0 r1 r3) (m4 r2_ r0 r3 r1)
+					if' (rn0 <= rn3) (m4 r2_ r0 r1 r3_) (m4 r2_ r0 r3_ r1)
 				) (
-					m4 r2_ r3 r0 r1
+					m4 r2_ r3_ r0 r1
 				)
 			)
 		) (
 			if' (rn1 <= rn3) (
 				if' (rn0 <= rn3) (
-					m4 r0 r1 r3 r2_
+					m4 r0 r1 r3_ r2_
 				) (
-					if' (rn0 <= rn2) (m4 r0 r3 r1 r2_) (m4 r0 r3 r2_ r1)
+					if' (rn0 <= rn2) (m4 r0 r3_ r1 r2_) (m4 r0 r3_ r2_ r1)
 				)
 			) (
 				if' (rn1 <= rn2) (
-					if' (rn0 <= rn2) (m4 r3 r0 r1 r2_) (m4 r3 r0 r2_ r1)
+					if' (rn0 <= rn2) (m4 r3_ r0 r1 r2_) (m4 r3_ r0 r2_ r1)
 				) (
-					m4 r3 r2_ r0 r1
+					m4 r3_ r2_ r0 r1
 				)
 			)
 		)
@@ -1390,8 +1424,8 @@ sortRowsRankNonzerom4 (Mat4 (Vec4 r0 r1 r2_ r3)) =
 		rn0 = -rankNonzerov4 r0
 		rn1 = -rankNonzerov4 r1
 		rn2 = -rankNonzerov4 r2_
-		rn3 = -rankNonzerov4 r3
-		m4 r0_ r1_ r2_2 r3_ = Mat4 $ Vec4 r0_ r1_ r2_2 r3_
+		rn3 = -rankNonzerov4 r3_
+		m4 r0_ r1_ r2_2 r3__ = Mat4 $ Vec4 r0_ r1_ r2_2 r3__
 
 sortRowsRankNonzerom3 :: (SmallNum a, Ord a, Num a) => Mat3 a -> Mat3 a
 sortRowsRankNonzerom3 (Mat3 (Vec3 r0 r1 r2_)) =

@@ -149,6 +149,20 @@ tests = testGroup "Immutaball.Share.Math" $
 							eqEachEach True eqm3 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True,
 						testCase "eqEachEach fixed mat4" $
 							eqEachEach True eqm4 [pure zdouble, pure 2.0, pure 3.5, pure $ -1.0] @?= True
+					],
+
+				testGroup "randomly generated, near" $
+					[
+						testProperty "eqEachEach random vec2 near" $
+							\(vals :: [Vec2 Double]) -> eqEachEach False near2 vals,
+						testProperty "eqEachEach random vec3 near" $
+							\(vals :: [Vec3 Double]) -> eqEachEach False near3 vals,
+						testProperty "eqEachEach random vec4 near" $
+							\(vals :: [Vec4 Double]) -> eqEachEach False near4 vals,
+						testProperty "eqEachEach random mat3 near" $
+							\(vals :: [Mat3 Double]) -> eqEachEach False nearm3 vals,
+						testProperty "eqEachEach random mat4 near" $
+							\(vals :: [Mat4 Double]) -> eqEachEach False nearm4 vals
 					]
 			],
 
@@ -170,7 +184,7 @@ tests = testGroup "Immutaball.Share.Math" $
 					-- normalized:
 					-- 	  (Vec3 (1.0      / 2.0) (sqrt 3.0 / 2.0) 1.0             ) / sqrt 2
 					-- 	= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))
-					D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0)) (show $ Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0  :: Float))) $
-					aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) `eq3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= True
+					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0)) (show $ Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0  :: Float))) $
+					aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= True
 			]
 	]

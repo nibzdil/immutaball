@@ -167,6 +167,15 @@ module Immutaball.Share.Math
 		eq4,
 		eqm3,
 		eqm4,
+		smallishd,
+		smallishf,
+		SmallishNum(..),
+		near,
+		near2,
+		near3,
+		near4,
+		nearm3,
+		nearm4,
 		rankNonzerov4,
 		rankNonzerov3,
 		inversem4,
@@ -1386,6 +1395,35 @@ eqm3 a b = let (Mat3 rows) = abs <$> ((-) <$> b <*> a) in ((^.r3) <$> rows)^.r3 
 
 eqm4 :: (SmallNum a, Ord a, Num a, RealFloat a) => Mat4 a -> Mat4 a -> Bool
 eqm4 a b = let (Mat4 rows) = abs <$> ((-) <$> b <*> a) in ((^.r4) <$> rows)^.r4 <= smallNum
+
+smallishd :: Double
+smallishd = 0.1**05
+
+smallishf :: Float
+smallishf = 0.1**05
+
+class SmallishNum a where smallishNum :: a
+instance {-# OVERLAPPING  #-} SmallishNum Double where smallishNum = smallishd
+instance {-# OVERLAPPING  #-} SmallishNum Float where smallishNum = smallishf
+instance {-# OVERLAPPABLE #-} (Fractional a) => SmallishNum a where smallishNum = realToFrac $ smallishf
+
+near :: (SmallishNum a, Ord a, Num a) => a -> a -> Bool
+near x y = abs (y - x) <= smallishNum
+
+near2 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Vec2 a -> Bool
+near2 a b = (b - a)^.r2 <= smallishNum
+
+near3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec3 a -> Vec3 a -> Bool
+near3 a b = (b - a)^.r3 <= smallishNum
+
+near4 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Vec4 a -> Bool
+near4 a b = (b - a)^.r4 <= smallishNum
+
+nearm3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Mat3 a -> Mat3 a -> Bool
+nearm3 a b = let (Mat3 rows) = abs <$> ((-) <$> b <*> a) in ((^.r3) <$> rows)^.r3 <= smallishNum
+
+nearm4 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Mat4 a -> Mat4 a -> Bool
+nearm4 a b = let (Mat4 rows) = abs <$> ((-) <$> b <*> a) in ((^.r4) <$> rows)^.r4 <= smallishNum
 
 rankNonzerov4 :: (SmallNum a, Ord a, Num a) => Vec4 a -> Integer
 rankNonzerov4 (Vec4 x y z w)

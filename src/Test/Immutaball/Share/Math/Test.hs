@@ -156,6 +156,8 @@ tests = testGroup "Immutaball.Share.Math" $
 			[
 				testCase "aim right 1/8th circle" $
 					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0)) (show $ (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0))) $
-					aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0) @?= True
+					aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0) @?= True,
+				testCase "aim right 30 degrees" $
+					aimHoriz3DSimple (circle/12) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) @?= True
 			]
 	]

@@ -33,6 +33,7 @@ import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Test.Tasty.QuickCheck
 
 import Immutaball.Share.Math
+import Test.Immutaball.Share.Math.Orphans ()
 
 main :: IO ()
 main = testsMain

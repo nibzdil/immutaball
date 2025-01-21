@@ -182,7 +182,12 @@ module Immutaball.Share.Math
 		MView,
 		MViewd,
 		MView'(..), mviewPos, mviewTarget, mviewFov,
-		viewMat
+		viewMat,
+
+		-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
+
+		aimHoriz3DSimple,
+		aimVert3DSimple
 	) where
 
 import Prelude ()
@@ -190,6 +195,7 @@ import Immutaball.Prelude
 
 import Control.Arrow
 import Control.Monad
+import Data.Maybe
 
 import Control.Lens
 
@@ -1233,6 +1239,7 @@ rotatexz = m3to4 . rotatexzSimple
 rotateyz :: (Floating a) => a -> Mat4 a
 rotateyz = m3to4 . rotateyzSimple
 
+-- | Aim right.
 rotatexySimple :: (Floating a) => a -> Mat3 a
 rotatexySimple t = Mat3 $ Vec3
 	(Vec3 c    s   0.0)
@@ -1240,6 +1247,7 @@ rotatexySimple t = Mat3 $ Vec3
 	(Vec3 0.0  0.0 1.0)
 	where (c, s) = (cos t, sin t)
 
+-- | Tilt right.
 rotatexzSimple :: (Floating a) => a -> Mat3 a
 rotatexzSimple t = Mat3 $ Vec3
 	(Vec3 c    0.0 s  )
@@ -1247,6 +1255,7 @@ rotatexzSimple t = Mat3 $ Vec3
 	(Vec3 (-s) 0.0 c  )
 	where (c, s) = (cos t, sin t)
 
+-- | Aim down.
 rotateyzSimple :: (Floating a) => a -> Mat3 a
 rotateyzSimple t = Mat3 $ Vec3
 	(Vec3 1.0 0.0  0.0)
@@ -1646,3 +1655,41 @@ viewMat v =
 	fov        (v^.mviewFov) <>
 	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
 	translate3 (v^.mviewPos)
+
+-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
+
+-- | The vector represents where the camera at the origin is pointing.  Rotate
+-- aim right by ‘radiansRight’ radians.
+aimHoriz3DSimple :: (Num a, Floating a) => a -> Vec3 a -> Vec3 a
+aimHoriz3DSimple radiansRight target =
+	rotatexySimple radiansRight `mv3` target
+
+-- | The vector represents where the camera at the origin is pointing.
+-- Rotate aim up by ‘radiansUp’ radians.
+-- Optionally cap absolute result by ‘mmaxRadius’ radians from level where z=0.
+aimVert3DSimple :: (Num a, Floating a, RealFloat a) => Maybe a -> a -> Vec3 a -> Vec3 a
+aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
+	unrotateHorizToTarget <>
+	rotateVertically <>
+	rotateHorizToTarget
+
+	where
+		-- First rotate horizontally.  tx becomes 0.
+		rotateHorizToTarget   = rotatexySimple   horizCWAngle
+		-- Third rotate horizontally back.
+		unrotateHorizToTarget = rotatexySimple (-horizCWAngle)
+		-- Second rotate in plane yz around x axis.
+		rotateVertically = rotateyzSimple (-radiansUp')
+
+		-- Angle when aiming right.
+		horizCWAngle = -(Vec2 tx ty ^. t2)
+
+		-- In order to perform clamping, get a copy of a partially transformed target (only 1st transformation).
+		yz = let (Vec3 _x y z) = (`mv3` target) $ rotateHorizToTarget in Vec2 y z
+
+		maxRadiansUp = fromMaybe (tau/2)  (           mmaxRadius) - (yz^.t2)
+		minRadiansUp = fromMaybe (-tau/2) (negate <$> mmaxRadius) - (yz^.t2)
+
+		radiansUp' = case mmaxRadius of
+			Nothing -> radiansUp
+			Just _ -> min maxRadiansUp . max minRadiansUp $ radiansUp

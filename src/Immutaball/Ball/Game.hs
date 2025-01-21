@@ -380,6 +380,8 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			let (maybeView :: Maybe View) = (gs^.gsSol.solWv) !? 0 in
 			let gds = gs^.gsDebugState in
 			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
+				-- TODO: this is now refactored into aim* utils in Math.hs.  Remove commented out part after things are working better.
+				{-
 				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
 				let horizRotatedTargetQDiff = rotatexySimple (gs^.gsDebugState.gdsCameraAimRightRadians) `mv3` targetQDiff in
 				-- Finally, vertically rotate.  Treat x and y as a single number by magnitude and rotate with z.  TODO refactor (probably into a Math.hs new function).
@@ -391,6 +393,9 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 				let (Vec2 x' y', z') = (xy & r2 .~ (xyzRotatedCapped^.x2), xyzRotatedCapped^.y2) in
 				--let rotatedTargetQDiff = horizRotatedTargetQDiff in
 				let rotatedTargetQDiff = Vec3 x' y' z' in
+				-}
+				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
+				let rotatedTargetQDiff = aimVert3DSimple (Just $ 0.99*tau) (gds^.gdsCameraAimUpRadians) . aimHoriz3DSimple (gds^.gdsCameraAimRightRadians) $ targetQDiff in
 
 				let ddebugViewTarget' = (view_^.viewQ) `minusv3` ((view_^.viewP) `pv3` rotatedTargetQDiff) in
 

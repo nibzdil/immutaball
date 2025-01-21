@@ -307,8 +307,6 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 -- | Step the debug free camera.
 --
 -- Check whether this mode is enabled before using this wire.
---
--- TODO: movement is currently on more absolute position; make it relative to aim.  (Possibly is it worth adding a config for old behaviour though?)
 stepGameClockDebugFreeCamera :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
 stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	let gsa    = mkGameStateAnalysis cxtn gsn
@@ -327,7 +325,9 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	-- the state (relatively) globally.
 
 	let (netMovementVec :: Vec3 Double) = Vec3 (fromIntegral netRight) (fromIntegral netForward) (fromIntegral netJump)
-	posOffset <- integrate zv3 -< (dt * freeCameraSpeed) `sv3` netMovementVec
+	let (relativeNetMovementVec :: Vec3 Double) = aimVert3DSimple (Just $ 0.99*tau) (gsn^.gsDebugState.gdsCameraAimUpRadians) . aimHoriz3DSimple (gsn^.gsDebugState.gdsCameraAimRightRadians) $ netMovementVec
+	let netMovementVec' = if' (not freeCameraRelative) netMovementVec $ relativeNetMovementVec
+	posOffset <- integrate zv3 -< (dt * freeCameraSpeed) `sv3` netMovementVec'
 
 	-- FRP (local).
 	posOffsetDiff <- differentiate -< posOffset
@@ -346,3 +346,8 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 		-- Units per second.
 		freeCameraSpeed :: Double
 		freeCameraSpeed = 2.0
+
+		-- Relative to aim?  This is normal behavior, but temporarily setting
+		-- this to False is an option.
+		freeCameraRelative :: Bool
+		freeCameraRelative = True

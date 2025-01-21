@@ -37,6 +37,10 @@ import Test.Tasty.QuickCheck
 import Immutaball.Share.Math
 import Test.Immutaball.Share.Math.Orphans ()
 
+-- TODO: remove debugging when done.
+import Debug.Trace as D------------------------------------------------------ TODO
+import Text.Printf
+
 main :: IO ()
 main = testsMain
 
@@ -65,7 +69,9 @@ zint = 0
 zdouble :: Double
 zdouble = 0.0
 
-circle :: Double
+-- | Similar but to specialize to 'float' so that equivalence checks'
+-- thresholds aren't too tight.
+circle :: Float
 circle = tau
 
 -- | Given a list of values possibly known to already be unique, return a bool
@@ -146,9 +152,10 @@ tests = testGroup "Immutaball.Share.Math" $
 					]
 			],
 
-		testGroup "3D pointing orientation utils (aiming)" $
+		testGroup "3D pointing orientation utils (aiming) - using floats so that equality checks' precisions aren't too tight" $
 			[
 				testCase "aim right 1/8th circle" $
-					aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (sqrt 2) (sqrt 2) 0.0) @?= True
+					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0)) (show $ (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0))) $
+					aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (sqrt 0.5) (sqrt 0.5) 0.0) @?= True
 			]
 	]

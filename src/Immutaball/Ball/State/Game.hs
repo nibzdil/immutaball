@@ -275,7 +275,9 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 			id
 		_ -> id
 
-	let gsnp3 = gsnp2 & updateFreeAim
+	let updateCapFreeAimUp = gsDebugState.gdsCameraAimUpRadians %~ (min (tau/2) . max (-tau/2))
+
+	let gsnp3 = gsnp2 & updateCapFreeAimUp . updateFreeAim
 
 	-- Identify output.
 	let gs = gsnp3

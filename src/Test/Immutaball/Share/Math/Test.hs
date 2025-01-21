@@ -18,7 +18,8 @@ module Test.Immutaball.Share.Math.Test
 		forward3,
 		up3,
 		eq3Duplicate,
-		zint
+		zint,
+		eqEachEach
 	) where
 
 --import Control.Arrow
@@ -58,6 +59,23 @@ eq3Duplicate a b = abs ((b - a)^.r3) <= smalld
 zint :: Integer
 zint = 0
 
+-- | Given a list of values possibly known to already be unique, return a bool
+-- that is True if the equality comparison on each possible pairing of values
+-- is as expected.
+--
+-- If e.g. the values are randomly generated, they might not be unique, so only
+-- check each value with each other in this case.
+eqEachEach :: Bool -> (a -> a -> Bool) -> [a] -> Bool
+eqEachEach guaranteedUnique eq vals =
+	and $
+		[ r
+		| ivals <- return $ zip [zint..] vals
+		, (ai, av) <- ivals
+		, (bi, bv) <- ivals
+		, guaranteedUnique || ai == bi
+		, r <- return $ (ai == bi) == (av `eq` bv)
+		]
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math" $
 	[
@@ -71,7 +89,9 @@ tests = testGroup "Immutaball.Share.Math" $
 				testCase "right3 /= forward3" $
 					right3 `eq3Duplicate` forward3 @?= False,
 				testCase "each axis unit vector equality checks correctly with each" $
-					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3Duplicate` bv)] @?= True
+					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3Duplicate` bv)] @?= True,
+				testCase "each axis unit vector equality checks correctly with each" $
+					eqEachEach True eq3Duplicate [right3, forward3, up3] @?= True
 			],
 
 		testGroup "eq3 tests" $
@@ -81,7 +101,9 @@ tests = testGroup "Immutaball.Share.Math" $
 				testCase "right3 /= forward3" $
 					right3 `eq3` forward3 @?= False,
 				testCase "each axis unit vector equality checks correctly with each" $
-					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3` bv)] @?= True
+					and [r | axes <- return $ zip [zint..] [right3, forward3, up3], (ai, av) <- axes, (bi, bv) <- axes, r <- return $ (ai == bi) == (av `eq3` bv)] @?= True,
+				testCase "each axis unit vector equality checks correctly with each" $
+					eqEachEach True eq3 [right3, forward3, up3] @?= True
 			],
 
 		testGroup "3D pointing orientation utils (aiming)" $

@@ -20,6 +20,7 @@ module Test.Immutaball.Share.Math.Test
 		eq3Duplicate,
 		zint,
 		zdouble,
+		circle,
 		eqEachEach
 	) where
 
@@ -63,6 +64,9 @@ zint = 0
 
 zdouble :: Double
 zdouble = 0.0
+
+circle :: Double
+circle = tau
 
 -- | Given a list of values possibly known to already be unique, return a bool
 -- that is True if the equality comparison on each possible pairing of values
@@ -144,5 +148,7 @@ tests = testGroup "Immutaball.Share.Math" $
 
 		testGroup "3D pointing orientation utils (aiming)" $
 			[
+				testCase "aim right 1/8th circle" $
+					aimHoriz3DSimple (circle/8) (Vec3 0.0 1.0 0.0) `eq3` (Vec3 (sqrt 2) (sqrt 2) 0.0) @?= True
 			]
 	]

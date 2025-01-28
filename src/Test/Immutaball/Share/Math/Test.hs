@@ -209,11 +209,10 @@ tests = testGroup "Immutaball.Share.Math" $
 					let relCamTargetxy = Vec2 (relCamTarget^.x3) (relCamTarget^.y3) in
 					let byAims = aimVert3DSimple Nothing ((Vec2 (relCamTargetxy^.r2) (relCamTarget^.z3))^.t2) . aimHoriz3DSimple (up2^.t2 - relCamTargetxy^.t2) $ randomPos in
 					byTilt3y `near3` byAims,
-				testCase "tilt3y 0,0,1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then negate y)" $
-					(tilt3ySimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (-sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= True,
-				testCase "tilt3y 0,0,-1 on (look 45 deg up from 30 deg right) gives (look 45 deg down from 30 deg right)" $
-					D.trace (printf "DEBUG0: left is %s and right is %s." (show $ (tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)))) (show $ (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 2.0)))) $
-					(tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 2.0)) @?= True
-				-- TODO: test special case of tilt3y 0,0,±1.
+				testCase "tilt3y 0,0,1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then yz %~ *i)" $
+					(tilt3ySimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (-sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0)) @?= True,
+				testCase "tilt3y 0,0,-1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then yz %~ *i**3)" $
+					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ updateit (tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)))) (show $ (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 2.0)))) $
+					(tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0) (-sqrt 1.5 / 2.0)) @?= True
 			]
 	]

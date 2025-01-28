@@ -1202,24 +1202,59 @@ tilt3zReverseSimple (Vec3 x y z) = tilt3zSimple $ Vec3 (-x) (-y) z
 
 -- | Rotate horizontally (xy plane around z axis), then rotate vertically by
 -- treating x and y as a single number by magnitude and rotating with z.
-tilt3y :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+tilt3y :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3y = m3to4 . tilt3ySimple
 
 -- | 'tilt3y' without homogeneous coordinates.
-tilt3ySimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+--
+-- new x axis's z is 0.  Without horizontal tilt, new z axis's x is 0, but then
+-- add horizontal rotate.
+--
+-- The new x axis is the 2D y vector without z rotated right 45 degrees (like
+-- multiplying a complex number by i but in reverse), renormalized to a unit
+-- vector.  However, if the 2D vector is 0, default it to 0,1 (the forward2
+-- vector).
+--
+-- The new y axis is the argument provided.
+--
+-- The new z axis is like taking the magnitude of the 2D vector, and rotating
+-- it and y^.z3 like we do for the new x axis.  TODO OLD: (Take forward3=0,1,0, rotate it
+-- horizontally, and then the new x and y form a new unit vector, and z is
+-- still 0, so then take Vec2 (magnitude horiz) and 0 and rotate so that
+-- (magnitude horiz) becomes (y^.z3).)
+--
+-- The new z axis is Vec2 (Vec2 (y^.x3) (y^.y2)) (y^.z3) similarly rotated 45
+-- degrees counter-clockwise, where the sub-vector has an ‘r2’ view (it scales
+-- in number).  (This is like multiplying that vector by ‘i’ in complex number
+-- representation.)
+tilt3ySimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3ySimple y_ = Mat3 $ Vec3
-	-- new x axis                 new y axis              new z axis
+	{-
+	-- TODO remove
+	-- new x axis                  new y axis             new z axis
 	( Vec3 (sqrt$ 1 - sq_ (y^.x3)) (y^.x3)                0.0                     )
 	( Vec3 0.0                     (y^.y3)                (sqrt$ 1 - sq_ (y^.z3)) )
 	( Vec3 (             -(y^.x3)) (y^.z3)                (             -(y^.z3)) )
+	-}
+	-- new x axis          new y axis  new z axis
+	( Vec3 ( y'^.y3 / yhr) (y^.x3)     (-(y^.x3)*(y^.z3)) )
+	( Vec3 (-y'^.x3 / yhr) (y^.y3)     (-(y^.y3)*(y^.z3)) )
+	( Vec3 0.0             (y^.z3)     (yhr             ) )
 	where
 		sq_ a = a * a
 		y = v3normalize y_
+		yhr = Vec2 (y'^.x3) (y'^.y3) ^. r2  -- = sqrt $ sq_ y^.x3 + sq_ y^.y3  -- normalizes new x axis
+		--yh = Vec2 (y'^.x3) (y'^.y3) -- The 2D vector mentioned above.
+		--yhr = yh^. r2  -- = sqrt $ sq_ y^.x3 + sq_ y^.y3  -- normalizes new x axis
 
-tilt3yReverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+		-- y': this handles the special case of y==0,0,±1, where the new x axis should be 1,0,0, (and the new z axis should be 0,∓1,0).
+		y' | sqrt (sq_ (y^.x3) + sq_ (y^.y3)) <= smallNum = Vec3 0.0 1.0 0.0 | otherwise = y
+		-- TODO: tilte3z probably needs fixes too
+
+tilt3yReverse :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3yReverse = m3to4 . tilt3yReverseSimple
 
-tilt3yReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3yReverseSimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3yReverseSimple (Vec3 x y z) = tilt3ySimple $ Vec3 (-x) y (-z)
 
 -- | Rotate x radians about the axis pointing in direction, which intersects the origin.
@@ -1771,7 +1806,7 @@ data MView' a = MView {
 makeLenses ''MView'
 
 -- | Translate, then rotate, then fov.
-viewMat :: (Num a, Fractional a, Floating a) => MView' a -> Mat4 a
+viewMat :: (Num a, Fractional a, Floating a, RealFloat a, SmallNum a) => MView' a -> Mat4 a
 viewMat v =
 	fov        (v^.mviewFov) <>
 	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>

@@ -194,5 +194,6 @@ tests = testGroup "Immutaball.Share.Math" $
 				--testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right)" $
 					--TODO
 				-- TODO: random gen prop, tilt3y eq aimHoriz <> aimVert by near.
+				-- TODO: test special case of tilt3y 0,0,±1.
 			]
 	]

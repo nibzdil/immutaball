@@ -1217,25 +1217,12 @@ tilt3y = m3to4 . tilt3ySimple
 --
 -- The new y axis is the argument provided.
 --
--- The new z axis is like taking the magnitude of the 2D vector, and rotating
--- it and y^.z3 like we do for the new x axis.  TODO OLD: (Take forward3=0,1,0, rotate it
--- horizontally, and then the new x and y form a new unit vector, and z is
--- still 0, so then take Vec2 (magnitude horiz) and 0 and rotate so that
--- (magnitude horiz) becomes (y^.z3).)
---
 -- The new z axis is Vec2 (Vec2 (y^.x3) (y^.y2)) (y^.z3) similarly rotated 45
 -- degrees counter-clockwise, where the sub-vector has an ‘r2’ view (it scales
 -- in number).  (This is like multiplying that vector by ‘i’ in complex number
 -- representation.)
 tilt3ySimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3ySimple y_ = Mat3 $ Vec3
-	{-
-	-- TODO remove
-	-- new x axis                  new y axis             new z axis
-	( Vec3 (sqrt$ 1 - sq_ (y^.x3)) (y^.x3)                0.0                     )
-	( Vec3 0.0                     (y^.y3)                (sqrt$ 1 - sq_ (y^.z3)) )
-	( Vec3 (             -(y^.x3)) (y^.z3)                (             -(y^.z3)) )
-	-}
 	-- new x axis          new y axis  new z axis
 	( Vec3 ( y'^.y3 / yhr) (y^.x3)     (-(y^.x3)*(y^.z3)) )
 	( Vec3 (-y'^.x3 / yhr) (y^.y3)     (-(y^.y3)*(y^.z3)) )

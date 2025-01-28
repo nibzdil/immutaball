@@ -1202,6 +1202,9 @@ tilt3zReverseSimple (Vec3 x y z) = tilt3zSimple $ Vec3 (-x) (-y) z
 
 -- | Rotate horizontally (xy plane around z axis), then rotate vertically by
 -- treating x and y as a single number by magnitude and rotating with z.
+--
+-- Ensure the y axis argument is normalized before using, since 'tilt3ySimple'
+-- assumes the input is normalized.
 tilt3y :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3y = m3to4 . tilt3ySimple
 
@@ -1221,6 +1224,9 @@ tilt3y = m3to4 . tilt3ySimple
 -- degrees counter-clockwise, where the sub-vector has an ‘r2’ view (it scales
 -- in number).  (This is like multiplying that vector by ‘i’ in complex number
 -- representation.)
+--
+-- Ensure the y axis argument is normalized before using, since 'tilt3ySimple'
+-- assumes the input is normalized.
 tilt3ySimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3ySimple y_ = Mat3 $ Vec3
 	-- new x axis          new y axis  new z axis

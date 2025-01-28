@@ -193,5 +193,6 @@ tests = testGroup "Immutaball.Share.Math" $
 					tilt3ySimple forward3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))
 				--testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right)" $
 					--TODO
+				-- TODO: random gen prop, tilt3y eq aimHoriz <> aimVert by near.
 			]
 	]

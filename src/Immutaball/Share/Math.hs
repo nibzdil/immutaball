@@ -1202,9 +1202,6 @@ tilt3zReverseSimple (Vec3 x y z) = tilt3zSimple $ Vec3 (-x) (-y) z
 
 -- | Rotate horizontally (xy plane around z axis), then rotate vertically by
 -- treating x and y as a single number by magnitude and rotating with z.
---
--- Ensure the y axis argument is normalized before using, since 'tilt3ySimple'
--- assumes the input is normalized.
 tilt3y :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3y = m3to4 . tilt3ySimple
 
@@ -1224,19 +1221,17 @@ tilt3y = m3to4 . tilt3ySimple
 -- degrees counter-clockwise, where the sub-vector has an ‘r2’ view (it scales
 -- in number).  (This is like multiplying that vector by ‘i’ in complex number
 -- representation.)
---
--- Ensure the y axis argument is normalized before using, since 'tilt3ySimple'
--- assumes the input is normalized.
 tilt3ySimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3ySimple y_ = Mat3 $ Vec3
-	-- new x axis          new y axis  new z axis
-	( Vec3 ( y'^.y3 / yhr) (y^.x3)     (-(y^.x3)*(y^.z3)) )
-	( Vec3 (-y'^.x3 / yhr) (y^.y3)     (-(y^.y3)*(y^.z3)) )
-	( Vec3 0.0             (y^.z3)     (yhr             ) )
+	-- new x axis           new y axis  new z axis
+	( Vec3 ( y'^.y3 / yhr') (y^.x3)     (-(y'^.x3)*(y^.z3)) )
+	( Vec3 (-y'^.x3 / yhr') (y^.y3)     (-(y'^.y3)*(y^.z3)) )
+	( Vec3 0.0              (y^.z3)     (yhr              ) )
 	where
 		sq_ a = a * a
 		y = v3normalize y_
-		yhr = Vec2 (y'^.x3) (y'^.y3) ^. r2  -- = sqrt $ sq_ y^.x3 + sq_ y^.y3  -- normalizes new x axis
+		yhr = Vec2 (y^.x3) (y^.y3) ^. r2
+		yhr' = Vec2 (y'^.x3) (y'^.y3) ^. r2  -- = sqrt $ sq_ y^.x3 + sq_ y^.y3  -- normalizes new x axis
 		--yh = Vec2 (y'^.x3) (y'^.y3) -- The 2D vector mentioned above.
 		--yhr = yh^. r2  -- = sqrt $ sq_ y^.x3 + sq_ y^.y3  -- normalizes new x axis
 

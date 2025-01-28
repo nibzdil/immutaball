@@ -397,9 +397,10 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
 				let rotatedTargetQDiff = aimVert3DSimple (Just $ 0.99*tau) (gds^.gdsCameraAimUpRadians) . aimHoriz3DSimple (gds^.gdsCameraAimRightRadians) $ targetQDiff in
 
-				let ddebugViewTarget' = (view_^.viewQ) `minusv3` ((view_^.viewP) `pv3` rotatedTargetQDiff) in
+				let
+					ddebugViewTarget' = (view_^.viewP) `pv3` rotatedTargetQDiff `pv3` ddebugViewPos
 
-				let (ddebugViewPos, ddebugViewTarget) = if' (not (gds^.gdsCameraDebugOn)) (zv3, zv3) $ (gds^.gdsCameraPosOffset, ddebugViewTarget') in
+					(ddebugViewPos, ddebugViewTarget) = if' (not (gds^.gdsCameraDebugOn)) (zv3, zv3) $ (gds^.gdsCameraPosOffset, ddebugViewTarget') in
 				MView {
 					_mviewPos    = (view_^.viewP) `pv3` ddebugViewPos,
 					_mviewTarget = (view_^.viewQ) `pv3` ddebugViewTarget,

@@ -190,9 +190,9 @@ tests = testGroup "Immutaball.Share.Math" $
 				testCase "tilt3y on 0,1,0 gives same result (look 45 deg up from 30 deg right)" $
 					tilt3ySimple (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) `mv3` forward3 @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
 				testCase "tilt3y 0,1,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right) (no change)" $
-					tilt3ySimple forward3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))
-				--testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right)" $
-					--TODO
+					tilt3ySimple forward3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
+				testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right) (just xy %~ *i**3 of last test's expected)" $
+					(tilt3ySimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0)) @?= True
 				-- TODO: random gen prop, tilt3y eq aimHoriz <> aimVert by near.
 				-- TODO: test special case of tilt3y 0,0,±1.
 			]

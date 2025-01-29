@@ -330,8 +330,9 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 
 	let (unrotatedNetMovementVec :: Vec3 Double) = Vec3 (fromIntegral netRight) (fromIntegral netForward) (fromIntegral netJump)
 	let (netMovementVec :: Vec3 Double) = tilt3ySimple (v3normalize $ (gsa^.gsaView.mviewTarget) `minusv3` (gsa^.gsaView.mviewPos)) `mv3` unrotatedNetMovementVec
-	let (relativeNetMovementVec :: Vec3 Double) = aimVert3DSimple (Just $ 0.99*tau) (gsn^.gsDebugState.gdsCameraAimUpRadians) . aimHoriz3DSimple (gsn^.gsDebugState.gdsCameraAimRightRadians) $ netMovementVec
-	let netMovementVec' = if' (not freeCameraRelative) netMovementVec $ relativeNetMovementVec
+	-- relativeNetMovementVec is not needed: netMovementVec _already_ includes the free camera rotation, not just the original orientation in the level file.
+	--let (relativeNetMovementVec :: Vec3 Double) = aimVert3DSimple (Just $ 0.99*tau) (gsn^.gsDebugState.gdsCameraAimUpRadians) . aimHoriz3DSimple (gsn^.gsDebugState.gdsCameraAimRightRadians) $ netMovementVec
+	let netMovementVec' = if' (not freeCameraRelative) unrotatedNetMovementVec $ netMovementVec
 	posOffset <- integrate zv3 -< (dt * freeCameraSpeed) `sv3` netMovementVec'
 
 	-- FRP (local).

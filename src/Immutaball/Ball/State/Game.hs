@@ -257,7 +257,11 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 	let (curMouseSpeed :: Double) = 4.0
 	let (curMouseSense :: Int) = cxtn^.ibNeverballrc.mouseSense
 	let updateFreeAim = if' (not $ gsnp2^.gsDebugState.gdsCameraDebugOn) id $ case request of
-		(Point _x _y dx dy) ->
+		(Point _x _y dx' dy') ->
+			-- SDL for me reported inverted dy (i.e. SDL's 0,0 at the top-left corner); so invert dy.
+			let dx =  dx' in
+			let dy = -dy' in
+
 			let (dxd :: Double) = fromIntegral dx in
 			let (dyd :: Double) = fromIntegral dy in
 

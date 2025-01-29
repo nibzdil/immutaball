@@ -324,7 +324,8 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 	-- both.  Use FRP to calculate a diff locally, and then apply that diff to
 	-- the state (relatively) globally.
 
-	let (netMovementVec :: Vec3 Double) = Vec3 (fromIntegral netRight) (fromIntegral netForward) (fromIntegral netJump)
+	let (unrotatedNetMovementVec :: Vec3 Double) = Vec3 (fromIntegral netRight) (fromIntegral netForward) (fromIntegral netJump)
+	let (netMovementVec :: Vec3 Double) = tilt3ySimple (v3normalize $ (gsa^.gsaView.mviewTarget) `minusv3` (gsa^.gsaView.mviewPos)) `mv3` unrotatedNetMovementVec
 	let (relativeNetMovementVec :: Vec3 Double) = aimVert3DSimple (Just $ 0.99*tau) (gsn^.gsDebugState.gdsCameraAimUpRadians) . aimHoriz3DSimple (gsn^.gsDebugState.gdsCameraAimRightRadians) $ netMovementVec
 	let netMovementVec' = if' (not freeCameraRelative) netMovementVec $ relativeNetMovementVec
 	posOffset <- integrate zv3 -< (dt * freeCameraSpeed) `sv3` netMovementVec'

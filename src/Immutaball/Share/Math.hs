@@ -1813,28 +1813,31 @@ aimHoriz3DSimple radiansRight target =
 -- Optionally cap absolute result by ‘mmaxRadius’ radians from level where z=0.
 aimVert3DSimple :: (Num a, Floating a, RealFloat a, SmallNum a) => Maybe a -> a -> Vec3 a -> Vec3 a
 aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
-	unrotateHorizToTarget <>
+	rotateHorizToTarget <>
 	rotateVertically <>
-	rotateHorizToTarget
+	unrotateHorizToTarget
 
 	where
-		-- First rotate horizontally.  tx becomes 0.
-		rotateHorizToTarget   = rotatexySimple   horizCWAngle
-		-- Third rotate horizontally back.
+		-- First horizontally unrotate the point back to 0,1,z so that tx becomes 0 (the point becomes in the yz plane).
 		unrotateHorizToTarget = rotatexySimple (-horizCWAngle)
+		-- Third rotate horizontally back to restore tx,ty's angle.
+		rotateHorizToTarget   = rotatexySimple   horizCWAngle
 		-- Second rotate in plane yz around x axis.
 		rotateVertically = rotateyzSimple (-radiansUp')
 
 		-- Angle when aiming right.  CW relative to 0,1 in radians.
+		-- (If you take a forward vector 0,1,0 and aim right by this angle,
+		-- then the result will point in the same direction as 'target'
+		-- ignoring the z coordinate.)
 		horizCWAngle
-			| (Vec2 tx ty ^. r2) `equivalentSmall` 0.0 = 0.0
+			| (Vec2 tx ty ^. r2) `equivalentSmall` 0.0 = 0.0  -- Technically redundant, since rotating in this case would still give you 0,0 for x,y.
 			| otherwise                                =
 				-((Vec2 tx ty ^. t2) - (Vec2 0.0 1.0 ^. t2))
 		---- Negate angle.
 		--horizCCWAngle = -horizCWAngle
 
 		-- In order to perform clamping, get a copy of a partially transformed target (only 1st transformation).
-		yz = let (Vec3 _x y z) = (`mv3` target) $ rotateHorizToTarget in Vec2 y z
+		yz = let (Vec3 _x y z) = (`mv3` target) $ unrotateHorizToTarget in Vec2 y z
 
 		maxRadiansUp = fromMaybe (tau/2)  (           mmaxRadius) - (yz^.t2)
 		minRadiansUp = fromMaybe (-tau/2) (negate <$> mmaxRadius) - (yz^.t2)

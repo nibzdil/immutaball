@@ -139,7 +139,7 @@ renderScene = proc ((camera, swa, gs), cxtn) -> do
 
 	where
 		transformationMatrix :: MView -> Mat4 Double
-		transformationMatrix view_ = viewMat view_
+		transformationMatrix view_ = worldToGL <> viewMat view_
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

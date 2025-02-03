@@ -199,6 +199,8 @@ module Immutaball.Share.Math
 		MViewd,
 		MView'(..), mviewPos, mviewTarget, mviewFov,
 		viewMat,
+		worldToGL,
+		worldToGLSimple,
 
 		-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
 
@@ -1748,10 +1750,10 @@ perspectivePure v = Mat4 $ Vec4
 --
 -- e.g. a right angled fov makes for a z component of 1, for a 1:1 ratio.
 fov :: (Fractional a, Floating a) => a -> Mat4 a
-fov t = perspective $ Vec3 0.0 0.0 (1 / tan (t/2))
+fov t = perspective $ Vec3 0.0 (1 / tan (t/2)) 0.0
 
 fovPure :: (Fractional a, Floating a) => a -> Mat4 a
-fovPure t = perspectivePure $ Vec3 0.0 0.0 (1 / tan (t/2))
+fovPure t = perspectivePure $ Vec3 0.0 (1 / tan (t/2)) 0.0
 
 zv2 :: (Fractional a) => Vec2 a
 zv2 = rv2 0.0
@@ -1796,9 +1798,28 @@ makeLenses ''MView'
 -- | Translate, then rotate, then fov.
 viewMat :: (Num a, Fractional a, Floating a, RealFloat a, SmallNum a) => MView' a -> Mat4 a
 viewMat v =
-	fov        (v^.mviewFov) <>
+	--fov        (v^.mviewFov) <>  -- TODO: add perspective by uncommenting once the camera is working.
 	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
-	translate3 (v^.mviewPos)
+	translate3 (-v^.mviewPos)
+
+-- | Swap y and z axes.
+--
+-- OpenGL expects z to be ‘forward’ with depth, and y to be vertically, whereas
+-- world positioning expects y to be ‘forward’ towards the camera target, and z to
+-- be up and down vertically.
+worldToGL :: (Num a, Fractional a) => Mat4 a
+worldToGL = Mat4 $ Vec4
+	(Vec4 1.0 0.0 0.0 0.0)
+	(Vec4 0.0 0.0 1.0 0.0)
+	(Vec4 0.0 1.0 0.0 0.0)
+	(Vec4 0.0 0.0 0.0 1.0)
+
+-- | 'worldToGL' in a 3x3 matrix.
+worldToGLSimple :: (Num a, Fractional a) => Mat3 a
+worldToGLSimple = Mat3 $ Vec3
+	(Vec3 1.0 0.0 0.0)
+	(Vec3 0.0 0.0 1.0)
+	(Vec3 0.0 1.0 0.0)
 
 -- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
 

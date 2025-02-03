@@ -1339,7 +1339,7 @@ rotatexz = m3to4 . rotatexzSimple
 rotateyz :: (Floating a) => a -> Mat4 a
 rotateyz = m3to4 . rotateyzSimple
 
--- | Aim left.
+-- | Aim right.
 rotatexySimple :: (Floating a) => a -> Mat3 a
 rotatexySimple t = Mat3 $ Vec3
 	(Vec3 c    s   0.0)
@@ -1347,7 +1347,7 @@ rotatexySimple t = Mat3 $ Vec3
 	(Vec3 0.0  0.0 1.0)
 	where (c, s) = (cos t, sin t)
 
--- | Tilt left.
+-- | Tilt right.
 rotatexzSimple :: (Floating a) => a -> Mat3 a
 rotatexzSimple t = Mat3 $ Vec3
 	(Vec3 c    0.0 s  )
@@ -1811,7 +1811,7 @@ aimHoriz3DSimple radiansRight target =
 -- | The vector represents where the camera at the origin is pointing.
 -- Rotate aim up by ‘radiansUp’ radians.
 -- Optionally cap absolute result by ‘mmaxRadius’ radians from level where z=0.
-aimVert3DSimple :: (Num a, Floating a, RealFloat a) => Maybe a -> a -> Vec3 a -> Vec3 a
+aimVert3DSimple :: (Num a, Floating a, RealFloat a, SmallNum a) => Maybe a -> a -> Vec3 a -> Vec3 a
 aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
 	unrotateHorizToTarget <>
 	rotateVertically <>
@@ -1819,16 +1819,19 @@ aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
 
 	where
 		-- First rotate horizontally.  tx becomes 0.
-		rotateHorizToTarget   = rotatexySimple   horizCCWAngle
+		rotateHorizToTarget   = rotatexySimple   horizCWAngle
 		-- Third rotate horizontally back.
-		unrotateHorizToTarget = rotatexySimple (-horizCCWAngle)
+		unrotateHorizToTarget = rotatexySimple (-horizCWAngle)
 		-- Second rotate in plane yz around x axis.
 		rotateVertically = rotateyzSimple (-radiansUp')
 
 		-- Angle when aiming right.  CW relative to 0,1 in radians.
-		horizCWAngle  = -((Vec2 tx ty ^. t2) - (Vec2 0.0 1.0 ^. t2))
-		-- Negate angle.
-		horizCCWAngle = -horizCWAngle
+		horizCWAngle
+			| (Vec2 tx ty ^. r2) `equivalentSmall` 0.0 = 0.0
+			| otherwise                                =
+				-((Vec2 tx ty ^. t2) - (Vec2 0.0 1.0 ^. t2))
+		---- Negate angle.
+		--horizCCWAngle = -horizCWAngle
 
 		-- In order to perform clamping, get a copy of a partially transformed target (only 1st transformation).
 		yz = let (Vec3 _x y z) = (`mv3` target) $ rotateHorizToTarget in Vec2 y z

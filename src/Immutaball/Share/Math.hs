@@ -1798,7 +1798,7 @@ makeLenses ''MView'
 -- | Translate, then rotate, then fov.
 viewMat :: (Num a, Fractional a, Floating a, RealFloat a, SmallNum a) => MView' a -> Mat4 a
 viewMat v =
-	--fov        (v^.mviewFov) <>  -- TODO: add perspective by uncommenting once the camera is working.
+	fov        (v^.mviewFov) <>
 	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
 	translate3 (-v^.mviewPos)
 

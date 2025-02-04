@@ -184,6 +184,7 @@ module Immutaball.Share.Math
 		inversem3GaussianElimination,
 		perspective,
 		perspectivePure,
+		perspectiveDepthConstant,
 		fov,
 		fovPure,
 
@@ -1704,22 +1705,32 @@ inversem3GaussianElimination m =
 -- A third example is a point (2,4,5,1) mapping back to original axes as
 -- (2,4,10,6), which is equivalent to (1/3, 2/3, 5/3 = 1.66…).  It is three
 -- times as far away as the first point relative to the viewer z=-1.
-perspective :: (Fractional a) => Vec3 a -> Mat4 a
+perspective :: (Num a, Fractional a) => Vec3 a -> Mat4 a
 perspective v = Mat4 $ Vec4
-	(Vec4 (1+v^.x3) 0.0       0.0       0.0)
-	(Vec4 0.0       (1+v^.y3) 0.0       0.0)
-	(Vec4 0.0       0.0       (1+v^.z3) 0.0)
-	(Vec4 (v^.x3)   (v^.y3)   (v^.z3)   1.0)
+	(Vec4 (1+pdc*v^.x3) 0.0           0.0           0.0)
+	(Vec4 0.0           (1+pdc*v^.y3) 0.0           0.0)
+	(Vec4 0.0           0.0           (1+pdc*v^.z3) 0.0)
+	(Vec4 (v^.x3)       (v^.y3)       (v^.z3)       1.0)
+	where pdc = perspectiveDepthConstant
 
 -- | preserves z and does not shift by 1 but is not invertible.
 --
 -- With linear non-independence, it collapses into 3 dimensions without a nonzero determinant.
-perspectivePure :: (Fractional a) => Vec3 a -> Mat4 a
+perspectivePure :: (Num a, Fractional a) => Vec3 a -> Mat4 a
 perspectivePure v = Mat4 $ Vec4
-	(Vec4 (1+v^.x3) 0.0       0.0       0.0)
-	(Vec4 0.0       (1+v^.y3) 0.0       0.0)
-	(Vec4 0.0       0.0       (1+v^.z3) 0.0)
-	(Vec4 (v^.x3)   (v^.y3)   (v^.z3)   0.0)
+	(Vec4 (1+pdc*v^.x3) 0.0           0.0           0.0)
+	(Vec4 0.0           (1+pdc*v^.y3) 0.0           0.0)
+	(Vec4 0.0           0.0           (1+pdc*v^.z3) 0.0)
+	(Vec4 (v^.x3)       (v^.y3)       (v^.z3)       0.0)
+	where pdc = perspectiveDepthConstant
+
+-- | This is to approximate disabling OpenGL culling.
+--
+-- The depth value (which we use as ‘y’ until the last stage of transformation
+-- where the ‘z’ coordinate then represents depth) is scaled by this constant
+-- inside 'perspective' and 'persectivePure'.
+perspectiveDepthConstant :: (Num a, Fractional a) => a
+perspectiveDepthConstant = 1.0e-35
 
 -- | fov.
 --

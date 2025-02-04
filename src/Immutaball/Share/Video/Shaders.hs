@@ -272,7 +272,9 @@ vertexShader = unlines $
 		"\tfloat anglesys = sin(spinRad);",
 		"\tfloat anglesxc = cos(tiltRad);",
 		"\tfloat anglesxs = sin(tiltRad);",
-		"\tvec3 rawVertPos = vec3(anglesyc * angleszc, -anglesxc*anglesxs-anglesxs*anglesys*angleszc, anglesxs*anglesys*angleszc-anglesxc*anglesys*angleszs);",
+		--"\tvec3 rawVertPos = vec3(anglesyc * angleszc, -anglesxc*anglesxs-anglesxs*anglesys*angleszc, anglesxs*anglesys*angleszc-anglesxc*anglesys*angleszs);",
+		-- TODO FIXME: monolith ball until the ball vec gets fixed.
+		"\tvec3 rawVertPos = vec3(circleSampleRad, 0.0, tiltRad);  // TODO FIXME: monolith ball until the ball vec gets fixed.",
 		"\tvec3 vertPos = ballPos + ballRadius*rawVertPos;",
 		"\t// Apply the global transformation.",
 		"\tvec4 glVertPos = transfMul(vec4(vertPos, 1.0));",

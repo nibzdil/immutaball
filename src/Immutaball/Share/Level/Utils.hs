@@ -62,10 +62,18 @@ restoreSolTransformation = m3to4 $ restoreSolTransformationSimple
 --
 -- This does not include the scaling by 1/64, which is preserved.
 restoreSolTransformationSimple :: Mat3 Double
-restoreSolTransformationSimple = Mat3 $ Vec3
+restoreSolTransformationSimple = (todoFixMirroredXY <>) . Mat3 $ Vec3
 	(Vec3 1.0 0.0 0.0   )
 	(Vec3 0.0 0.0 (-1.0))
 	(Vec3 0.0 1.0 0.0   )
+	where
+		-- | I don't know why the levels are upside down and mirrored by left to right.  TODO: figure out why this
+		-- happening and provide a better fix than this workaround, which negates y and z (up and down).
+		todoFixMirroredXY :: Mat3 Double
+		todoFixMirroredXY = Mat3 $ Vec3
+			(Vec3 1.0  0.0    0.0   )
+			(Vec3 0.0  (-1.0) 0.0   )
+			(Vec3 0.0  0.0    (-1.0))
 
 mapcSolTransformationSimple :: Mat3 Double
 mapcSolTransformationSimple = Mat3 $ Vec3

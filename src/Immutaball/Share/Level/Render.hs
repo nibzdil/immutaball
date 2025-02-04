@@ -35,6 +35,7 @@ import Graphics.GL.Compatibility45
 import Graphics.GL.Types
 
 import Immutaball.Ball.Game
+import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
 import Immutaball.Share.Level.Analysis
@@ -53,7 +54,7 @@ import Immutaball.Share.ImmutaballIO.BasicIO
 
 -- | TODO: implement.
 renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
-renderLevel = proc ((camera, swa, gs), cxtn) -> do
+renderLevel = proc ((camera_, swa, gs), cxtn) -> do
 	-- Set up.
 	let levelPath = swa^.swaMeta.smPath
 	(mlastLevelPath, cxtnp1) <- setCurrentlyLoadedSOL -< (levelPath, cxtn)
@@ -61,7 +62,7 @@ renderLevel = proc ((camera, swa, gs), cxtn) -> do
 	cxtnp2 <- returnA ||| renderSetupNewLevel -< if' (not newLevel) (Left cxtnp1) (Right (swa, cxtnp1))
 
 	-- Render the scene.
-	cxtnp3 <- renderScene -< ((camera, swa, gs), cxtnp2)
+	cxtnp3 <- renderScene -< ((camera_, swa, gs), cxtnp2)
 
 	-- Return the state context.
 
@@ -101,6 +102,12 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: renderSetupNewLevel: all sol mv is " ++ show (swa^.swaSol.solMv)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3") ()
 
+	-- Approximate disabling OpenGL culling by depth (by our transformed y coordinates, which transform into OpenGL z depth coordinates).
+	let sdlGL1'_ = sdlGL1 (cxtnp17^.ibContext.ibSDLManagerHandle)
+	let sdlGL1' = liftIBIO . sdlGL1'_
+	() <- monadic -< sdlGL1' $ do
+		GLDepthRange (cxtnp17^.ibContext.ibStaticConfig.x'glNearVal) (cxtnp17^.ibContext.ibStaticConfig.x'glFarVal) ()
+
 	-- Return the state context.
 
 	let cxt = cxtnp17
@@ -109,9 +116,9 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 
 -- | After setup, render the scene.
 renderScene :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
-renderScene = proc ((camera, swa, gs), cxtn) -> do
+renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	-- Set up the transformation matrix.
-	let mat = transformationMatrix camera
+	let mat = transformationMatrix camera_
 	cxtnp1 <- setTransformation -< (mat, cxtn)
 
 	-- Render the scene.

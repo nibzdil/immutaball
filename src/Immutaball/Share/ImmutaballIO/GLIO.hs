@@ -176,6 +176,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLDrawArrays,
 		mkGLGetString,
 		mkGLGetStringi,
+		mkGLDepthRange,
 
 		-- * types
 		GLData,
@@ -354,6 +355,8 @@ data GLIOF me =
 	| GLGetString  GLenum        (BS.ByteString -> me)
 	| GLGetStringi GLenum GLuint (BS.ByteString -> me)
 
+	| GLDepthRange GLdouble GLdouble me
+
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -486,6 +489,8 @@ instance Functor GLIOF where
 
 	fmap f (GLGetString  name        withString) = GLGetString  name        (f . withString)
 	fmap f (GLGetStringi name index_ withString) = GLGetStringi name index_ (f . withString)
+
+	fmap f (GLDepthRange nearVal farVal withUnit) = GLDepthRange nearVal farVal (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -681,6 +686,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		_y@(GLGetString  name        withString) -> return $ GLGetString  name        ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withString)
 		_y@(GLGetStringi name index_ withString) -> return $ GLGetStringi name index_ ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withString)
 
+		y@( GLDepthRange _nearVal _farVal me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -824,6 +831,8 @@ runGLIOIO (GLDrawArrays      mode first count           glio) = glDrawArrays    
 
 runGLIOIO (GLGetString  name        withString) = hglGetString  name        >>= withString
 runGLIOIO (GLGetStringi name index_ withString) = hglGetStringi name index_ >>= withString
+
+runGLIOIO (GLDepthRange nearVal farVal glio) = glDepthRange nearVal farVal >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -1525,6 +1534,9 @@ mkGLGetString name withString = Fixed $ GLGetString name withString
 
 mkGLGetStringi :: GLenum -> GLuint -> (BS.ByteString -> GLIO) -> GLIO
 mkGLGetStringi name index_ withString = Fixed $ GLGetStringi name index_ withString
+
+mkGLDepthRange :: GLdouble -> GLdouble -> GLIO -> GLIO
+mkGLDepthRange nearVal farVal glio = Fixed $ GLDepthRange nearVal farVal glio
 
 -- * types
 

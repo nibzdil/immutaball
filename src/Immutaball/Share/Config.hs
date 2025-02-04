@@ -17,7 +17,8 @@ module Immutaball.Share.Config
 			x'cfgUseExistingSDLManager, x'cfgUseExistingGLManager,
 			x'cfgMaxPassTextures, x'cfgPrecacheMtrls, x'cfgPrecacheMisc,
 			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
-			x'cfgVertDownKey, x'cfgFreeCameraToggleKey,
+			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
+			x'glFarVal,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -115,7 +116,14 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- | Debug free camera: move vertically up and down (e.g. spacebar and c as in jump and crouch).
 	_x'cfgVertUpKey           :: Int,
 	_x'cfgVertDownKey         :: Int,
-	_x'cfgFreeCameraToggleKey :: Int
+	_x'cfgFreeCameraToggleKey :: Int,
+
+	-- | OpenGL without extensions unfortunately doesn't support disabling
+	-- clipping by the ‘y’ coordinate (which we swap with the ‘z’ coordinate
+	-- for OpenGL depth, so we do this ourselves).  So just set to a large
+	-- value with 'glDepthRange'.  The default values are 0 and 1.
+	_x'glNearVal :: Double,
+	_x'glFarVal  :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -158,7 +166,10 @@ defaultStaticConfig = StaticConfig {
 
 	_x'cfgVertUpKey   = fromIntegral Raw.SDLK_SPACE,
 	_x'cfgVertDownKey = fromIntegral Raw.SDLK_c,
-	_x'cfgFreeCameraToggleKey = fromIntegral Raw.SDLK_f
+	_x'cfgFreeCameraToggleKey = fromIntegral Raw.SDLK_f,
+
+	_x'glNearVal = 0.0,
+	_x'glFarVal  = 9.99e35
 }
 
 type Neverballrc = Config

@@ -184,7 +184,6 @@ module Immutaball.Share.Math
 		inversem3GaussianElimination,
 		perspective,
 		perspectivePure,
-		perspectiveDepthConstant,
 		fov,
 		fovPure,
 
@@ -202,6 +201,7 @@ module Immutaball.Share.Math
 		viewMat,
 		worldToGL,
 		worldToGLSimple,
+		rescaleDepth,
 
 		-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
 
@@ -1707,30 +1707,20 @@ inversem3GaussianElimination m =
 -- times as far away as the first point relative to the viewer z=-1.
 perspective :: (Num a, Fractional a) => Vec3 a -> Mat4 a
 perspective v = Mat4 $ Vec4
-	(Vec4 (1+pdc*v^.x3) 0.0           0.0           0.0)
-	(Vec4 0.0           (1+pdc*v^.y3) 0.0           0.0)
-	(Vec4 0.0           0.0           (1+pdc*v^.z3) 0.0)
-	(Vec4 (v^.x3)       (v^.y3)       (v^.z3)       1.0)
-	where pdc = perspectiveDepthConstant
+	(Vec4 (1+v^.x3) 0.0       0.0       0.0)
+	(Vec4 0.0       (1+v^.y3) 0.0       0.0)
+	(Vec4 0.0       0.0       (1+v^.z3) 0.0)
+	(Vec4 (v^.x3)   (v^.y3)   (v^.z3)   1.0)
 
 -- | preserves z and does not shift by 1 but is not invertible.
 --
 -- With linear non-independence, it collapses into 3 dimensions without a nonzero determinant.
 perspectivePure :: (Num a, Fractional a) => Vec3 a -> Mat4 a
 perspectivePure v = Mat4 $ Vec4
-	(Vec4 (1+pdc*v^.x3) 0.0           0.0           0.0)
-	(Vec4 0.0           (1+pdc*v^.y3) 0.0           0.0)
-	(Vec4 0.0           0.0           (1+pdc*v^.z3) 0.0)
-	(Vec4 (v^.x3)       (v^.y3)       (v^.z3)       0.0)
-	where pdc = perspectiveDepthConstant
-
--- | This is to approximate disabling OpenGL clipping by depth value.
---
--- The depth value (which we use as ‘y’ until the last stage of transformation
--- where the ‘z’ coordinate then represents depth) is scaled by this constant
--- inside 'perspective' and 'persectivePure'.
-perspectiveDepthConstant :: (Num a, Fractional a) => a
-perspectiveDepthConstant = 1.0e-8
+	(Vec4 (1+v^.x3) 0.0       0.0       0.0)
+	(Vec4 0.0       (1+v^.y3) 0.0       0.0)
+	(Vec4 0.0       0.0       (1+v^.z3) 0.0)
+	(Vec4 (v^.x3)   (v^.y3)   (v^.z3)   0.0)
 
 -- | fov.
 --
@@ -1831,6 +1821,18 @@ worldToGLSimple = Mat3 $ Vec3
 	(Vec3 1.0 0.0 0.0)
 	(Vec3 0.0 0.0 1.0)
 	(Vec3 0.0 1.0 0.0)
+
+-- | Shift and scale the depth value to approximate disabling OpenGL clipping
+-- depth values outside a range, so that we can see the whole scene, not only
+-- the part of the scene within a certain range of distance from the viewer.
+rescaleDepth :: (Num a, Fractional a) => a -> a -> Mat4 a
+rescaleDepth depthTranslate depthScale = Mat4 $ Vec4
+	(Vec4 1.0 0.0 0.0 0.0)
+	(Vec4 0.0 ds  0.0 do_)
+	(Vec4 0.0 0.0 1.0 0.0)
+	(Vec4 0.0 0.0 0.0 1.0)
+	where
+		(do_, ds) = (depthTranslate, depthScale)
 
 -- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
 

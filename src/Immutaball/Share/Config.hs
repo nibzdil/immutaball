@@ -18,7 +18,7 @@ module Immutaball.Share.Config
 			x'cfgMaxPassTextures, x'cfgPrecacheMtrls, x'cfgPrecacheMisc,
 			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
 			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
-			x'glFarVal,
+			x'glFarVal, x'cfgDepthScale,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -123,7 +123,9 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- for OpenGL depth, so we do this ourselves).  So just set to a large
 	-- value with 'glDepthRange'.  The default values are 0 and 1.
 	_x'glNearVal :: Double,
-	_x'glFarVal  :: Double
+	_x'glFarVal  :: Double,
+
+	_x'cfgDepthScale :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -169,7 +171,9 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgFreeCameraToggleKey = fromIntegral Raw.SDLK_f,
 
 	_x'glNearVal = 0.0,
-	_x'glFarVal  = 9.99e35
+	_x'glFarVal  = 9.99e35,
+
+	_x'cfgDepthScale = 1.0e-8
 }
 
 type Neverballrc = Config

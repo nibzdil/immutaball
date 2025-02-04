@@ -128,7 +128,8 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 renderScene :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
 renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	-- Set up the transformation matrix.
-	let mat = transformationMatrix camera_
+	--let mat = transformationMatrix camera_
+	mat <- arr $ uncurry transformationMatrix -< (cxtn, camera_)
 	cxtnp1 <- setTransformation -< (mat, cxtn)
 
 	-- Render the scene.
@@ -155,8 +156,8 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	returnA -< cxt
 
 	where
-		transformationMatrix :: MView -> Mat4 Double
-		transformationMatrix view_ = worldToGL <> viewMat view_
+		transformationMatrix :: IBStateContext -> MView -> Mat4 Double
+		transformationMatrix cxt view_ = worldToGL <> rescaleDepth (cxt^.ibContext.ibStaticConfig.x'cfgDepthScale) 0 <> viewMat view_
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

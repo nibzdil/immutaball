@@ -102,7 +102,7 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: renderSetupNewLevel: all sol mv is " ++ show (swa^.swaSol.solMv)) ()
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3") ()
 
-	-- Approximate disabling OpenGL culling by depth (by our transformed y coordinates, which transform into OpenGL z depth coordinates).
+	-- Approximate disabling OpenGL clipping by depth (by our transformed y coordinates, which transform into OpenGL z depth coordinates).
 	let sdlGL1'_ = sdlGL1 (cxtnp17^.ibContext.ibSDLManagerHandle)
 	let sdlGL1' = liftIBIO . sdlGL1'_
 	() <- monadic -< sdlGL1' $ do

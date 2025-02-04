@@ -1724,13 +1724,13 @@ perspectivePure v = Mat4 $ Vec4
 	(Vec4 (v^.x3)       (v^.y3)       (v^.z3)       0.0)
 	where pdc = perspectiveDepthConstant
 
--- | This is to approximate disabling OpenGL culling.
+-- | This is to approximate disabling OpenGL clipping by depth value.
 --
 -- The depth value (which we use as ‘y’ until the last stage of transformation
 -- where the ‘z’ coordinate then represents depth) is scaled by this constant
 -- inside 'perspective' and 'persectivePure'.
 perspectiveDepthConstant :: (Num a, Fractional a) => a
-perspectiveDepthConstant = 1.0e-35
+perspectiveDepthConstant = 1.0e-8
 
 -- | fov.
 --

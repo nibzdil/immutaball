@@ -18,7 +18,7 @@ module Immutaball.Share.Config
 			x'cfgMaxPassTextures, x'cfgPrecacheMtrls, x'cfgPrecacheMisc,
 			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
 			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
-			x'glFarVal, x'cfgDepthScale,
+			x'glFarVal, x'cfgDepthScale, x'cfgViewCollapse,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -125,7 +125,8 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	_x'glNearVal :: Double,
 	_x'glFarVal  :: Double,
 
-	_x'cfgDepthScale :: Double
+	_x'cfgDepthScale :: Double,
+	_x'cfgViewCollapse :: Bool  -- ^ Whether to use fovPure variant.
 }
 makeLenses ''StaticConfig'
 
@@ -173,7 +174,8 @@ defaultStaticConfig = StaticConfig {
 	_x'glNearVal = 0.0,
 	_x'glFarVal  = 9.99e35,
 
-	_x'cfgDepthScale = 1.0e-8
+	_x'cfgDepthScale = 1.0e-8,
+	_x'cfgViewCollapse = True
 }
 
 type Neverballrc = Config

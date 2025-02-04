@@ -157,7 +157,11 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 
 	where
 		transformationMatrix :: IBStateContext -> MView -> Mat4 Double
-		transformationMatrix cxt view_ = worldToGL <> rescaleDepth (cxt^.ibContext.ibStaticConfig.x'cfgDepthScale) 0 <> viewMat view_
+		transformationMatrix cxt view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_
+			where
+				x'cfg = cxt^.ibContext.ibStaticConfig
+				depthScale = x'cfg^.x'cfgDepthScale
+				viewCollapse = x'cfg^.x'cfgViewCollapse
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

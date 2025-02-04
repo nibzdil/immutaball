@@ -199,6 +199,7 @@ module Immutaball.Share.Math
 		MViewd,
 		MView'(..), mviewPos, mviewTarget, mviewFov,
 		viewMat,
+		viewMat',
 		worldToGL,
 		worldToGLSimple,
 		rescaleDepth,
@@ -1798,10 +1799,16 @@ makeLenses ''MView'
 
 -- | Translate, then rotate, then fov.
 viewMat :: (Num a, Fractional a, Floating a, RealFloat a, SmallNum a) => MView' a -> Mat4 a
-viewMat v =
-	fov        (v^.mviewFov) <>
+viewMat = viewMat' False
+
+-- | Translate, then rotate, then fov or fovPure.
+viewMat' :: (Num a, Fractional a, Floating a, RealFloat a, SmallNum a) => Bool -> MView' a -> Mat4 a
+viewMat' viewCollapse v =
+	fov'       (v^.mviewFov) <>
 	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
 	translate3 (-v^.mviewPos)
+	where
+		fov' = if' viewCollapse fovPure fov
 
 -- | Swap y and z axes.
 --

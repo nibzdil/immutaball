@@ -1221,7 +1221,7 @@ tilt3y = m3to4 . tilt3ySimple
 --
 -- The new y axis is the argument provided.
 --
--- The new z axis is Vec2 (Vec2 (y^.x3) (y^.y2)) (y^.z3) similarly rotated 45
+-- The new z axis is Vec2 (Vec2 (y^.x3) (y^.y2)) (y^.z3) similarly rotated 90
 -- degrees counter-clockwise, where the sub-vector has an ‘r2’ view (it scales
 -- in number).  (This is like multiplying that vector by ‘i’ in complex number
 -- representation.)

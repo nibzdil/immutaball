@@ -406,7 +406,6 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 					_mviewPos    = (view_^.viewP) `pv3` ddebugViewPos,
 					_mviewTarget = (view_^.viewQ) `pv3` ddebugViewTarget,
 					-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
-					--_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (360.0/tau)  -- TODO fix fov; ratio is reversed but gets usable results.
 					_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (tau/360.0)
 				} in
 			{-

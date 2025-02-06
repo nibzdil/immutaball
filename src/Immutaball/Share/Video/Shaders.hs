@@ -272,7 +272,6 @@ vertexShader = unlines $
 		"\tfloat anglesys = sin(spinRad);",
 		"\tfloat anglesxc = cos(tiltRad);",
 		"\tfloat anglesxs = sin(tiltRad);",
-		-- TODO FIXME: monolith ball until the ball vec gets fixed.
 		"\tvec3 rawVertPos = vec3(anglesyc * angleszc, -anglesxc*angleszs-anglesxs*anglesys*angleszc, anglesxs*angleszs-anglesxc*anglesys*angleszc);",
 		--"\tvec3 rawVertPosDebugMonolith = vec3(circleSampleRad, 0.0, tiltRad);  // Can be used for debugging purposes to see a monolith 2D ball.",
 		"\tvec3 vertPos = ballPos + ballRadius*rawVertPos;",

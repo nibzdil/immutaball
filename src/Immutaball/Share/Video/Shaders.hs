@@ -214,7 +214,7 @@ vertexShader = unlines $
 		"\t// Make a circle on xy plane, then repeat with the xy plane tilted",
 		"\t// until the tilt makes a full circle.",
 		"\t// The number of circles equals the number of tilts.",
-		"\tint squaresInOneCircle = int(round(sqrt(float(ballNumTriangles)) - 0.6)) / 2;",
+		"\tint squaresInOneCircle = int(round(sqrt(float(ballNumTriangles / 2)) - 0.6));",
 		"\tint numTilts           = squaresInOneCircle;",
 		"",
 		"\t// 4 points for 2 triangles: inner p0, inner p1, outer p0, outer p1",

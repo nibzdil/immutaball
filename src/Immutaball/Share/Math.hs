@@ -1228,9 +1228,9 @@ tilt3y = m3to4 . tilt3ySimple
 tilt3ySimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3ySimple y_ = Mat3 $ Vec3
 	-- new x axis           new y axis  new z axis
-	( Vec3 ( y'^.y3 / yhr') (y^.x3)     (-(y'^.x3)*(y^.z3)) )
-	( Vec3 (-y'^.x3 / yhr') (y^.y3)     (-(y'^.y3)*(y^.z3)) )
-	( Vec3 0.0              (y^.z3)     (yhr              ) )
+	( Vec3 ( y'^.y3 / yhr') (y^.x3)     (-(y'^.x3/yhr')*(y^.z3)) )
+	( Vec3 (-y'^.x3 / yhr') (y^.y3)     (-(y'^.y3/yhr')*(y^.z3)) )
+	( Vec3 0.0              (y^.z3)     (yhr                   ) )
 	where
 		sq_ a = a * a
 		y = v3normalize y_
@@ -1241,7 +1241,7 @@ tilt3ySimple y_ = Mat3 $ Vec3
 
 		-- y': this handles the special case of y==0,0,±1, where the new x axis should be 1,0,0, (and the new z axis should be 0,∓1,0).
 		y' | sqrt (sq_ (y^.x3) + sq_ (y^.y3)) <= smallNum = Vec3 0.0 1.0 0.0 | otherwise = y
-		-- TODO: tilte3z probably needs fixes too
+		-- TODO: tilt3z probably needs fixes too
 
 tilt3yReverse :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3yReverse = m3to4 . tilt3yReverseSimple

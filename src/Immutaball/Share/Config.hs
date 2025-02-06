@@ -174,7 +174,7 @@ defaultStaticConfig = StaticConfig {
 	_x'glNearVal = 0.0,
 	_x'glFarVal  = 9.99e35,
 
-	_x'cfgDepthScale = 1.0e-8,
+	_x'cfgDepthScale = 1.0e-6,
 	_x'cfgViewCollapse = True
 }
 

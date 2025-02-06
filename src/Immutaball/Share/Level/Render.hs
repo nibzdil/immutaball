@@ -106,16 +106,15 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	let sdlGL1'_ = sdlGL1 (cxtnp17^.ibContext.ibSDLManagerHandle)
 	let sdlGL1' = liftIBIO . sdlGL1'_
 	() <- monadic -< sdlGL1' $ do
-		-- TODO FIXME: this doesn't seem to actually stop culling for depth
+		-- TODO FIXME: this doesn't seem to actually stop clipping for depth
 		-- values outside a certain range.
 		--
-		-- To investigate, try retour de force level 2, enable free camera,
-		-- and rotate the camera until you can see the level.  Move toward that
-		-- location, and then you can see that the distance from the camera
-		-- needs to be only within a certain range.
+		-- To investigate, disable rescaleDepth, try retour de force level 2,
+		-- enable free camera, and rotate the camera until you can see the
+		-- level.  Move toward that location, and then you can see that the
+		-- distance from the camera needs to be only within a certain range.
 		--
-		-- So instead we'll just give the depth value in 'perspective' in the
-		-- math module a very small slope, by a constant.
+		-- So instead we'll just use rescaleDepth.
 		GLDepthRange (cxtnp17^.ibContext.ibStaticConfig.x'glNearVal) (cxtnp17^.ibContext.ibStaticConfig.x'glFarVal) ()
 
 	-- Return the state context.

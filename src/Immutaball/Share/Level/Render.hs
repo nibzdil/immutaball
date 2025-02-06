@@ -103,6 +103,7 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3") ()
 
 	-- Approximate disabling OpenGL clipping by depth (by our transformed y coordinates, which transform into OpenGL z depth coordinates).
+	-- Also other miscellaneous OpenGL setup.
 	let sdlGL1'_ = sdlGL1 (cxtnp17^.ibContext.ibSDLManagerHandle)
 	let sdlGL1' = liftIBIO . sdlGL1'_
 	() <- monadic -< sdlGL1' $ do
@@ -116,6 +117,10 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 		--
 		-- So instead we'll just use rescaleDepth.
 		GLDepthRange (cxtnp17^.ibContext.ibStaticConfig.x'glNearVal) (cxtnp17^.ibContext.ibStaticConfig.x'glFarVal) ()
+	-- Other miscellaneous OpenGL setup.
+	() <- monadic -< sdlGL1' $ do
+		--GLPlaceholder GL_VAL ()
+		pure ()
 
 	-- Return the state context.
 

@@ -178,6 +178,7 @@ module Immutaball.Share.ImmutaballIO.GLIO
 		mkGLGetStringi,
 		mkGLDepthRange,
 		mkGLOrtho,
+		mkGLCullFace,
 
 		-- * types
 		GLData,
@@ -359,6 +360,8 @@ data GLIOF me =
 	| GLDepthRange GLdouble GLdouble me
 	| GLOrtho GLdouble GLdouble GLdouble GLdouble GLdouble GLdouble me
 
+	| GLCullFace GLenum me
+
 instance Functor GLIOF where
 	fmap :: (a -> b) -> (GLIOF a -> GLIOF b)
 
@@ -494,6 +497,8 @@ instance Functor GLIOF where
 
 	fmap f (GLDepthRange                       nearVal farVal withUnit) = GLDepthRange                       nearVal farVal (f withUnit)
 	fmap f (GLOrtho      left right bottom top nearVal farVal withUnit) = GLOrtho      left right bottom top nearVal farVal (f withUnit)
+
+	fmap f (GLCullFace mode withUnit) = GLCullFace mode (f withUnit)
 
 runGLIO :: GLIO -> IO ()
 runGLIO glio = cata runGLIOIO glio
@@ -692,6 +697,8 @@ unsafeFixGLIOFTo mme f = unsafePerformIO $ do
 		y@( GLDepthRange                           _nearVal _farVal me) -> putMVar mme me >> return y
 		y@( GLOrtho      _left _right _bottom _top _nearVal _farVal me) -> putMVar mme me >> return y
 
+		y@( GLCullFace _mode me) -> putMVar mme me >> return y
+
 instance Applicative GLIOF where
 	pure = PureGLIOF
 	mf <*> ma = JoinGLIOF . flip fmap mf $ \f -> JoinGLIOF .  flip fmap ma $ \a -> pure (f a)
@@ -838,6 +845,8 @@ runGLIOIO (GLGetStringi name index_ withString) = hglGetStringi name index_ >>= 
 
 runGLIOIO (GLDepthRange                       nearVal farVal glio) = glDepthRange                       nearVal farVal >> glio
 runGLIOIO (GLOrtho      left right bottom top nearVal farVal glio) = glOrtho      left right bottom top nearVal farVal >> glio
+
+runGLIOIO (GLCullFace mode glio) = glCullFace mode >> glio
 
 hglClearColor :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> IO ()
 hglClearColor red green blue alpha = glClearColor (realToFrac red) (realToFrac green) (realToFrac blue) (realToFrac alpha)
@@ -1545,6 +1554,9 @@ mkGLDepthRange nearVal farVal glio = Fixed $ GLDepthRange nearVal farVal glio
 
 mkGLOrtho :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> GLdouble -> GLdouble -> GLIO -> GLIO
 mkGLOrtho left right bottom top nearVal farVal glio = Fixed $ GLOrtho left right bottom top nearVal farVal glio
+
+mkGLCullFace :: GLenum -> GLIO -> GLIO
+mkGLCullFace mode glio = Fixed $ GLCullFace mode glio
 
 -- * types
 

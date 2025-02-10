@@ -434,10 +434,11 @@ guiPaint = proc (widgets, geometry, widgetBy, widgetsFocusedSinceLastPaint, curr
 
 guiCachingRenderText :: forall id. (Eq id, Ord id) => Wire ImmutaballM (Widget id, IBStateContext) (Maybe (WidthHeightI, GLuint), IBStateContext)
 guiCachingRenderText = proc (widget, cxtn) -> do
-	let mtext = case widget of
+	let mtext' = case widget of
 		(ButtonWidget button) -> Just (button^.text)
 		(LabelWidget  label)  -> Just (label^.text)
 		_                     -> Nothing
+	let mtext | mtext' == Just "" = Nothing | otherwise = mtext'  -- sdl2-ttf fails on an nempty string (zero width error).
 	(mdimName, cxtnp1) <- returnA ||| (first Just) <$> cachingRenderText -< maybe (Left (Nothing, cxtn)) (\text_ -> Right (T.pack $ text_, cxtn)) $ mtext
 	returnA -< (mdimName, cxtnp1)
 

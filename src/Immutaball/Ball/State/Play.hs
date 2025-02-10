@@ -80,6 +80,8 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 
 data PlayWidget =
 	  PlayRoot
+	| StatusLabel
+	| ClockLabel
 	| Anonymous Integer
 	deriving (Eq, Ord, Show)
 --makeClassyPrisms ''PlayWidget
@@ -88,7 +90,12 @@ data PlayWidget =
 playGui :: [Widget PlayWidget]
 playGui =
 	[
-		RootWidget $ Root { _rootWid = PlayRoot }
+		RootWidget $ Root { _rootWid = PlayRoot },
+
+		LabelWidget $ Label { _labelWid = StatusLabel, _labelWparent = PlayRoot,
+			_labelText = "", _labelRect = Just $ Rect (Vec2 (-0.100) (-0.040)) (Vec2 (0.100) ( 0.040)) },
+		LabelWidget $ Label { _labelWid = ClockLabel, _labelWparent = PlayRoot,
+			_labelText = "", _labelRect = Just $ Rect (Vec2 ( 0.750) (-0.870)) (Vec2 (0.950) (-0.950)) }
 	]
 
 makeClassyPrisms ''PlayWidget

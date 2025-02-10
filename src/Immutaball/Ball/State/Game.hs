@@ -18,6 +18,7 @@ module Immutaball.Ball.State.Game
 		renderBallSetup,
 		stepGameInput,
 		stepGameInputMovement,
+		stepGameInputEvents,
 		stepGameClock,
 		stepGameClockDebugFreeCamera
 	) where
@@ -34,6 +35,7 @@ import Data.Array.IArray
 import Graphics.GL.Compatibility45
 --import Graphics.GL.Core45
 import Graphics.GL.Types
+import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Ball.Game
 import Immutaball.Share.Config
@@ -215,13 +217,15 @@ renderBallSetup = proc (_gs0, cxtn) -> do
 -- | Handle input.
 stepGameInput :: Wire ImmutaballM (GameState, Request, IBStateContext) (GameState, IBStateContext)
 stepGameInput = proc (gsn, request, cxtn) -> do
-
 	-- Handle forward, right, etc., movement.
 	(gsnp1, cxtnp1) <- stepGameInputMovement -< (gsn, request, cxtn)
 
+	-- Handle clicking to start playing, etc.
+	(gsnp2, cxtnp2) <- stepGameInputEvents -< (gsnp1, request, cxtnp1)
+
 	-- Identify output.
-	let cxt = cxtnp1
-	let gs = gsnp1
+	let cxt = cxtnp2
+	let gs = gsnp2
 
 	-- Return.
 	returnA -< (gs, cxt)
@@ -285,8 +289,29 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 
 	let gsnp3 = gsnp2 & updateCapFreeAimUp . updateFreeAim
 
+	-- Tilt the world if playing.
+	-- TODO
+
 	-- Identify output.
 	let gs = gsnp3
+	let cxt = cxtn
+
+	-- Return.
+	returnA -< (gs, cxt)
+
+-- | Handle clicking to start playing, etc.
+-- TODO: generate event for new game mode.
+stepGameInputEvents :: Wire ImmutaballM (GameState, Request, IBStateContext) (GameState, IBStateContext)
+stepGameInputEvents = proc (gsn, request, cxtn) -> do
+	-- Start playing?
+	let update = if' (gsn^.gsGameMode /= Intermission) id $ case request of
+		(Click _button@Raw.SDL_BUTTON_LEFT _down@True) -> (gsGameMode .~ Playing)
+		_ -> id
+
+	let gsnp1 = gsn & update
+
+	-- Identify output.
+	let gs = gsnp1
 	let cxt = cxtn
 
 	-- Return.

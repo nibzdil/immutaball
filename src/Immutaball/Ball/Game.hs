@@ -379,7 +379,7 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			} in
 			let (maybeView :: Maybe View) = (gs^.gsSol.solWv) !? 0 in
 			let gds = gs^.gsDebugState in
-			let (mview :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
+			let (mviewIntermission :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
 				-- TODO: this is now refactored into aim* utils in Math.hs.  Remove commented out part after things are working better.
 				{-
 				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
@@ -408,6 +408,9 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 					-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
 					_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (tau/360.0)
 				} in
+			-- TODO: use .neverballrc viewDp, viewDc, and viewDz.
+			let (mviewCamera :: MView) = mviewIntermission in  -- TODO calculate view by ball pos, camera angle, and world tilt.
+			let (mview :: MView) = if' (isIntermission $ gs^.gsGameMode) mviewIntermission mviewCamera in
 			{-
 			-- TODO DEBUG
 			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: mview is " ++ show (mview)) ()

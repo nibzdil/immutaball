@@ -177,9 +177,8 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 	-- Render the geom pass.
 
 	-- Render all 16 mtrls in the geom pass.
-	(mtrlsMetaReversed :: [((WidthHeightI, GLuint), MtrlMeta)], cxtnp1) <-
-		foldrA cachingRenderMtrlAccumReversed -< (([], cxtn), map (\mi -> (swa^.swaSol, mi)) (elems (gp^.gpMv)))
-	let mtrlsMeta = reverse mtrlsMetaReversed
+	(mtrlsMeta :: [((WidthHeightI, GLuint), MtrlMeta)], cxtnp1) <-
+		foldrA cachingRenderMtrlAccum -< (([], cxtn), map (\mi -> (swa^.swaSol, mi)) (elems (gp^.gpMv)))
 	let (mtrlsGlTextures :: [GLuint]) = map (fst >>> snd) mtrlsMeta
 	let (assignTextures :: GLIOF ()) = do
 		forM_ (zip [0..] mtrlsGlTextures) $ \(idx, glTexture) -> do
@@ -258,8 +257,8 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 
 	where
 		-- | Add 2 variants: lookup sol mtrl for path, and also accumulate results in a list.
-		cachingRenderMtrlAccumReversed :: Wire ImmutaballM ((LevelIB, Int32), ([((WidthHeightI, GLuint), MtrlMeta)], IBStateContext)) ([((WidthHeightI, GLuint), MtrlMeta)], IBStateContext)
-		cachingRenderMtrlAccumReversed = proc ((sol, mi), (accum_, cxtn)) -> do
+		cachingRenderMtrlAccum :: Wire ImmutaballM ((LevelIB, Int32), ([((WidthHeightI, GLuint), MtrlMeta)], IBStateContext)) ([((WidthHeightI, GLuint), MtrlMeta)], IBStateContext)
+		cachingRenderMtrlAccum = proc ((sol, mi), (accum_, cxtn)) -> do
 			let mtrl = (sol^.solMv) ! mi
 			let mtrlPath = mtrl^.mtrlF
 			(glTextureMeta, cxtnp1) <- cachingRenderMtrl -< (mtrlPath, cxtn)

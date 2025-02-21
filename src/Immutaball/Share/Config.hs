@@ -183,8 +183,8 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgDepthScale = 1.0e-6,
 	_x'cfgViewCollapse = True,
 
-	_x'cfgCameraDistance = 1.0,
-	_x'cfgCameraRaisedCircles = (1/4) * (1/5)
+	_x'cfgCameraDistance = 2.0,
+	_x'cfgCameraRaisedCircles = (1/4) * (1/3)
 }
 
 type Neverballrc = Config

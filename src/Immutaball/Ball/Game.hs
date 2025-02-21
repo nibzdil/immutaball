@@ -409,7 +409,21 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 					_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (tau/360.0)
 				} in
 			-- TODO: use .neverballrc viewDp, viewDc, and viewDz.
-			let (mviewCamera :: MView) = mviewIntermission in  -- TODO calculate view by ball pos, camera angle, and world tilt.  Just start with a 0,-1,0 vector and transform.
+			--let (mviewCamera :: MView) = mviewIntermission in  -- TODO calculate view by ball pos, camera angle, and world tilt.  Just start with a 0,-1,0 vector and transform.
+			-- The camera when actively playing (not in intermission): camera
+			-- looks at the ball.
+			-- TODO: handle world tilt.
+			let (mviewCamera :: MView) =
+				let (cameraOffset :: Vec3 Double) =
+					aimVert3DSimple Nothing ((cxt^.ibContext.ibStaticConfig.x'cfgCameraRaisedCircles) * tau) .
+					sv3 (cxt^.ibContext.ibStaticConfig.x'cfgCameraDistance) $
+					Vec3 0.0 (-1.0) 0.0 in
+				MView {
+					_mviewPos = (gs^.gsBallPos) `pv3` cameraOffset,
+					_mviewTarget = gs^.gsBallPos,
+					-- Same fov as calculated in intermission; just copy it.
+					_mviewFov = mviewIntermission^.mviewFov
+				} in
 			let (mview :: MView) = if' (isIntermission $ gs^.gsGameMode) mviewIntermission mviewCamera in
 			{-
 			-- TODO DEBUG

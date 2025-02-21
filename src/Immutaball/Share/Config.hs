@@ -19,6 +19,7 @@ module Immutaball.Share.Config
 			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
 			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
 			x'glFarVal, x'cfgDepthScale, x'cfgViewCollapse,
+			x'cfgCameraDistance, x'cfgCameraRaisedCircles,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -126,7 +127,12 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	_x'glFarVal  :: Double,
 
 	_x'cfgDepthScale :: Double,
-	_x'cfgViewCollapse :: Bool  -- ^ Whether to use fovPure variant.
+	_x'cfgViewCollapse :: Bool,  -- ^ Whether to use fovPure variant.
+
+	-- | How far Playing camera is from the center of the ball.  World units (which is 64 .map units).
+	_x'cfgCameraDistance :: Double,
+	-- | Pitch in radians times tau.  By what angle (preserving distance) should the camera be raised relative to level with the ball?  1 circle is 360 degrees and also tau radians.
+	_x'cfgCameraRaisedCircles :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -175,7 +181,10 @@ defaultStaticConfig = StaticConfig {
 	_x'glFarVal  = 9.99e35,
 
 	_x'cfgDepthScale = 1.0e-6,
-	_x'cfgViewCollapse = True
+	_x'cfgViewCollapse = True,
+
+	_x'cfgCameraDistance = 1.0,
+	_x'cfgCameraRaisedCircles = (1/4) * (1/5)
 }
 
 type Neverballrc = Config

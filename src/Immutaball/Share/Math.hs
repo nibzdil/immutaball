@@ -1159,9 +1159,9 @@ tilt3z = m3to4 . tilt3zSimple
 tilt3zSimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3zSimple z_ = Mat3 $ Vec3
 	-- new x axis           new y axis              new z axis
-	( Vec3 ( z'^.z3 / zhr') ((z'^.x3/zhr')*(z^.y3)) (z^.x3) )
-	( Vec3 0.0              (-zhr                 ) (z^.y3) )
-	( Vec3 (-z'^.x3 / zhr') ((z'^.z3/zhr')*(z^.y3)) (z^.z3) )
+	( Vec3 ( z'^.z3 / zhr') (-(z'^.x3/zhr')*(z^.y3)) (z^.x3) )
+	( Vec3 0.0              (zhr                   ) (z^.y3) )
+	( Vec3 (-z'^.x3 / zhr') (-(z'^.z3/zhr')*(z^.y3)) (z^.z3) )
 	where
 		sq_ a = a * a
 		z = v3normalize z_

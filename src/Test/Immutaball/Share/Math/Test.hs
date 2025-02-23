@@ -195,24 +195,35 @@ tests = testGroup "Immutaball.Share.Math" $
 					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0)) (show $ Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0  :: Float))) $
 					aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= True,
 
-				testCase "tilt3y on 0,1,0 gives same result (look 45 deg up from 30 deg right)" $
-					tilt3ySimple (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) `mv3` forward3 @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
-				testCase "tilt3y 0,1,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right) (no change)" $
-					tilt3ySimple forward3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
-				testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right) (just xy %~ *i**3 of last test's expected)" $
-					(tilt3ySimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0)) @?= True,
-				testProperty "tilt3y == aimHoriz <> aimVert by near" $
-					let v3normalize' v = v3normalize v `v3orWith` right3 in
-					\(relCamTarget_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
-					let relCamTarget = v3normalize' relCamTarget_ in
-					let byTilt3y = tilt3ySimple relCamTarget `mv3` randomPos in
-					let relCamTargetxy = Vec2 (relCamTarget^.x3) (relCamTarget^.y3) in
-					let byAims = aimVert3DSimple Nothing ((Vec2 (relCamTargetxy^.r2) (relCamTarget^.z3))^.t2) . aimHoriz3DSimple (up2^.t2 - relCamTargetxy^.t2) $ randomPos in
-					byTilt3y `near3` byAims,
-				testCase "tilt3y 0,0,1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then yz %~ *i)" $
-					(tilt3ySimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (-sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0)) @?= True,
-				testCase "tilt3y 0,0,-1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then yz %~ *i**3)" $
-					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ updateit (tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)))) (show $ (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 2.0)))) $
-					(tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0) (-sqrt 1.5 / 2.0)) @?= True
+				testGroup "tilt3y" $
+					[
+						testCase "tilt3y on 0,1,0 gives same result (look 45 deg up from 30 deg right)" $
+							tilt3ySimple (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) `mv3` forward3 @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
+						testCase "tilt3y 0,1,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right) (no change)" $
+							tilt3ySimple forward3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
+						testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right) (just xy %~ *i**3 of last test's expected)" $
+							(tilt3ySimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0)) @?= True,
+						testProperty "tilt3y == aimHoriz <> aimVert by near" $
+							let v3normalize' v = v3normalize v `v3orWith` right3 in
+							\(relCamTarget_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
+							let relCamTarget = v3normalize' relCamTarget_ in
+							let byTilt3y = tilt3ySimple relCamTarget `mv3` randomPos in
+							let relCamTargetxy = Vec2 (relCamTarget^.x3) (relCamTarget^.y3) in
+							let byAims = aimVert3DSimple Nothing ((Vec2 (relCamTargetxy^.r2) (relCamTarget^.z3))^.t2) . aimHoriz3DSimple (up2^.t2 - relCamTargetxy^.t2) $ randomPos in
+							byTilt3y `near3` byAims,
+						testCase "tilt3y 0,0,1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then yz %~ *i)" $
+							(tilt3ySimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (-sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0)) @?= True,
+						testCase "tilt3y 0,0,-1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right then yz %~ *i**3)" $
+							--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ updateit (tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)))) (show $ (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 2.0)))) $
+							(tilt3ySimple (-up3) `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0) (-sqrt 1.5 / 2.0)) @?= True
+					],
+
+				testGroup "tilt3z" $
+					[
+						testCase "tilt3z on 0,0,1 gives same result (look 45 deg up from 30 deg right)" $
+							tilt3zSimple (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) `mv3` up3 @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
+						testCase "tilt3z 0,0,1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right) (no change)" $
+							tilt3zSimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))
+					]
 			]
 	]

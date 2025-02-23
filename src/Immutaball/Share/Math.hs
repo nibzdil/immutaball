@@ -1145,63 +1145,38 @@ translate3 v = Mat4 $ Vec4
 	(Vec4 0.0 0.0 1.0 (v^.z3))
 	(Vec4 0.0 0.0 0.0 1.0)
 
--- | Provide a new z-axis, like a plane normal, and make a transformation
--- matrix that rotates about the origin so that the xy plane now has a normal
--- pointing to the given normal, without spinning the x or y axes outside the
--- yz and xz planes, and using the shortest path.
+-- | Apply an xz and yz rotation transformation so that the new z axis is as
+-- provided.
 --
--- Each column in the matrix can be interpreted as the new axes.  (BTW, and the
--- abs of the determinant of the matrix as the hypervolume of the unit hypersquare in terms
--- of the new axes, IIUC.)  So without spinning the x or y axes, tilt the z axis to
--- point toward the normal in the closest path.  Rotate the z axis about the x
--- axis in the yz plane until the z axis's y equals the desired y, and rotate
--- the z axis axis about the y axis in the xz plane until the z axi's x equals
--- the desired x.  (Since the normal is unit length, and rotations preserve
--- magnitude, the z axis'z z coordinate should end up as expected).  Apply both
--- rotations to the identity x and y axes.
---
--- Then we know the 3rd column of the resulting transformation matrix, which is
--- simply the vector (i.e. the new z axis), which can be a normal to a plane.
--- If it's the normal of the xy plane, then it's the identity z axis that points
--- straight up.
---
--- The 2nd column takes the vector 0 1 0 and rotates as described.  The
--- rotation about y doesn't affect this axis, so we only deal with the other
--- rotation.  y axis's x
--- stays 0, and y and z change as needed - the axis stays in the yz plane (it
--- rotates about the x axis).  Essentially, project the normal (input vector)
--- onto the yz plane with a straight line going through the normal vector point
--- and the yz plane by and then renormalize to length 1 (reset to the identity
--- y axis if the projection is the zero vector); find the change in angle.  The
--- angle from 0 0 1 to 0 (z^.y) (z^.z) is (normalize the latter vector to
--- length 1) what we want.  It's like a change in theta in polar coordinates
--- between these two 2D vectors without the 0 X coordinate.  It's just
--- -asin (z^.y).  On the yz plane, the y axis starts as (1,0).  Then add angle
--- -asin (z^.y).  So (on the yz plane), the new y axis is
---   (cos(-asin (z^.y)), sin(-asin (z^.y)))
--- = (sqrt (1 - (z^.y)^2), -(z^.y))
---
--- The xz plane for the new x axis about the y axis is similar.  It starts (1,0).  Add angle -asin (z^.x).
---   (cos(-asin (z^.x)), sin(-asin (z^.x)))
--- = (sqrt (1 - (z^.x)^2), -(z^.x))
-tilt3z :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+-- Similarly to 'tilt3ySimple', multiply by ‘i’ to perform a right angle CCW
+-- rotation in the corresponding plane with normalization, and for the second
+-- rotation, if there is a roll (i.e. rotation in xz), treat the non-y
+-- component as a projection of the length of z's xz.
+tilt3z :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3z = m3to4 . tilt3zSimple
 
 -- | 'tilt3z' without homogeneous coordinates.
-tilt3zSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3zSimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3zSimple z_ = Mat3 $ Vec3
-	-- new x axis                 new y axis              new z axis
-	(Vec3 (sqrt$ 1 - sq_ (z^.x3)) 0.0                     (z^.x3))
-	(Vec3 0.0                     (sqrt$ 1 - sq_ (z^.y3)) (z^.y3))
-	(Vec3 (             -(z^.x3)) (             -(z^.y3)) (z^.z3))
+	-- new x axis           new y axis              new z axis
+	( Vec3 ( z'^.z3 / zhr') ((z'^.x3/zhr')*(z^.y3)) (z^.x3) )
+	( Vec3 0.0              (-zhr                 ) (z^.y3) )
+	( Vec3 (-z'^.x3 / zhr') ((z'^.z3/zhr')*(z^.y3)) (z^.z3) )
 	where
 		sq_ a = a * a
 		z = v3normalize z_
+		zhr = Vec2 (z^.x3) (z^.z3) ^. r2
+		zhr' = Vec2 (z'^.x3) (z'^.z3) ^. r2  -- = sqrt $ sq_ z^.x3 + sq_ z^.y3  -- normalizes new x axis
+		--zh = Vec2 (z'^.x3) (z'^.z3) -- The 2D vector mentioned above.
+		--zhr = zh^. r2  -- = sqrt $ sq_ z^.x3 + sq_ z^.z3  -- normalizes new x axis
 
-tilt3zReverse :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat4 a
+		-- z': this handles the special case of z==0,±1,0, where the new x axis should be 1,0,0, (and the new z axis should be 0,0,∓1).
+		z' | sqrt (sq_ (z^.x3) + sq_ (z^.z3)) <= smallNum = Vec3 0.0 0.0 1.0 | otherwise = z
+
+tilt3zReverse :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat4 a
 tilt3zReverse = m3to4 . tilt3zReverseSimple
 
-tilt3zReverseSimple :: (Floating a, Num a, Fractional a) => Vec3 a -> Mat3 a
+tilt3zReverseSimple :: (Floating a, Num a, Fractional a, RealFloat a, SmallNum a) => Vec3 a -> Mat3 a
 tilt3zReverseSimple (Vec3 x y z) = tilt3zSimple $ Vec3 (-x) (-y) z
 
 -- | Rotate horizontally (xy plane around z axis), then rotate vertically by

@@ -201,7 +201,7 @@ tests = testGroup "Immutaball.Share.Math" $
 							tilt3ySimple (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) `mv3` forward3 @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
 						testCase "tilt3y 0,1,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right) (no change)" $
 							tilt3ySimple forward3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
-						testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 75 deg right) (just xy %~ *i**3 of last test's expected)" $
+						testCase "tilt3y 1,0,0 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 120 deg right) (just xy %~ *i**3 of last test's expected)" $
 							(tilt3ySimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0)) @?= True,
 						testProperty "tilt3y == aimHoriz <> aimVert by near" $
 							let v3normalize' v = v3normalize v `v3orWith` right3 in
@@ -223,7 +223,9 @@ tests = testGroup "Immutaball.Share.Math" $
 						testCase "tilt3z on 0,0,1 gives same result (look 45 deg up from 30 deg right)" $
 							tilt3zSimple (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) `mv3` up3 @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
 						testCase "tilt3z 0,0,1 on (look 45 deg up from 30 deg right) gives (look 45 deg up from 30 deg right) (no change)" $
-							tilt3zSimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))
+							tilt3zSimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
+						testCase "tilt3z 1,0,0 on (look 45 deg up from 30 deg right) gives (look _ deg down from _ deg right) (just xz %~ *i**3 of last test's expected)" $
+							(tilt3ySimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True
 					]
 			]
 	]

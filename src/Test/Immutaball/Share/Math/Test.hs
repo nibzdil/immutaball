@@ -226,7 +226,16 @@ tests = testGroup "Immutaball.Share.Math" $
 							tilt3zSimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
 						-- Roll right a right angle.
 						testCase "tilt3z 1,0,0 on (look 45 deg up from 30 deg right) gives (just xz %~ *i**3 of last test's expected)" $
-							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True
+							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True,
+						testProperty "tilt3z == rotatexz <> rotateyz by near" $
+							let v3normalize' v = v3normalize v `v3orWith` right3 in
+							\(relUp_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
+							let relUp = v3normalize' relUp_ in
+							let byTilt3z = tilt3zSimple relUp `mv3` randomPos in
+							let relUpxz = Vec2 (relUp^.x3) (relUp^.z3) in
+							let relUpyz = Vec2 (relUp^.y3) (relUp^.z3) in
+							let byPlaneRots = (rotateyzSimple (up2^.t2 - relUpyz^.t2) <> rotatexzSimple (up2^.t2 - relUpxz^.t2)) `mv3` randomPos in
+							byTilt3z `near3` byPlaneRots
 					]
 			]
 	]

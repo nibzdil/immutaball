@@ -205,6 +205,7 @@ tests = testGroup "Immutaball.Share.Math" $
 							(tilt3ySimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0) (sqrt 2.0 / 2.0)) @?= True,
 						testProperty "tilt3y == aimHoriz <> aimVert by near" $
 							let v3normalize' v = v3normalize v `v3orWith` right3 in
+							-- Apply a random camera target tilt to a random position.  (Camera's at origin.)
 							\(relCamTarget_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
 							let relCamTarget = v3normalize' relCamTarget_ in
 							let byTilt3y = tilt3ySimple relCamTarget `mv3` randomPos in
@@ -229,13 +230,25 @@ tests = testGroup "Immutaball.Share.Math" $
 							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True,
 						testProperty "tilt3z == rotatexz <> rotateyz by near" $
 							let v3normalize' v = v3normalize v `v3orWith` right3 in
+							-- Apply a random up vector to a random position.
 							\(relUp_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
 							let relUp = v3normalize' relUp_ in
 							let byTilt3z = tilt3zSimple relUp `mv3` randomPos in
 							let relUpxz = Vec2 (relUp^.x3) (relUp^.z3) in
-							let relUpyz = Vec2 (relUp^.y3) (relUp^.z3) in
-							let byPlaneRots = (rotateyzSimple (up2^.t2 - relUpyz^.t2) <> rotatexzSimple (up2^.t2 - relUpxz^.t2)) `mv3` randomPos in
+							let relUpxy = Vec2 (relUp^.x3) (relUp^.y3) in
+							--let byPlaneRots = (rotateyzSimple (up2^.t2 - relUpyz^.t2) <> rotatexzSimple (up2^.t2 - relUpxz^.t2)) `mv3` randomPos in
+							let byPlaneRots = (rotateyzSimple ((Vec2 (relUp^.z3) (relUpxy^.r2))^.t2) <> rotatexzSimple (up2^.t2 - relUpxz^.t2)) `mv3` randomPos in
+							-- TODO 0,+-1,0 edge case ?
+							let debug=map (:[]).(take 10.show).(round.(1000*))$1000*(relUp^.r3)+100*(relUp^.x3)+10*(relUp^.y3)+(relUp^.z3) in
+							let debug2=map (:[]).(take 10.show).(round.(1000*))$1000*(randomPos^.r3)+100*(randomPos^.x3)+10*(randomPos^.y3)+(randomPos^.z3) in
+							let debug3=concat$(take 5$zipWith (++) debug debug2) ++ ["."] ++ (reverse.take 5$zipWith (++) debug debug2) in
+							let verbose = True in
+							let if' a b c = if a then b else c in
+							D.trace (printf "DEBUG0 %s(%21s)%s: byTilt3z:    %s" (show $ byTilt3z `near3` byPlaneRots) (debug3) (if' verbose (show (relUp_, randomPos)) "") (show $ byTilt3z)) .
+							D.trace (printf "DEBUG1 %s(%21s)%s: byPlaneRots: %s" (show $ byTilt3z `near3` byPlaneRots) (debug3) (if' verbose (show (relUp_, randomPos)) "") (show $ byPlaneRots)) $
+							not (relUp_ `near3` zv3) ==> -- For our ^.t2 handling, just skip the edge case of zero vectors.
 							byTilt3z `near3` byPlaneRots
+						-- TODO testProperty tilt3z is equivalent to tilt3y when reiorented
 					]
 			]
 	]

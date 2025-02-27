@@ -109,6 +109,8 @@ module Immutaball.Share.Math
 		vm3,
 		vm4,
 		v3m4,
+		v2or,
+		v2orWith,
 		v3or,
 		v3orWith,
 		vx3,
@@ -207,7 +209,36 @@ module Immutaball.Share.Math
 		-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
 
 		aimHoriz3DSimple,
-		aimVert3DSimple
+		aimVert3DSimple,
+
+		-- * More utils.
+		v2z,
+		v2s,
+		v2nzElse,
+		v2nsElse,
+		v3z,
+		v3s,
+		v3nzElse,
+		v3nsElse,
+		v4z,
+		v4s,
+		v4nzElse,
+		v4nsElse,
+
+		-- * Subvectors.
+		xy3,
+		xz3,
+		yz3,
+		xy4,
+		xz4,
+		xw4,
+		yz4,
+		yw4,
+		zw4,
+		xyz4,
+		xyw4,
+		xzw4,
+		yzw4
 	) where
 
 import Prelude ()
@@ -960,6 +991,15 @@ vm4 v m = Vec4 (d4 v (m^.c0_4)) (d4 v (m^.c1_4)) (d4 v (m^.c2_4)) (d4 v (m^.c3_4
 v3m4 :: (Num a, Fractional a) => Vec3 a -> Mat4 a -> Vec3 a
 v3m4 v m = v4to3 $ vm4 (v3to4 v) m
 
+v2or :: (RealFloat a) => Vec2 a -> Vec2 a
+v2or = v2orWith (Vec2 0.0 0.0)
+
+v2orWith :: (RealFloat a) => Vec2 a -> Vec2 a -> Vec2 a
+v2orWith else_ v@(Vec2 x y)
+	| isNaN x || isInfinite x = else_
+	| isNaN y || isInfinite y = else_
+	| otherwise = v
+
 v3or :: (RealFloat a) => Vec3 a -> Vec3 a
 v3or = v3orWith (Vec3 0.0 0.0 0.0)
 
@@ -1145,8 +1185,8 @@ translate3 v = Mat4 $ Vec4
 	(Vec4 0.0 0.0 1.0 (v^.z3))
 	(Vec4 0.0 0.0 0.0 1.0)
 
--- | Apply an xz and yz rotation transformation so that the new z axis is as
--- provided.
+-- | Rotate about an axis in the xy plane so that the new z axis becomes as
+-- specified.
 --
 -- Similarly to 'tilt3ySimple', multiply by ‘i’ to perform a right angle CCW
 -- rotation in the corresponding plane with normalization, and for the second
@@ -1861,3 +1901,172 @@ aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
 		radiansUp' = case mmaxRadius of
 			Nothing -> radiansUp
 			Just _ -> min maxRadiansUp . max minRadiansUp $ radiansUp
+
+-- * More utils.
+
+-- | Is the vector zero?
+v2z :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Bool
+v2z v = equivalentSmall (v^.r2) 0
+
+-- | Is the vector near zero?
+v2s :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Bool
+v2s v = near (v^.r2) 0
+
+-- | Return the vector, unless it's zero, in which case return the default.
+v2nzElse :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Vec2 a -> Vec2 a
+v2nzElse v else_ = if' (not $ v2z v) v else_
+
+-- | Return the vector, unless it's near zero, in which case return the default.
+v2nsElse :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Vec2 a -> Vec2 a
+v2nsElse v else_ = if' (not $ v2s v) v else_
+
+-- | Is the vector zero?
+v3z :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec3 a -> Bool
+v3z v = equivalentSmall (v^.r3) 0
+
+-- | Is the vector near zero?
+v3s :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec3 a -> Bool
+v3s v = near (v^.r3) 0
+
+-- | Return the vector, unless it's zero, in which case return the default.
+v3nzElse :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec3 a -> Vec3 a -> Vec3 a
+v3nzElse v else_ = if' (not $ v3z v) v else_
+
+-- | Return the vector, unless it's near zero, in which case return the default.
+v3nsElse :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec3 a -> Vec3 a -> Vec3 a
+v3nsElse v else_ = if' (not $ v3s v) v else_
+
+-- | Is the vector zero?
+v4z :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Bool
+v4z v = equivalentSmall (v^.r4) 0
+
+-- | Is the vector near zero?
+v4s :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Bool
+v4s v = near (v^.r4) 0
+
+-- | Return the vector, unless it's zero, in which case return the default.
+v4nzElse :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Vec4 a -> Vec4 a
+v4nzElse v else_ = if' (not $ v4z v) v else_
+
+-- | Return the vector, unless it's near zero, in which case return the default.
+v4nsElse :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Vec4 a -> Vec4 a
+v4nsElse v else_ = if' (not $ v4s v) v else_
+
+-- * Subvectors.
+
+-- | Handle just the ‘xy’ vector in a Vec3.
+xy3 :: forall a. (RealFloat a) => Lens' (Vec3 a) (Vec2 a)
+xy3 = lens getter (flip setter)
+	where
+		getter :: Vec3 a -> Vec2 a
+		getter (Vec3 x y _) = Vec2 x y
+		setter :: Vec2 a -> Vec3 a -> Vec3 a
+		setter (Vec2 x y) (Vec3 _ _ z) = Vec3 x y z
+
+-- | Handle just the ‘xz’ vector in a Vec3.
+xz3 :: forall a. (RealFloat a) => Lens' (Vec3 a) (Vec2 a)
+xz3 = lens getter (flip setter)
+	where
+		getter :: Vec3 a -> Vec2 a
+		getter (Vec3 x _ z) = Vec2 x z
+		setter :: Vec2 a -> Vec3 a -> Vec3 a
+		setter (Vec2 x z) (Vec3 _ y _) = Vec3 x y z
+
+-- | Handle just the ‘yz’ vector in a Vec3.
+yz3 :: forall a. (RealFloat a) => Lens' (Vec3 a) (Vec2 a)
+yz3 = lens getter (flip setter)
+	where
+		getter :: Vec3 a -> Vec2 a
+		getter (Vec3 _ y z) = Vec2 y z
+		setter :: Vec2 a -> Vec3 a -> Vec3 a
+		setter (Vec2 y z) (Vec3 x _ _) = Vec3 x y z
+
+-- | Handle just the ‘xy’ vector in a Vec4.
+xy4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+xy4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec2 a
+		getter (Vec4 x y _ _) = Vec2 x y
+		setter :: Vec2 a -> Vec4 a -> Vec4 a
+		setter (Vec2 x y) (Vec4 _ _ z w) = Vec4 x y z w
+
+-- | Handle just the ‘xz’ vector in a Vec4.
+xz4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+xz4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec2 a
+		getter (Vec4 x _ z _) = Vec2 x z
+		setter :: Vec2 a -> Vec4 a -> Vec4 a
+		setter (Vec2 x z) (Vec4 _ y _ w) = Vec4 x y z w
+
+-- | Handle just the ‘xw’ vector in a Vec4.
+xw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+xw4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec2 a
+		getter (Vec4 x _ _ w) = Vec2 x w
+		setter :: Vec2 a -> Vec4 a -> Vec4 a
+		setter (Vec2 x w) (Vec4 _ y z _) = Vec4 x y z w
+
+-- | Handle just the ‘yz’ vector in a Vec4.
+yz4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+yz4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec2 a
+		getter (Vec4 _ y z _) = Vec2 y z
+		setter :: Vec2 a -> Vec4 a -> Vec4 a
+		setter (Vec2 y z) (Vec4 x _ _ w) = Vec4 x y z w
+
+-- | Handle just the ‘yw’ vector in a Vec4.
+yw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+yw4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec2 a
+		getter (Vec4 _ y _ w) = Vec2 y w
+		setter :: Vec2 a -> Vec4 a -> Vec4 a
+		setter (Vec2 y w) (Vec4 x _ z _) = Vec4 x y z w
+
+-- | Handle just the ‘zw’ vector in a Vec4.
+zw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+zw4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec2 a
+		getter (Vec4 _ _ z w) = Vec2 z w
+		setter :: Vec2 a -> Vec4 a -> Vec4 a
+		setter (Vec2 z w) (Vec4 x y _ _) = Vec4 x y z w
+
+-- | Handle just the ‘xyz’ vector in a Vec4.
+xyz4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+xyz4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec3 a
+		getter (Vec4 x y z _) = Vec3 x y z
+		setter :: Vec3 a -> Vec4 a -> Vec4 a
+		setter (Vec3 x y z) (Vec4 _ _ _ w) = Vec4 x y z w
+
+-- | Handle just the ‘xyw’ vector in a Vec4.
+xyw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+xyw4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec3 a
+		getter (Vec4 x y _ w) = Vec3 x y w
+		setter :: Vec3 a -> Vec4 a -> Vec4 a
+		setter (Vec3 x y w) (Vec4 _ _ z _) = Vec4 x y z w
+
+-- | Handle just the ‘xzw’ vector in a Vec4.
+xzw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+xzw4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec3 a
+		getter (Vec4 x _ z w) = Vec3 x z w
+		setter :: Vec3 a -> Vec4 a -> Vec4 a
+		setter (Vec3 x z w) (Vec4 _ y _ _) = Vec4 x y z w
+
+-- | Handle just the ‘yzw’ vector in a Vec4.
+yzw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+yzw4 = lens getter (flip setter)
+	where
+		getter :: Vec4 a -> Vec3 a
+		getter (Vec4 _ y z w) = Vec3 y z w
+		setter :: Vec3 a -> Vec4 a -> Vec4 a
+		setter (Vec3 y z w) (Vec4 x _ _ _) = Vec4 x y z w

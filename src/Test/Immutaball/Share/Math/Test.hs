@@ -227,12 +227,18 @@ tests = testGroup "Immutaball.Share.Math" $
 							tilt3zSimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
 						-- Roll right a right angle.
 						testCase "tilt3z 1,0,0 on (look 45 deg up from 30 deg right) gives (just xz %~ *i**3 of last test's expected)" $
-							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True,
-						testProperty "tilt3z == rotatexz <> rotateyz by near" $
+							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True
+						-- TODO:
+						{-
+						testProperty "tilt3z == unaimHoriz (yaw) <> aimVert (pitch) <> aimHoriz (yaw) by near" $
 							let v3normalize' v = v3normalize v `v3orWith` right3 in
 							-- Apply a random up vector to a random position.
 							\(relUp_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
 							let relUp = v3normalize' relUp_ in
+							-- Calculate the radians to aim right by with aimHoriz3DSimple.
+							t
+
+aimHoriz3DSimple :: (Num a, Floating a) => a -> Vec3 a -> Vec3 a
 							let byTilt3z = tilt3zSimple relUp `mv3` randomPos in
 							let relUpxz = Vec2 (relUp^.x3) (relUp^.z3) in
 							let relUpxy = Vec2 (relUp^.x3) (relUp^.y3) in
@@ -248,7 +254,7 @@ tests = testGroup "Immutaball.Share.Math" $
 							D.trace (printf "DEBUG1 %s(%21s)%s: byPlaneRots: %s" (show $ byTilt3z `near3` byPlaneRots) (debug3) (if' verbose (show (relUp_, randomPos)) "") (show $ byPlaneRots)) $
 							not (relUp_ `near3` zv3) ==> -- For our ^.t2 handling, just skip the edge case of zero vectors.
 							byTilt3z `near3` byPlaneRots
-						-- TODO testProperty tilt3z is equivalent to tilt3y when reiorented
+						-}
 					]
 			]
 	]

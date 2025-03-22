@@ -227,34 +227,28 @@ tests = testGroup "Immutaball.Share.Math" $
 							tilt3zSimple up3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)),
 						-- Roll right a right angle.
 						testCase "tilt3z 1,0,0 on (look 45 deg up from 30 deg right) gives (just xz %~ *i**3 of last test's expected)" $
-							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True
-						-- TODO:
-						{-
-						testProperty "tilt3z == unaimHoriz (yaw) <> aimVert (pitch) <> aimHoriz (yaw) by near" $
+							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True,
+						testProperty "tilt3z == aimHoriz (yaw) <> aimVert (pitch) <> unaimHoriz (yaw) by near" $
 							let v3normalize' v = v3normalize v `v3orWith` right3 in
 							-- Apply a random up vector to a random position.
 							\(relUp_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
-							let relUp = v3normalize' relUp_ in
+							let relUp = v3normalize' relUp_ `v3nsElse` up3 in
 							-- Calculate the radians to aim right by with aimHoriz3DSimple.
-							t
+							let yawRadiansRight = -(((relUp^.xy3) `v2nsElse` up2)^.t2 - up2^.t2) in
+							-- Calculate the -radians to look down by.
+							let pitchRadiansDown = acos $ relUp^.z3 in
+							let pitchRadiansUp   = -pitchRadiansDown in
 
-aimHoriz3DSimple :: (Num a, Floating a) => a -> Vec3 a -> Vec3 a
+							-- Actual
 							let byTilt3z = tilt3zSimple relUp `mv3` randomPos in
-							let relUpxz = Vec2 (relUp^.x3) (relUp^.z3) in
-							let relUpxy = Vec2 (relUp^.x3) (relUp^.y3) in
-							--let byPlaneRots = (rotateyzSimple (up2^.t2 - relUpyz^.t2) <> rotatexzSimple (up2^.t2 - relUpxz^.t2)) `mv3` randomPos in
-							let byPlaneRots = (rotateyzSimple ((Vec2 (relUp^.z3) (relUpxy^.r2))^.t2) <> rotatexzSimple (up2^.t2 - relUpxz^.t2)) `mv3` randomPos in
-							-- TODO 0,+-1,0 edge case ?
-							let debug=map (:[]).(take 10.show).(round.(1000*))$1000*(relUp^.r3)+100*(relUp^.x3)+10*(relUp^.y3)+(relUp^.z3) in
-							let debug2=map (:[]).(take 10.show).(round.(1000*))$1000*(randomPos^.r3)+100*(randomPos^.x3)+10*(randomPos^.y3)+(randomPos^.z3) in
-							let debug3=concat$(take 5$zipWith (++) debug debug2) ++ ["."] ++ (reverse.take 5$zipWith (++) debug debug2) in
-							let verbose = True in
-							let if' a b c = if a then b else c in
-							D.trace (printf "DEBUG0 %s(%21s)%s: byTilt3z:    %s" (show $ byTilt3z `near3` byPlaneRots) (debug3) (if' verbose (show (relUp_, randomPos)) "") (show $ byTilt3z)) .
-							D.trace (printf "DEBUG1 %s(%21s)%s: byPlaneRots: %s" (show $ byTilt3z `near3` byPlaneRots) (debug3) (if' verbose (show (relUp_, randomPos)) "") (show $ byPlaneRots)) $
-							not (relUp_ `near3` zv3) ==> -- For our ^.t2 handling, just skip the edge case of zero vectors.
-							byTilt3z `near3` byPlaneRots
-						-}
+
+							-- Expected (by plane rotations)
+							let byYawPitch = aimHoriz3DSimple yawRadiansRight . aimVert3DSimple Nothing pitchRadiansUp . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in
+
+							-- TODO remove debugging:
+							D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch)) $
+
+							byTilt3z `near3` byYawPitch
 					]
 			]
 	]

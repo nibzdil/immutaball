@@ -234,7 +234,7 @@ tests = testGroup "Immutaball.Share.Math" $
 							\(relUp_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
 							let relUp = v3normalize' relUp_ `v3nsElse` up3 in
 							-- Calculate the radians to aim right by with aimHoriz3DSimple.
-							let yawRadiansRight = -(((relUp^.xy3) `v2nsElse` up2)^.t2 - up2^.t2) in
+							let yawRadiansRight = -(((relUp^.xy3) `v2nzElse` up2)^.t2 - up2^.t2) in
 							-- Calculate the -radians to look down by.
 							let pitchRadiansDown = acos $ relUp^.z3 in
 							let pitchRadiansUp   = -pitchRadiansDown in
@@ -243,10 +243,14 @@ tests = testGroup "Immutaball.Share.Math" $
 							let byTilt3z = tilt3zSimple relUp `mv3` randomPos in
 
 							-- Expected (by plane rotations)
+							-- TODO FIXME: why does the latter work but this one doesn't?
 							let byYawPitch = aimHoriz3DSimple yawRadiansRight . aimVert3DSimple Nothing pitchRadiansUp . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in
+							--let byYawPitch = aimHoriz3DSimple yawRadiansRight . (\v -> rotateyzSimple (-pitchRadiansUp) `mv3` v) . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in
 
-							-- TODO remove debugging:
-							D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch)) $
+							-- Optional debugging:
+							--D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch)) $
+							-- Optional verbose debugging:
+							D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s\n\n\tyawRadiansRight: %s\n\tpitchRadiansUp: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch) (show $ yawRadiansRight) (show $ pitchRadiansUp)) $
 
 							byTilt3z `near3` byYawPitch
 					]

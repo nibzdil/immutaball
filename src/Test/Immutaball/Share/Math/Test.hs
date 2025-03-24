@@ -195,6 +195,20 @@ tests = testGroup "Immutaball.Share.Math" $
 					--D.trace (printf "DEBUG0: left is %s and right is %s." (show $ aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0)) (show $ Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0  :: Float))) $
 					aimVert3DSimple Nothing (circle/8) (Vec3 (1.0 / 2.0) (sqrt 3.0 / 2.0) 0.0) `near3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0)) @?= True,
 
+				testProperty "aimVert on point in yz == rotateyzSimple" $
+					\(randomPointOnYz :: Vec2 Double) (randomPitchRadiansDown :: Double) ->
+					let randomPoint = Vec3 0.0 (randomPointOnYz^.x2) (randomPointOnYz^.y2) in
+
+					-- Actual
+					let byAimVert = aimVert3DSimple Nothing (-randomPitchRadiansDown) $ randomPoint in
+					-- Expected
+					let byPlaneRotate = rotateyzSimple randomPitchRadiansDown `mv3` randomPoint in
+
+					-- Optional debugging:
+					D.trace (printf "DEBUG1:\n\trandomPointOnYz: %s\n\trandomPitchRadiansDown: %s\n\trandomPoint: %s\n\tbyAimVert     (actual)   : %s\n\tbyPlaneRotate (expected) : %s" (show $ randomPointOnYz) (show $ randomPitchRadiansDown) (show $ randomPoint) (show $ byAimVert) (show $ byPlaneRotate)) $
+
+					byAimVert `near3` byPlaneRotate,
+
 				testGroup "tilt3y" $
 					[
 						testCase "tilt3y on 0,1,0 gives same result (look 45 deg up from 30 deg right)" $

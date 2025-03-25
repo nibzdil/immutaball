@@ -239,6 +239,8 @@ test-suite test-immutaball
 
 	other-modules:
 		Test.Immutaball.Test
+		Test.Immutaball.Share.Math.Core.Orphans
+		Test.Immutaball.Share.Math.Core.Test
 		Test.Immutaball.Share.Math.Orphans
 		Test.Immutaball.Share.Math.Test
 		Test.Immutaball.Share.State.Fixtures

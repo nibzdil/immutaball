@@ -139,6 +139,7 @@ common executable-components
 		Immutaball.Share.Level.Parser
 		Immutaball.Share.Level.Utils
 		Immutaball.Share.Math
+		Immutaball.Share.Math.Core
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Config
 		Immutaball.Share.SDLManager.Types
@@ -207,6 +208,7 @@ library
 		Immutaball.Share.Level.Parser
 		Immutaball.Share.Level.Utils
 		Immutaball.Share.Math
+		Immutaball.Share.Math.Core
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Config
 		Immutaball.Share.SDLManager.Types

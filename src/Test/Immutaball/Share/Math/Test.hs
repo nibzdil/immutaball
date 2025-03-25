@@ -40,10 +40,6 @@ import Immutaball.Share.Math
 import Immutaball.Share.Utils
 import Test.Immutaball.Share.Math.Orphans ()
 
--- TODO: remove debugging imports when done.
-import Debug.Trace as D------------------------------------------------------ TODO
-import Text.Printf
-
 main :: IO ()
 main = testsMain
 

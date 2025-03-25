@@ -1955,7 +1955,7 @@ v4nsElse v else_ = if' (not $ v4s v) v else_
 -- * Subvectors.
 
 -- | Handle just the ‘xy’ vector in a Vec3.
-xy3 :: forall a. (RealFloat a) => Lens' (Vec3 a) (Vec2 a)
+xy3 :: forall a. Lens' (Vec3 a) (Vec2 a)
 xy3 = lens getter (flip setter)
 	where
 		getter :: Vec3 a -> Vec2 a
@@ -1964,7 +1964,7 @@ xy3 = lens getter (flip setter)
 		setter (Vec2 x y) (Vec3 _ _ z) = Vec3 x y z
 
 -- | Handle just the ‘xz’ vector in a Vec3.
-xz3 :: forall a. (RealFloat a) => Lens' (Vec3 a) (Vec2 a)
+xz3 :: forall a. Lens' (Vec3 a) (Vec2 a)
 xz3 = lens getter (flip setter)
 	where
 		getter :: Vec3 a -> Vec2 a
@@ -1973,7 +1973,7 @@ xz3 = lens getter (flip setter)
 		setter (Vec2 x z) (Vec3 _ y _) = Vec3 x y z
 
 -- | Handle just the ‘yz’ vector in a Vec3.
-yz3 :: forall a. (RealFloat a) => Lens' (Vec3 a) (Vec2 a)
+yz3 :: forall a. Lens' (Vec3 a) (Vec2 a)
 yz3 = lens getter (flip setter)
 	where
 		getter :: Vec3 a -> Vec2 a
@@ -1982,7 +1982,7 @@ yz3 = lens getter (flip setter)
 		setter (Vec2 y z) (Vec3 x _ _) = Vec3 x y z
 
 -- | Handle just the ‘xy’ vector in a Vec4.
-xy4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+xy4 :: forall a. Lens' (Vec4 a) (Vec2 a)
 xy4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec2 a
@@ -1991,7 +1991,7 @@ xy4 = lens getter (flip setter)
 		setter (Vec2 x y) (Vec4 _ _ z w) = Vec4 x y z w
 
 -- | Handle just the ‘xz’ vector in a Vec4.
-xz4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+xz4 :: forall a. Lens' (Vec4 a) (Vec2 a)
 xz4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec2 a
@@ -2000,7 +2000,7 @@ xz4 = lens getter (flip setter)
 		setter (Vec2 x z) (Vec4 _ y _ w) = Vec4 x y z w
 
 -- | Handle just the ‘xw’ vector in a Vec4.
-xw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+xw4 :: forall a. Lens' (Vec4 a) (Vec2 a)
 xw4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec2 a
@@ -2009,7 +2009,7 @@ xw4 = lens getter (flip setter)
 		setter (Vec2 x w) (Vec4 _ y z _) = Vec4 x y z w
 
 -- | Handle just the ‘yz’ vector in a Vec4.
-yz4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+yz4 :: forall a. Lens' (Vec4 a) (Vec2 a)
 yz4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec2 a
@@ -2018,7 +2018,7 @@ yz4 = lens getter (flip setter)
 		setter (Vec2 y z) (Vec4 x _ _ w) = Vec4 x y z w
 
 -- | Handle just the ‘yw’ vector in a Vec4.
-yw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+yw4 :: forall a. Lens' (Vec4 a) (Vec2 a)
 yw4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec2 a
@@ -2027,7 +2027,7 @@ yw4 = lens getter (flip setter)
 		setter (Vec2 y w) (Vec4 x _ z _) = Vec4 x y z w
 
 -- | Handle just the ‘zw’ vector in a Vec4.
-zw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec2 a)
+zw4 :: forall a. Lens' (Vec4 a) (Vec2 a)
 zw4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec2 a
@@ -2036,7 +2036,7 @@ zw4 = lens getter (flip setter)
 		setter (Vec2 z w) (Vec4 x y _ _) = Vec4 x y z w
 
 -- | Handle just the ‘xyz’ vector in a Vec4.
-xyz4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+xyz4 :: forall a. Lens' (Vec4 a) (Vec3 a)
 xyz4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec3 a
@@ -2045,7 +2045,7 @@ xyz4 = lens getter (flip setter)
 		setter (Vec3 x y z) (Vec4 _ _ _ w) = Vec4 x y z w
 
 -- | Handle just the ‘xyw’ vector in a Vec4.
-xyw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+xyw4 :: forall a. Lens' (Vec4 a) (Vec3 a)
 xyw4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec3 a
@@ -2054,7 +2054,7 @@ xyw4 = lens getter (flip setter)
 		setter (Vec3 x y w) (Vec4 _ _ z _) = Vec4 x y z w
 
 -- | Handle just the ‘xzw’ vector in a Vec4.
-xzw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+xzw4 :: forall a. Lens' (Vec4 a) (Vec3 a)
 xzw4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec3 a
@@ -2063,7 +2063,7 @@ xzw4 = lens getter (flip setter)
 		setter (Vec3 x z w) (Vec4 _ y _ _) = Vec4 x y z w
 
 -- | Handle just the ‘yzw’ vector in a Vec4.
-yzw4 :: forall a. (RealFloat a) => Lens' (Vec4 a) (Vec3 a)
+yzw4 :: forall a. Lens' (Vec4 a) (Vec3 a)
 yzw4 = lens getter (flip setter)
 	where
 		getter :: Vec4 a -> Vec3 a

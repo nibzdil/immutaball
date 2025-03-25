@@ -140,6 +140,7 @@ common executable-components
 		Immutaball.Share.Level.Utils
 		Immutaball.Share.Math
 		Immutaball.Share.Math.Core
+		Immutaball.Share.Math.X3D
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Config
 		Immutaball.Share.SDLManager.Types
@@ -209,6 +210,7 @@ library
 		Immutaball.Share.Level.Utils
 		Immutaball.Share.Math
 		Immutaball.Share.Math.Core
+		Immutaball.Share.Math.X3D
 		Immutaball.Share.SDLManager
 		Immutaball.Share.SDLManager.Config
 		Immutaball.Share.SDLManager.Types

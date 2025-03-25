@@ -9,10 +9,12 @@
 -- | Includes our Math modules.
 module Immutaball.Share.Math
 	(
-		module Immutaball.Share.Math.Core
+		module Immutaball.Share.Math.Core,
+		module Immutaball.Share.Math.X3D
 	) where
 
 import Prelude ()
 --import Immutaball.Prelude
 
 import Immutaball.Share.Math.Core
+import Immutaball.Share.Math.X3D

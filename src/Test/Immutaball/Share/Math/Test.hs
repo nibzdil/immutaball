@@ -245,7 +245,7 @@ tests = testGroup "Immutaball.Share.Math" $
 						-- Roll right a right angle.
 						testCase "tilt3z 1,0,0 on (look 45 deg up from 30 deg right) gives (just xz %~ *i**3 of last test's expected)" $
 							(tilt3zSimple right3 `mv3` (Vec3 (sqrt 2.0 / 4.0) (sqrt 1.5 / 2.0) (sqrt 2.0 / 2.0))) `near3` (Vec3 (sqrt 2.0 / 2.0) (sqrt 1.5 / 2.0) (-sqrt 2.0 / 4.0)) @?= True,
-						testProperty "tilt3z == aimHoriz (yaw) <> aimVert (pitch) <> unaimHoriz (yaw) by near" $
+						testProperty "tilt3z == aimHoriz (yaw) <> rotateyz (pitch) (±aimVert by relUp) <> unaimHoriz (yaw) by near" $
 							let v3normalize' v = v3normalize v `v3orWith` right3 in
 							-- Apply a random up vector to a random position.
 							\(relUp_ :: Vec3 Double) (randomPos :: Vec3 Double) ->
@@ -260,14 +260,13 @@ tests = testGroup "Immutaball.Share.Math" $
 							let byTilt3z = tilt3zSimple relUp `mv3` randomPos in
 
 							-- Expected (by plane rotations)
-							-- TODO FIXME: why does the latter work but this one doesn't?
-							let byYawPitch = aimHoriz3DSimple yawRadiansRight . aimVert3DSimple Nothing pitchRadiansUp . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in
-							--let byYawPitch = aimHoriz3DSimple yawRadiansRight . (\v -> rotateyzSimple (-pitchRadiansUp) `mv3` v) . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in
+							--let byYawPitch = aimHoriz3DSimple yawRadiansRight . aimVert3DSimple Nothing pitchRadiansUp . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in  -- Incorrect result: can horizontally aim again.
+							let byYawPitch = aimHoriz3DSimple yawRadiansRight . (\v -> rotateyzSimple (-pitchRadiansUp) `mv3` v) . aimHoriz3DSimple (-yawRadiansRight) $ randomPos in
 
 							-- Optional debugging:
 							--D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch)) $
 							-- Optional verbose debugging:
-							D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s\n\n\tyawRadiansRight: %s\n\tpitchRadiansUp: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch) (show $ yawRadiansRight) (show $ pitchRadiansUp)) $
+							--D.trace (printf "DEBUG0:\n\trelUp: %s\n\trandomPos: %s\n\tbyTilt3z: %s\n\tbyYawPitch: %s\n\n\tyawRadiansRight: %s\n\tpitchRadiansUp: %s" (show $ relUp) (show $ randomPos) (show $ byTilt3z) (show $ byYawPitch) (show $ yawRadiansRight) (show $ pitchRadiansUp)) $
 
 							byTilt3z `near3` byYawPitch
 					]

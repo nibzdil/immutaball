@@ -61,14 +61,9 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let (secondsElapsed :: Integer) = floor $ timeElapsed
 		lastSecondsElapsed <- delay 0 -< secondsElapsed
 		let (newClockSeconds :: Maybe Integer) = if' (secondsElapsed /= lastSecondsElapsed) (Just secondsElapsed) Nothing
-		{-
-		-- TODO FIXME:
 		let (guiClockInputs :: [WidgetRequest PlayWidget]) = case newClockSeconds of
 			Nothing -> []
 			Just s  -> [GUISetText ClockLabel (show s) defaultSetTextOptions]
-		-}
-		-- TODO: Huh?  Intermittent block for texture?
-		let (guiClockInputs :: [WidgetRequest PlayWidget]) = [GUISetText ClockLabel "TODO DEBUG SLOW" defaultSetTextOptions]
 
 		-- Render the scene.
 		let (mview :: MView) = gameStateAnalysis^.gsaView

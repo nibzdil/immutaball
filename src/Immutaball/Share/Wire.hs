@@ -5,7 +5,7 @@
 -- State.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, Arrows, DerivingVia #-}
+{-# LANGUAGE TemplateHaskell, Arrows, DerivingVia, RankNTypes #-}
 
 -- | Besides low-level wire construction,
 -- ArrowLoop's ‘loop’ helps provide for local state, e.g. as in the ‘counter’
@@ -73,6 +73,7 @@ import qualified Control.Wire
 import qualified Control.Wire.Controller
 import qualified Control.Wire.Internal (Wire(Wire))
 
+import Control.Monad.Trans.MaybeM (NaturalTransformation)
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
 
@@ -313,12 +314,14 @@ foldrListA reduce = proc (reduction0, xs) -> do
 		(x:rest) -> reduce <<< second (foldrListA reduce) -< (x, (reduction0, rest))
 
 -- | 'multistep', with a value for the previous (or initial) result.
-multistepFeedback :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) (c, b) -> Wire m (t a, b) (t c, b)
-multistepFeedback step = first (arr toList) <<< multistepFeedbackList <<< first (arr toList)
+multistepFeedback :: (Monad m, MonadFix m) => NaturalTransformation t [] -> NaturalTransformation [] t -> Wire m (a, b) (c, b) -> Wire m (t a, b) (t c, b)
+multistepFeedback toList_ fromList_ step = first (arr fromList_) <<< multistepFeedbackList step <<< first (arr toList_)
 
--- TODO: 
-multistepFeedbackList :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) (c, b) -> Wire m ([a], b) ([c], b)
-multistepFeedbackList = _
+-- | 'multistepFeedback' specialized to lists.
+multistepFeedbackList :: (Monad m, MonadFix m) => Wire m (a, b) (c, b) -> Wire m ([a], b) ([c], b)
+multistepFeedbackList w0 = wire . flip fix w0 $ \me wn (as, b) -> case as of
+	[]      -> pure (([], b), multistepFeedbackList wn)
+	(a:as') -> stepWire wn (a, b) >>= \((c, b'), wnp1) -> first (first (c:)) <$> me wnp1 (as', b')
 
 foldlA :: (Foldable t, Monad m, MonadFix m) => Wire m (b, a) b -> Wire m (b, t a) b
 foldlA reduce = foldlListA reduce <<< second (arr toList)

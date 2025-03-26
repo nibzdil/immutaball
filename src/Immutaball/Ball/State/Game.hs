@@ -326,9 +326,16 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 			(Left  (gsn, cxtn))
 			(Right (gsn, dt, cxtn))
 
+	-- Advance time elapsed if in play state.
+	let cxtnp2 = cxtnp1
+	let gsnp2 = gsnp1 &
+		if' (not . isPlaying $ gsnp1^.gsGameMode)
+			(id)
+			(gsTimeElapsed %~ (+ dt))
+
 	-- Identify output.
-	let gs = gsnp1
-	let cxt = cxtnp1
+	let gs = gsnp2
+	let cxt = cxtnp2
 
 	-- Return.
 	returnA -< (gs, cxt)

@@ -314,6 +314,9 @@ foldrListA reduce = proc (reduction0, xs) -> do
 		(x:rest) -> reduce <<< second (foldrListA reduce) -< (x, (reduction0, rest))
 
 -- | 'multistep', with a value for the previous (or initial) result.
+--
+-- Step the wire multiple times in a single frame.  Add a state value between
+-- steps.
 multistepFeedback :: (Monad m, MonadFix m) => NaturalTransformation t [] -> NaturalTransformation [] t -> Wire m (a, b) (c, b) -> Wire m (t a, b) (t c, b)
 multistepFeedback toList_ fromList_ step = first (arr fromList_) <<< multistepFeedbackList step <<< first (arr toList_)
 

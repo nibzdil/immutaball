@@ -45,16 +45,25 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
 
-		-- GUI: don't process here quite yet, only because our overal rendering
+		-- GUI: don't process here quite yet, only because our overall rendering
 		-- plan requires the scene to render first, before GUI.
 
 		-- Set up and step the game.
-		-- TODO: implement hasLevelBeenCompleted bool for initialGameState call.  Just settting to False in the meantime.
+		-- TODO: implement hasLevelBeenCompleted bool for initialGameState call.  Just setting to False in the meantime.
 		let theInitialGameState = initialGameState (cxtn^.ibContext) (cxtn^.ibNeverballrc) False mlevelSet levelPath level
 		--lastGameState <- delay theInitialGameState -< gameState
 		lastGameState <- delayWith -< (gameState, theInitialGameState)
 		(GameResponse _gameEvents gameState cxtnp1) <- stepGame -< GameRequest request lastGameState cxtn
 		let gameStateAnalysis = mkGameStateAnalysis cxtnp1 gameState
+
+		-- If playing, prepare the clock to display.  TODO: more than seconds.
+		let (timeElapsed :: Double) = gameState^.gsTimeElapsed
+		let (secondsElapsed :: Integer) = floor $ timeElapsed
+		lastSecondsElapsed <- delay 0 -< secondsElapsed
+		let (newClockSeconds :: Maybe Integer) = if' (secondsElapsed /= lastSecondsElapsed) (Just secondsElapsed) Nothing
+		let (guiClockInputs :: [WidgetRequest PlayWidget]) = case newClockSeconds of
+			Nothing -> []
+			Just s  -> [GUISetText ClockLabel (show s) defaultSetTextOptions]
 
 		-- Render the scene.
 		let (mview :: MView) = gameStateAnalysis^.gsaView
@@ -63,7 +72,11 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		cxtnp3 <- returnA ||| renderBall -< if' (not isPaint) (Left cxtnp1) (Right $ (gameState, cxtnp2))
 
 		-- GUI.  Positioned after scene rendering.
-		(_guiResponse, cxtnp4) <- mkGUI playGui -< (GUIDrive request, cxtnp3)
+		--(_guiResponse, cxtnp4) <- mkGUI playGui -< (GUIDrive request, cxtnp3)
+		let guiInputs = concat $
+			[ guiClockInputs
+			]
+		(_guiResponses, cxtnp4) <- multistepFeedbackList $ mkGUI playGui -< (GUIDrive request : guiInputs, cxtnp3)
 		let response = ContinueResponse
 
 		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request

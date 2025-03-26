@@ -48,6 +48,8 @@ module Immutaball.Share.Wire
 		multistep,
 		foldrA,
 		foldrListA,
+		multistepFeedback,
+		multistepFeedbackList,
 		foldlA,
 		foldlListA,
 		constA,
@@ -309,6 +311,14 @@ foldrListA reduce = proc (reduction0, xs) -> do
 	case xs of
 		[] -> returnA -< reduction0
 		(x:rest) -> reduce <<< second (foldrListA reduce) -< (x, (reduction0, rest))
+
+-- | 'multistep', with a value for the previous (or initial) result.
+multistepFeedback :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) (c, b) -> Wire m (t a, b) (t c, b)
+multistepFeedback step = first (arr toList) <<< multistepFeedbackList <<< first (arr toList)
+
+-- TODO: 
+multistepFeedbackList :: (Foldable t, Monad m, MonadFix m) => Wire m (a, b) (c, b) -> Wire m ([a], b) ([c], b)
+multistepFeedbackList = _
 
 foldlA :: (Foldable t, Monad m, MonadFix m) => Wire m (b, a) b -> Wire m (b, t a) b
 foldlA reduce = foldlListA reduce <<< second (arr toList)

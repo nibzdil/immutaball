@@ -564,6 +564,9 @@ guiPaintWidgets = proc (paintWidgets, widgetLastFocus, _widgetBy, currentFocusWi
 	let (numElements_ :: Integer) = fromIntegral $ numElements (elementArray :: UArray Integer GLuint)
 
 	() <- monadic -< sdlGL1' $ do
+		-- Disable depth testing.
+		GLDisable GL_DEPTH_TEST ()
+
 		-- Before the paint, disable scene data.
 		GLUniform1i shaderEnableSceneDataLocation falseAsIntegral ()
 		-- Tell the shaders we are not drawing the ball right now.

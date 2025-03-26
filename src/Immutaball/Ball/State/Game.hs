@@ -326,7 +326,7 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 			(Left  (gsn, cxtn))
 			(Right (gsn, dt, cxtn))
 
-	-- Identity output.
+	-- Identify output.
 	let gs = gsnp1
 	let cxt = cxtnp1
 

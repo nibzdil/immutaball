@@ -12,11 +12,16 @@
 module Immutaball.Share.Math.X3D
 	(
 		Plane3(..),
+		normalPlane3,
 		abcdp3,
 		abcp3,
 		dp3,
 
 		defaultOrientationPlane3,
+		plane3PointDistance,
+		pointToPlane,
+		plane3ReflectPoint,
+		normalizePlane3,
 
 		Line3(..), p0l3, p1l3,
 		line3Points,
@@ -26,8 +31,8 @@ module Immutaball.Share.Math.X3D
 		line3NormalizeDisplacement,
 		line3DistanceFromOrigin,
 
-		plane3PointDistance,
-		plane3LineSegmentDistance
+		plane3LineSegmentDistance,
+		line3AxisReflectPlane3
 	) where
 
 import Prelude ()
@@ -47,6 +52,11 @@ import Immutaball.Share.Math.Core
 newtype Plane3 a = Plane3 { _unPlane3 :: Vec4 a }
 	deriving (Eq, Ord, Show)
 		via (Vec4 a)
+
+-- | Construct a plane from a unit normal (unit-lengthedness unverified) and a
+-- distance from the origin.
+normalPlane3 :: forall a. (Num a) => Vec3 a -> a -> Plane3 a
+normalPlane3 abc d = Plane3 $ Vec4 (abc^.x3) (abc^.y3) (abc^.z3) d
 
 -- | Unit-lengthedness of the normal is not verified.
 abcdp3 :: forall a. Lens' (Plane3 a) (Vec4 a)
@@ -110,10 +120,34 @@ defaultOrientationPlane3 (Plane3 (Vec4 a b c _)) = Mat3 $ Vec3
 -- (normalness is assumed and not verified here - verification would be a lot
 -- easier with dependent types), and then finding projection length minus plane
 -- distance.
+--
+-- This can also be used to detect whether a point is on front of, on, or
+-- behind a plane, by checking its sign.
 plane3PointDistance :: forall a. (Num a) => Plane3 a -> Vec3 a -> a
 plane3PointDistance p v = projectionLength - (p^.dp3)
 	where
 		projectionLength = v `d3` (p^.abcp3)
+
+-- | Get the point on the plane closest to the point in 3D space.
+--
+-- Project onto the unit normal (unit-lengthedness assumed and unverified),
+-- find the change in distance from the plane to the point, and subtract a
+-- scaled normal based on this from the original point.
+pointToPlane :: forall a. (Num a) => Vec3 a -> Plane3 a -> Vec3 a
+pointToPlane v p = v `minusv3` (plane3PointDistance p v `sv3` (p^.abcp3))
+
+-- | Reflect a point about a plane.
+plane3ReflectPoint :: forall a. (Num a) => Plane3 a -> Vec3 a -> Vec3 a
+plane3ReflectPoint p v = v `pv3` (2 `sv3` (pointToPlane v p `minusv3` v))
+
+-- | Construct a plane from an arbitrary point on that plane and a normal.
+--
+-- The unit-lengthedness of the provided normal is assumed and not verified.
+normalizePlane3 :: forall a. (Num a) => Vec3 a -> Vec3 a -> Plane3 a
+normalizePlane3 v abc = normalPlane3 abc d
+	where
+		d :: a
+		d = v `d3` abc
 
 -- | A line segment or infinite line in 3D space.
 --
@@ -192,8 +226,8 @@ a0l3 = lens getter (flip setter)
 -- Note:
 -- 	s = (-o dot v)/(|v|^2)
 line3NormalizeDisplacement :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Line3 a
-line3NormalizeDisplacement l = l & a0l3 .~ ((((l^.ol3) `d3` (l^.a0l3))/(sq (l^.a0l3.r3))) `sv3` (l^.a0l3))
-	where sq x = x*x
+line3NormalizeDisplacement l = l & a0l3 .~ ((((l^.ol3) `d3` (l^.a0l3))/(sq_ (l^.a0l3.r3))) `sv3` (l^.a0l3))
+	where sq_ x = x*x
 
 -- | Find the distance from the origin to an infinite line.
 line3DistanceFromOrigin :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> a
@@ -231,3 +265,11 @@ plane3LineSegmentDistance p l
 	where
 		p0d = plane3PointDistance p (l^.p0l3)
 		p1d = plane3PointDistance p (l^.p1l3)
+
+-- | Reflect a line's axis about the plane with the given normal and
+-- intersecting ‘o’ (‘p0’).
+--
+-- This can be done by finding the vector from a0 to the closest point on the
+-- plane, and adding double that vector.
+line3AxisReflectPlane3 :: forall a. (Num a) => Line3 a -> Vec3 a -> Line3 a
+line3AxisReflectPlane3 l abc = l & a0l3 %~ plane3ReflectPoint (normalizePlane3 (l^.ol3) abc)

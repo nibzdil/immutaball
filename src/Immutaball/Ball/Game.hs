@@ -398,20 +398,6 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 			let (maybeView :: Maybe View) = (gs^.gsSol.solWv) !? 0 in
 			let gds = gs^.gsDebugState in
 			let (mviewIntermission :: MView) = (\f -> maybe mviewDefault f maybeView) $ \view_ ->
-				-- TODO: this is now refactored into aim* utils in Math.hs.  Remove commented out part after things are working better.
-				{-
-				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
-				let horizRotatedTargetQDiff = rotatexySimple (gs^.gsDebugState.gdsCameraAimRightRadians) `mv3` targetQDiff in
-				-- Finally, vertically rotate.  Treat x and y as a single number by magnitude and rotate with z.  TODO refactor (probably into a Math.hs new function).
-				let (xy, z) = (Vec2 (horizRotatedTargetQDiff^.x3) (horizRotatedTargetQDiff^.y3), horizRotatedTargetQDiff^.z3) in
-				let xyz = Vec2 (xy^.r2) z in
-				let xyzRotated = xyz & t2 %~ (+ (gs^.gsDebugState.gdsCameraAimUpRadians)) in
-				let xyzRotatedCapped = xyzRotated & t2 %~ (min (tau/2)) . (max (-tau/2)) in
-				--let (Vec2 x' y', z') = (((xyzRotatedCapped^.x2)/(xy^.r2)) `sv2` xy, xyzRotatedCapped^.y2) in
-				let (Vec2 x' y', z') = (xy & r2 .~ (xyzRotatedCapped^.x2), xyzRotatedCapped^.y2) in
-				--let rotatedTargetQDiff = horizRotatedTargetQDiff in
-				let rotatedTargetQDiff = Vec3 x' y' z' in
-				-}
 				let targetQDiff = (view_^.viewQ) `minusv3` (view_^.viewP) in
 				let rotatedTargetQDiff = aimVert3DSimple (Just $ 0.99*(tau/4)) (gds^.gdsCameraAimUpRadians) . aimHoriz3DSimple (gds^.gdsCameraAimRightRadians) $ targetQDiff in
 
@@ -426,11 +412,8 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 					-- (The neverballrc fov appears to be half fov, not whole fov, so double the degrees, then convert to radians.)
 					_mviewFov    = let deg = 2.0 * (fromIntegral $ cxt^.ibNeverballrc.viewFov) in deg * (tau/360.0)
 				} in
-			-- TODO: use .neverballrc viewDp, viewDc, and viewDz.
-			--let (mviewCamera :: MView) = mviewIntermission in  -- TODO calculate view by ball pos, camera angle, and world tilt.  Just start with a 0,-1,0 vector and transform.
-			-- The camera when actively playing (not in intermission): camera
-			-- looks at the ball.
-			-- TODO: handle world tilt.
+			-- TODO: use .neverballrc viewDp, viewDc, and viewDz.  For now just
+			-- use static config for camera orientation about ball.
 			let (mviewCamera :: MView) =
 				let (cameraOffset :: Vec3 Double) =
 					aimVert3DSimple Nothing ((cxt^.ibContext.ibStaticConfig.x'cfgCameraRaisedCircles) * tau) .
@@ -443,11 +426,6 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 					_mviewFov = mviewIntermission^.mviewFov
 				} in
 			let (mview :: MView) = if' (isIntermission $ gs^.gsGameMode) mviewIntermission mviewCamera in
-			{-
-			-- TODO DEBUG
-			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: mview is " ++ show (mview)) ()
-			() <- initial -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: mkPlayState: viewMat mview is " ++ show (viewMat mview)) ()
-			-}
 			mview
 
 		theNetRightForwardJump :: (Integer, Integer, Integer)

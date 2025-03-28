@@ -19,7 +19,7 @@ module Immutaball.Share.Config
 			x'cfgBallTriangles, x'cfgDebugFreeCamera, x'cfgVertUpKey,
 			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
 			x'glFarVal, x'cfgDepthScale, x'cfgViewCollapse,
-			x'cfgCameraDistance, x'cfgCameraRaisedCircles,
+			x'cfgCameraDistance, x'cfgCameraRaisedCircles, x'cfgMaxTilt,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -54,6 +54,7 @@ import qualified SDL.Raw.Enum as Raw
 import Immutaball.Share.ImmutaballIO.DirectoryIO
 import Immutaball.Share.GLManager
 import Immutaball.Share.GLManager.Config
+import Immutaball.Share.Math (tau)
 import Immutaball.Share.SDLManager
 import Immutaball.Share.SDLManager.Config
 
@@ -132,7 +133,10 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- | How far Playing camera is from the center of the ball.  World units (which is 64 .map units).
 	_x'cfgCameraDistance :: Double,
 	-- | Pitch in radians times tau.  By what angle (preserving distance) should the camera be raised relative to level with the ball?  1 circle is 360 degrees and also tau radians.
-	_x'cfgCameraRaisedCircles :: Double
+	_x'cfgCameraRaisedCircles :: Double,
+
+	-- | Maximum tilt angle from neutral.
+	_x'cfgMaxTilt :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -184,7 +188,9 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgViewCollapse = True,
 
 	_x'cfgCameraDistance = 2.0,
-	_x'cfgCameraRaisedCircles = (1/4) * (1/3)
+	_x'cfgCameraRaisedCircles = (1/4) * (1/3),
+
+	_x'cfgMaxTilt = (20.0/360.00) * tau
 }
 
 type Neverballrc = Config

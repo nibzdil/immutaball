@@ -290,10 +290,43 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 	let gsnp3 = gsnp2 & updateCapFreeAimUp . updateFreeAim
 
 	-- Tilt the world if playing.
-	-- TODO
+	-- The config for curMouseSense is interpreted to mean the number of pixels
+	-- needed to traverse the entire tilt range (2 * x'cfgMaxTilt).
+	let (mouseTiltModifier :: Double) = 1.0  -- Don't change mouse sensitivity for tilt.
+	let (mouseSensitivity :: Int) = cxtn^.ibNeverballrc.mouseSense
+	let (maxTilt :: Double) = cxtn^.ibContext.ibStaticConfig.x'cfgMaxTilt
+	let updateTiltBase = if' (not . isPlaying $ gsnp1^.gsGameMode) id $ case request of
+		(Point _x _y dx' dy') ->
+			-- SDL for me reported inverted dy (i.e. SDL's 0,0 at the top-left corner); so invert dy.
+			let dx =  dx' in
+			let dy = -dy' in
+
+			let (dxd :: Double) = fromIntegral dx in
+			let (dyd :: Double) = fromIntegral dy in
+
+			let (dTiltRangesX :: Double) = dxd / fromIntegral mouseSensitivity in
+			let (dTiltRangesY :: Double) = dyd / fromIntegral mouseSensitivity in
+
+			let (dRawRadiansX :: Double) = tau * dTiltRangesX in
+			let (dRawRadiansY :: Double) = tau * dTiltRangesY in
+
+			let (dRadiansX :: Double) = mouseTiltModifier * dRawRadiansX in
+			let (dRadiansY :: Double) = mouseTiltModifier * dRawRadiansY in
+
+			(gsGravityState.gravsTiltRightRadians   %~ (+ dRadiansX)) .
+			(gsGravityState.gravsTiltForwardRadians %~ (+ dRadiansY)) .
+			id
+		_ -> id
+	let updateTiltCap =
+		(gsGravityState.gravsTiltRightRadians   %~ (min maxTilt . max (-maxTilt))) .
+		(gsGravityState.gravsTiltForwardRadians %~ (min maxTilt . max (-maxTilt))) .
+		id
+	let updateTilt = updateTiltCap <<< updateTiltBase
+
+	let gsnp4 = gsnp3 & updateTilt
 
 	-- Identify output.
-	let gs = gsnp3
+	let gs = gsnp4
 	let cxt = cxtn
 
 	-- Return.

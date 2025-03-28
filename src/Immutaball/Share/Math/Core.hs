@@ -1389,6 +1389,8 @@ rotateyzSimple t = Mat3 $ Vec3
 -- | For each on the first row, multiply the element by the determinent of the
 -- submatrix modulo width, to the base case of a 2x2 matrix.  Sum.
 -- If you ignored sign then 1x1 could be the base case.
+--
+-- TODO: double check and probably fix this; implementation might be incorrect.
 determinant4 :: (Num a) => Mat4 a -> a
 determinant4 (Mat4 (Vec4
 		(Vec4 v0_0 v0_1 v0_2 v0_3)
@@ -1406,6 +1408,9 @@ determinant4 (Mat4 (Vec4
 		(Vec4  v2_4  v2_5  v2_6 _v2_7) = (Vec4 v2_0 v2_1 v2_2 v2_3)
 		(Vec4  v3_4  v3_5  v3_6 _v3_7) = (Vec4 v3_0 v3_1 v3_2 v3_3)
 
+-- | TODO: document.
+--
+-- TODO: double check and probably fix this; implementation might be incorrect.
 determinant3 :: (Num a) => Mat3 a -> a
 determinant3 (Mat3 (Vec3
 		(Vec3 v0_0 v0_1 v0_2)

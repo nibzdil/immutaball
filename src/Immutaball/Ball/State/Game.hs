@@ -383,7 +383,7 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 
 	let cameraAngleSpeed = 1.0  -- radians per second  -- TODO: use neverballrc rotate_slow
 	let updateCameraAngle = if' (not foundChange || not isPlayingState) id $
-		gsCameraAngle %~ (+ (-fromIntegral netMouseRight) * cameraAngleSpeed * dt) .
+		(gsCameraAngle %~ (+ (-fromIntegral netMouseRight) * cameraAngleSpeed * dt)) .
 		id
 	let gsnp3 = gsnp2 & updateCameraAngle
 	let cxtnp3 = cxtnp2
@@ -459,12 +459,19 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let gravityAcceleration = cxtn^.ibContext.ibStaticConfig.x'cfgGravity
 	let bounceReturn = cxtn^.ibContext.ibStaticConfig.x'cfgBounceReturn
 
+	-- Apply gravity.
+	let updateGravity =
+		(gsBallVel %~ (+ (dt * gravityAcceleration) `sv3` (Vec3 0.0 0.0 (-1.0)))) .
+		id
+	let gsnp1 = gsn & updateGravity
+	let cxtnp1 = cxtn
+
 	-- TODO: implement.
-	let (gsnp1, cxtnp1) = (gsn, cxtn)
+	let (gsnp2, cxtnp2) = (gsnp1, cxtnp1)
 
 	-- Identify output.
-	let gs = gsnp1
-	let cxt = cxtnp1
+	let gs = gsnp2
+	let cxt = cxtnp2
 
 	-- Return.
 	returnA -< (gs, cxt)

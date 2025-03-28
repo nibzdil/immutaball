@@ -133,7 +133,7 @@ renderScene :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateCon
 renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	-- Set up the transformation matrix.
 	--let mat = transformationMatrix camera_
-	mat <- arr $ uncurry transformationMatrix -< (cxtn, camera_)
+	mat <- arr $ uncurry3 transformationMatrix -< (cxtn, gs, camera_)
 	cxtnp1 <- setTransformation -< (mat, cxtn)
 
 	-- Render the scene.
@@ -160,16 +160,23 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	returnA -< cxt
 
 	where
-		transformationMatrix :: IBStateContext -> MView -> Mat4 Double
-		transformationMatrix cxt view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
+		uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
+		uncurry3 f (a, b, c) = f a b c
+
+		transformationMatrix :: IBStateContext -> GameState -> MView -> Mat4 Double
+		transformationMatrix cxt gs view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
 			where
 				x'cfg = cxt^.ibContext.ibStaticConfig
 				depthScale = x'cfg^.x'cfgDepthScale
 				viewCollapse = x'cfg^.x'cfgViewCollapse
 
-				-- Translate to the ball, rotate by gsCameraAngle, tilt3z, and untranslate.
-				-- TODO:
-				tilt = identity4
+				-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
+				tilt =
+					translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
+					tilt3z upVec <>                   -- Tilt the world.
+					rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
+					translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
+				upVec = Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - upVec^.xy3.r2)
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

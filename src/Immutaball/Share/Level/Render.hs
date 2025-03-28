@@ -160,13 +160,12 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 				viewCollapse = x'cfg^.x'cfgViewCollapse
 
 				-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
-				sq_ x = x*x
 				tilt =
 					translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
-					tilt3z upVec <>                   -- Tilt the world.
+					tilt3z (gsa^.gsaUpVec) <>         -- Tilt the world.
 					rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
 					translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
-				upVec = Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (sqrt $ 1 - sq_ (upVec^.xy3.r2))
+				gsa = mkGameStateAnalysis cxt gs
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

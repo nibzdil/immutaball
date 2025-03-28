@@ -22,7 +22,7 @@ module Immutaball.Ball.Game
 			gsGoalState, gsGravityState, gsDebugState, gsInputState,
 			{- gsAnalysis, -}
 		GameStateAnalysis(..), gsaView, gsaNetRightForwardJump,
-			gsaNetMouseRight,
+			gsaNetMouseRight, gsaUpVec,
 		mkGameStateAnalysis,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
@@ -195,7 +195,9 @@ data GameStateAnalysis = GameStateAnalysis {
 	-- | Net movement from input state: -1 for opposite, 0 for neutral, 1 for On.
 	_gsaNetRightForwardJump :: (Integer, Integer, Integer),
 	-- | Net mouse left/right button down state: -1 if left only is down, 0 if neutral, 1 if right clicking only.
-	_gsaNetMouseRight :: Integer
+	_gsaNetMouseRight :: Integer,
+	-- | Given the current world tilt, find the upvec (new z axis).
+	_gsaUpVec :: Vec3 Double
 }
 	deriving (Eq, Ord, Show)
 
@@ -385,7 +387,8 @@ mkGameStateAnalysis :: IBStateContext -> GameState -> GameStateAnalysis
 mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 	_gsaView                = theView,
 	_gsaNetRightForwardJump = theNetRightForwardJump,
-	_gsaNetMouseRight       = theNetMouseRight
+	_gsaNetMouseRight       = theNetMouseRight,
+	_gsaUpVec               = theUpVec
 }
 	where
 		theView :: MView
@@ -450,3 +453,8 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 				netOf True  True  =  0
 
 				netMouseRight = netOf (gs^.gsInputState.ginsMouseLeftOn)     (gs^.gsInputState.ginsMouseRightOn)
+
+		theUpVec :: Vec3 Double
+		theUpVec = fix $ \upVec -> Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (sqrt $ 1 - sq_ (upVec^.xy3.r2))
+			where
+				sq_ x = x*x

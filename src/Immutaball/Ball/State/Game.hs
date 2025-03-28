@@ -460,8 +460,9 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let bounceReturn = cxtn^.ibContext.ibStaticConfig.x'cfgBounceReturn
 
 	-- Apply gravity.
+	let gravityVector = -(gsa^.gsaUpVec)
 	let updateGravity =
-		(gsBallVel %~ (+ (dt * gravityAcceleration) `sv3` (Vec3 0.0 0.0 (-1.0)))) .
+		(gsBallVel %~ (+ (dt * gravityAcceleration) `sv3` gravityVector)) .
 		id
 	let gsnp1 = gsn & updateGravity
 	let cxtnp1 = cxtn

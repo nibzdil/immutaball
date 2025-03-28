@@ -52,6 +52,8 @@ import Immutaball.Share.Wire
 import Immutaball.Share.ImmutaballIO
 import Immutaball.Share.ImmutaballIO.BasicIO
 
+import Debug.Trace as D--------------------------------- TODO DEBUG
+
 -- | TODO: implement.
 renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
 renderLevel = proc ((camera_, swa, gs), cxtn) -> do
@@ -171,12 +173,19 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 				viewCollapse = x'cfg^.x'cfgViewCollapse
 
 				-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
+				sq_ x = x*x
 				tilt =
 					translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
 					tilt3z upVec <>                   -- Tilt the world.
 					rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
 					translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
-				upVec = Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - upVec^.xy3.r2)
+				--upVec = Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec^.xy3.r2))
+				--upVec = D.trace ("DEBUG0: " ++ show (tilt3z $ fix $ \upVec_ -> Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec_^.xy3.r2)))) $ Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec^.xy3.r2))
+				--fix f = let x = f x in x
+				--upVec = D.trace ("DEBUG0: upVec: " ++ show (fix $ \upVec_ -> Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec_^.xy3.r2)))) $ Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec^.xy3.r2))
+				-- FIXME: inversions.  tilt3z when normalizing z seems to be inverting x and y?
+				fix f = let x = f x in x
+				upVec = D.trace (let upVec__ = (fix $ \upVec_ -> Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec_^.xy3.r2))) in "DEBUG0:\n\tupVec: " ++ show upVec__ ++ "\n\ttilt3z upVec: " ++ show (tilt3z upVec__)) $ Vec3 (sin $ gs^.gsGravityState.gravsTiltRightRadians) (sin $ gs^.gsGravityState.gravsTiltForwardRadians) (1 - sq_ (upVec^.xy3.r2))
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

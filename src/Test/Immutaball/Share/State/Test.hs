@@ -145,10 +145,6 @@ glImmutaball :: (Applicative t) => TMVar () -> IBContext -> Wire ImmutaballM (t 
 glImmutaball mout baseCxt0 = proc _requests -> do
 	_ <- monadic -< liftIBIO $ Atomically (writeTMVar mout ()) id
 	rec
-		--cxtnp1 <- delay (initialStateCxt cxt0) -< cxtn
-		--cxtn <- stateContextStorage (initialStateCxt cxt0) <<< Just <$> requireVideo -< cxtnp1
-
-		-- TODO: this tests fails on my platform.
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireVideo -< cxtLast
 		cxt <- returnA -< cxtn

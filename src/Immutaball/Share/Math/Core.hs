@@ -1823,9 +1823,9 @@ viewMat = viewMat' False
 -- | Translate, then rotate, then fov or fovPure.
 viewMat' :: (Num a, Fractional a, Floating a, RealFloat a, SmallNum a) => Bool -> MView' a -> Mat4 a
 viewMat' viewCollapse v =
-	fov'       (v^.mviewFov) <>
-	tilt3y     ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
-	translate3 (-v^.mviewPos)
+	fov'          (v^.mviewFov) <>
+	tilt3yReverse ((v^.mviewTarget) `minusv3` (v^.mviewPos)) <>
+	translate3    (-v^.mviewPos)
 	where
 		fov' = if' viewCollapse fovPure fov
 

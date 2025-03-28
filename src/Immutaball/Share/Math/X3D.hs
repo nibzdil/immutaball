@@ -32,7 +32,10 @@ module Immutaball.Share.Math.X3D
 		line3DistanceFromOrigin,
 
 		plane3LineSegmentDistance,
-		line3AxisReflectPlane3
+		line3AxisReflectPlane3,
+
+		line3Lerp,
+		line3CoordAtDistancePlane3
 	) where
 
 import Prelude ()
@@ -273,3 +276,31 @@ plane3LineSegmentDistance p l
 -- plane, and adding double that vector.
 line3AxisReflectPlane3 :: forall a. (Num a) => Line3 a -> Vec3 a -> Line3 a
 line3AxisReflectPlane3 l abc = l & a0l3 %~ plane3ReflectPoint (normalizePlane3 (l^.ol3) abc)
+
+-- | Project a 1D coord x onto a line, like a lerp.
+--
+-- The coord 0 corresponds to p0, and the coord 1 corresponds to p1.  0.5 is
+-- half-way in between, and 2 is p0 + 2*(p1 - p0), i.e. p0 + 2*a0.
+line3Lerp :: forall a. (Num a) => Line3 a -> a -> Vec3 a
+line3Lerp l x = (l^.ol3) `pv3` (x `sv3` (l^.a0l3))
+
+-- | Given a plane, find the 1D coord that projects onto the line, that finds
+-- the point at the given distance from the plane.  i.e. for a line and plane,
+-- find x such that p0 + p1*x gives a point equal to distance d from the plane
+-- (like a lerp).  However return Nothing, if the line is parallel and
+-- thus every point is the same distance.
+--
+-- Conveniently, the change in distance from the plane per change in x in
+-- constant.
+line3CoordAtDistancePlane3 :: forall a. (SmallNum a, Ord a, Num a, Fractional a) => Plane3 a -> Line3 a -> a -> Maybe a
+line3CoordAtDistancePlane3 p l d
+	| dd_dx `equivalentSmall` 0 = Nothing
+	| otherwise                 = Just $ (d - p0d)/dd_dx
+	where
+		-- Going from p0 to p1 (i.e. for every change in x by +1), how much
+		-- does the distance from the plane change?
+		dd_dx :: a
+		dd_dx = p1d - p0d
+
+		p0d = plane3PointDistance p (l^.p0l3)
+		p1d = plane3PointDistance p (l^.p1l3)

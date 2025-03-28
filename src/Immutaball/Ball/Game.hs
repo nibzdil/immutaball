@@ -22,6 +22,7 @@ module Immutaball.Ball.Game
 			gsGoalState, gsGravityState, gsDebugState, gsInputState,
 			{- gsAnalysis, -}
 		GameStateAnalysis(..), gsaView, gsaNetRightForwardJump,
+			gsaNetMouseRight,
 		mkGameStateAnalysis,
 		initialGameState,
 		CoinState(..), csCoinsCollected, csTotalCollected, csTotalUncollected,
@@ -33,7 +34,9 @@ module Immutaball.Ball.Game
 		GravityState(..), gravsTiltRightRadians, gravsTiltForwardRadians,
 		GameDebugState(..), gdsCameraDebugOn, gdsCameraPosOffset,
 			gdsCameraAimRightRadians, gdsCameraAimUpRadians,
-		GameInputState(..), ginsRightOn, ginsLeftOn, ginsForwardOn, ginsBackwardOn, ginsVertUpOn, ginsVertDownOn
+		GameInputState(..), ginsRightOn, ginsLeftOn, ginsForwardOn,
+			ginsBackwardOn, ginsVertUpOn, ginsVertDownOn, ginsMouseLeftOn,
+			ginsMouseRightOn
 	) where
 
 import Prelude ()
@@ -184,7 +187,9 @@ data GameStateAnalysis = GameStateAnalysis {
 	-- | Where the camera is.
 	_gsaView :: MView,
 	-- | Net movement from input state: -1 for opposite, 0 for neutral, 1 for On.
-	_gsaNetRightForwardJump :: (Integer, Integer, Integer)
+	_gsaNetRightForwardJump :: (Integer, Integer, Integer),
+	-- | Net mouse left/right button down state: -1 if left only is down, 0 if neutral, 1 if right clicking only.
+	_gsaNetMouseRight :: Integer
 }
 	deriving (Eq, Ord, Show)
 
@@ -261,7 +266,10 @@ data GameInputState = GameInputState {
 	_ginsForwardOn  :: Bool,  -- Up arrow?
 	_ginsBackwardOn :: Bool,  -- Down arrow?
 	_ginsVertUpOn   :: Bool,  -- Spacebar?  (Not used in regular gameplay.)
-	_ginsVertDownOn :: Bool   -- ‘c’ for qwerty crouch to move down?  (Not used in regular gameplay.)
+	_ginsVertDownOn :: Bool,  -- ‘c’ for qwerty crouch to move down?  (Not used in regular gameplay.)
+
+	_ginsMouseLeftOn  :: Bool,  -- Mouse left button is being pressed on?
+	_ginsMouseRightOn :: Bool   -- Mouse right button is being pressed on?
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''GameDebugState
@@ -356,7 +364,10 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 			_ginsForwardOn  = False,
 			_ginsBackwardOn = False,
 			_ginsVertUpOn   = False,
-			_ginsVertDownOn = False
+			_ginsVertDownOn = False,
+
+			_ginsMouseLeftOn  = False,
+			_ginsMouseRightOn = False
 		}
 
 		{-
@@ -367,7 +378,8 @@ initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = f
 mkGameStateAnalysis :: IBStateContext -> GameState -> GameStateAnalysis
 mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 	_gsaView                = theView,
-	_gsaNetRightForwardJump = theNetRightForwardJump
+	_gsaNetRightForwardJump = theNetRightForwardJump,
+	_gsaNetMouseRight       = theNetMouseRight
 }
 	where
 		theView :: MView
@@ -444,3 +456,13 @@ mkGameStateAnalysis cxt gs = fix $ \_gsa -> GameStateAnalysis {
 				netRight   = netOf (gs^.gsInputState.ginsLeftOn)     (gs^.gsInputState.ginsRightOn)
 				netForward = netOf (gs^.gsInputState.ginsBackwardOn) (gs^.gsInputState.ginsForwardOn)
 				netVertUp  = netOf (gs^.gsInputState.ginsVertDownOn) (gs^.gsInputState.ginsVertUpOn)
+
+		theNetMouseRight = (netMouseRight)
+			where
+				netOf :: Bool -> Bool -> Integer
+				netOf True  False = -1
+				netOf False False =  0
+				netOf False True  =  1
+				netOf True  True  =  0
+
+				netMouseRight = netOf (gs^.gsInputState.ginsMouseLeftOn)     (gs^.gsInputState.ginsMouseRightOn)

@@ -161,11 +161,15 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 
 	where
 		transformationMatrix :: IBStateContext -> MView -> Mat4 Double
-		transformationMatrix cxt view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_
+		transformationMatrix cxt view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
 			where
 				x'cfg = cxt^.ibContext.ibStaticConfig
 				depthScale = x'cfg^.x'cfgDepthScale
 				viewCollapse = x'cfg^.x'cfgViewCollapse
+
+				-- Translate to the ball, rotate by gsCameraAngle, tilt3z, and untranslate.
+				-- TODO:
+				tilt = identity4
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

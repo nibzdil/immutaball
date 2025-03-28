@@ -242,6 +242,8 @@ stepGameInputMovement = proc (gsn, request, cxtn) -> do
 			if' (char == cxtn^.ibContext.ibStaticConfig.x'cfgVertUpKey)   (gsInputState.ginsVertUpOn   .~ down) .
 			if' (char == cxtn^.ibContext.ibStaticConfig.x'cfgVertDownKey) (gsInputState.ginsVertDownOn .~ down) $
 			id
+		(Click _button@Raw.SDL_BUTTON_LEFT  down) -> (gsInputState.ginsMouseLeftOn  .~ down)
+		(Click _button@Raw.SDL_BUTTON_RIGHT down) -> (gsInputState.ginsMouseRightOn .~ down)
 		_ -> id
 
 	let gsnp1 = gsn & update
@@ -353,6 +355,8 @@ stepGameInputEvents = proc (gsn, request, cxtn) -> do
 -- | Step a frame of the game state on clock.
 stepGameClock :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
 stepGameClock = proc (gsn, dt, cxtn) -> do
+	let gsa = mkGameStateAnalysis cxtn gsn
+
 	-- Step debug camera.
 	(gsnp1, cxtnp1) <- returnA ||| stepGameClockDebugFreeCamera -<
 		if' (not $ gsn^.gsDebugState.gdsCameraDebugOn)
@@ -366,9 +370,26 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 			(id)
 			(gsTimeElapsed %~ (+ dt))
 
+	-- Respond to left and right mouse down by moving the camera.
+	rec
+		lastNetMouseRight <- delay 0 -< netMouseRight
+		netMouseRight <- returnA -< gsa^.gsaNetMouseRight
+
+		lastIsPlayingState <- delay False -< isPlayingState
+		isPlayingState <- returnA -< isPlaying $ gsnp2^.gsGameMode
+
+		foundChange <- hold False -< if' ((lastIsPlayingState == isPlayingState) && (lastNetMouseRight /= netMouseRight)) (Just True) Nothing
+
+	let cameraAngleSpeed = 1.0  -- radians per second  -- TODO: use neverballrc rotate_slow
+	let updateCameraAngle = if' (not foundChange) id $
+		gsCameraAngle %~ (+ fromIntegral netMouseRight * cameraAngleSpeed * dt) .
+		id
+	let gsnp3 = gsnp2 & updateCameraAngle
+	let cxtnp3 = cxtnp2
+
 	-- Identify output.
-	let gs = gsnp2
-	let cxt = cxtnp2
+	let gs = gsnp3
+	let cxt = cxtnp3
 
 	-- Return.
 	returnA -< (gs, cxt)

@@ -10,10 +10,10 @@
 
 module Test.Immutaball.Share.Math.Orphans
 	(
-		module Test.Immutaball.Share.Math.Core.Orphans
+		--module Test.Immutaball.Share.Math.Core.Orphans
 	) where
 
 import Prelude ()
 --import Immutaball.Prelude
 
-import Test.Immutaball.Share.Math.Core.Orphans
+import Test.Immutaball.Share.Math.Core.Orphans ()

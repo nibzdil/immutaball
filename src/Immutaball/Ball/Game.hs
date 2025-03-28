@@ -159,6 +159,12 @@ data GameState = GameState {
 	-- | The position of the camera, as a counter-clock-wise angle relative to
 	-- the starting camera position of looking toward the positive y axis, with
 	-- the camera orientation specified in the Config rc file.
+	-- | The angle of the camera behind the ball - how much to ‘look right’
+	-- (yaw).
+	--
+	-- Rendering is oriented by 'tilt3y' so that the positive y axis direction
+	-- represents what the camera is looking at.  Equivalently, this angle
+	-- specifies what clock-wise angle to rotate the camera by around the ball.
 	_gsCameraAngle :: Double,
 	_gsCameraMode :: Integer,
 

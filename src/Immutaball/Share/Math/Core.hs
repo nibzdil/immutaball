@@ -1358,7 +1358,9 @@ rotatexz = m3to4 . rotatexzSimple
 rotateyz :: (Floating a) => a -> Mat4 a
 rotateyz = m3to4 . rotateyzSimple
 
--- | Aim right.
+-- | Aim left: spin (CW) to the right.
+--
+-- (When the world is spinning clockwise, it looks like you are aiming left.)
 rotatexySimple :: (Floating a) => a -> Mat3 a
 rotatexySimple t = Mat3 $ Vec3
 	(Vec3 c    s   0.0)
@@ -1366,7 +1368,7 @@ rotatexySimple t = Mat3 $ Vec3
 	(Vec3 0.0  0.0 1.0)
 	where (c, s) = (cos t, sin t)
 
--- | Tilt right.
+-- | Tilt the axes right.
 rotatexzSimple :: (Floating a) => a -> Mat3 a
 rotatexzSimple t = Mat3 $ Vec3
 	(Vec3 c    0.0 s  )
@@ -1374,7 +1376,9 @@ rotatexzSimple t = Mat3 $ Vec3
 	(Vec3 (-s) 0.0 c  )
 	where (c, s) = (cos t, sin t)
 
--- | Aim down.
+-- | Aim up: move e.g. y axis down.
+--
+-- (When the world is being rotated downward, it looks like you are aiming up.)
 rotateyzSimple :: (Floating a) => a -> Mat3 a
 rotateyzSimple t = Mat3 $ Vec3
 	(Vec3 1.0 0.0  0.0)

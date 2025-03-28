@@ -381,7 +381,7 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 		foundChange <- hold False -< if' ((lastIsPlayingState == isPlayingState) && (lastNetMouseRight /= netMouseRight)) (Just True) Nothing
 
 	let cameraAngleSpeed = 1.0  -- radians per second  -- TODO: use neverballrc rotate_slow
-	let updateCameraAngle = if' (not foundChange) id $
+	let updateCameraAngle = if' (not foundChange || not isPlayingState) id $
 		gsCameraAngle %~ (+ fromIntegral netMouseRight * cameraAngleSpeed * dt) .
 		id
 	let gsnp3 = gsnp2 & updateCameraAngle

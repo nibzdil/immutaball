@@ -48,11 +48,6 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
--- TODO DEBUG:
-import Immutaball.Share.ImmutaballIO
-import Immutaball.Share.ImmutaballIO.BasicIO
-
--- | TODO: implement.
 renderLevel :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
 renderLevel = proc ((camera_, swa, gs), cxtn) -> do
 	-- Set up.
@@ -95,12 +90,6 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 
 	-- Pre-initialize the transformation matrix with the identity.
 	cxtnp17 <- setTransformation -< (identity4, cxtnp16)
-	--() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: sra is " ++ show sra) ()
-	let solGeoms = map (^.geomMi) $ (elems (swa^.swaSol.solGv))
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG0: renderSetupNewLevel: sol path is " ++ show (swa^.swaMeta.smPath)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG1: renderSetupNewLevel: all sol geom mis is " ++ show solGeoms) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG2: renderSetupNewLevel: all sol mv is " ++ show (swa^.swaSol.solMv)) ()
-	() <- monadic -< liftIBIO . BasicIBIOF $ PutStrLn ("DEBUG3") ()
 
 	-- Approximate disabling OpenGL clipping by depth (by our transformed y coordinates, which transform into OpenGL z depth coordinates).
 	-- Also other miscellaneous OpenGL setup.

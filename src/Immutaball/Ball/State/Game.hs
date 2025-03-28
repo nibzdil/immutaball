@@ -20,7 +20,8 @@ module Immutaball.Ball.State.Game
 		stepGameInputMovement,
 		stepGameInputEvents,
 		stepGameClock,
-		stepGameClockDebugFreeCamera
+		stepGameClockDebugFreeCamera,
+		stepGameBallPhysics
 	) where
 
 import Prelude ()
@@ -387,12 +388,18 @@ stepGameClock = proc (gsn, dt, cxtn) -> do
 	let gsnp3 = gsnp2 & updateCameraAngle
 	let cxtnp3 = cxtnp2
 
+	-- Physically expend dt to advance the ball's position by its velocity,
+	-- handling physics collisions.
+	(gsnp4, cxtnp4) <- returnAWithoutMiddle ||| stepGameBallPhysics -< if' (not isPlayingState) Left Right $ (gsnp3, dt, cxtnp3)
+
 	-- Identify output.
-	let gs = gsnp3
-	let cxt = cxtnp3
+	let gs = gsnp4
+	let cxt = cxtnp4
 
 	-- Return.
 	returnA -< (gs, cxt)
+	where
+		returnAWithoutMiddle = arr $ \(a, _b, c) -> (a, c)
 
 -- | Step the debug free camera.
 --
@@ -443,3 +450,21 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 		-- this to False is an option.
 		freeCameraRelative :: Bool
 		freeCameraRelative = True
+
+-- | Expend dt to step the ball through the physical world.
+stepGameBallPhysics :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
+stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
+	let gsa = mkGameStateAnalysis cxtn gsn
+
+	let gravityAcceleration = cxtn^.ibContext.ibStaticConfig.x'cfgGravity
+	let bounceReturn = cxtn^.ibContext.ibStaticConfig.x'cfgBounceReturn
+
+	-- TODO: implement.
+	let (gsnp1, cxtnp1) = (gsn, cxtn)
+
+	-- Identify output.
+	let gs = gsnp1
+	let cxt = cxtnp1
+
+	-- Return.
+	returnA -< (gs, cxt)

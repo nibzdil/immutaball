@@ -20,6 +20,7 @@ module Immutaball.Share.Config
 			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
 			x'glFarVal, x'cfgDepthScale, x'cfgViewCollapse,
 			x'cfgCameraDistance, x'cfgCameraRaisedCircles, x'cfgMaxTilt,
+			x'cfgGravity, x'cfgBounceReturn,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -136,7 +137,12 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	_x'cfgCameraRaisedCircles :: Double,
 
 	-- | Maximum tilt angle from neutral.
-	_x'cfgMaxTilt :: Double
+	_x'cfgMaxTilt :: Double,
+
+	-- | How many meters per second squared is gravitational acceleration?
+	_x'cfgGravity :: Double,
+	-- | How much of the ball's velocity is kept on a collision?
+	_x'cfgBounceReturn :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -190,7 +196,10 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgCameraDistance = 2.0,
 	_x'cfgCameraRaisedCircles = (1/4) * (1/3),
 
-	_x'cfgMaxTilt = (20.0/360.00) * tau
+	_x'cfgMaxTilt = (20.0/360.00) * tau,
+
+	_x'cfgGravity = 9.8,
+	_x'cfgBounceReturn = 0.7
 }
 
 type Neverballrc = Config

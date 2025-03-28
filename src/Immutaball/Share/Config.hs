@@ -20,7 +20,8 @@ module Immutaball.Share.Config
 			x'cfgVertDownKey, x'cfgFreeCameraToggleKey, x'glNearVal,
 			x'glFarVal, x'cfgDepthScale, x'cfgViewCollapse,
 			x'cfgCameraDistance, x'cfgCameraRaisedCircles, x'cfgMaxTilt,
-			x'cfgGravity, x'cfgBounceReturn,
+			x'cfgGravity, x'cfgBounceReturn, x'cfgMaxFrameCollisions,
+			x'cfgMaxFrameCollisionsDtThreshold,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -142,7 +143,14 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- | How many meters per second squared is gravitational acceleration?
 	_x'cfgGravity :: Double,
 	-- | How much of the ball's velocity is kept on a collision?
-	_x'cfgBounceReturn :: Double
+	_x'cfgBounceReturn :: Double,
+	-- | In a single frame, if the physics engine has already detected this
+	-- many collisions without a threshold amount of dt being expended, give up
+	-- and advance the frame.  This handles the squish physics mechanic.
+	_x'cfgMaxFrameCollisions :: Integer,
+	-- | For the squish physics mechanic, how much time has to pass before
+	-- resetting the collision counter.
+	_x'cfgMaxFrameCollisionsDtThreshold :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -199,7 +207,9 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgMaxTilt = (20.0/360.00) * tau,
 
 	_x'cfgGravity = 9.8,
-	_x'cfgBounceReturn = 0.7
+	_x'cfgBounceReturn = 0.7,
+	_x'cfgMaxFrameCollisions = 1024,             -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisionsDtThreshold = 0.001  -- TODO: double check if you think this is a good value for this setting.
 }
 
 type Neverballrc = Config

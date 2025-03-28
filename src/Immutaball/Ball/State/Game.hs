@@ -21,7 +21,14 @@ module Immutaball.Ball.State.Game
 		stepGameInputEvents,
 		stepGameClock,
 		stepGameClockDebugFreeCamera,
-		stepGameBallPhysics
+		stepGameBallPhysics,
+		physicsBallAdvance,
+		physicsBallAdvanceStationary,
+		physicsBallAdvanceGhostly,
+		physicsBallAdvanceBruteForce,
+		physicsBallAdvanceBruteForceCompute
+
+		-- * Local utils.
 	) where
 
 import Prelude ()
@@ -42,6 +49,7 @@ import Immutaball.Ball.Game
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
+import Immutaball.Share.Level
 import Immutaball.Share.Math
 import Immutaball.Share.SDLManager
 import Immutaball.Share.State
@@ -452,12 +460,15 @@ stepGameClockDebugFreeCamera = proc (gsn, dt, cxtn) -> do
 		freeCameraRelative = True
 
 -- | Expend dt to step the ball through the physical world.
+--
+-- Apply gravity and handle collisions.
 stepGameBallPhysics :: Wire ImmutaballM (GameState, Double, IBStateContext) (GameState, IBStateContext)
 stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let gsa = mkGameStateAnalysis cxtn gsn
 
-	let gravityAcceleration = cxtn^.ibContext.ibStaticConfig.x'cfgGravity
-	let bounceReturn = cxtn^.ibContext.ibStaticConfig.x'cfgBounceReturn
+	let x'cfg = cxtn^.ibContext.ibStaticConfig
+	let gravityAcceleration = x'cfg^.x'cfgGravity
+	let bounceReturn = x'cfg^.x'cfgBounceReturn
 
 	-- Apply gravity.
 	let gravityVector = -(gsa^.gsaUpVec)
@@ -467,8 +478,16 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let gsnp1 = gsn & updateGravity
 	let cxtnp1 = cxtn
 
-	-- TODO: implement.
-	let (gsnp2, cxtnp2) = (gsnp1, cxtnp1)
+	-- Advance the ball through the physical world, handling collisions.
+	--
+	-- Expend dt to apply its velocity to the position, handling collisions by
+	-- applying reflections.
+	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsBallPos) (gsnp1^.gsBallVel) dt
+	let updateBall =
+		(gsBallPos .~ ballPos') .
+		(gsBallVel .~ ballVel') .
+		id
+	let (gsnp2, cxtnp2) = (gsnp1 & updateBall, cxtnp1)
 
 	-- Identify output.
 	let gs = gsnp2
@@ -476,3 +495,59 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 
 	-- Return.
 	returnA -< (gs, cxt)
+
+-- | Expend dt to step the ball through the physical world, handling collisions.
+physicsBallAdvance :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvance x'cfg level ballPos ballVel dt = choice_ x'cfg level ballPos ballVel dt
+	where
+		choice_ :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+		--choice_ = physicsBallAdvanceStationary
+		--choice_ = physicsBallAdvanceGhostly
+		choice_ = physicsBallAdvanceBruteForce
+
+-- | For debugging or performance checking, keep the ball stationary.
+physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceStationary x'cfg level p0 v0 dt = (p1, v0)
+	where
+		p1 = p0
+
+-- | For debugging or performance checking, ignore all collision checking.
+physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceGhostly x'cfg level p0 v0 dt = (p1, v0)
+	where
+		p1 = p0 + (dt `sv3` v0)
+
+-- | This version completely ignores the BSP.  It checks collisions with every
+-- lump every frame.
+physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
+
+-- | Finish computing 'physicsBallAdvanceBruteFroce'.
+--
+-- Make a line segment from p0 to p1, where p1 is p0 + dt*v, i.e. the tentative
+-- end-point of the ball's position after the frame, if no collisions occur.
+-- Check all lumps for a closest collision, and if one is found, expend enough
+-- dt to advance the ball to the point of intersection, and then reflect v0
+-- about the face's plane, and repeat, checking again for all lumps using the
+-- remaining dt to expend.  Since the path represent the center of the ball,
+-- use the sphere's radius to check for distance.  For edges and vertices, use
+-- as the plane a constructed plane where the plane is orthogonal to the line
+-- from the (new) ball center to the point of intersection.  Once no collisions
+-- have been detected, freely expend the remaining dt.  We now have the new
+-- ball position, at the last p1.
+--
+-- Parameters:
+--
+-- numCollisions:
+-- 	for testing squishes, this is incremented each collision, and once it
+-- 	exceeds the maximum, the squish condition is detected and the physics
+-- 	engine will skip any remaining collisions, letting the ball go through lumps.
+-- thresholdTimeRemaining:
+-- 	Once this much dt has been expended, reset the 2 squish detection
+-- 	parameters (this and numCollisions).
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level p0 v0 dt =
+	-- TODO: implement.
+	(p0 + (dt `sv3` v0), v0)
+
+-- * Local utils.

@@ -23,7 +23,8 @@ module Test.Immutaball.Share.Math.Core.Test
 		zint,
 		zdouble,
 		circle,
-		eqEachEach
+		eqEachEach,
+		v3normalized
 	) where
 
 --import Control.Arrow
@@ -95,6 +96,10 @@ eqEachEach guaranteedUnique eq vals =
 		, guaranteedUnique || ai == bi
 		, r <- return $ (ai == bi) == (av `eq` bv)
 		]
+
+-- | v3normalize specialized to 'Double'.
+v3normalized :: Vec3 Double -> Vec3 Double
+v3normalized = v3normalize
 
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math.Core" $
@@ -169,6 +174,14 @@ tests = testGroup "Immutaball.Share.Math.Core" $
 						testProperty "eqEachEach random mat4 near" $
 							\(vals :: [Mat4 Double]) -> eqEachEach False nearm4 vals
 					]
+			],
+
+		testGroup "some normalization tests" $
+			[
+				testCase "normalizing 1,1,1 gets 1/sqrt 3 x3." $
+					v3normalized (Vec3 1.0 1.0 1.0) `near3` v3normalize (Vec3 (1/sqrt 3) (1/sqrt 3) (1/sqrt 3)) @?= True,
+				testCase "normalizing 1,2,3 gets /sqrt 14." $
+					v3normalized (Vec3 1.0 2.0 3.0) `near3` v3normalize (Vec3 (1.0/sqrt 14) (2.0/sqrt 14) (3.0/sqrt 14)) @?= True
 			],
 
 		testGroup "3D pointing orientation utils (aiming) - using floats so that equality checks' precisions aren't too tight" $

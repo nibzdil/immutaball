@@ -238,7 +238,9 @@ module Immutaball.Share.Math.Core
 		xyz4,
 		xyw4,
 		xzw4,
-		yzw4
+		yzw4,
+
+		sqx
 	) where
 
 import Prelude ()
@@ -2079,3 +2081,7 @@ yzw4 = lens getter (flip setter)
 		getter (Vec4 _ y z w) = Vec3 y z w
 		setter :: Vec3 a -> Vec4 a -> Vec4 a
 		setter (Vec3 y z w) (Vec4 x _ _ _) = Vec4 x y z w
+
+-- | Convenient utility to square a number.
+sqx :: forall a. (Num a) => a -> a
+sqx x = x*x

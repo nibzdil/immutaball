@@ -35,7 +35,10 @@ module Immutaball.Share.Math.X3D
 		line3AxisReflectPlane3,
 
 		line3Lerp,
-		line3CoordAtDistancePlane3
+		line3CoordAtDistancePlane3,
+
+		line3PointCoord,
+		line3PointDistance
 	) where
 
 import Prelude ()
@@ -290,7 +293,7 @@ line3Lerp l x = (l^.ol3) `pv3` (x `sv3` (l^.a0l3))
 -- (like a lerp).  However return Nothing, if the line is parallel and
 -- thus every point is the same distance.
 --
--- Conveniently, the change in distance from the plane per change in x in
+-- Conveniently, the change in distance from the plane per change in x is
 -- constant.
 line3CoordAtDistancePlane3 :: forall a. (SmallNum a, Ord a, Num a, Fractional a) => Plane3 a -> Line3 a -> a -> Maybe a
 line3CoordAtDistancePlane3 p l d
@@ -304,3 +307,24 @@ line3CoordAtDistancePlane3 p l d
 
 		p0d = plane3PointDistance p (l^.p0l3)
 		p1d = plane3PointDistance p (l^.p1l3)
+
+-- | Find the coord on the line to the closest point on that line to the given
+-- point in 3D space.
+--
+-- You can use the result with 'line3Lerp' to obtain the point in 3D space.
+--
+-- By projecting the arbitrary point onto the line's unit axis, we find the
+-- length along the axis to the closest point, and then divide by the length of
+-- the line's axis to obtain the coord.
+--
+-- Non-zeroness of the line's axis is assumed and not verified.
+line3PointCoord :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Vec3 a -> a
+line3PointCoord l v = v' `d3` (nl^.a0l3) / sqx (nl^.a0l3.r3)
+	where
+		nl = line3NormalizeDisplacement l
+		v' = v `minusv3` (nl^.ol3)
+
+-- | Find the distance from the line (by the closest point on the line) to the
+-- given point in space.
+line3PointDistance :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Vec3 a -> a
+line3PointDistance l v = (v - line3Lerp l (line3PointCoord l v))^.r3

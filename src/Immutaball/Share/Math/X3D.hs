@@ -51,6 +51,9 @@ import Control.Lens
 
 import Immutaball.Share.Math.Core
 
+import Debug.Trace as D--------------------------------------------- TODO (also remove Show debugging.)
+import Text.Printf
+
 -- | Normal, distance.
 --
 -- > ax + by + cd = d
@@ -399,10 +402,10 @@ line3DistanceCoordFromPoint l v distance = (sqrt $ sqx distance - sqx (line3Poin
 -- 'line3PointDistance'.)
 --
 -- Possibly there are more efficient ways to do this.
-line3Line3ClosestCoords :: forall a. (SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> Maybe (a, a)
+line3Line3ClosestCoords :: forall a. (Show a, SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> Maybe (a, a)
 line3Line3ClosestCoords la lb
-	| ddist_dax `equivalentSmall` 0 = Nothing
-	| otherwise                     = Just (ax, bx)
+	| ddist_dax `equivalentSmall` 0 = todo $ Nothing
+	| otherwise                     = todo $ Just (ax, bx)
 	where
 		-- | The axis of the tentative ‘stick’ coming from ‘la’ to likely not a
 		-- point on ‘lb’, but still has the right direction (possibly negated)
@@ -427,7 +430,7 @@ line3Line3ClosestCoords la lb
 
 		-- | For a given ax, find the distance from adding ‘lc’ at the correct
 		-- scale to the closest point on ‘lb’, using lbProjectionNormal.
-		distanceAtAx ax_ = theDistance
+		distanceAtAx ax_ = todo2 theDistance
 			where
 				stickEndPoint = line3Lerp la ax_ + lca0
 				closestLbPointToEndPoint = line3Lerp lb . line3PointCoord lb $ stickEndPoint  -- (stickendpoint is orthogonal, so both stickEndPoint and correctedStickEndPoint would yield equivalent results.)
@@ -437,6 +440,8 @@ line3Line3ClosestCoords la lb
 				theDistance = correctedStickEndPointDistance
 				_theDistanceAlternative = line3PointDistance lb $ correctedStickEndPoint
 
+				todo2 = D.trace (printf "DEBUG1:\n\tstickEndPoint: %s\n\tclosestLbpointtoEndPoint: %s\n\tcorrectedStickEndPoint: %s\n\tcorrectedStickEndPointDistance: %s\n\ttheDistance: %s" (show stickEndPoint) (show closestLbPointToEndPoint) (show correctedStickEndPoint) (show correctedStickEndPointDistance) (show theDistance)) id
+
 		ddist_dax :: a
 		ddist_dax = distanceAtAx 1 - distanceAtAx 0
 
@@ -444,9 +449,10 @@ line3Line3ClosestCoords la lb
 		ax = -distanceAtAx 0 / ddist_dax
 
 		bx = line3PointCoord lb $ line3Lerp la ax
+		todo = D.trace (printf "DEBUG0:\n\tla: %s\n\tlb: %s\n\tlca0: %s\n\t: lbProjectionNormal: %s\n\tddist_dax: %s\n\tax: %s\n\t: bx: %s" (show la) (show lb) (show lca0) (show lbProjectionNormal) (show ddist_dax) (show ax) (show bx)) $ id
 
 -- | Find the (closest) distance between 2 lines.
-line3Line3Distance :: forall a. (SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> a
+line3Line3Distance :: forall a. (Show a, SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> a
 line3Line3Distance la lb = case line3Line3ClosestCoords la lb of
 	Nothing          -> line3PointDistance la $ line3Lerp lb 0
 	Just    (ax, bx) -> (line3Lerp lb bx - line3Lerp la ax)^.r3

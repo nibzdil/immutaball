@@ -54,9 +54,12 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 
 		testGroup "line3 line3 tests" $
 			[
+				-- TODO: use equivalentSmall version after debugging.
 				testCase "sample lines are distance 1" $
-					line3Line3Distance sampleLine0 sampleLine1 `equivalentSmall` 1 @?= True,
+					--line3Line3Distance sampleLine0 sampleLine1 `equivalentSmall` 1 @?= True,
+					line3Line3Distance sampleLine0 sampleLine1 @?= 1,
 				testCase "sample lines are distance 1 with second z-negated" $
-					line3Line3Distance sampleLine0 (sampleLine1 & ol3.z3 %~ negate) `equivalentSmall` 1 @?= True
+					--line3Line3Distance sampleLine0 (sampleLine1 & ol3.z3 %~ negate) `equivalentSmall` 1 @?= True
+					line3Line3Distance sampleLine0 (sampleLine1 & ol3.z3 %~ negate) @?= 1
 			]
 	]

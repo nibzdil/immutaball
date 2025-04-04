@@ -14,7 +14,9 @@ module Test.Immutaball.Share.Math.X3D.Test
 
 		simpleConstant,
 		sampleLine0,
-		sampleLine1
+		sampleLine1,
+		planeX1,
+		eqPlane3
 	) where
 
 --import Control.Arrow
@@ -46,11 +48,41 @@ sampleLine0 = line3Points (Vec3 0 0 0) (Vec3 1 1 0)
 sampleLine1 :: Line3 Double
 sampleLine1 = line3Points (Vec3 1 0 1) (Vec3 1 3 1)
 
+planeX1 :: Plane3 Double
+planeX1 = normalPlane3 (Vec3 1 0 0) 1
+
+eqPlane3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
+eqPlane3 a b = (a^.unPlane3) `eq4` (b^.unPlane3)
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math.X3D" $
 	[
 		testCase "simpleConstant == 3" $
 			simpleConstant @?= 3,
+
+		testGroup "plane3PointDistance" $
+			[
+				testCase "simple sample test" $
+					(planeX1 `plane3PointDistance` Vec3 7 (-4) 88) `equivalentSmall` 16 @?= True
+			],
+
+		testGroup "pointToPlane" $
+			[
+				testCase "simple sample test" $
+					(Vec3 7 (-4) 88 `pointToPlane` planeX1) `eq3` Vec3 1 (-4) 88 @?= True
+			],
+
+		testGroup "plane3ReflectPoint" $
+			[
+				testCase "simple sample test" $
+					(planeX1 `plane3ReflectPoint` Vec3 7 (-4) 88) `eq3` Vec3 (-5) (-4) 88 @?= True
+			],
+
+		testGroup "normalizePlane3" $
+			[
+				testCase "simple sample test" $
+					(Vec3 1 0 0 `normalizePlane3` Vec3 1 (-4) 88) `eqPlane3` planeX1 @?= True
+			],
 
 		testGroup "line3 line3 tests" $
 			[

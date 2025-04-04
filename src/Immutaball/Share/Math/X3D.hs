@@ -11,7 +11,7 @@
 -- I just stick with what's most applicable for our uses and goals here.
 module Immutaball.Share.Math.X3D
 	(
-		Plane3(..),
+		Plane3(..), unPlane3,
 		normalPlane3,
 		abcdp3,
 		abcp3,
@@ -64,6 +64,7 @@ import Text.Printf
 newtype Plane3 a = Plane3 { _unPlane3 :: Vec4 a }
 	deriving (Eq, Ord, Show)
 		via (Vec4 a)
+makeLenses ''Plane3
 
 -- | Construct a plane from a unit normal (unit-lengthedness unverified) and a
 -- distance from the origin.

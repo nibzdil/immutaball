@@ -81,7 +81,7 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 		testGroup "normalizePlane3" $
 			[
 				testCase "simple sample test" $
-					(Vec3 1 0 0 `normalizePlane3` Vec3 1 (-4) 88) `eqPlane3` planeX1 @?= True
+					(Vec3 1 (-4) 88 `normalizePlane3` Vec3 1 0 0) `eqPlane3` planeX1 @?= True
 			],
 
 		testGroup "line3 line3 tests" $

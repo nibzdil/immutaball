@@ -12,7 +12,9 @@ module Test.Immutaball.Share.Math.X3D.Test
 		testsMain,
 		tests,
 
-		simpleConstant
+		simpleConstant,
+		sampleLine0,
+		sampleLine1
 	) where
 
 --import Control.Arrow
@@ -38,9 +40,23 @@ testsMain = defaultMain tests
 simpleConstant :: Integer
 simpleConstant = 3
 
+sampleLine0 :: Line3 Double
+sampleLine0 = line3Points (Vec3 0 0 0) (Vec3 1 1 0)
+
+sampleLine1 :: Line3 Double
+sampleLine1 = line3Points (Vec3 1 0 1) (Vec3 1 3 1)
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math.X3D" $
 	[
 		testCase "simpleConstant == 3" $
-			simpleConstant @?= 3
+			simpleConstant @?= 3,
+
+		testGroup "line3 line3 tests" $
+			[
+				testCase "sample lines are distance 1" $
+					line3Line3Distance sampleLine0 sampleLine1 `equivalentSmall` 1 @?= True,
+				testCase "sample lines are distance 1 with second z-negated" $
+					line3Line3Distance sampleLine0 (sampleLine1 & ol3.z3 %~ negate) `equivalentSmall` 1 @?= True
+			]
 	]

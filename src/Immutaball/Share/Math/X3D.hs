@@ -38,7 +38,10 @@ module Immutaball.Share.Math.X3D
 		line3CoordAtDistancePlane3,
 
 		line3PointCoord,
-		line3PointDistance
+		line3PointDistance,
+		line3DistanceCoordFromPoint,
+		line3Line3ClosestCoords,
+		line3Line3Distance
 	) where
 
 import Prelude ()
@@ -200,8 +203,10 @@ line3Points p0 p1 = Line3 p0 p1
 -- | Construct a line from a displacement vector and axis vector.
 --
 -- The vector doesn't have to be orthogonal to the axis like a normal.
+--
+-- ‘o’ could also be named ‘p0’.
 line3Axes :: forall a. (Num a) => Vec3 a -> Vec3 a -> Line3 a
-line3Axes p0 a0 = Line3 p0 (p0 `pv3` a0)
+line3Axes o a0 = Line3 o (o `pv3` a0)
 
 -- | Access a line's displacement vector while preserving its axis.
 ol3 :: forall a. (Num a) => Lens' (Line3 a) (Vec3 a)
@@ -328,3 +333,136 @@ line3PointCoord l v = v' `d3` (nl^.a0l3) / sqx (nl^.a0l3.r3)
 -- given point in space.
 line3PointDistance :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Vec3 a -> a
 line3PointDistance l v = (v - line3Lerp l (line3PointCoord l v))^.r3
+
+-- | Relative to the closest point on the line, find what coord on the line
+-- represents the point on the line exactly 'distance' distance away from the
+-- point.  You can negate the coord offset and still be at the same distance.
+--
+-- Use this to find where on a line you would be at a given distance from the
+-- provided point.  Add it to 'line3PointCoord' to find the net coord.
+--
+-- It works by applying the Pythagorean theorem to the triangle with hypotenuse
+-- distance from 'v' to the point on the line at a distance, and with sides
+-- ‘distance of point to line’ and ‘distance along the line to the desired
+-- point’, finally scaling according to the line axis length so the coord is
+-- correct.
+--
+-- Note that if the point is further from the line than the given distance,
+-- your Haskell implementation may return NaN as it tries to take the sqrt of a
+-- negative number.
+line3DistanceCoordFromPoint :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Vec3 a -> a -> a
+line3DistanceCoordFromPoint l v distance = (sqrt $ sqx distance - sqx (line3PointDistance l v)) / (l^.a0l3.r3)
+
+-- | Given lines la and lb, find coords ‘ax’ and ‘bx’ on la and on lb
+-- representing the points at which the two lines are closest to each other.
+--
+-- (Paralleling the order, the first coord is on the first line, and the second
+-- coord is on the second line.)
+--
+-- If they are parallel, return Nothing, indicating any pair of points on the
+-- lines has an equal distance.
+--
+-- Find the unique pair of points on the lines such that the line segment
+-- between them is orthogonal to both lines or else where the points are equal
+-- (i.e. the lines intersect).
+--
+-- To see how this can be implemented, first we can find the direction of the
+-- line segment with p0 as the closest point on the first line and p1 as the
+-- closest point on the second line, after assuming for now the lines don't
+-- intersect.  We can use the pattern in defaultOrientationPlane3 here, which
+-- here is essentially the cross product of the 2 line axes.  This new axis
+-- will be the direction of this ‘closest’ line segment ‘lc’, but we don't yet
+-- know its scale (and could be negative), or the ‘ol3’ of it: where to
+-- position its start.
+--
+-- If we pick an arbitrary point on line ‘la’, which may as well be ‘ol3’, and
+-- then try applying the tentative ‘closest’ ‘lc’ line segment axis found by
+-- cross product, we'll probably find it doesn't point to a point on ‘lb’, but
+-- sticks out somewhere else.  We need to find the right ‘ol3’ to translate
+-- this ‘lc’ axis (as well as the length of the axis).  Conveniently, the
+-- closest distance from the end of this tentative ‘lc’ ‘stick’ to ‘lb’ changes
+-- at a constant proportion as ‘ax’ changes.  So we just need to use this
+-- change, 'ddist/dax', to find how much we need to adjust our initial guess at
+-- ‘la^.ol3’ to get to connect on the second line.  This lets us find ‘ax’.
+--
+-- OLD:
+-- 	To help visualize finding ‘ddist/dax’, consider projecting onto a plane by
+-- 	looking down the axis we found.  Consider also just the axes of the 2 lines.
+-- 	If ‘la’ is pointing right, and ‘lb’ is point upright at a slant, then we can
+-- 	find the slope of ‘lb’ relative to ‘la’.  Advance on ‘la’ by 1: at ax=1, the
+-- 	2D coord is (1, 0).  Then advance 1 unit on the slanted line going
+-- 	right-upwards, ‘lb’: x in the 2D coordinate plane will be between 0 and 1.
+--
+-- To help visualize finding ‘ddist/dax’, consider projecting onto a plane by
+-- looking down the axis we found.  If we assume the length of the ‘lc’ is
+-- correct, then we can look at the axes of the 2 lines, intersecting the
+-- origin, in 2D space, in this projection.  As we move along ‘la’, we can look
+-- at the distance from our location to (via the ‘stick’ which we can now
+-- ignore) ‘lb’.  If ‘la’ is pointing right, and ‘lb’ is pointing upright at a
+-- slant, then we can just advance on ‘la’ by 1, where ax=1 and the 2D coord is
+-- (1, 0), and simply look at distance of our location from ‘lb’ (the closest
+-- point).  Since the distance was 0 at ax=0, this distance at ax=1 will be
+-- ‘ddist/dax’.  (Take the normal of ‘lb’, dot product projection on the unit
+-- normal, and find distance from origin to get the distance, or just use
+-- 'line3PointDistance'.)
+--
+-- Possibly there are more efficient ways to do this.
+line3Line3ClosestCoords :: forall a. (SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> Maybe (a, a)
+line3Line3ClosestCoords la lb
+	| ddist_dax `equivalentSmall` 0 = Nothing
+	| otherwise                     = Just (ax, bx)
+	where
+		-- | The axis of the tentative ‘stick’ coming from ‘la’ to likely not a
+		-- point on ‘lb’, but still has the right direction (possibly negated)
+		-- of the line going from the closest point on ‘la’ to the closest
+		-- point on ‘lb’.
+		lca0 :: Vec3 a
+		lca0 = (la^.a0l3) `vx3` (lb^.a0l3)
+		-- | The ‘stick’.
+		_lc :: Line3 a
+		_lc = line3Axes (la^.p0l3) lca0
+
+		-- | Find vector orthogonal to ‘lc’ and ‘lb’'s axis.  This lets us
+		-- project the ‘stick’'s end-point (p1) coming from ‘la’ to get the
+		-- distance if the ‘stick’ had the right scale/magnitude, i.e. if ‘lc’
+		-- had the right magnitude.  We can find the point on ‘lb’ closest to
+		-- the the stick's end-point (lc^.p1), and project onto this
+		-- lbProjectionNormal with the dot product to find the distance we're
+		-- looking for.  We'll project the vector going from closest point to
+		-- the stick's end-point, onto lbProjectionNormal, producing the
+		-- distance.
+		lbProjectionNormal = v3normalize $ lca0 `vx3` (lb^.a0l3)
+
+		-- | For a given ax, find the distance from adding ‘lc’ at the correct
+		-- scale to the closest point on ‘lb’, using lbProjectionNormal.
+		distanceAtAx ax_ = theDistance
+			where
+				stickEndPoint = line3Lerp la ax_ + lca0
+				closestLbPointToEndPoint = line3Lerp lb . line3PointCoord lb $ stickEndPoint  -- (stickendpoint is orthogonal, so both stickEndPoint and correctedStickEndPoint would yield equivalent results.)
+				correctedStickEndPoint = correctedStickEndPointDistance `sv3` lbProjectionNormal
+				correctedStickEndPointDistance = (stickEndPoint - closestLbPointToEndPoint) `d3` lbProjectionNormal
+
+				theDistance = correctedStickEndPointDistance
+				_theDistanceAlternative = line3PointDistance lb $ correctedStickEndPoint
+
+		ddist_dax :: a
+		-- OLD:
+		-- 	Equivalent variants: in the first, the sign is simply, if we
+		-- 	increase ax_axis on the positive side of al's axis, are we
+		-- 	increasing the distance or getting closer to the origin?  Negated if
+		-- 	increasing on the left side (starting negative) in the example.
+		----OLD:
+		--	ddist_dax = line3PointDistance (lb & ol3 .~ zv3) (la^.a0l3) * signum _
+		--	ddist_dax = _ line3PointDistance (lb & ol3 .~ zv3) (la^.p1) - _ line3PointDistance (lb & ol3 .~ zv3) (la^.p0)
+		ddist_dax = distanceAtAx 1 - distanceAtAx 0
+
+		-- | f(0) = c && f'(x) = constant_of_f' ddist_dax => f(-f(0)/f'(0)) = 0
+		ax = -distanceAtAx 0 / ddist_dax
+
+		bx = line3PointCoord lb $ line3Lerp la ax
+
+-- | Find the (closest) distance between 2 lines.
+line3Line3Distance :: forall a. (SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> a
+line3Line3Distance la lb = case line3Line3ClosestCoords la lb of
+	Nothing          -> line3PointDistance la $ line3Lerp lb 0
+	Just    (ax, bx) -> (line3Lerp lb bx - line3Lerp la ax)^.r3

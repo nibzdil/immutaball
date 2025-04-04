@@ -20,6 +20,7 @@ import Test.Tasty
 --import Test.Tasty.QuickCheck
 
 import qualified Test.Immutaball.Share.Math.Core.Test
+import qualified Test.Immutaball.Share.Math.X3D.Test
 
 main :: IO ()
 main = testsMain
@@ -28,7 +29,8 @@ testsMain :: IO ()
 testsMain = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Immutaball.Share.Math.Core" $
+tests = testGroup "Immutaball.Share.Math" $
 	[
-		Test.Immutaball.Share.Math.Core.Test.tests
+		Test.Immutaball.Share.Math.Core.Test.tests,
+		Test.Immutaball.Share.Math.X3D.Test.tests
 	]

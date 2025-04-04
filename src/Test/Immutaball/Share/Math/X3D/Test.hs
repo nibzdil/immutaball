@@ -27,10 +27,9 @@ import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.HUnit hiding ((@?=), assertBool)
-import Test.Tasty.QuickCheck
+--import Test.Tasty.QuickCheck
 
 import Immutaball.Share.Math
-import Immutaball.Share.Utils
 import Test.Immutaball.Share.Math.Core.Orphans ()
 
 main :: IO ()
@@ -63,7 +62,7 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 		testGroup "plane3PointDistance" $
 			[
 				testCase "simple sample test" $
-					(planeX1 `plane3PointDistance` Vec3 7 (-4) 88) `equivalentSmall` 16 @?= True
+					(planeX1 `plane3PointDistance` Vec3 7 (-4) 88) `equivalentSmall` 6 @?= True
 			],
 
 		testGroup "pointToPlane" $

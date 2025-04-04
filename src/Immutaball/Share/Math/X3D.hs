@@ -385,14 +385,6 @@ line3DistanceCoordFromPoint l v distance = (sqrt $ sqx distance - sqx (line3Poin
 -- change, 'ddist/dax', to find how much we need to adjust our initial guess at
 -- ‘la^.ol3’ to get to connect on the second line.  This lets us find ‘ax’.
 --
--- OLD:
--- 	To help visualize finding ‘ddist/dax’, consider projecting onto a plane by
--- 	looking down the axis we found.  Consider also just the axes of the 2 lines.
--- 	If ‘la’ is pointing right, and ‘lb’ is point upright at a slant, then we can
--- 	find the slope of ‘lb’ relative to ‘la’.  Advance on ‘la’ by 1: at ax=1, the
--- 	2D coord is (1, 0).  Then advance 1 unit on the slanted line going
--- 	right-upwards, ‘lb’: x in the 2D coordinate plane will be between 0 and 1.
---
 -- To help visualize finding ‘ddist/dax’, consider projecting onto a plane by
 -- looking down the axis we found.  If we assume the length of the ‘lc’ is
 -- correct, then we can look at the axes of the 2 lines, intersecting the
@@ -446,14 +438,6 @@ line3Line3ClosestCoords la lb
 				_theDistanceAlternative = line3PointDistance lb $ correctedStickEndPoint
 
 		ddist_dax :: a
-		-- OLD:
-		-- 	Equivalent variants: in the first, the sign is simply, if we
-		-- 	increase ax_axis on the positive side of al's axis, are we
-		-- 	increasing the distance or getting closer to the origin?  Negated if
-		-- 	increasing on the left side (starting negative) in the example.
-		----OLD:
-		--	ddist_dax = line3PointDistance (lb & ol3 .~ zv3) (la^.a0l3) * signum _
-		--	ddist_dax = _ line3PointDistance (lb & ol3 .~ zv3) (la^.p1) - _ line3PointDistance (lb & ol3 .~ zv3) (la^.p0)
 		ddist_dax = distanceAtAx 1 - distanceAtAx 0
 
 		-- | f(0) = c && f'(x) = constant_of_f' ddist_dax => f(-f(0)/f'(0)) = 0

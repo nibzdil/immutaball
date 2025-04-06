@@ -90,7 +90,8 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 		testGroup "simple line3 tests" $
 			[
 				testCase "line3NormalizeDisplacement simple test" $
-					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `eqLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True
+					--(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `eqLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True
+					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) @?= line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double))
 			],
 
 		testGroup "line3 line3 tests" $

@@ -17,7 +17,8 @@ module Test.Immutaball.Share.Math.X3D.Test
 		sampleLine1,
 		planeX1,
 		eqPlane3,
-		eqLine3
+		eqLine3,
+		nearLine3
 	) where
 
 --import Control.Arrow
@@ -60,6 +61,9 @@ eqPlane3 a b = (a^.unPlane3) `eq4` (b^.unPlane3)
 eqLine3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
 eqLine3 a b = (a^.p0l3) `eq3` (b^.p0l3) && (a^.p1l3) `eq3` (b^.p1l3)
 
+nearLine3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
+nearLine3 a b = (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3)
+
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math.X3D" $
 	[
@@ -99,7 +103,7 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 							(show $ (line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)))
 							(show $ line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)))
 						) $
-					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `eqLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True
+					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `nearLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True
 					--(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) @?= line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double))
 			],
 

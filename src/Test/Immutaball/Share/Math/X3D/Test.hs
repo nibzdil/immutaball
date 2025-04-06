@@ -98,8 +98,20 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 			[
 				testCase "line3NormalizeDisplacement simple test" $
 					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `nearLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True,
-				testCase "line3DistanceFromOrigin" $
-					(line3DistanceFromOrigin $ line3Points (Vec3 0 1 0) (Vec3 1 0 0)) `near` (1 / sqrt 2  :: Double) @?= True
+				testCase "line3DistanceFromOrigin simple test" $
+					(line3DistanceFromOrigin $ line3Points (Vec3 0 1 0) (Vec3 1 0 0)) `near` (1 / sqrt 2  :: Double) @?= True,
+
+				testCase "line3Lerp simple test" $
+					line3Lerp (line3Points (Vec3 1 2 3) (Vec3 2 4 4)) 3 `near3` Vec3 4 8 (6 :: Double) @?= True,
+
+				testCase "line3CoordAtDistancePlane3 simple test" $
+					((line3CoordAtDistancePlane3 planeX1 (line3Points (Vec3 9 824 4) (Vec3 7 (-1) 8)) 2 <&> equivalentSmall) <*> pure 3) @?= Just True,
+				testCase "line3CoordAtDistancePlane3 parallel simple test" $
+					((line3CoordAtDistancePlane3 planeX1 (line3Points (Vec3 9 824 4) (Vec3 9 (-1) 8)) 2 <&> equivalentSmall) <*> pure 3) @?= Nothing,
+
+				testCase "line3PointCoord simple test" $
+					--line3PointCoord (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 42 15 78) `equivalentSmall` (2 :: Double) @?= True
+					line3PointCoord (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 42 15 78) @?= 2
 			],
 
 		testGroup "line3 plane3 tests" $

@@ -33,6 +33,9 @@ import Test.Tasty.HUnit hiding ((@?=), assertBool)
 import Immutaball.Share.Math
 import Test.Immutaball.Share.Math.Core.Orphans ()
 
+import Debug.Trace as D--------------------------------------------- TODO
+import Text.Printf
+
 main :: IO ()
 main = testsMain
 
@@ -91,7 +94,13 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 			[
 				testCase "line3NormalizeDisplacement simple test" $
 					--(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `eqLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True
-					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) @?= line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double))
+					D.trace
+						(printf "DEBUG8 simple line3 tests3:\n\tleft (actual): %s\n\tright (expected): %s"
+							(show $ (line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)))
+							(show $ line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)))
+						) $
+					(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) `eqLine3` line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double)) @?= True
+					--(line3NormalizeDisplacement $ line3Points (Vec3 0 1 7) (Vec3 1 0 7)) @?= line3Points (Vec3 0.5 0.5 7) (Vec3 1.5 (-0.5) (7 :: Double))
 			],
 
 		testGroup "line3 line3 tests" $

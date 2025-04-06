@@ -235,13 +235,13 @@ a0l3 = lens getter (flip setter)
 -- a0 is preserved; it is not also normalized by this.
 --
 -- This is done by the formula:
--- 	n = o - v*(o dot a0)/(|a0|^2)
+-- 	n = o - a0*(o dot a0)/(|a0|^2)
 -- Meaning original displacement vector minus its projection onto the unit ‘a0’
 -- axis vector.
 -- Note:
 -- 	s = (-o dot v)/(|v|^2)
 line3NormalizeDisplacement :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Line3 a
-line3NormalizeDisplacement l = l & ol3 .~ ((((l^.ol3) `d3` (l^.a0l3))/(sq_ (l^.a0l3.r3))) `sv3` (l^.a0l3))
+line3NormalizeDisplacement l = l & ol3 %~ subtract ((((l^.ol3) `d3` (l^.a0l3))/(sq_ (l^.a0l3.r3))) `sv3` (l^.a0l3))
 	where sq_ x = x*x
 
 -- | Find the distance from the origin to an infinite line.

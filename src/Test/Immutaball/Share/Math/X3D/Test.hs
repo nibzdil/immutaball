@@ -104,10 +104,13 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 
 		testGroup "line3 plane3 tests" $
 			[
-				testCase "plane3LineSegmentDistance simple test" $
+				testCase "plane3LineSegmentDistance behind simple test" $
 					plane3LineSegmentDistance planeX1 (line3Points (Vec3 0 80 90) (Vec3 (-320) (-88) 777)) `near` (-1) @?= True,
 				testCase "plane3LineSegmentDistance intersects simple test" $
-					plane3LineSegmentDistance planeX1 (line3Points (Vec3 0 80 90) (Vec3 ( 320) (-88) 777)) `near` ( 0) @?= True
+					plane3LineSegmentDistance planeX1 (line3Points (Vec3 0 80 90) (Vec3 ( 320) (-88) 777)) `near` ( 0) @?= True,
+				testCase "line3AxisReflectPlane3 simple test" $
+					--line3AxisReflectPlane3 (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) (planeX1^.abcp3) `nearLine3` line3Points (Vec3 1 2 8) (Vec3 0 (-3) 7) @?= True
+					line3AxisReflectPlane3 (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) (planeX1^.abcp3) @?= line3Points (Vec3 1 2 8) (Vec3 0 (-3) 7)
 			],
 
 		testGroup "line3 line3 tests" $

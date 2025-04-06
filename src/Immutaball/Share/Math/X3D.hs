@@ -287,7 +287,8 @@ plane3LineSegmentDistance p l
 -- This can be done by finding the vector from a0 to the closest point on the
 -- plane, and adding double that vector.
 line3AxisReflectPlane3 :: forall a. (Num a) => Line3 a -> Vec3 a -> Line3 a
-line3AxisReflectPlane3 l abc = l & a0l3 %~ plane3ReflectPoint (normalizePlane3 (l^.ol3) abc)
+--line3AxisReflectPlane3 l abc = l & p1l3 %~ plane3ReflectPoint (normalizePlane3 (l^.ol3) abc)  -- (Alternative.)
+line3AxisReflectPlane3 l abc = l & a0l3 %~ plane3ReflectPoint (normalizePlane3 zv3 abc)
 
 -- | Project a 1D coord x onto a line, like a lerp.
 --

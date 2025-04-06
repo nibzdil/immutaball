@@ -110,6 +110,11 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 					plane3LineSegmentDistance planeX1 (line3Points (Vec3 0 80 90) (Vec3 ( 320) (-88) 777)) `near` ( 0) @?= True,
 				testCase "line3AxisReflectPlane3 simple test" $
 					--line3AxisReflectPlane3 (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) (planeX1^.abcp3) `nearLine3` line3Points (Vec3 1 2 8) (Vec3 0 (-3) 7) @?= True
+					D.trace (printf "DEBUG0:\n\tleft: %s\n\tright: %s" (show $ line3AxisReflectPlane3 (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) (planeX1^.abcp3)) (show $ line3Points (Vec3 1 2 8) (Vec3 0 (-3) 7))) $
+					D.trace (printf "DEBUG1:\n\tplaneX1^.abcp3: %s" (show $ planeX1^.abcp3)) $
+					D.trace (printf "DEBUG2:\n\t(normalizePlane3 (l^.ol3) abc): %s" (show $ let l = (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) in let abc = (planeX1^.abcp3) in (normalizePlane3 (l^.ol3) abc))) $
+					D.trace (printf "DEBUG3:\n\tl^.a0l3: %s" (show $ let l = (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) in let abc = (planeX1^.abcp3) in l^.a0l3)) $
+					D.trace (printf "DEBUG4:\n\tplane3ReflectPoint (normalizePlane3 (l^.ol3) abc) (l^.a0l3): %s" (show $ let l = (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) in let abc = (planeX1^.abcp3) in plane3ReflectPoint (normalizePlane3 (l^.ol3) abc) (l^.a0l3))) $
 					line3AxisReflectPlane3 (line3Points (Vec3 1 2 8) (Vec3 2 (-3) 7)) (planeX1^.abcp3) @?= line3Points (Vec3 1 2 8) (Vec3 0 (-3) 7)
 			],
 

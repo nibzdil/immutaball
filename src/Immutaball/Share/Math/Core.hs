@@ -1783,14 +1783,14 @@ fov t = perspective $ Vec3 0.0 (1 / tan (t/2)) 0.0
 fovPure :: (Fractional a, Floating a) => a -> Mat4 a
 fovPure t = perspectivePure $ Vec3 0.0 (1 / tan (t/2)) 0.0
 
-zv2 :: (Fractional a) => Vec2 a
-zv2 = rv2 0.0
+zv2 :: (Num a) => Vec2 a
+zv2 = rv2 0
 
-zv3 :: (Fractional a) => Vec3 a
-zv3 = rv3 0.0
+zv3 :: (Num a) => Vec3 a
+zv3 = rv3 0
 
-zv4 :: (Fractional a) => Vec4 a
-zv4 = rv4 0.0
+zv4 :: (Num a) => Vec4 a
+zv4 = rv4 0
 
 rm3 :: a -> Mat3 a
 rm3 z = Mat3 $ Vec3

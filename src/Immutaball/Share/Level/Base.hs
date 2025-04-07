@@ -22,7 +22,7 @@ module Immutaball.Share.Level.Base
 			mtrlAlphaFunc, mtrlAlphaRef,
 		Vert(..), vertP,
 		Edge(..), edgeVi, edgeVj,
-		Side(..), edgeN, edgeD,
+		Side(..), sideN, sideD,
 		Texc(..), texcU,
 		Offs(..), offsTi, offsSi, offsVi,
 		Geom(..), geomMi, geomOi, geomOj, geomOk,
@@ -180,9 +180,9 @@ makeLenses ''Edge
 
 data Side = Side {
 	-- | Plane normal vector.
-	_edgeN :: Vec3 Double,
+	_sideN :: Vec3 Double,
 	-- | Distance from origin.
-	_edgeD :: Double
+	_sideD :: Double
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''Side

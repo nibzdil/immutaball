@@ -576,14 +576,67 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 		-- | Map each lump into the closest collision, and get 1) the dt
 		-- needed to expend to advance the ball to this point of collision, 2)
-		-- the new ball pos and 3) ball vel if the same.
+		-- the new ball pos and 3) ball vel.
 		--
 		-- Only the closest collision will be used for advancing the ball,
 		-- before checking for collision again afterwards.
 		lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
 		lumpsIntersecting = level^.solLv <&> \lump ->
-			--let
-			--in
-			Nothing  -- TODO
+			let
+				verticesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
+				verticesIntersecting = catMaybes $ do
+					vi <- [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
+					let vertex = (level^.solVv) ! vi
+					-- TODO
+					return Nothing
+
+				edgesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
+				edgesIntersecting = catMaybes $ do
+					ei <- [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
+					let edge = (level^.solEv) ! ei
+					-- TODO
+					return Nothing
+
+				-- | Find all faces that intersect p0->p1.
+				--
+				-- Find where the p0->p1 intersects a side's plane.  However,
+				-- handle the bounds of the face: if the face's plane's point
+				-- of intersection with p0->p1 is not behind (<=) all other
+				-- planes, then it's beyond the edges bordering the side.
+				--
+				-- Note this requires that all sides have a normal pointing
+				-- _away_ from the convex lump inside the level file.
+				facesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
+				facesIntersecting = catMaybes $ do
+					-- For each side,
+					si <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
+					let side = (level^.solSv) ! si
+					-- Get its plane.
+					let sidePlane = normalPlane3 (side^.sideN) (side^.sideD)
+					-- TODO
+					--guard $ _
+					return Nothing
+
+				allIntersecting = concat $
+					[
+						verticesIntersecting,
+						edgesIntersecting,
+						facesIntersecting
+					]
+
+				sortedIntersecting = sortOn (^._1) $ allIntersecting
+
+				lumpComponentIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
+				lumpComponentIntersecting = safeHead sortedIntersecting
+
+				r = lumpComponentIntersecting
+			in
+				r
+
+			where
+				-- | Draw a line segment from the ball's position (center of
+				-- sphere) to the tentative end-point if all dt were to be
+				-- expended now using its velocity.
+				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1
 
 -- * Local utils.

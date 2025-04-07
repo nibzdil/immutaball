@@ -34,6 +34,7 @@ module Immutaball.Ball.State.Game
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Monad
 import Data.Int
 import Data.Foldable
 import Data.List
@@ -608,16 +609,48 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- Note this requires that all sides have a normal pointing
 				-- _away_ from the convex lump inside the level file.
 				facesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
-				facesIntersecting = catMaybes $ do
+				facesIntersecting = do
 					-- For each side,
 					si <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
 					let side = (level^.solSv) ! si
 					-- Get its plane.
 					let sidePlane = normalPlane3 (side^.sideN) (side^.sideD)
-					-- TODO
-					--guard $ _
-					return Nothing
+					-- Find where on lp it intersects; abort this try if it doesn't.
+					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
+					-- Only consider intersections on the line segment.
+					guard $ 0 <= x && x <= 1
+					-- Get the point in 3D space: this is where the ball would
+					-- be if advanced to this intersection.
+					let ballIntersection = line3Lerp lp x
+					-- Get the point on the plane where this collision would
+					-- take place: the closest point on the plane to
+					-- 'ballIntersection'.
+					let planeIntersection = pointToPlane ballIntersection sidePlane
+					-- Only consider intersections whose plane intersection
+					-- points are behind all other sides.
+					guard . and $ do
+						-- For every other side …
+						sj <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
+						guard $ sj /= si
+						let sidej = (level^.solSv) ! sj
+						let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
 
+						-- Make sure the point is behind this plane.
+						return $ plane3PointDistance sidejPlane planeIntersection <= 0
+
+					-- We've found an intersection.  Now calculate the values
+					-- we would need if we ended up picking this after finding it
+					-- is indeed the closest.
+
+					let edt = x
+					let p0' = ballIntersection
+					-- TODO: bounce return, but ‘scale’ it to something like the part reflected.
+					let v0' = plane3ReflectPoint (sidePlane & dp3 .~ 0) v0
+					return $ (edt, p0', v0')
+
+				-- | Lower dimensionalities appear before higher
+				-- dimensionalities for equal distances.  'sortOn' is a stable
+				-- sort, so we can use it.
 				allIntersecting = concat $
 					[
 						verticesIntersecting,

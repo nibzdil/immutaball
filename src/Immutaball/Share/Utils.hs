@@ -44,7 +44,9 @@ module Immutaball.Share.Utils
 		falseAsIntegralI,
 		trueAsIntegral,
 		falseAsIntegral,
-		deconsMaybe
+		deconsMaybe,
+
+		morElse
 	) where
 
 import Prelude ()
@@ -54,6 +56,7 @@ import Control.Arrow
 import Control.Monad.Fix
 import Data.Functor.Compose
 import Data.List
+import Data.Maybe
 
 import Control.Lens
 
@@ -186,3 +189,7 @@ falseAsIntegral = fromIntegral $ falseAsIntegralI
 deconsMaybe :: r -> (a -> r) -> Maybe a -> r
 deconsMaybe withNothing _ (Nothing) = withNothing
 deconsMaybe _ withJust    (Just a)  = withJust a
+
+-- | A convenient way to deconstruct a maybe with a default value.
+morElse :: Maybe a -> a -> a
+morElse = flip fromMaybe

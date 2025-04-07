@@ -35,6 +35,8 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Data.Int
+import Data.Foldable
+import Data.List
 import Data.Maybe
 
 import Control.Arrow
@@ -547,7 +549,26 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- 	parameters (this and numCollisions).
 physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level dt p0 v0 =
-	-- TODO: implement.
-	(p0 + (dt `sv3` v0), v0)
+	let
+		(dt', p0', v0') = closestLumpIntersecting `morElse` (0, p0, v0)
+		(p1, v1) = (p0' + ((dt - dt') `sv3` v0'), v0')  -- Expend the rest of dt after the last collision.
+	in
+		(p1, v1)  -- (all dt is expended)
+
+	where
+		-- | Map each lump into the closest collision, and get 1) the dt
+		-- needed to expend to advance the ball to this point of collision, 2)
+		-- the new ball pos and 3) ball vel if the same.
+		--
+		-- Only the closest collision will be used for advancing the ball,
+		-- before checking for collision again afterwards.
+		lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
+		lumpsIntersecting = level^.solLv <&> \lump ->
+			--let
+			--in
+			Nothing  -- TODO
+
+		closestLumpIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersecting = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
 
 -- * Local utils.

@@ -549,13 +549,31 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- 	parameters (this and numCollisions).
 physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level dt p0 v0 =
-	let
-		(dt', p0', v0') = closestLumpIntersecting `morElse` (0, p0, v0)
-		(p1, v1) = (p0' + ((dt - dt') `sv3` v0'), v0')  -- Expend the rest of dt after the last collision.
-	in
-		(p1, v1)  -- (all dt is expended)
+	case closestLumpIntersecting of  -- Find the next collision.
+		Nothing ->  -- No more collisions this frame.
+			let (p1, v1) = (p0 + (dt `sv3` v0), v0) in (p1, v1)  -- Expend the rest of dt after the last collision.
+		Just (edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
+			physicsBallAdvanceBruteForceCompute
+				( if' (thresholdTimeRemaining <= 0) 0                                                 (numCollisions + 1)            )
+				( if' (thresholdTimeRemaining <= 0) (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold - edt) (thresholdTimeRemaining - edt) )
+				x'cfg
+				level
+				(dt - edt)
+				p0'
+				v0'
 
 	where
+		-- | Find the closest lump intersecting the ball's path, for collisions.
+		closestLumpIntersectingRaw :: Maybe (Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
+
+		-- | Check cfgMaxFrameCollisions, and whether dt is already exhausted.
+		closestLumpIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersecting
+			| numCollisions >= (x'cfg^.x'cfgMaxFrameCollisions) = Nothing
+			| dt <= 0 || (dt - 0) `equivalentSmall` 0           = Nothing
+			| otherwise                                         = closestLumpIntersectingRaw
+
 		-- | Map each lump into the closest collision, and get 1) the dt
 		-- needed to expend to advance the ball to this point of collision, 2)
 		-- the new ball pos and 3) ball vel if the same.
@@ -567,8 +585,5 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 			--let
 			--in
 			Nothing  -- TODO
-
-		closestLumpIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
-		closestLumpIntersecting = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
 
 -- * Local utils.

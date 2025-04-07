@@ -509,13 +509,13 @@ physicsBallAdvance x'cfg level ballRadius dt ballPos ballVel = choice_ x'cfg lev
 
 -- | For debugging or performance checking, keep the ball stationary.
 physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceStationary x'cfg level ballRadius dt p0 v0 = (p1, v0)
+physicsBallAdvanceStationary _x'cfg _level _ballRadius _dt p0 v0 = (p1, v0)
 	where
 		p1 = p0
 
 -- | For debugging or performance checking, ignore all collision checking.
 physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceGhostly x'cfg level ballRadius dt p0 v0 = (p1, v0)
+physicsBallAdvanceGhostly _x'cfg _level _ballRadius dt p0 v0 = (p1, v0)
 	where
 		p1 = p0 + (dt `sv3` v0)
 

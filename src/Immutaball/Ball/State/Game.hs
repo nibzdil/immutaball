@@ -528,7 +528,7 @@ physicsBallAdvanceGhostly _x'cfg _level _spa _ballRadius dt p0 v0 = (p1, v0)
 -- | This version completely ignores the BSP.  It checks collisions with every
 -- lump every frame.
 physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
+physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 Nothing
 
 -- | Finish computing 'physicsBallAdvanceBruteFroce'.
 --
@@ -553,15 +553,21 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
-physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level spa ballRadius dt p0 v0 =
+--
+-- TODO: lastLi helps avoid colliding multiple times against the same lump in
+-- what should be a single collision; however, if dt advances the ball to
+-- exactly the point of collision for the ball, this might still be an issue;
+-- look over this again.  Perhaps just persist lastLi between frames.
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> Maybe Int32 -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi x'cfg level spa ballRadius dt p0 v0 =
 	case closestLumpIntersecting of  -- Find the next collision.
 		Nothing ->  -- No more collisions this frame.
 			let (p1, v1) = (p0 + (dt `sv3` v0), v0) in (p1, v1)  -- Expend the rest of dt after the last collision.
-		Just (edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
+		Just (lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
 			physicsBallAdvanceBruteForceCompute
 				( if' (thresholdTimeRemaining <= 0) 0                                                 (numCollisions + 1)            )
 				( if' (thresholdTimeRemaining <= 0) (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold - edt) (thresholdTimeRemaining - edt) )
+				(Just lastLi')
 				x'cfg
 				level
 				spa
@@ -572,12 +578,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 	where
 		-- | Find the closest lump intersecting the ball's path, for collisions.
-		closestLumpIntersectingRaw :: Maybe (Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 		--closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
 		closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes $ lumpsIntersecting
 
 		-- | Check cfgMaxFrameCollisions, and whether dt is already exhausted.
-		closestLumpIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 		closestLumpIntersecting
 			| numCollisions >= (x'cfg^.x'cfgMaxFrameCollisions) = Nothing
 			| dt <= 0 || (dt - 0) `equivalentSmall` 0           = Nothing
@@ -591,17 +597,17 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 		-- before checking for collision again afterwards.
 		--lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
 		--lumpsIntersecting = level^.solLv <&> \lump ->
-		lumpsIntersecting :: [Maybe (Double, Vec3 Double, Vec3 Double)]
+		lumpsIntersecting :: [Maybe (Int32, Double, Vec3 Double, Vec3 Double)]
 		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
-				verticesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
+				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = catMaybes $ do
 					vi <- [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
 					let vertex = (level^.solVv) ! vi
 					-- TODO
 					return Nothing
 
-				edgesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
+				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				edgesIntersecting = catMaybes $ do
 					ei <- [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
@@ -617,7 +623,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				--
 				-- Note this requires that all sides have a normal pointing
 				-- _away_ from the convex lump inside the level file.
-				facesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
+				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				facesIntersecting = (\r -> D.trace (printf "DEBUG0: facesIntersect: %s" (show r)) $ r) $ do
 					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
 					let sidePlanes = flip M.lookup (spa^.spaLumpOutwardsSides) li `morElse` error errMsg
@@ -683,7 +689,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					let p0' = ballIntersection
 					-- TODO: bounce return, but ‘scale’ it to something like the part reflected.
 					let v0' = plane3ReflectPoint (sidePlane & dp3 .~ 0) v0
-					return $ (edt, p0', v0')
+					return $ (li, edt, p0', v0')
 
 					where
 						useDirectSol = False
@@ -698,11 +704,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 						facesIntersecting
 					]
 
-				sortedIntersecting = sortOn (^._1) $ allIntersecting
+				sortedIntersecting = sortOn (^._2) . filter (\col -> Just (col^._1) /= lastLi) $ allIntersecting
 
-				lumpComponentIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
+				lumpComponentIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 				lumpComponentIntersecting = safeHead sortedIntersecting
 
+				-- Make sure the lump isn't the one we last used for collisions.
 				r = lumpComponentIntersecting
 			in
 				r

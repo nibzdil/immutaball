@@ -476,7 +476,7 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let bounceReturn = x'cfg^.x'cfgBounceReturn
 
 	-- Apply gravity.
-	let gravityVector = -(gsa^.gsaUpVec)
+	let gravityVector = (gsa^.gsaUpVec) & z3 %~ negate  -- Mirror on xy plane.
 	let updateGravity =
 		(gsBallVel %~ (+ (dt * gravityAcceleration) `sv3` gravityVector)) .
 		id

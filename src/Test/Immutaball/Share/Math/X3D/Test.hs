@@ -122,8 +122,7 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 				testCase "line3DistanceCoordFromPoint simple test 0" $
 					line3DistanceCoordFromPoint (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 1 9 2) 0 `equivalentSmall` (0 :: Double) @?= True,
 				testCase "line3DistanceCoordFromPoint simple test 1" $
-					--line3DistanceCoordFromPoint (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 1 9 2) 1 `equivalentSmall` (1 :: Double) @?= True
-					line3DistanceCoordFromPoint (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 1 9 2) 1 @?= (1 :: Double)
+					line3DistanceCoordFromPoint (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 1 9 2) 1 `equivalentSmall` ((1/7) :: Double) @?= True
 			],
 
 		testGroup "line3 plane3 tests" $

@@ -22,6 +22,7 @@ module Immutaball.Share.Math.X3D
 		pointToPlane,
 		plane3ReflectPoint,
 		normalizePlane3,
+		negatePlaneOrientation,
 
 		Line3(..), p0l3, p1l3,
 		line3Points,
@@ -161,6 +162,14 @@ normalizePlane3 v abc = normalPlane3 abc d
 	where
 		d :: a
 		d = v `d3` abc
+
+-- | Keep the plane representing the same points, but negate the
+-- direction of the normal.
+negatePlaneOrientation :: forall a. (Num a) => Plane3 a -> Plane3 a
+negatePlaneOrientation =
+	(abcp3 %~ negate) .
+	(dp3   %~ negate) .
+	id
 
 -- | A line segment or infinite line in 3D space.
 --

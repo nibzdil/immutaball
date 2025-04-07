@@ -32,7 +32,9 @@ module Immutaball.Share.Level.Analysis
 			sraGeomPassBis, sraGeomPassBisGPU, sraTexcoordsDoubleData,
 			sraTexcoordsDoubleDataGPU,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
-		SolPhysicsAnalysis(..),
+		SolPhysicsAnalysis(..), spaLumpOutwardsSides,
+			spaLumpOutwardsSidesNumNegatedNormals,
+			spaLumpOutwardsSidesNumNotNegatedNormals, spaLumpAverageVertex,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
 		mkSolPhysicsAnalysis
@@ -227,6 +229,14 @@ data GeomPass = GeomPass {
 
 -- | Extra data of the sol useful for physics.
 data SolPhysicsAnalysis = SolPhysicsAnalysis {
+	-- | The sides of a lump by lump index (li), ensured to be pointing
+	-- outwards.
+	_spaLumpOutwardsSides :: M.Map Int32 [Plane3 Double],
+	_spaLumpOutwardsSidesNumNegatedNormals :: M.Map Int32 Integer,
+	_spaLumpOutwardsSidesNumNotNegatedNormals :: M.Map Int32 Integer,
+
+	-- | Find the mean vertex of a lump.
+	_spaLumpAverageVertex :: M.Map Int32 (Vec3 Double)
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''SolWithAnalysis
@@ -484,5 +494,39 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 		listArray'_ xs = listArray (0, genericLength xs - 1) xs
 
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
-mkSolPhysicsAnalysis _cxt _sol = fix $ \_spa -> SolPhysicsAnalysis {
+mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
+	_spaLumpOutwardsSides                     = (^._1) <$> lumpSidesData spa,
+	_spaLumpOutwardsSidesNumNegatedNormals    = (^._2) <$> lumpSidesData spa,
+	_spaLumpOutwardsSidesNumNotNegatedNormals = (^._3) <$> lumpSidesData spa,
+
+	_spaLumpAverageVertex = lumpAverageVertex spa
 }
+	where
+		indirection :: Int32 -> Int32
+		indirection idx = (sol^.solIv) ! idx
+
+		lumpAverageVertex :: SolPhysicsAnalysis -> M.Map Int32 (Vec3 Double)
+		lumpAverageVertex _spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
+			let lump = (sol^.solLv) ! li in
+			let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
+			let vs = ((sol^.solVv) !) <$> vis in
+			let vsum = sum ((^.vertP) <$> vs) in
+			let vmean = (fromIntegral $ lump^.lumpVc) `sv3` vsum in
+			(li, vmean)
+
+		-- | Simply look at an arbitrary point in the convex lump to see if a
+		-- given normal should be negated to make the point fall behind the
+		-- plane.
+		lumpSidesData :: SolPhysicsAnalysis -> M.Map Int32 ([Plane3 Double], Integer, Integer)
+		lumpSidesData spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
+			let averageVertexErrMsg = error $ "Internal error: mkSolPhysicsAnalysis: finding lump sides data for lump without average vertex for li " ++ (show li) ++ "." in
+			let averageVertex = flip M.lookup (spa^.spaLumpAverageVertex) li `morElse` error averageVertexErrMsg in
+			let lump = (sol^.solLv) ! li in
+			let sis = indirection <$> [lump^.lumpS0..lump^.lumpS0 + lump^.lumpSc - 1] in
+			let sides = ((sol^.solSv) !) <$> sis in
+			let planes = flip map sides $ \side -> normalPlane3 (side^.sideN) (side^.sideD) in
+			let backwardsPlanes = flip map planes $ \p -> not $ plane3PointDistance p averageVertex <= 0 in
+			let numNeg = genericLength . filter id  $ backwardsPlanes in
+			let numId  = genericLength . filter not $ backwardsPlanes in
+			let planes' = flip map (zip planes backwardsPlanes) . uncurry $ \p n -> if' (not n) (p) (negatePlaneOrientation p) in
+			(li, (planes', numNeg, numId))

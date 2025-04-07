@@ -613,7 +613,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				facesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
 				facesIntersecting = do
 					-- For each side,
-					si <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
+					si <- indirection <$> [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
 					let side = (level^.solSv) ! si
 					-- Get its plane.
 					let sidePlane = normalPlane3 (side^.sideN) (side^.sideD)
@@ -674,5 +674,10 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- sphere) to the tentative end-point if all dt were to be
 				-- expended now using its velocity.
 				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1
+
+		-- | It seems sols have indirection for lump sides and vertices, but
+		-- not edges and edge indices to vertices.
+		indirection :: Int32 -> Int32
+		indirection idx = (level^.solIv) ! idx
 
 -- * Local utils.

@@ -484,7 +484,7 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	--
 	-- Expend dt to apply its velocity to the position, handling collisions by
 	-- applying reflections.
-	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
+	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsBallRadius) dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
 	let updateBall =
 		(gsBallPos .~ ballPos') .
 		(gsBallVel .~ ballVel') .
@@ -499,29 +499,29 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	returnA -< (gs, cxt)
 
 -- | Expend dt to step the ball through the physical world, handling collisions.
-physicsBallAdvance :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvance x'cfg level dt ballPos ballVel = choice_ x'cfg level dt ballPos ballVel
+physicsBallAdvance :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvance x'cfg level ballRadius dt ballPos ballVel = choice_ x'cfg level ballRadius dt ballPos ballVel
 	where
-		choice_ :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+		choice_ :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 		--choice_ = physicsBallAdvanceStationary
 		--choice_ = physicsBallAdvanceGhostly
 		choice_ = physicsBallAdvanceBruteForce
 
 -- | For debugging or performance checking, keep the ball stationary.
-physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceStationary x'cfg level dt p0 v0 = (p1, v0)
+physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceStationary x'cfg level ballRadius dt p0 v0 = (p1, v0)
 	where
 		p1 = p0
 
 -- | For debugging or performance checking, ignore all collision checking.
-physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceGhostly x'cfg level dt p0 v0 = (p1, v0)
+physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceGhostly x'cfg level ballRadius dt p0 v0 = (p1, v0)
 	where
 		p1 = p0 + (dt `sv3` v0)
 
 -- | This version completely ignores the BSP.  It checks collisions with every
 -- lump every frame.
-physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 
 -- | Finish computing 'physicsBallAdvanceBruteFroce'.
@@ -547,8 +547,8 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
-physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level dt p0 v0 =
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level ballRadius dt p0 v0 =
 	case closestLumpIntersecting of  -- Find the next collision.
 		Nothing ->  -- No more collisions this frame.
 			let (p1, v1) = (p0 + (dt `sv3` v0), v0) in (p1, v1)  -- Expend the rest of dt after the last collision.
@@ -558,6 +558,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				( if' (thresholdTimeRemaining <= 0) (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold - edt) (thresholdTimeRemaining - edt) )
 				x'cfg
 				level
+				ballRadius
 				(dt - edt)
 				p0'
 				v0'

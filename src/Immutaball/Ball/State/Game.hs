@@ -38,6 +38,7 @@ import Control.Monad
 import Data.Int
 import Data.Foldable
 import Data.List
+import qualified Data.Map.Lazy as M
 import Data.Maybe
 
 import Control.Arrow
@@ -569,7 +570,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 	where
 		-- | Find the closest lump intersecting the ball's path, for collisions.
 		closestLumpIntersectingRaw :: Maybe (Double, Vec3 Double, Vec3 Double)
-		closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
+		--closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
+		closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes $ lumpsIntersecting
 
 		-- | Check cfgMaxFrameCollisions, and whether dt is already exhausted.
 		closestLumpIntersecting :: Maybe (Double, Vec3 Double, Vec3 Double)
@@ -584,8 +586,10 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 		--
 		-- Only the closest collision will be used for advancing the ball,
 		-- before checking for collision again afterwards.
-		lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
-		lumpsIntersecting = level^.solLv <&> \lump ->
+		--lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
+		--lumpsIntersecting = level^.solLv <&> \lump ->
+		lumpsIntersecting :: [Maybe (Double, Vec3 Double, Vec3 Double)]
+		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
 				verticesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = catMaybes $ do
@@ -612,11 +616,22 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- _away_ from the convex lump inside the level file.
 				facesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
 				facesIntersecting = do
-					-- For each side,
-					si <- indirection <$> [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
-					let side = (level^.solSv) ! si
-					-- Get its plane.
-					let sidePlane = normalPlane3 (side^.sideN) (side^.sideD)
+					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
+					let sidePlanes = flip M.lookup (spa^.spaLumpOutwardsSides) li `morElse` error errMsg
+
+					-- For each side (check useDirectSol for which set of sides to use),
+					(sidx, sidePlane) <-
+						if useDirectSol
+							then do
+								-- For each side,
+								si <- indirection <$> [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
+								let side = (level^.solSv) ! si
+								-- Get its plane.
+								let sidePlane = normalPlane3 (side^.sideN) (side^.sideD)
+								return (si, sidePlane)
+							else do
+								(sidx, sidePlane) <- zip [0..] sidePlanes
+								return (sidx, sidePlane)
 					-- Find where on lp it intersects; abort this try if it doesn't.
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
 					-- Only consider intersections on the line segment.
@@ -631,14 +646,25 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					-- Only consider intersections whose plane intersection
 					-- points are behind all other sides.
 					guard . and $ do
-						-- For every other side …
-						sj <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
-						guard $ sj /= si
-						let sidej = (level^.solSv) ! sj
-						let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
+						if useDirectSol
+							then do
+								let si = sidx
 
-						-- Make sure the point is behind this plane.
-						return $ plane3PointDistance sidejPlane planeIntersection <= 0
+								-- For every other side …
+								sj <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
+								guard $ sj /= si
+								let sidej = (level^.solSv) ! sj
+								let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
+
+								-- Make sure the point is behind this plane.
+								return $ plane3PointDistance sidejPlane planeIntersection <= 0
+							else do
+								-- For every other side …
+								(sjidx, sidejPlane) <- zip [0..] sidePlanes
+								guard $ sjidx /= sidx
+
+								-- Make sure the point is behind this plane.
+								return $ plane3PointDistance sidejPlane planeIntersection <= 0
 
 					-- We've found an intersection.  Now calculate the values
 					-- we would need if we ended up picking this after finding it
@@ -649,6 +675,9 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					-- TODO: bounce return, but ‘scale’ it to something like the part reflected.
 					let v0' = plane3ReflectPoint (sidePlane & dp3 .~ 0) v0
 					return $ (edt, p0', v0')
+
+					where
+						useDirectSol = False
 
 				-- | Lower dimensionalities appear before higher
 				-- dimensionalities for equal distances.  'sortOn' is a stable

@@ -519,7 +519,7 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 		-- plane.
 		lumpSidesData :: SolPhysicsAnalysis -> M.Map Int32 ([Plane3 Double], Integer, Integer)
 		lumpSidesData spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
-			let averageVertexErrMsg = error $ "Internal error: mkSolPhysicsAnalysis: finding lump sides data for lump without average vertex for li " ++ (show li) ++ "." in
+			let averageVertexErrMsg = "Internal error: mkSolPhysicsAnalysis: finding lump sides data for lump without average vertex for li " ++ (show li) ++ "." in
 			let averageVertex = flip M.lookup (spa^.spaLumpAverageVertex) li `morElse` error averageVertexErrMsg in
 			let lump = (sol^.solLv) ! li in
 			let sis = indirection <$> [lump^.lumpS0..lump^.lumpS0 + lump^.lumpSc - 1] in

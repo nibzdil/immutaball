@@ -63,6 +63,9 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+import Debug.Trace as D---------------------------------------------TODO
+import Text.Printf
+
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -615,11 +618,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- Note this requires that all sides have a normal pointing
 				-- _away_ from the convex lump inside the level file.
 				facesIntersecting :: [(Double, Vec3 Double, Vec3 Double)]
-				facesIntersecting = do
+				facesIntersecting = (\r -> D.trace (printf "DEBUG0: facesIntersect: %s" (show r)) $ r) $ do
 					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
 					let sidePlanes = flip M.lookup (spa^.spaLumpOutwardsSides) li `morElse` error errMsg
 
 					-- For each side (check useDirectSol for which set of sides to use),
+					D.trace "DEBUG1" $ return ()
 					(sidx, sidePlane) <-
 						if useDirectSol
 							then do
@@ -633,9 +637,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 								(sidx, sidePlane) <- zip [0..] sidePlanes
 								return (sidx, sidePlane)
 					-- Find where on lp it intersects; abort this try if it doesn't.
+					D.trace "DEBUG2" $ return ()
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
+					D.trace "DEBUG3" $ return ()
 					-- Only consider intersections on the line segment.
 					guard $ 0 <= x && x <= 1
+					D.trace "DEBUG4 (now test other planes)" $ return ()
 					-- Get the point in 3D space: this is where the ball would
 					-- be if advanced to this intersection.
 					let ballIntersection = line3Lerp lp x
@@ -645,7 +652,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					let planeIntersection = pointToPlane ballIntersection sidePlane
 					-- Only consider intersections whose plane intersection
 					-- points are behind all other sides.
-					guard . and $ do
+					--guard . and $ do
+					guard . and $ const [] $ do  -- TODO re-enable after debugging.
 						if useDirectSol
 							then do
 								let si = sidx
@@ -665,6 +673,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 								-- Make sure the point is behind this plane.
 								return $ plane3PointDistance sidejPlane planeIntersection <= 0
+					D.trace "DEBUG5 (pass!)" $ return ()
 
 					-- We've found an intersection.  Now calculate the values
 					-- we would need if we ended up picking this after finding it

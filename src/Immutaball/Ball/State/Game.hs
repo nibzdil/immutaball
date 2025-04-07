@@ -482,7 +482,7 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	--
 	-- Expend dt to apply its velocity to the position, handling collisions by
 	-- applying reflections.
-	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsBallPos) (gsnp1^.gsBallVel) dt
+	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
 	let updateBall =
 		(gsBallPos .~ ballPos') .
 		(gsBallVel .~ ballVel') .
@@ -497,29 +497,29 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	returnA -< (gs, cxt)
 
 -- | Expend dt to step the ball through the physical world, handling collisions.
-physicsBallAdvance :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvance x'cfg level ballPos ballVel dt = choice_ x'cfg level ballPos ballVel dt
+physicsBallAdvance :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvance x'cfg level dt ballPos ballVel = choice_ x'cfg level dt ballPos ballVel
 	where
-		choice_ :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+		choice_ :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 		--choice_ = physicsBallAdvanceStationary
 		--choice_ = physicsBallAdvanceGhostly
 		choice_ = physicsBallAdvanceBruteForce
 
 -- | For debugging or performance checking, keep the ball stationary.
-physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceStationary x'cfg level p0 v0 dt = (p1, v0)
+physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceStationary x'cfg level dt p0 v0 = (p1, v0)
 	where
 		p1 = p0
 
 -- | For debugging or performance checking, ignore all collision checking.
-physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceGhostly x'cfg level p0 v0 dt = (p1, v0)
+physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceGhostly x'cfg level dt p0 v0 = (p1, v0)
 	where
 		p1 = p0 + (dt `sv3` v0)
 
 -- | This version completely ignores the BSP.  It checks collisions with every
 -- lump every frame.
-physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 
 -- | Finish computing 'physicsBallAdvanceBruteFroce'.
@@ -545,8 +545,8 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
-physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Vec3 Double -> Vec3 Double -> Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level p0 v0 dt =
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level dt p0 v0 =
 	-- TODO: implement.
 	(p0 + (dt `sv3` v0), v0)
 

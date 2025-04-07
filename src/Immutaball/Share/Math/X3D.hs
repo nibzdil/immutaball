@@ -329,10 +329,9 @@ line3CoordAtDistancePlane3 p l d
 --
 -- Non-zeroness of the line's axis is assumed and not verified.
 line3PointCoord :: forall a. (Num a, Fractional a, RealFloat a) => Line3 a -> Vec3 a -> a
-line3PointCoord l v = v' `d3` (nl^.a0l3) / sqx (nl^.a0l3.r3)
+line3PointCoord l v = v' `d3` (l^.a0l3) / sqx (l^.a0l3.r3)
 	where
-		nl = line3NormalizeDisplacement l
-		v' = v `minusv3` (nl^.ol3)
+		v' = v `minusv3` (l^.ol3)
 
 -- | Find the distance from the line (by the closest point on the line) to the
 -- given point in space.

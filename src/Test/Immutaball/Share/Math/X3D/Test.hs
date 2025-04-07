@@ -110,8 +110,9 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 					((line3CoordAtDistancePlane3 planeX1 (line3Points (Vec3 9 824 4) (Vec3 9 (-1) 8)) 2 <&> equivalentSmall) <*> pure 3) @?= Nothing,
 
 				testCase "line3PointCoord simple test" $
-					--line3PointCoord (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 42 15 78) `equivalentSmall` (2 :: Double) @?= True
-					line3PointCoord (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 42 15 78) @?= 2
+					line3PointCoord (line3Points (Vec3 1 1 2) (Vec3 1 8 2)) (Vec3 42 15 78) `equivalentSmall` ( 2 :: Double) @?= True,
+				testCase "line3PointCoord negated simple test" $
+					line3PointCoord (line3Points (Vec3 1 8 2) (Vec3 1 1 2)) (Vec3 42 15 78) `equivalentSmall` (-1 :: Double) @?= True
 			],
 
 		testGroup "line3 plane3 tests" $

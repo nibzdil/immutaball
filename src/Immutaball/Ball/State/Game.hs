@@ -681,6 +681,14 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 								return $ plane3PointDistance sidejPlane planeIntersection <= 0
 					D.trace "DEBUG5 (pass!)" $ return ()
 
+					-- Finally, to prevent the same lump causing multiple
+					-- collision events for what should be a single collision,
+					-- if we're starting a physics frame (lastLi == Nothing),
+					-- and we're starting exactly on an intersection, then if
+					-- the line segment is leading the ball away from the lump,
+					-- then skip this lump.  TODO: do this.  (Or just preserve
+					-- lastLi between frames.)
+
 					-- We've found an intersection.  Now calculate the values
 					-- we would need if we ended up picking this after finding it
 					-- is indeed the closest.

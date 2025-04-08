@@ -495,7 +495,8 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 		(gsBallPos .~ ballPos') .
 		(gsBallVel .~ ballVel') .
 		id
-	let (gsnp2, cxtnp2) = (gsnp1 & updateBall, cxtnp1)
+	--let (gsnp2, cxtnp2) = (gsnp1 & updateBall, cxtnp1)
+	let (gsnp2, cxtnp2) = D.trace (printf "DEBUGA: ballPos, ballVel: %s, %s" (show $ ballPos') (show $ ballVel')) $ (gsnp1 & updateBall, cxtnp1)
 
 	-- Identify output.
 	let gs = gsnp2
@@ -705,7 +706,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 					-- we would need if we ended up picking this after finding it
 					-- is indeed the closest.
 
-					let edt = x
+					let edt = x * dt
 					let p0' = ballIntersection
 					-- TODO: bounce return, but ‘scale’ it to something like the part reflected.
 					let v0' = plane3ReflectPoint (sidePlane & dp3 .~ 0) v0

@@ -623,7 +623,7 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 
 				-- Get the plane they're on.
 				let (abc_ :: Vec3 Double) = (kv - jv) `vx3` (iv - jv)  -- (CCW order so it screws outward from the body, but we'll re-orient anyway.)
-				let abc = v3normalize abc
+				let abc = v3normalize abc_
 				let v = jv
 
 				let plane = normalizePlane3 v abc
@@ -632,5 +632,17 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 				return $ r in
 			-- De-duplicate the planes.
 			let planesDedup = nubBy eqPlane3PointsOnly $ planesStart in
+
+			-- Now orient the planes, so that the normal is pointing outwards
+			-- from the convex lump.  That is, negate the normal orientation of
+			-- the plane if it's pointing inwards instead of outwards.
+			let planesUnoriented = planesDedup in
+			let averageVertexErrMsg = "Internal error: mkSolPhysicsAnalysis: finding lump sides data for lump without average vertex for li " ++ (show li) ++ "." in
+			let averageVertex = flip M.lookup (spa^.spaLumpAverageVertex) li `morElse` error averageVertexErrMsg in
+			let backwardsPlanes = flip map planesUnoriented $ \p -> not $ plane3PointDistance p averageVertex <= 0 in
+			let (_numNeg :: Integer) = genericLength . filter id  $ backwardsPlanes in
+			let (_numId  :: Integer) = genericLength . filter not $ backwardsPlanes in
+			let planesOriented = flip map (zip planesUnoriented backwardsPlanes) . uncurry $ \p n -> if' (not n) (p) (negatePlaneOrientation p) in
+
 			-- Return the planes.
-			(li, planesDedup)
+			(li, planesOriented)

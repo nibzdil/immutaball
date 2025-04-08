@@ -35,6 +35,7 @@ module Immutaball.Share.Level.Analysis
 		SolPhysicsAnalysis(..), spaLumpOutwardsSides,
 			spaLumpOutwardsSidesNumNegatedNormals,
 			spaLumpOutwardsSidesNumNotNegatedNormals, spaLumpAverageVertex,
+			spaLumpVertexAdjacents, spaLumpPlanes,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
 		mkSolPhysicsAnalysis
@@ -55,6 +56,7 @@ import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
 import Data.List
 import qualified Data.Map.Lazy as M
+import qualified Data.Set as S
 
 import Immutaball.Ball.LevelSets
 import Immutaball.Share.Config
@@ -229,6 +231,9 @@ data GeomPass = GeomPass {
 
 -- | Extra data of the sol useful for physics.
 data SolPhysicsAnalysis = SolPhysicsAnalysis {
+	-- | OLD: actually SOL file lump sides I found were not the actual planes
+	-- of the faces, so they're something else.  'spaLumpOutwardsSides'* are no
+	-- longer needed.  Instead for now we'll construct our own set of planes.
 	-- | The sides of a lump by lump index (li), ensured to be pointing
 	-- outwards.
 	_spaLumpOutwardsSides :: M.Map Int32 [Plane3 Double],
@@ -236,7 +241,23 @@ data SolPhysicsAnalysis = SolPhysicsAnalysis {
 	_spaLumpOutwardsSidesNumNotNegatedNormals :: M.Map Int32 Integer,
 
 	-- | Find the mean vertex of a lump.
-	_spaLumpAverageVertex :: M.Map Int32 (Vec3 Double)
+	_spaLumpAverageVertex :: M.Map Int32 (Vec3 Double),
+
+	-- | For each lump, map its already indirected (can ‘solVv ! vi’ directly) vertex
+	-- indices to the set of (likewise indirected) adjacent vertex indices.
+	--
+	-- We use this to build up 'spaLumpPlanes' by hand.
+	--
+	-- This is a map from lump index to a map of _indirected_ (i.e. direct)
+	-- vertex indices to a set of indirected vertices.  Given a lump and one of
+	-- its vertices, you can use it to find the set of all other vertices
+	-- adjacent to it, i.e. all other vertices such that there is an edge
+	-- directly connecting them.
+	_spaLumpVertexAdjacents :: M.Map Int32 (M.Map Int32 (S.Set Int32)),
+
+	-- | For each lump, we build from the edges and vertices a set of planes
+	-- with normals pointing away from the convex lump.
+	_spaLumpPlanes :: M.Map Int32 [Plane3 Double]
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''SolWithAnalysis
@@ -499,7 +520,10 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 	_spaLumpOutwardsSidesNumNegatedNormals    = (^._2) <$> lumpSidesData spa,
 	_spaLumpOutwardsSidesNumNotNegatedNormals = (^._3) <$> lumpSidesData spa,
 
-	_spaLumpAverageVertex = lumpAverageVertex spa
+	_spaLumpAverageVertex = lumpAverageVertex spa,
+
+	_spaLumpVertexAdjacents = lumpVertexAdjacents spa,
+	_spaLumpPlanes          = lumpPlanes spa
 }
 	where
 		indirection :: Int32 -> Int32
@@ -530,3 +554,18 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 			let numId  = genericLength . filter not $ backwardsPlanes in
 			let planes' = flip map (zip planes backwardsPlanes) . uncurry $ \p n -> if' (not n) (p) (negatePlaneOrientation p) in
 			(li, (planes', numNeg, numId))
+
+		lumpVertexAdjacents :: SolPhysicsAnalysis -> M.Map Int32 (M.Map Int32 (S.Set Int32))
+		lumpVertexAdjacents spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
+			let lump = (sol^.solLv) ! li in
+			let eis = [lump^.lumpE0..lump^.lumpE0 + lump^.lumpEc - 1] in
+			let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
+			let edges = ((sol^.solEv) !) <$> eis in
+			(\reduce -> (li, foldr reduce M.empty edges)) $ \edge adjacents ->
+			let union = (\new_value old_value -> new_value `S.union` old_value) in  -- (left-biased, not that it matters here.)
+			M.insertWith union (edge^.edgeVi) (S.singleton $ edge^.edgeVj) .
+			M.insertWith union (edge^.edgeVj) (S.singleton $ edge^.edgeVi) $
+			adjacents
+
+		lumpPlanes :: SolPhysicsAnalysis -> M.Map Int32 [Plane3 Double]
+		lumpPlanes spa = _

@@ -15,10 +15,7 @@ module Test.Immutaball.Share.Math.X3D.Test
 		simpleConstant,
 		sampleLine0,
 		sampleLine1,
-		planeX1,
-		eqPlane3,
-		eqLine3,
-		nearLine3
+		planeX1
 	) where
 
 --import Control.Arrow
@@ -33,9 +30,6 @@ import Test.Tasty.HUnit hiding ((@?=), assertBool)
 
 import Immutaball.Share.Math
 import Test.Immutaball.Share.Math.Core.Orphans ()
-
-import Debug.Trace as D--------------------------------------------- TODO
-import Text.Printf
 
 main :: IO ()
 main = testsMain
@@ -54,15 +48,6 @@ sampleLine1 = line3Points (Vec3 1 0 1) (Vec3 1 3 1)
 
 planeX1 :: Plane3 Double
 planeX1 = normalPlane3 (Vec3 1 0 0) 1
-
-eqPlane3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
-eqPlane3 a b = (a^.unPlane3) `eq4` (b^.unPlane3)
-
-eqLine3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
-eqLine3 a b = (a^.p0l3) `eq3` (b^.p0l3) && (a^.p1l3) `eq3` (b^.p1l3)
-
-nearLine3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
-nearLine3 a b = (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3)
 
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math.X3D" $

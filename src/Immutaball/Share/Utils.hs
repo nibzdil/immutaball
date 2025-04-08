@@ -47,6 +47,8 @@ module Immutaball.Share.Utils
 		deconsMaybe,
 
 		morElse
+
+		--AssumeEOS,
 	) where
 
 import Prelude ()
@@ -193,3 +195,17 @@ deconsMaybe _ withJust    (Just a)  = withJust a
 -- | A convenient way to deconstruct a maybe with a default value.
 morElse :: Maybe a -> a -> a
 morElse = flip fromMaybe
+
+{-
+-- | Empty Eq, Ord, Show instance.
+--
+-- Useful to hide a component from a record that otherwise implements these
+-- instances, e.g. a utility function like ‘spaLumpGetVertexAdjacents’ not
+-- essential to the record.  Alternatively, these utility functions could be
+-- moved from the record, so that they take an additional input argument of the
+-- record.
+type AssumeEOS a = a
+instance Eq (AssumeEOS a) where _ == _ = True
+instance Ord (AssumeEOS a) where _ <= _ = True
+instance Show (AssumeEOS a) where show _ = "(AssumeEOS)"
+-}

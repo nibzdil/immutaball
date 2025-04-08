@@ -35,9 +35,10 @@ module Immutaball.Share.Level.Analysis
 		SolPhysicsAnalysis(..), spaLumpOutwardsSides,
 			spaLumpOutwardsSidesNumNegatedNormals,
 			spaLumpOutwardsSidesNumNotNegatedNormals, spaLumpAverageVertex,
-			spaLumpVertexAdjacents, spaLumpPlanes,
+			spaLumpVertexAdjacents, {-spaLumpGetVertexAdjacents, -}spaLumpPlanes,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
+		getSpaLumpGetVertexAdjacents,
 		mkSolPhysicsAnalysis
 	) where
 
@@ -47,6 +48,7 @@ import Immutaball.Prelude
 import Control.Arrow
 import Control.Monad
 import Data.Bits
+import Data.Foldable
 import Data.Function hiding (id, (.))
 import Data.Int
 import Data.Maybe
@@ -254,6 +256,11 @@ data SolPhysicsAnalysis = SolPhysicsAnalysis {
 	-- adjacent to it, i.e. all other vertices such that there is an edge
 	-- directly connecting them.
 	_spaLumpVertexAdjacents :: M.Map Int32 (M.Map Int32 (S.Set Int32)),
+	-- | A utility for convenience that looks up in 'spaLumpVertexAdjacents',
+	-- returning an empty set if there is a lookup failure anywhere.
+	--_spaLumpGetVertexAdjacents :: Int32 -> Int32 -> S.Set Int32,
+	-- We define this lense outside the record so that we don't lose
+	-- ‘instance (Eq, Ord, Show)’.
 
 	-- | For each lump, we build from the edges and vertices a set of planes
 	-- with normals pointing away from the convex lump.
@@ -514,6 +521,20 @@ mkSolRenderAnalysis cxt sol = fix $ \sra -> SolRenderAnalysis {
 
 		listArray'_ xs = listArray (0, genericLength xs - 1) xs
 
+{-
+-- | Pseudo-lens, probably, because the setter can't _add_ to adjacents.
+spaLumpGetVertexAdjacents :: Lens' SolPhysicsAnalysis (Int32 -> Int32 -> S.Set Int32)
+spaLumpGetVertexAdjacents = lens getter (flip setter)
+	where
+		getter :: SolPhysicsAnalysis -> (Int32 -> Int32 -> S.Set Int32)
+		getter (Vec2 x y) = getSpaLumpGetVertexAdjacents
+		setter :: (Int32 -> Int32 -> S.Set Int32) -> SolPhysicsAnalysis -> SolPhysicsAnalysis
+		setter = TODO
+-}
+
+getSpaLumpGetVertexAdjacents :: SolPhysicsAnalysis -> (Int32 -> Int32 -> S.Set Int32)
+getSpaLumpGetVertexAdjacents spa = \li vi -> (M.lookup li (spa^.spaLumpVertexAdjacents) >>= M.lookup vi) `morElse` S.empty
+
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
 mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 	_spaLumpOutwardsSides                     = (^._1) <$> lumpSidesData spa,
@@ -522,8 +543,11 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 
 	_spaLumpAverageVertex = lumpAverageVertex spa,
 
-	_spaLumpVertexAdjacents = lumpVertexAdjacents spa,
-	_spaLumpPlanes          = lumpPlanes spa
+	_spaLumpVertexAdjacents    = lumpVertexAdjacents spa,
+	{-
+	_spaLumpGetVertexAdjacents = lumpGetVertexAdjacents spa,
+	-}
+	_spaLumpPlanes             = lumpPlanes spa
 }
 	where
 		indirection :: Int32 -> Int32
@@ -556,16 +580,54 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 			(li, (planes', numNeg, numId))
 
 		lumpVertexAdjacents :: SolPhysicsAnalysis -> M.Map Int32 (M.Map Int32 (S.Set Int32))
-		lumpVertexAdjacents spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
+		lumpVertexAdjacents _spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
 			let lump = (sol^.solLv) ! li in
 			let eis = [lump^.lumpE0..lump^.lumpE0 + lump^.lumpEc - 1] in
-			let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
+			let _vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
 			let edges = ((sol^.solEv) !) <$> eis in
 			(\reduce -> (li, foldr reduce M.empty edges)) $ \edge adjacents ->
-			let union = (\new_value old_value -> new_value `S.union` old_value) in  -- (left-biased, not that it matters here.)
-			M.insertWith union (edge^.edgeVi) (S.singleton $ edge^.edgeVj) .
-			M.insertWith union (edge^.edgeVj) (S.singleton $ edge^.edgeVi) $
+			let union_ = (\new_value old_value -> new_value `S.union` old_value) in  -- (left-biased, not that it matters here.)
+			M.insertWith union_ (edge^.edgeVi) (S.singleton $ edge^.edgeVj) .
+			M.insertWith union_ (edge^.edgeVj) (S.singleton $ edge^.edgeVi) $
 			adjacents
 
+		{-
+		lumpGetVertexAdjacents :: SolPhysicsAnalysis -> (Int32 -> Int32 -> S.Set Int32)
+		lumpGetVertexAdjacents spa = \li vi -> (M.lookup li (spa^.spaLumpVertexAdjacents) >>= M.lookup vi) `morElse` S.empty
+		-}
+
+		-- | Manually constructed set of planes for each lump.
+		-- TODO: optimize this better, so it's efficient, at least more than
+		-- this.
 		lumpPlanes :: SolPhysicsAnalysis -> M.Map Int32 [Plane3 Double]
-		lumpPlanes spa = _
+		lumpPlanes spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
+			let lump = (sol^.solLv) ! li in
+			let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
+
+			-- Get a bunch of planes; we'll have a lot of duplicates (and
+			-- probably a lot of needless extra computation.)
+			let planesStart = do
+				-- For every 3 adjacent points,
+				vi <- vis
+				vj <- toList $ (getSpaLumpGetVertexAdjacents spa) li vi
+				vk <- toList $ (getSpaLumpGetVertexAdjacents spa) li vj
+				guard $ vk /= vj && vk /= vi
+
+				let viv = (sol^.solVv) ! vi
+				let vjv = (sol^.solVv) ! vj
+				let vkv = (sol^.solVv) ! vk
+
+				let (iv :: Vec3 Double) = viv^.vertP
+				let (jv :: Vec3 Double) = vjv^.vertP
+				let (kv :: Vec3 Double) = vkv^.vertP
+
+				-- Get the plane they're on.
+				let (abc :: Vec3 Double) = (kv - jv) `vx3` (iv - jv)  -- (CCW order so it screws outward from the body, but we'll re-orient anyway.)
+				let v = jv
+
+				let plane = normalizePlane3 v abc
+
+				let r = plane
+				return $ r in
+			let planesDedup = error "TODO" $ planesStart in
+			error "TODO"

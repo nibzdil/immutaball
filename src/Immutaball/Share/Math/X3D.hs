@@ -42,7 +42,12 @@ module Immutaball.Share.Math.X3D
 		line3PointDistance,
 		line3DistanceCoordFromPoint,
 		line3Line3ClosestCoords,
-		line3Line3Distance
+		line3Line3Distance,
+
+		eqPlane3,
+		eqLine3,
+		nearPlane3,
+		nearLine3
 	) where
 
 import Prelude ()
@@ -51,9 +56,6 @@ import Immutaball.Prelude
 import Control.Lens
 
 import Immutaball.Share.Math.Core
-
-import Debug.Trace as D--------------------------------------------- TODO (also remove Show debugging.)
-import Text.Printf
 
 -- | Normal, distance.
 --
@@ -463,3 +465,15 @@ line3Line3Distance :: forall a. (Show a, SmallNum a, Fractional a, RealFloat a) 
 line3Line3Distance la lb = case line3Line3ClosestCoords la lb of
 	Nothing          -> line3PointDistance la $ line3Lerp lb 0
 	Just    (ax, bx) -> (line3Lerp lb bx - line3Lerp la ax)^.r3
+
+eqPlane3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
+eqPlane3 a b = (a^.unPlane3) `eq4` (b^.unPlane3)
+
+eqLine3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
+eqLine3 a b = (a^.p0l3) `eq3` (b^.p0l3) && (a^.p1l3) `eq3` (b^.p1l3)
+
+nearPlane3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
+nearPlane3 a b = (a^.unPlane3) `near4` (b^.unPlane3)
+
+nearLine3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
+nearLine3 a b = (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3)

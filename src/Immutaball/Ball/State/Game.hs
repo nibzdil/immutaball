@@ -530,6 +530,12 @@ physicsBallAdvanceGhostly _x'cfg _level _spa _ballRadius dt p0 v0 = (p1, v0)
 physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 Nothing
 
+-- TODO: SOL file sides were not what I
+-- expected; the planes look like they're rounded or
+-- something, not the planes of the actual faces.
+-- Perhaps for now just analyze the planes of the lumps on map load, in the
+-- analysis.
+
 -- | Finish computing 'physicsBallAdvanceBruteFroce'.
 --
 -- Make a line segment from p0 to p1, where p1 is p0 + dt*v, i.e. the tentative
@@ -687,10 +693,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 						let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
 						return sidejPlane
 					D.trace (printf "DEBUG5 (pass!); sidePlanes direct: %s" (show debugPlanes)) $ return ()
-					-- TODO: wow, okay, neverball sides were not what I
-					-- expected; the planes look like they're rounded or
-					-- something, not the actual faces.
-
 					-- Finally, to prevent the same lump causing multiple
 					-- collision events for what should be a single collision,
 					-- if we're starting a physics frame (lastLi == Nothing),

@@ -497,12 +497,12 @@ eqPlane3PointsOnly :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Pla
 eqPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `eq4` (b^.unPlane3) || (a'^.unPlane3) `eq4` (b^.unPlane3)
 
 eqLine3PointsOnly :: (SmallNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
-eqLine3PointsOnly a b = let a' = a & (a0l3 %~ negate) in ( (a^.p0l3) `eq3` (b^.p0l3) && (a^.p1l3) `eq3` (b^.p1l3) ) || ( (a'^.p0l3) `eq3` (b^.p0l3) && (a'^.p1l3) `eq3` (b^.p1l3) )
+eqLine3PointsOnly a b = let na' = na & (a0l3 %~ negate) in ( (na^.p0l3) `eq3` (nb^.p0l3) && (na^.p1l3) `eq3` (nb^.p1l3) ) || ( (na'^.p0l3) `eq3` (nb^.p0l3) && (na'^.p1l3) `eq3` (nb^.p1l3) )
 	where (na, nb) = let standardize = (a0l3 %~ v3normalize) . line3NormalizeDisplacement in (standardize a, standardize b)
 
 nearPlane3PointsOnly :: (SmallishNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
 nearPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `near4` (b^.unPlane3) || (a'^.unPlane3) `near4` (b^.unPlane3)
 
 nearLine3PointsOnly :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
-nearLine3PointsOnly a b = let a' = a & (a0l3 %~ negate) in ( (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3) ) || ( (a'^.p0l3) `near3` (b^.p0l3) && (a'^.p1l3) `near3` (b^.p1l3) )
+nearLine3PointsOnly a b = let na' = na & (a0l3 %~ negate) in ( (na^.p0l3) `near3` (nb^.p0l3) && (na^.p1l3) `near3` (nb^.p1l3) ) || ( (na'^.p0l3) `near3` (nb^.p0l3) && (na'^.p1l3) `near3` (nb^.p1l3) )
 	where (na, nb) = let standardize = (a0l3 %~ v3normalize) . line3NormalizeDisplacement in (standardize a, standardize b)

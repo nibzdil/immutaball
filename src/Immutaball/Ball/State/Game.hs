@@ -659,8 +659,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					let planeIntersection = pointToPlane ballIntersection sidePlane
 					-- Only consider intersections whose plane intersection
 					-- points are behind all other sides.
-					--guard . and $ do
-					guard . and $ const [] $ do  -- TODO re-enable after debugging.
+					guard . and $ do
 						if useDirectSol
 							then do
 								let si = sidx

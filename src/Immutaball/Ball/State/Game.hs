@@ -632,7 +632,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				facesIntersecting = (\r -> D.trace (printf "DEBUG0: facesIntersect: %s" (show r)) $ r) $ do
 					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
-					let sidePlanes = flip M.lookup (spa^.spaLumpOutwardsSides) li `morElse` error errMsg
+					let sidePlanes = flip M.lookup (spa^.spaLumpPlanes) li `morElse` error errMsg
 
 					-- For each side (check useDirectSol for which set of sides to use),
 					D.trace "DEBUG1" $ return ()

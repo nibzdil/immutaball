@@ -649,11 +649,14 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
 					D.trace (printf "DEBUG3: x is %s" (show x)) $ return ()
 					-- Only consider intersections on the line segment.
-					guard $ 0 <= x + smallNum && x - smallNum <= 1
+					--guard $ (0 <= x + smallNum && x - smallNum <= 1)
+					-- The right side prevents the ball from ghost-glitching
+					-- through a wall for very short 'lp'.
+					guard $ (0 <= x + smallNum && x - smallNum <= 1) || (plane3PointDistance sidePlane (lp^.p0l3) `near` ballRadius && plane3PointDistance sidePlane (lp^.p1l3) `near` ballRadius)
 					D.trace "DEBUG4 (now test other planes)" $ return ()
 					-- Get the point in 3D space: this is where the ball would
 					-- be if advanced to this intersection.
-					let ballIntersection = line3Lerp lp x
+					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
 					-- Get the point on the plane where this collision would
 					-- take place: the closest point on the plane to
 					-- 'ballIntersection'.
@@ -735,6 +738,9 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- | Draw a line segment from the ball's position (center of
 				-- sphere) to the tentative end-point if all dt were to be
 				-- expended now using its velocity.
+				-- TODO: double check edge cases of small lp don't cause
+				-- issues.  The guard has a p0 and p1 nearness check, but there
+				-- might still be issues.
 				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1
 
 		-- | It seems sols have indirection for lump sides, vertices, and

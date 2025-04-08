@@ -47,7 +47,12 @@ module Immutaball.Share.Math.X3D
 		eqPlane3,
 		eqLine3,
 		nearPlane3,
-		nearLine3
+		nearLine3,
+
+		eqPlane3PointsOnly,
+		eqLine3PointsOnly,
+		nearPlane3PointsOnly,
+		nearLine3PointsOnly
 	) where
 
 import Prelude ()
@@ -466,6 +471,8 @@ line3Line3Distance la lb = case line3Line3ClosestCoords la lb of
 	Nothing          -> line3PointDistance la $ line3Lerp lb 0
 	Just    (ax, bx) -> (line3Lerp lb bx - line3Lerp la ax)^.r3
 
+-- The orientation is checked, for these functions.
+
 eqPlane3 :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
 eqPlane3 a b = (a^.unPlane3) `eq4` (b^.unPlane3)
 
@@ -477,3 +484,20 @@ nearPlane3 a b = (a^.unPlane3) `near4` (b^.unPlane3)
 
 nearLine3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
 nearLine3 a b = (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3)
+
+-- These equivalence variants check the points only; you can e.g. use
+-- ‘negatePlaneOrientation’ and preserve equivalence.
+
+eqPlane3PointsOnly :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
+eqPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `eq4` (b^.unPlane3) || (a'^.unPlane3) `eq4` (b^.unPlane3)
+
+eqLine3PointsOnly :: (SmallNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
+eqLine3PointsOnly a b = let a' = a & (a0l3 %~ negate) in ( (a^.p0l3) `eq3` (b^.p0l3) && (a^.p1l3) `eq3` (b^.p1l3) ) || ( (a'^.p0l3) `eq3` (b^.p0l3) && (a'^.p1l3) `eq3` (b^.p1l3) )
+	where (na, nb) = let standardize = (a0l3 %~ v3normalize) . line3NormalizeDisplacement in (standardize a, standardize b)
+
+nearPlane3PointsOnly :: (SmallishNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
+nearPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `near4` (b^.unPlane3) || (a'^.unPlane3) `near4` (b^.unPlane3)
+
+nearLine3PointsOnly :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
+nearLine3PointsOnly a b = let a' = a & (a0l3 %~ negate) in ( (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3) ) || ( (a'^.p0l3) `near3` (b^.p0l3) && (a'^.p1l3) `near3` (b^.p1l3) )
+	where (na, nb) = let standardize = (a0l3 %~ v3normalize) . line3NormalizeDisplacement in (standardize a, standardize b)

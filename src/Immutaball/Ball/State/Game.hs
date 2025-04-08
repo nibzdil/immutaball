@@ -472,22 +472,28 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let gsa = mkGameStateAnalysis cxtn gsn
 
 	let x'cfg = cxtn^.ibContext.ibStaticConfig
-	let gravityAcceleration = x'cfg^.x'cfgGravity
 
-	-- Apply gravity.
+	-- Find the gravity vector.
 	let gravityVectorUnrotated = (gsa^.gsaUpVec) & z3 %~ negate  -- Mirror on xy plane.
 	let gravityVector = rotatexySimple (gsn^.gsCameraAngle) `mv3` gravityVectorUnrotated
+	-- Don't apply the gravity vector yet, since we might apply too much dt,
+	-- e.g. before the ball rests back on the floor; this could make the ball
+	-- bouncy, especially depending on the frame rate.
+	{-
+	let gravityAcceleration = x'cfg^.x'cfgGravity
 	let updateGravity =
 		(gsBallVel %~ (+ (dt * gravityAcceleration) `sv3` gravityVector)) .
 		id
 	let gsnp1 = gsn & updateGravity
+	-}
+	let gsnp1 = gsn
 	let cxtnp1 = cxtn
 
 	-- Advance the ball through the physical world, handling collisions.
 	--
 	-- Expend dt to apply its velocity to the position, handling collisions by
 	-- applying reflections.
-	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsSolAnalysis.saPhysicsAnalysis) (gsnp1^.gsBallRadius) dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
+	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsSolAnalysis.saPhysicsAnalysis) (gsnp1^.gsBallRadius) gravityVector dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
 	let updateBall =
 		(gsBallPos .~ ballPos') .
 		(gsBallVel .~ ballVel') .
@@ -502,29 +508,31 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	returnA -< (gs, cxt)
 
 -- | Expend dt to step the ball through the physical world, handling collisions.
-physicsBallAdvance :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvance x'cfg level spa ballRadius dt ballPos ballVel = choice_ x'cfg level spa ballRadius dt ballPos ballVel
+physicsBallAdvance :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvance x'cfg level spa ballRadius gravityVector dt ballPos ballVel = choice_ x'cfg level spa ballRadius gravityVector dt ballPos ballVel
 	where
-		choice_ :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+		choice_ :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 		--choice_ = physicsBallAdvanceStationary
 		--choice_ = physicsBallAdvanceGhostly
 		choice_ = physicsBallAdvanceBruteForce
 
 -- | For debugging or performance checking, keep the ball stationary.
-physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceStationary _x'cfg _level _spa _ballRadius _dt p0 v0 = (p1, v0)
+physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceStationary _x'cfg _level _spa _ballRadius _gravityVector _dt p0 v0 = (p1, v0)
 	where
 		p1 = p0
 
 -- | For debugging or performance checking, ignore all collision checking.
-physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceGhostly _x'cfg _level _spa _ballRadius dt p0 v0 = (p1, v0)
+physicsBallAdvanceGhostly :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceGhostly x'cfg _level _spa _ballRadius gravityVector dt p0 v0 = (p1, v1)
 	where
-		p1 = p0 + (dt `sv3` v0)
+		p1 = p0 + (dt `sv3` v1)
+		v1 = v0 + ((dt * gravityAcceleration) `sv3` gravityVector)
+		gravityAcceleration = x'cfg^.x'cfgGravity
 
 -- | This version completely ignores the BSP.  It checks collisions with every
 -- lump every frame.
-physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 
 -- TODO: SOL file sides were not what I
@@ -556,12 +564,14 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
-physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level spa ballRadius dt p0 v0 =
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level spa ballRadius gravityVector dt p0 v0 =
 	case closestLumpIntersecting of  -- Find the next collision.
 		Nothing ->  -- No more collisions this frame.
-			let (p1, v1) = (p0 + (dt `sv3` v0), v0) in (p1, v1)  -- Expend the rest of dt after the last collision.
+			-- Gravity: apply gravity to the rest of the path.
+			let (p1, v1) = (p0 + (dt `sv3` v0), v0 + ((dt * gravityAcceleration) `sv3` gravityVector)) in (p1, v1)  -- Expend the rest of dt after the last collision.
 		Just (_lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
+			-- Gravity: only apply the gravity vector through to the next collision, later on when we produce what is v0' here.
 			physicsBallAdvanceBruteForceCompute
 				( if' (thresholdTimeRemaining <= 0) 0                                                 (numCollisions + 1)            )
 				( if' (thresholdTimeRemaining <= 0) (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold - edt) (thresholdTimeRemaining - edt) )
@@ -569,12 +579,14 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				level
 				spa
 				ballRadius
+				gravityVector
 				(dt - edt)
 				p0'
-				v0'
+				(v0' + ((edt * gravityAcceleration) `sv3` gravityVector))
 
 	where
 		bounceReturn = x'cfg^.x'cfgBounceReturn
+		gravityAcceleration = x'cfg^.x'cfgGravity
 
 		-- | Find the closest lump intersecting the ball's path, for collisions.
 		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)

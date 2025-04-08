@@ -296,6 +296,7 @@ makeLenses ''GameInputState
 initialGameState :: IBContext' a -> Neverballrc -> Bool -> Maybe LevelSet -> String -> LevelIB -> GameState
 initialGameState cxt neverballrc hasLevelBeenCompleted mlevelSet solPath sol = fix $ \gs ->
 	let solAnalysis = mkSolAnalysis cxt (gs^.gsSol) in
+	par (M.size $ solAnalysis^.saPhysicsAnalysis.spaLumpPlanes) .
 	par solAnalysis $
 	GameState {
 		_gsGameMode    = Intermission,

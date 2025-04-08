@@ -740,8 +740,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 				-- expended now using its velocity.
 				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1
 
-		-- | It seems sols have indirection for lump sides and vertices, but
-		-- not edges and edge indices to vertices.
+		-- | It seems sols have indirection for lump sides, vertices, and
+		-- edges, but not edge indices to vertices.
 		indirection :: Int32 -> Int32
 		indirection idx = (level^.solIv) ! idx
 

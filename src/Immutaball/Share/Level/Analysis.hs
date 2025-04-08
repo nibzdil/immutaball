@@ -582,7 +582,7 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 		lumpVertexAdjacents :: SolPhysicsAnalysis -> M.Map Int32 (M.Map Int32 (S.Set Int32))
 		lumpVertexAdjacents _spa = M.fromList . flip map [0..sol^.solLc - 1] $ \li ->
 			let lump = (sol^.solLv) ! li in
-			let eis = [lump^.lumpE0..lump^.lumpE0 + lump^.lumpEc - 1] in
+			let eis = indirection <$> [lump^.lumpE0..lump^.lumpE0 + lump^.lumpEc - 1] in
 			let _vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
 			let edges = ((sol^.solEv) !) <$> eis in
 			(\reduce -> (li, foldr reduce M.empty edges)) $ \edge adjacents ->

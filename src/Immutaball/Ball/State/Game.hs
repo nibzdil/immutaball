@@ -529,7 +529,7 @@ physicsBallAdvanceGhostly _x'cfg _level _spa _ballRadius dt p0 v0 = (p1, v0)
 -- | This version completely ignores the BSP.  It checks collisions with every
 -- lump every frame.
 physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 Nothing
+physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 
 -- TODO: SOL file sides were not what I
 -- expected; the planes look like they're rounded or
@@ -560,21 +560,15 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 Nothing
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
---
--- TODO: lastLi helps avoid colliding multiple times against the same lump in
--- what should be a single collision; however, if dt advances the ball to
--- exactly the point of collision for the ball, this might still be an issue;
--- look over this again.  Perhaps just persist lastLi between frames.
-physicsBallAdvanceBruteForceCompute :: Integer -> Double -> Maybe Int32 -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi x'cfg level spa ballRadius dt p0 v0 =
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level spa ballRadius dt p0 v0 =
 	case closestLumpIntersecting of  -- Find the next collision.
 		Nothing ->  -- No more collisions this frame.
 			let (p1, v1) = (p0 + (dt `sv3` v0), v0) in (p1, v1)  -- Expend the rest of dt after the last collision.
-		Just (lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
+		Just (_lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
 			physicsBallAdvanceBruteForceCompute
 				( if' (thresholdTimeRemaining <= 0) 0                                                 (numCollisions + 1)            )
 				( if' (thresholdTimeRemaining <= 0) (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold - edt) (thresholdTimeRemaining - edt) )
-				(Just lastLi')
 				x'cfg
 				level
 				spa
@@ -705,16 +699,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 					-- normal is not positive.
 					guard $ (lp^.a0l3) `d3` (sidePlane^.abcp3) <= 0
 
-					-- Finally, to prevent the same lump causing 
-
-					-- Finally, to prevent the same lump causing multiple
-					-- collision events for what should be a single collision,
-					-- if we're starting a physics frame (lastLi == Nothing),
-					-- and we're starting exactly on an intersection, then if
-					-- the line segment is leading the ball away from the lump,
-					-- then skip this lump.  TODO: do this.  (Or just preserve
-					-- lastLi between frames.)
-
 					-- We've found an intersection.  Now calculate the values
 					-- we would need if we ended up picking this after finding it
 					-- is indeed the closest.
@@ -738,7 +722,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 						facesIntersecting
 					]
 
-				--sortedIntersecting = sortOn (^._2) . filter (\col -> Just (col^._1) /= lastLi) $ allIntersecting
 				sortedIntersecting = sortOn (^._2) $ allIntersecting
 
 				lumpComponentIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)

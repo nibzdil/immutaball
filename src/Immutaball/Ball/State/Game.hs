@@ -582,7 +582,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				gravityVector
 				(dt - edt)
 				p0'
-				(v0' + ((edt * gravityAcceleration) `sv3` gravityVector))
+				v0'
 
 	where
 		bounceReturn = x'cfg^.x'cfgBounceReturn
@@ -734,11 +734,14 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 			where
 				-- | Draw a line segment from the ball's position (center of
 				-- sphere) to the tentative end-point if all dt were to be
+				--
 				-- expended now using its velocity.
 				-- TODO: double check edge cases of small lp don't cause
 				-- issues.  The guard has a p0 and p1 nearness check, but there
 				-- might still be issues.
-				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1
+				--
+				-- Apply gravity here.
+				lp = let p1 = p0 + (dt `sv3` (v0 + ((dt * gravityAcceleration) `sv3` gravityVector))) in line3Points p0 p1
 
 		-- | It seems sols have indirection for lump sides, vertices, and
 		-- edges, but not edge indices to vertices.

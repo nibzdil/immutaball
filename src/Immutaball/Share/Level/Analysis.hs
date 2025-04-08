@@ -622,7 +622,8 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 				let (kv :: Vec3 Double) = vkv^.vertP
 
 				-- Get the plane they're on.
-				let (abc :: Vec3 Double) = (kv - jv) `vx3` (iv - jv)  -- (CCW order so it screws outward from the body, but we'll re-orient anyway.)
+				let (abc_ :: Vec3 Double) = (kv - jv) `vx3` (iv - jv)  -- (CCW order so it screws outward from the body, but we'll re-orient anyway.)
+				let abc = v3normalize abc
 				let v = jv
 
 				let plane = normalizePlane3 v abc

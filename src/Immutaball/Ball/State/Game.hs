@@ -645,7 +645,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 					-- Find where on lp it intersects; abort this try if it doesn't.
 					D.trace "DEBUG2" $ return ()
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
-					D.trace "DEBUG3" $ return ()
+					D.trace (printf "DEBUG3: x is %s" (show x)) $ return ()
 					-- Only consider intersections on the line segment.
 					guard $ 0 <= x && x <= 1
 					D.trace "DEBUG4 (now test other planes)" $ return ()
@@ -679,7 +679,17 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 
 								-- Make sure the point is behind this plane.
 								return $ plane3PointDistance sidejPlane planeIntersection <= 0
-					D.trace "DEBUG5 (pass!)" $ return ()
+					--D.trace "DEBUG5 (pass!)" $ return ()
+					--D.trace (printf "DEBUG5 (pass!); sidePlanes: %s" (show sidePlanes)) $ return ()
+					let debugPlanes = do
+						sj <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
+						let sidej = (level^.solSv) ! sj
+						let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
+						return sidejPlane
+					D.trace (printf "DEBUG5 (pass!); sidePlanes direct: %s" (show debugPlanes)) $ return ()
+					-- TODO: wow, okay, neverball sides were not what I
+					-- expected; the planes look like they're rounded or
+					-- something, not the actual faces.
 
 					-- Finally, to prevent the same lump causing multiple
 					-- collision events for what should be a single collision,

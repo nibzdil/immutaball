@@ -629,5 +629,7 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 
 				let r = plane
 				return $ r in
-			let planesDedup = error "TODO" $ planesStart in
-			error "TODO"
+			-- De-duplicate the planes.
+			let planesDedup = nubBy eqPlane3PointsOnly $ planesStart in
+			-- Return the planes.
+			(li, planesDedup)

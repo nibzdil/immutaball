@@ -686,7 +686,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 								-- Make sure the point is behind this plane.
 								return $ plane3PointDistance sidejPlane planeIntersection <= 0
 					--D.trace "DEBUG5 (pass!)" $ return ()
-					D.trace (printf "DEBUG5 (pass!); sidePlanes: %s" (show sidePlanes)) $ return ()
+					D.trace (printf "DEBUG5 (pass!); sidePlanes: %s; average vertex: %s" (show sidePlanes) (show $ (spa^.spaLumpAverageVertex))) $ return ()
 					let debugPlanes = do
 						sj <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
 						let sidej = (level^.solSv) ! sj

@@ -649,7 +649,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
 					D.trace (printf "DEBUG3: x is %s" (show x)) $ return ()
 					-- Only consider intersections on the line segment.
-					guard $ 0 <= x && x <= 1
+					guard $ 0 <= x + smallNum && x - smallNum <= 1
 					D.trace "DEBUG4 (now test other planes)" $ return ()
 					-- Get the point in 3D space: this is where the ball would
 					-- be if advanced to this intersection.

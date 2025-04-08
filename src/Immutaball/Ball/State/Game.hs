@@ -476,7 +476,6 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 
 	let x'cfg = cxtn^.ibContext.ibStaticConfig
 	let gravityAcceleration = x'cfg^.x'cfgGravity
-	let bounceReturn = x'cfg^.x'cfgBounceReturn
 
 	-- Apply gravity.
 	let gravityVector = (gsa^.gsaUpVec) & z3 %~ negate  -- Mirror on xy plane.
@@ -578,6 +577,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				v0'
 
 	where
+		bounceReturn = x'cfg^.x'cfgBounceReturn
+
 		-- | Find the closest lump intersecting the ball's path, for collisions.
 		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 		--closestLumpIntersectingRaw = safeHead . catMaybes . toList $ lumpsIntersecting

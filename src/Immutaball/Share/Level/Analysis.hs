@@ -559,7 +559,7 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 			let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
 			let vs = ((sol^.solVv) !) <$> vis in
 			let vsum = sum ((^.vertP) <$> vs) in
-			let vmean = (fromIntegral $ lump^.lumpVc) `sv3` vsum in
+			let vmean = (1/(fromIntegral $ lump^.lumpVc)) `sv3` vsum in
 			(li, vmean)
 
 		-- | Simply look at an arbitrary point in the convex lump to see if a

@@ -585,8 +585,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 	where
 		-- | Find the closest lump intersecting the ball's path, for collisions.
 		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
-		--closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes . toList $ lumpsIntersecting
-		closestLumpIntersectingRaw = safeHead . sortOn (^._1) . catMaybes $ lumpsIntersecting
+		--closestLumpIntersectingRaw = safeHead . catMaybes . toList $ lumpsIntersecting
+		closestLumpIntersectingRaw = safeHead . catMaybes $ lumpsIntersecting
 
 		-- | Check cfgMaxFrameCollisions, and whether dt is already exhausted.
 		closestLumpIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
@@ -604,7 +604,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 		--lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
 		--lumpsIntersecting = level^.solLv <&> \lump ->
 		lumpsIntersecting :: [Maybe (Int32, Double, Vec3 Double, Vec3 Double)]
-		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
+		lumpsIntersecting = (\r -> D.trace (printf "DEBUG-1: lumpsIntersecting: %s" (show r)) $ r) $ flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = catMaybes $ do

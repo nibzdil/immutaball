@@ -694,6 +694,19 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 						let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
 						return sidejPlane
 					D.trace (printf "DEBUG5 (pass!); sidePlanes direct: %s" (show debugPlanes)) $ return ()
+
+					-- Finally, make sure we only register a collision if the
+					-- ball is going towards this plane, not away from it: e.g.
+					-- you can only collide against a top face from above, not
+					-- from underneath.  This prevents the same lump causing
+					-- multiple collision events for what should be a single
+					-- collision.  We can do this by making sure the dot
+					-- product of the direction (axis) of ‘lp’ and the plane
+					-- normal is not positive.
+					guard $ (lp^.a0l3) `d3` (sidePlane^.abcp3) <= 0
+
+					-- Finally, to prevent the same lump causing 
+
 					-- Finally, to prevent the same lump causing multiple
 					-- collision events for what should be a single collision,
 					-- if we're starting a physics frame (lastLi == Nothing),
@@ -725,7 +738,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining lastLi 
 						facesIntersecting
 					]
 
-				sortedIntersecting = sortOn (^._2) . filter (\col -> Just (col^._1) /= lastLi) $ allIntersecting
+				--sortedIntersecting = sortOn (^._2) . filter (\col -> Just (col^._1) /= lastLi) $ allIntersecting
+				sortedIntersecting = sortOn (^._2) $ allIntersecting
 
 				lumpComponentIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 				lumpComponentIntersecting = safeHead sortedIntersecting

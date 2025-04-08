@@ -156,9 +156,6 @@ data GameState = GameState {
 	-- | Convenience pairing of the sol with the analysis.
 	_gsSwa :: SolWithAnalysis,
 
-	-- | The position of the camera, as a counter-clock-wise angle relative to
-	-- the starting camera position of looking toward the positive y axis, with
-	-- the camera orientation specified in the Config rc file.
 	-- | The angle of the camera behind the ball - how much to ‘look right’
 	-- (yaw).
 	--
@@ -196,7 +193,10 @@ data GameStateAnalysis = GameStateAnalysis {
 	_gsaNetRightForwardJump :: (Integer, Integer, Integer),
 	-- | Net mouse left/right button down state: -1 if left only is down, 0 if neutral, 1 if right clicking only.
 	_gsaNetMouseRight :: Integer,
-	-- | Given the current world tilt, find the upvec (new z axis).
+	-- | Given the current world tilt, find the upvec (new z axis).  This does
+	-- not yet include camera rotation; this is relative to the initial camera
+	-- pos (looking straight down the positive y axis).  TODO: make it include
+	-- the camera rotation, which seems to me to make more sense.
 	_gsaUpVec :: Vec3 Double
 }
 	deriving (Eq, Ord, Show)

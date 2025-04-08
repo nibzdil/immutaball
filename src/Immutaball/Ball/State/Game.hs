@@ -475,7 +475,8 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	let gravityAcceleration = x'cfg^.x'cfgGravity
 
 	-- Apply gravity.
-	let gravityVector = (gsa^.gsaUpVec) & z3 %~ negate  -- Mirror on xy plane.
+	let gravityVectorUnrotated = (gsa^.gsaUpVec) & z3 %~ negate  -- Mirror on xy plane.
+	let gravityVector = rotatexySimple (gsn^.gsCameraAngle) `mv3` gravityVectorUnrotated
 	let updateGravity =
 		(gsBallVel %~ (+ (dt * gravityAcceleration) `sv3` gravityVector)) .
 		id

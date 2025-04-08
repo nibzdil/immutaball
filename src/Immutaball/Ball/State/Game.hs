@@ -704,8 +704,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 					let edt = x * dt
 					let p0' = ballIntersection
-					-- TODO: bounce return, but ‘scale’ it to something like the part reflected.
-					let v0' = plane3ReflectPoint (sidePlane & dp3 .~ 0) v0
+					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) v0 (bounceReturn)
 					return $ (li, edt, p0', v0')
 
 					where

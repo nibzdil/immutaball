@@ -21,6 +21,7 @@ module Immutaball.Share.Math.X3D
 		plane3PointDistance,
 		pointToPlane,
 		plane3ReflectPoint,
+		plane3ReflectPointAmount,
 		normalizePlane3,
 		negatePlaneOrientation,
 
@@ -159,7 +160,11 @@ pointToPlane v p = v `minusv3` (plane3PointDistance p v `sv3` (p^.abcp3))
 
 -- | Reflect a point about a plane.
 plane3ReflectPoint :: forall a. (Num a) => Plane3 a -> Vec3 a -> Vec3 a
-plane3ReflectPoint p v = v `pv3` (2 `sv3` (pointToPlane v p `minusv3` v))
+plane3ReflectPoint p v = plane3ReflectPointAmount p v 1
+
+-- | Reflect a point about a plane by a certain amount.
+plane3ReflectPointAmount :: forall a. (Num a) => Plane3 a -> Vec3 a -> a -> Vec3 a
+plane3ReflectPointAmount p v a = v `pv3` ((1 + a) `sv3` (pointToPlane v p `minusv3` v))
 
 -- | Construct a plane from an arbitrary point on that plane and a normal.
 --

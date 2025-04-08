@@ -63,9 +63,6 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
-import Debug.Trace as D---------------------------------------------TODO
-import Text.Printf
-
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -494,8 +491,7 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 		(gsBallPos .~ ballPos') .
 		(gsBallVel .~ ballVel') .
 		id
-	--let (gsnp2, cxtnp2) = (gsnp1 & updateBall, cxtnp1)
-	let (gsnp2, cxtnp2) = D.trace (printf "DEBUGA: ballPos, ballVel: %s, %s" (show $ ballPos') (show $ ballVel')) $ (gsnp1 & updateBall, cxtnp1)
+	let (gsnp2, cxtnp2) = (gsnp1 & updateBall, cxtnp1)
 
 	-- Identify output.
 	let gs = gsnp2
@@ -600,7 +596,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 		--lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
 		--lumpsIntersecting = level^.solLv <&> \lump ->
 		lumpsIntersecting :: [Maybe (Int32, Double, Vec3 Double, Vec3 Double)]
-		lumpsIntersecting = (\r -> D.trace (printf "DEBUG-1: lumpsIntersecting: %s" (show r)) $ r) $ flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
+		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = catMaybes $ do
@@ -626,12 +622,11 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- Note this requires that all sides have a normal pointing
 				-- _away_ from the convex lump inside the level file.
 				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				facesIntersecting = (\r -> D.trace (printf "DEBUG0: facesIntersect: %s" (show r)) $ r) $ do
+				facesIntersecting = do
 					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
 					let sidePlanes = flip M.lookup (spa^.spaLumpPlanes) li `morElse` error errMsg
 
 					-- For each side (check useDirectSol for which set of sides to use),
-					D.trace "DEBUG1" $ return ()
 					(sidx, sidePlane) <-
 						if useDirectSol
 							then do
@@ -645,15 +640,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 								(sidx, sidePlane) <- zip [0..] sidePlanes
 								return (sidx, sidePlane)
 					-- Find where on lp it intersects; abort this try if it doesn't.
-					D.trace "DEBUG2" $ return ()
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
-					D.trace (printf "DEBUG3: x is %s" (show x)) $ return ()
 					-- Only consider intersections on the line segment.
 					--guard $ (0 <= x + smallNum && x - smallNum <= 1)
 					-- The right side prevents the ball from ghost-glitching
 					-- through a wall for very short 'lp'.
 					guard $ (0 <= x + smallNum && x - smallNum <= 1) || (plane3PointDistance sidePlane (lp^.p0l3) `near` ballRadius && plane3PointDistance sidePlane (lp^.p1l3) `near` ballRadius)
-					D.trace "DEBUG4 (now test other planes)" $ return ()
 					-- Get the point in 3D space: this is where the ball would
 					-- be if advanced to this intersection.
 					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
@@ -683,14 +675,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 								-- Make sure the point is behind this plane.
 								return $ plane3PointDistance sidejPlane planeIntersection <= 0
-					--D.trace "DEBUG5 (pass!)" $ return ()
-					D.trace (printf "DEBUG5 (pass!); sidePlanes: %s; average vertex: %s" (show sidePlanes) (show $ (spa^.spaLumpAverageVertex))) $ return ()
-					let debugPlanes = do
-						sj <- [lump^.lumpS0 .. lump^.lumpS0 + lump^.lumpSc - 1]
-						let sidej = (level^.solSv) ! sj
-						let sidejPlane = normalPlane3 (sidej^.sideN) (sidej^.sideD)
-						return sidejPlane
-					D.trace (printf "DEBUG5 (pass!); sidePlanes direct: %s" (show debugPlanes)) $ return ()
 
 					-- Finally, make sure we only register a collision if the
 					-- ball is going towards this plane, not away from it: e.g.

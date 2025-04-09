@@ -730,7 +730,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					-- with timed switches.)  TODO: improve.
 					let edt = x * dt
 					let p0' = ballIntersection
-					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) v0 (bounceReturn)
+					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) (v0g edt) (bounceReturn)
 					return $ (li, edt, p0', v0')
 
 					where
@@ -770,7 +770,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				-- because of gravity, not a direct line that applies all
 				-- gravity to the next collision; alternatively find another
 				-- approach to collisions.  So TODO: improve the physics here.
-				lp = let p1 = p0 + (dt `sv3` (v0 + ((dt * gravityAcceleration) `sv3` gravityVector))) in line3Points p0 p1
+				v0g edt = v0 + ((edt * gravityAcceleration) `sv3` gravityVector)
+				lp = let p1 = p0 + (dt `sv3` v0g dt) in line3Points p0 p1
 
 		-- | It seems sols have indirection for lump sides, vertices, and
 		-- edges, but not edge indices to vertices.

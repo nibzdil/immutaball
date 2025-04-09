@@ -704,11 +704,13 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 
 					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
 
+					let edgePointBallIntersection = line3Lerp el . line3PointCoord el $ ballIntersection
+
 					-- For the reflecting plane for the ball's velocity,
 					-- construct a virtual plane essentially with the vector
 					-- from the edge to the ball's position at intersection as
 					-- normal.
-					let virtualPlane = normalPlane3 (ballIntersection - elv) 0
+					let virtualPlane = normalPlane3 (ballIntersection - edgePointBallIntersection) 0
 
 					-- Return the results of this collision, which is used if
 					-- it is found to be the first potential collision on the

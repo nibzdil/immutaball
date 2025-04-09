@@ -632,8 +632,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 
 		-- | Find the closest lump intersecting the ball's path, for collisions.
 		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
-		--closestLumpIntersectingRaw = safeHead . catMaybes . toList $ lumpsIntersecting
-		closestLumpIntersectingRaw = safeHead . catMaybes $ lumpsIntersecting
+		--closestLumpIntersectingRaw = safeHead . sortOn (^._2) . catMaybes . toList $ lumpsIntersecting
+		closestLumpIntersectingRaw = safeHead . sortOn (^._2) . catMaybes $ lumpsIntersecting
 
 		-- | Check cfgMaxFrameCollisions, and whether dt is already exhausted.
 		closestLumpIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)

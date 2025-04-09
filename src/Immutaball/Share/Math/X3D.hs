@@ -53,7 +53,15 @@ module Immutaball.Share.Math.X3D
 		eqPlane3PointsOnly,
 		eqLine3PointsOnly,
 		nearPlane3PointsOnly,
-		nearLine3PointsOnly
+		nearLine3PointsOnly,
+
+		QCurve3(..), a2q3, a1q3, a0q3,
+		qcurve3,
+		qcurvePath3,
+		pathq3,
+		qcurve3Qerp,
+		qcurve3Vel,
+		qcurve3Accel
 	) where
 
 import Prelude ()
@@ -506,3 +514,47 @@ nearPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `n
 nearLine3PointsOnly :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
 nearLine3PointsOnly a b = let na' = na & (a0l3 %~ negate) in ( (na^.p0l3) `near3` (nb^.p0l3) && (na^.p1l3) `near3` (nb^.p1l3) ) || ( (na'^.p0l3) `near3` (nb^.p0l3) && (na'^.p1l3) `near3` (nb^.p1l3) )
 	where (na, nb) = let standardize = (a0l3 %~ v3normalize) . line3NormalizeDisplacement in (standardize a, standardize b)
+
+-- | The curve represented by p = 1/2 (x^2) a2 + x a1 + a0
+-- (The 1/2 comes from integrating twice.)
+data QCurve3 a = QCurve3 {
+	_a2q3 :: Vec3 a,  -- ^ Acceleration.
+	_a1q3 :: Vec3 a,  -- ^ Velocity (linear).
+	_a0q3 :: Vec3 a   -- ^ Position (starting position at x=0).
+}
+	deriving (Eq, Ord, Show)
+makeLenses ''QCurve3
+
+-- | Make a quadratic curve by an acceleration vector, a velocity vector, and a
+-- starting position.
+qcurve3 :: Vec3 a -> Vec3 a -> Vec3 a -> QCurve3 a
+qcurve3 a2 a1 a0 = QCurve3 a2 a1 a0
+
+-- | Make a quadratic curve by an acceleration vector and a line.
+qcurvePath3 :: forall a. (Num a) => Vec3 a -> Line3 a -> QCurve3 a
+qcurvePath3 a2 path = QCurve3 a2 (path^.a0l3) (path^.ol3)
+
+-- | A lens of QCurve3 for the path: the velocity and position as a path line,
+-- ignoring the acceleration component.
+pathq3 :: forall a. (Num a) => Lens' (QCurve3 a) (Line3 a)
+pathq3 = lens getter (flip setter)
+	where
+		getter :: QCurve3 a -> Line3 a
+		getter (QCurve3 _ a1 a0) = line3Axes a0 a1
+		setter :: Line3 a -> QCurve3 a -> QCurve3 a
+		setter path (QCurve3 a2 _ _) = QCurve3 a2 (path^.a0l3) (path^.ol3)
+
+-- | Convert a coordinate on the curve to a point:
+-- p = 1/2 (x^2) a2 + x a1 + a0
+qcurve3Qerp :: forall a. (Num a, Fractional a) => QCurve3 a -> a -> Vec3 a
+qcurve3Qerp q x = ((1/2) * (sqx x)) `sv3` (q^.a2q3) + x `sv3` (q^.a1q3) + (q^.a0q3)
+
+-- | Find the velocity at a coord.
+-- v = x a2 + a1
+qcurve3Vel :: forall a. (Num a) => QCurve3 a -> a -> Vec3 a
+qcurve3Vel q x = x `sv3` (q^.a2q3) + (q^.a1q3)
+
+-- | Find the acceleration at a coord.
+-- v = a2
+qcurve3Accel :: forall a. (Num a) => QCurve3 a -> a -> Vec3 a
+qcurve3Accel q _x = (q^.a2q3)

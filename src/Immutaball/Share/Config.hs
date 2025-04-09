@@ -223,8 +223,8 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgMaxFrameCollisions = 1024,                    -- TODO: double check if you think this is a good value for this setting.
 	_x'cfgMaxFrameCollisionsDtThreshold = 0.001,        -- TODO: double check if you think this is a good value for this setting.
 	_x'cfgMaxFrameCollisionsRDistanceThreshold = 10.0,  -- TODO: double check if you think this is a good value for this setting.
-	--_x'cfgMaxPhysicsStepTime = Just 0.2
-	_x'cfgMaxPhysicsStepTime = Just 0.01  -- Smooths out the gravity bounce issue, but larger levels can't handle it.
+	--_x'cfgMaxPhysicsStepTime = Just 0.01  -- Smooths out the gravity bounce issue, but larger levels can't handle it.
+	_x'cfgMaxPhysicsStepTime = Just 0.2
 }
 
 type Neverballrc = Config

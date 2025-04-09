@@ -63,9 +63,6 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
-import Debug.Trace as D--------------------------------------------------------------------TODO
-import Text.Printf
-
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -669,8 +666,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				--checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				checkEdges = True
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				--edgesIntersecting = if' (not checkEdges) [] $ do
-				edgesIntersecting = (\r -> if' (null r) r $ D.trace (printf "DEBUG0: edgesIntersecting!!!!: %s; map avg v: %s" (show r) ( show $ flip map r $ \x -> let li = (x^._1) in flip M.lookup (spa^.spaLumpAverageVertex) li )) r) $ if' (not checkEdges) [] $ do
+				edgesIntersecting = if' (not checkEdges) [] $ do
 					-- For each edge,
 					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
@@ -697,11 +693,17 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- candidates pass, the line segment (the path) is too far
 					-- away from the edge, so we'll skip this edge.
 					let xCandidates = [lpx - lpCoordOffset, lpx + lpCoordOffset]
-					(x:_) <- return . sort . filter (\x -> 0 <= x + smallNum && x <= 1 - smallNum) $ xCandidates
+					(x:_) <- return . sort . filter (\x -> 0 <= x + smallNum && x - smallNum <= 1) $ xCandidates
 
 					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
 
 					let edgePointBallIntersection = line3Lerp el . line3PointCoord el $ ballIntersection
+
+					-- Check to make sure the intersection is actually on the
+					-- edge _line segment_, not to leave it checking its
+					-- infinite line only!
+					let intersectionElx = line3PointCoord el edgePointBallIntersection
+					guard $ 0 <= intersectionElx + smallNum && intersectionElx - smallNum <= 1
 
 					-- For the reflecting plane for the ball's velocity,
 					-- construct a virtual plane essentially with the vector

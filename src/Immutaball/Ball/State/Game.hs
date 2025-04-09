@@ -653,16 +653,20 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 		lumpsIntersecting :: [Maybe (Int32, Double, Vec3 Double, Vec3 Double)]
 		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
+				checkVertices :: Bool
+				checkVertices | (_:_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				verticesIntersecting = catMaybes $ do
-					vi <- [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
+				verticesIntersecting = if' (not checkVertices) [] . catMaybes $ do
+					vi <- indirection <$> [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
 					let vertex = (level^.solVv) ! vi
 					-- TODO
 					return Nothing
 
+				checkEdges :: Bool
+				checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				edgesIntersecting = catMaybes $ do
-					ei <- [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
+				edgesIntersecting = if' (not checkEdges) [] . catMaybes $ do
+					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
 					-- TODO
 					return Nothing
@@ -677,7 +681,13 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				-- Note this requires that all sides have a normal pointing
 				-- _away_ from the convex lump inside the level file.
 				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				facesIntersecting = do
+				facesIntersecting = facesIntersecting' False
+				facesIntersectingNoBounds :: [(Int32, Double, Vec3 Double, Vec3 Double)]
+				facesIntersectingNoBounds = facesIntersecting' True
+				-- | We use ignoreEdgeBounds when checking for edge and vertex
+				-- intersections.
+				facesIntersecting' :: Bool -> [(Int32, Double, Vec3 Double, Vec3 Double)]
+				facesIntersecting' ignoreEdgeBounds = do
 					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
 					let sidePlanes = flip M.lookup (spa^.spaLumpPlanes) li `morElse` error errMsg
 
@@ -713,7 +723,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					let planeIntersection = pointToPlane ballIntersection sidePlane
 					-- Only consider intersections whose plane intersection
 					-- points are behind all other sides.
-					guard . and $ do
+					guard . (if' ignoreEdgeBounds (const True) id) . and $ do
 						if useDirectSol
 							then do
 								let si = sidx

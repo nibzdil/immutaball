@@ -63,6 +63,9 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+import Debug.Trace as D  ---------------------------------------------------------TODO
+import Text.Printf
+
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -667,6 +670,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				checkEdges = True
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				edgesIntersecting = if' (not checkEdges) [] $ do
+					D.trace "DEBUG0: edge check!" $ return ()
 					-- For each edge,
 					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei

@@ -63,6 +63,9 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+import Debug.Trace as D -------------------------------------------------------------- TODO
+import Text.Printf
+
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -663,9 +666,13 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					return Nothing
 
 				checkEdges :: Bool
-				checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
+				--checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
+				checkEdges = True
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				edgesIntersecting = if' (not checkEdges) [] $ do
+				--edgesIntersecting = if' (not checkEdges) [] $ do
+				edgesIntersecting = (\r -> if' (null r) r $ D.trace (printf "DEBUG: edgesIntersecting: %s" (show r)) r) . if' (not checkEdges) [] $ do
+					D.trace (printf "DEBUG-1: checking an edge") $ return ()
+
 					-- For each edge,
 					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
@@ -673,10 +680,11 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					let el = line3Points vi vj
 
 					-- Find the distance between the path (lp) and the edge.
-					let ed = line3Line3Distance lp el
+					let ed = abs $ line3Line3Distance lp el
 
 					-- Skip it's too far away.
-					guard $ ed > ballRadius
+					guard $ ed <= ballRadius
+					D.trace (printf "DEBUG-0.5: lp, el, ed, linelinecloscoords lp el: %s, %s, %s, %s" (show lp) (show el) (show ed) (show $ line3Line3ClosestCoords lp el)) $ return ()
 
 					-- Find the closest point.
 					Just (lpx, elx) <- return $ line3Line3ClosestCoords lp el
@@ -701,6 +709,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					let edt = x * dt
 					let p0' = ballIntersection
 					let v0' = plane3ReflectPointAmount (virtualPlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- v0g: Apply gravity for this path.
+					D.trace (printf "DEBUG0: edge!!!!") $ return ()
 					return $ (li, edt, p0', v0')
 
 				-- | Find all faces that intersect p0->p1.

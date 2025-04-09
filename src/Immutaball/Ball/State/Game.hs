@@ -703,6 +703,31 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					-- we would need if we ended up picking this after finding it
 					-- is indeed the closest.
 
+					-- TODO: see note below on that lp should be a curve.
+					--let edt = x * dt  -- Without gravity inside lp.
+					-- Since we're simplifying the physics a bit for now (TODO:
+					-- improve), lp as noted below is a straight line instead
+					-- of a curve (due to gravity), and our implementation with
+					-- this makes the collisions able to change depending on
+					-- frame rate (e.g.  say the ball is travelling leftwards
+					-- at first, with gravity pulling it down: a higher frame
+					-- rate would more closely approximate a curve, but a
+					-- slower frame rate would make the ball travel in more of
+					-- a line, so if a lump is only in either the fast or the
+					-- slow FPS path, a collision could happen iff the frame
+					-- rate were high or low enough).  TODO: take the curve of
+					-- the ball and test the curve for intersections for
+					-- collisions (or an equivalent alternative algorithm)
+					-- rather than a straight line.  This will do for now,
+					-- though.
+					--
+					-- For edt for now just assume the gravitational component
+					-- is insignificant, which is false when the frame rate is
+					-- slow.  (With gravity, expending ‘x*dt’ dt does not
+					-- actually get you as far with slow fps, meaning the ball
+					-- would travel more slowly.  Usually this is
+					-- disadvantageous but it's possible to be benificial, e.g.
+					-- with timed switches.)  TODO: improve.
 					let edt = x * dt
 					let p0' = ballIntersection
 					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) v0 (bounceReturn)
@@ -734,13 +759,17 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 			where
 				-- | Draw a line segment from the ball's position (center of
 				-- sphere) to the tentative end-point if all dt were to be
-				--
 				-- expended now using its velocity.
+				--
 				-- TODO: double check edge cases of small lp don't cause
 				-- issues.  The guard has a p0 and p1 nearness check, but there
 				-- might still be issues.
 				--
-				-- Apply gravity here.
+				-- Apply gravity here.  TODO: it might be more involved to
+				-- improve the physics here, but lp should actually be a curve
+				-- because of gravity, not a direct line that applies all
+				-- gravity to the next collision; alternatively find another
+				-- approach to collisions.  So TODO: improve the physics here.
 				lp = let p1 = p0 + (dt `sv3` (v0 + ((dt * gravityAcceleration) `sv3` gravityVector))) in line3Points p0 p1
 
 		-- | It seems sols have indirection for lump sides, vertices, and

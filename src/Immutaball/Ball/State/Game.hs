@@ -828,8 +828,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				allIntersecting = concat $
 					[
 						verticesIntersecting,
-						edgesIntersecting--,
-						--facesIntersecting
+						edgesIntersecting,
+						facesIntersecting
 					]
 
 				sortedIntersecting = sortOn (^._2) $ allIntersecting

@@ -52,7 +52,7 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 
 		-- Capture mouse on entry (TODO: only capture when actively playing, not paused or in intermession).
 		isFirst <- delay True -< False
-		() <- monadic -< if' (not $ isFirst) (return ()) . void . liftIBIO $ sdl sdlh (SDLCaptureMouse True id)
+		() <- monadic -< if' (not $ isFirst) (return ()) . void . liftIBIO $ sdl sdlh (SDLSetRelativeMouseMode True id)
 
 		-- GUI: don't process here quite yet, only because our overall rendering
 		-- plan requires the scene to render first, before GUI.
@@ -92,7 +92,7 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let isBack = isEsc
 
 		-- Release mouse on isEsc or isBack.
-		() <- monadic -< if' (not (isEsc || isBack)) (return ()) . void . liftIBIO $ sdl sdlh (SDLCaptureMouse False id)
+		() <- monadic -< if' (not (isEsc || isBack)) (return ()) . void . liftIBIO $ sdl sdlh (SDLSetRelativeMouseMode False id)
 
 		() <- finishFrame -< (request, cxtnp4)
 		cxt <- returnA -< cxtnp4

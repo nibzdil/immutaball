@@ -682,7 +682,9 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- Find the distance between the path (lp) and the edge.
 					let ed = abs $ line3Line3Distance lp el
 
-					-- Skip it's too far away.
+					-- Skip if _the infinite lines_ are too far away.  However,
+					-- the line segments may still be too far away even if the
+					-- infinite lines are not, so we'll filter lp coords in [0, 1].
 					guard $ ed <= ballRadius
 					D.trace (printf "DEBUG-0.5: lp, el, ed, linelinecloscoords lp el: %s, %s, %s, %s" (show lp) (show el) (show ed) (show $ line3Line3ClosestCoords lp el)) $ return ()
 
@@ -693,7 +695,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- Find the point on lp where the ball is at when it first
 					-- collides with the edge.
 					let lpCoordOffset = abs $ line3DistanceCoordFromPoint lp elv ballRadius
-					let x | lpx - lpCoordOffset >= 0 = lpx - lpCoordOffset | otherwise = lpx + lpCoordOffset
+
+					-- Find candidates for x: they must be within [0, 1]; if no
+					-- candidates pass, the line segment (the path) is too far
+					-- away from the edge, so we'll skip this edge.
+					let xCandidates = [lpx - lpCoordOffset, lpx + lpCoordOffset]
+					(x:_) <- return . sort . filter (\x -> 0 <= x + smallNum && x <= 1 - smallNum) $ xCandidates
 
 					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
 

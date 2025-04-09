@@ -710,7 +710,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- construct a virtual plane essentially with the vector
 					-- from the edge to the ball's position at intersection as
 					-- normal.
-					let virtualPlane = normalPlane3 (ballIntersection - edgePointBallIntersection) 0
+					let virtualPlane = normalPlane3 (v3normalize $ ballIntersection - edgePointBallIntersection) 0
 
 					-- Make sure the ball is going towards the edge, not away
 					-- from it, similar to the normal check for planes for

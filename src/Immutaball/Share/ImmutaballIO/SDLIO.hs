@@ -26,6 +26,7 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		-- * Runners
 		runSDLIOIO,
 		hsdlttfRender,
+		hsdlcaptureMouse,
 
 		-- * SDLIO aliases that apply the Fixed wrapper
 		mkSDLWithInit,
@@ -40,6 +41,7 @@ module Immutaball.Share.ImmutaballIO.SDLIO
 		mkSDLTTFLoad,
 		mkSDLTTFRender,
 		mkSDLTTFRenderSync,
+		mkSDLCaptureMouse,
 
 		-- * types
 		SDLData,
@@ -66,6 +68,7 @@ import qualified SDL.Event
 import qualified SDL.Font
 import qualified SDL.Init
 import qualified SDL.Raw.Enum
+import qualified SDL.Raw.Event
 import qualified SDL.Raw.Types
 import qualified SDL.Vect
 import qualified SDL.Video
@@ -111,6 +114,8 @@ data SDLIOF me =
 	-- | Tight RGBA encoding.  Caching recommended.
 	| SDLTTFRender SDL.Font.Font T.Text (Async (WidthHeightI, SDLData) -> me)
 	| SDLTTFRenderSync SDL.Font.Font T.Text ((WidthHeightI, SDLData) -> me)
+
+	| SDLCaptureMouse Bool (Integer -> me)
 instance Functor SDLIOF where
 	fmap :: (a -> b) -> (SDLIOF a -> SDLIOF b)
 	fmap f (SDLWithInit subsystems sdlio)         = SDLWithInit subsystems (f sdlio)
@@ -125,6 +130,7 @@ instance Functor SDLIOF where
 	fmap f (SDLTTFLoad path size withFont)        = SDLTTFLoad path size (f . withFont)
 	fmap f (SDLTTFRender font text withImage)     = SDLTTFRender font text (f . withImage)
 	fmap f (SDLTTFRenderSync font text withImage) = SDLTTFRenderSync font text (f . withImage)
+	fmap f (SDLCaptureMouse enable withSuccess)   = SDLCaptureMouse enable (f . withSuccess)
 
 runSDLIO :: SDLIO -> IO ()
 runSDLIO sdlio = cata runSDLIOIO sdlio
@@ -197,6 +203,7 @@ unsafeFixSDLIOFTo mme f = unsafePerformIO $ do
 		_y@(SDLTTFLoad path size withFont)        -> return $ SDLTTFLoad       path size ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withFont)
 		_y@(SDLTTFRender font text withImage)     -> return $ SDLTTFRender     font text ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withImage)
 		_y@(SDLTTFRenderSync font text withImage) -> return $ SDLTTFRenderSync font text ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withImage)
+		_y@(SDLCaptureMouse enable withSuccess)   -> return $ SDLCaptureMouse  enable    ((\me -> unsafePerformIO $ putMVar mme me >> return me) . withSuccess)
 
 -- * Runners
 
@@ -230,6 +237,7 @@ runSDLIOIO (SDLTTFLoad path size withFont) = do
 	withFont font
 runSDLIOIO (SDLTTFRender font text withImage) = withAsync (hsdlttfRender font text) withImage
 runSDLIOIO (SDLTTFRenderSync font text withImage) = hsdlttfRender font text >>= withImage
+runSDLIOIO (SDLCaptureMouse enable withSuccess) = hsdlcaptureMouse enable >>= withSuccess
 
 -- | Render to a tight RGBA image.
 --
@@ -285,6 +293,9 @@ hsdlttfRender font text = do
 	SDL.Video.Renderer.freeSurface fmt1Surface
 	return result
 
+hsdlcaptureMouse :: Bool -> IO Integer
+hsdlcaptureMouse enable = fromIntegral <$> SDL.Raw.Event.captureMouse enable
+
 -- * SDLIO aliases that apply the Fixed wrapper
 
 mkSDLWithInit :: [SDL.Init.InitFlag] -> SDLIO -> SDLIO
@@ -322,6 +333,9 @@ mkSDLTTFRender font text withImage = Fixed $ SDLTTFRender font text withImage
 
 mkSDLTTFRenderSync :: SDL.Font.Font -> T.Text -> ((WidthHeightI, SDLData) -> SDLIO) -> SDLIO
 mkSDLTTFRenderSync font text withImage = Fixed $ SDLTTFRenderSync font text withImage
+
+mkSDLCaptureMouse :: Bool -> (Integer -> SDLIO) -> SDLIO
+mkSDLCaptureMouse enable withSuccess = Fixed $ SDLCaptureMouse enable withSuccess
 
 -- * types
 

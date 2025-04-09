@@ -564,7 +564,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 	case closestLumpIntersecting of  -- Find the next collision.
 		Nothing ->  -- No more collisions this frame.
 			-- Gravity: apply gravity to the rest of the path.
-			let (p1, v1) = (p0 + (dt `sv3` v0), v0 + ((dt * gravityAcceleration) `sv3` gravityVector)) in (p1, v1)  -- Expend the rest of dt after the last collision.
+			let (p1, v1) = (p0 + (dt `sv3` v0), v0g dt) in (p1, v1)  -- Expend the rest of dt after the last collision.
 		Just (_lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
 			-- Gravity: only apply the gravity vector through to the next collision, later on when we produce what is v0' here.
 			physicsBallAdvanceBruteForceCompute
@@ -649,15 +649,14 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 								return (sidx, sidePlane)
 					-- Find where on lp it intersects; abort this try if it doesn't.
 					Just x <- return $ line3CoordAtDistancePlane3 sidePlane lp ballRadius
-					let xg = line3CoordAtDistancePlane3 sidePlane lpg ballRadius `morElse` x
 					-- Only consider intersections on the line segment.
 					--guard $ (0 <= x + smallNum && x - smallNum <= 1)
 					-- The right side prevents the ball from ghost-glitching
 					-- through a wall for very short 'lp' ('onPlaneCheck').
-					let intersectsLp  = 0 <= xg + smallNum && xg - smallNum <= 1
-					let intersectsLpg = 0 <= x  + smallNum && x  - smallNum <= 1
+					let intersectsLp  = 0 <= x + smallNum && x - smallNum <= 1
 					let onPlaneCheck  = plane3PointDistance sidePlane (lp^.p0l3) `near` ballRadius && plane3PointDistance sidePlane (lp^.p1l3) `near` ballRadius
-					guard $ (intersectsLp || intersectsLpg) || onPlaneCheck
+					guard $ intersectsLp || onPlaneCheck
+
 					-- Get the point in 3D space: this is where the ball would
 					-- be if advanced to this intersection.
 					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
@@ -702,35 +701,9 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					-- we would need if we ended up picking this after finding it
 					-- is indeed the closest.
 
-					-- TODO: see note below on that lp should be a curve.
-					--let edt = x * dt  -- Without gravity inside lp.
-					-- Since we're simplifying the physics a bit for now (TODO:
-					-- improve), lp as noted below is a straight line instead
-					-- of a curve (due to gravity), and our implementation with
-					-- this makes the collisions able to change depending on
-					-- frame rate (e.g.  say the ball is travelling leftwards
-					-- at first, with gravity pulling it down: a higher frame
-					-- rate would more closely approximate a curve, but a
-					-- slower frame rate would make the ball travel in more of
-					-- a line, so if a lump is only in either the fast or the
-					-- slow FPS path, a collision could happen iff the frame
-					-- rate were high or low enough).  TODO: take the curve of
-					-- the ball and test the curve for intersections for
-					-- collisions (or an equivalent alternative algorithm)
-					-- rather than a straight line.  This will do for now,
-					-- though.
-					--
-					-- For edt for now just assume the gravitational component
-					-- is insignificant, which is false when the frame rate is
-					-- slow.  (With gravity, expending ‘x*dt’ dt does not
-					-- actually get you as far with slow fps, meaning the ball
-					-- would travel more slowly.  Usually this is
-					-- disadvantageous but it's possible to be benificial, e.g.
-					-- with timed switches.)  TODO: improve.
-					let x'  = min 1 $ x  -- Make sure edt doesn't go negative if we disregard an extra gravity component.
-					let edt = x' * dt
+					let edt = x * dt
 					let p0' = ballIntersection
-					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- Apply gravity for this path.
+					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- v0g: Apply gravity for this path.
 					return $ (li, edt, p0', v0')
 
 					where
@@ -759,25 +732,18 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 			where
 				-- | Draw a line segment from the ball's position (center of
 				-- sphere) to the tentative end-point if all dt were to be
-				-- expended now using its current velocity.  lpg is the same
-				-- except it adds gravity.
+				-- expended now using its current velocity.
 				--
 				-- TODO: double check edge cases of small lp don't cause
 				-- issues.  The guard has a p0 and p1 nearness check, but there
 				-- might still be issues.
-				--
-				-- Apply gravity here.  TODO: it might be more involved to
-				-- improve the physics here, but lp should actually be a curve
-				-- because of gravity, not a direct line that applies all
-				-- gravity to the next collision; alternatively find another
-				-- approach to collisions.  So TODO: improve the physics here.
-				v0g edt = v0 + ((edt * gravityAcceleration) `sv3` gravityVector)
-				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1  -- If there were no gravity, we could use straight lines without sacrificing physics quality.
-				lpg = let p1 = p0 + (dt `sv3` v0g dt) in line3Points p0 p1
+				lp = let p1 = p0 + (dt `sv3` v0) in line3Points p0 p1
 
 		-- | It seems sols have indirection for lump sides, vertices, and
 		-- edges, but not edge indices to vertices.
 		indirection :: Int32 -> Int32
 		indirection idx = (level^.solIv) ! idx
+
+		v0g edt = v0 + ((edt * gravityAcceleration) `sv3` gravityVector)  -- What velocity is if v0 has time added to gravity.
 
 -- * Local utils.

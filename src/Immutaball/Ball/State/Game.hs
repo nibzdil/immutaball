@@ -657,8 +657,15 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
 				checkVertices :: Bool
+				-- I suspect checking the length of facesIntersectingNoBounds
+				-- can introduce a space leak (e.g. try out retour de force 2),
+				-- but it turns out probably checking the length of
+				-- edgesIntersecting is probably better anyway.
 				--checkVertices | (_:_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
-				checkVertices | (_:_:_) <- edgesIntersecting = True | otherwise = False
+				-- TODO FIXME: verify this also isn't broken, but for now just
+				-- always check verts.
+				--checkVertices | (_:_:_) <- edgesIntersecting = True | otherwise = False
+				checkVertices = True
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = if' (not checkVertices) [] . catMaybes $ do
 					vi <- indirection <$> [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
@@ -667,6 +674,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					return Nothing
 
 				checkEdges :: Bool
+				-- TODO FIXME: length >= 2 seems to cause edge collision detection
+				-- to not work.  For now just disable this check.
 				--checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				checkEdges = True
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]

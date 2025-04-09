@@ -19,7 +19,7 @@ import Immutaball.Prelude
 
 import Control.Arrow
 import Control.Lens
---import Control.Monad
+import Control.Monad
 --import Data.Functor.Identity
 
 --import Control.Lens
@@ -30,9 +30,12 @@ import qualified SDL.Raw.Enum as Raw
 import Immutaball.Ball.Game
 import Immutaball.Ball.LevelSets
 import Immutaball.Ball.State.Game
+import Immutaball.Share.Context
 import Immutaball.Share.GUI
+import Immutaball.Share.ImmutaballIO.SDLIO
 import Immutaball.Share.Level
 import Immutaball.Share.Math
+import Immutaball.Share.SDLManager
 import Immutaball.Share.State
 import Immutaball.Share.State.Context
 import Immutaball.Share.Utils
@@ -44,6 +47,12 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 	rec
 		cxtLast <- delay cxt0 -< cxt
 		cxtn <- requireBasics -< (cxtLast, request)
+
+		let sdlh = cxtn^.ibContext.ibSDLManagerHandle
+
+		-- Capture mouse on entry (TODO: only capture when actively playing, not paused or in intermession).
+		isFirst <- delay True -< False
+		() <- monadic -< if' (not $ isFirst) (return ()) . void . liftIBIO $ sdl sdlh (SDLCaptureMouse True id)
 
 		-- GUI: don't process here quite yet, only because our overall rendering
 		-- plan requires the scene to render first, before GUI.
@@ -81,6 +90,9 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 
 		let isEsc  = (const False ||| (== (fromIntegral Raw.SDLK_ESCAPE, True))) . matching _Keybd $ request
 		let isBack = isEsc
+
+		-- Release mouse on isEsc or isBack.
+		() <- monadic -< if' (not (isEsc || isBack)) (return ()) . void . liftIBIO $ sdl sdlh (SDLCaptureMouse False id)
 
 		() <- finishFrame -< (request, cxtnp4)
 		cxt <- returnA -< cxtnp4

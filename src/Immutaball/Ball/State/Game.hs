@@ -657,7 +657,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
 				checkVertices :: Bool
-				checkVertices | (_:_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
+				--checkVertices | (_:_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
+				checkVertices | (_:_:_) <- edgesIntersecting = True | otherwise = False
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = if' (not checkVertices) [] . catMaybes $ do
 					vi <- indirection <$> [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]

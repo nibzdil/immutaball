@@ -665,11 +665,43 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				checkEdges :: Bool
 				checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				edgesIntersecting = if' (not checkEdges) [] . catMaybes $ do
+				edgesIntersecting = if' (not checkEdges) [] $ do
+					-- For each edge,
 					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
-					-- TODO
-					return Nothing
+					let (vi, vj) = (((level^.solVv) ! (edge^.edgeVi))^.vertP, ((level^.solVv) ! (edge^.edgeVj))^.vertP)
+					let el = line3Points vi vj
+
+					-- Find the distance between the path (lp) and the edge.
+					let ed = line3Line3Distance lp el
+
+					-- Skip it's too far away.
+					guard $ ed > ballRadius
+
+					-- Find the closest point.
+					Just (lpx, elx) <- return $ line3Line3ClosestCoords lp el
+					let elv = line3Lerp el elx
+
+					-- Find the point on lp where the ball is at when it first
+					-- collides with the edge.
+					let lpCoordOffset = abs $ line3DistanceCoordFromPoint lp elv ballRadius
+					let x | lpx - lpCoordOffset >= 0 = lpx - lpCoordOffset | otherwise = lpx + lpCoordOffset
+
+					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
+
+					-- For the reflecting plane for the ball's velocity,
+					-- construct a virtual plane essentially with the vector
+					-- from the edge to the ball's position at intersection as
+					-- normal.
+					let virtualPlane = normalPlane3 (ballIntersection - elv) 0
+
+					-- Return the results of this collision, which is used if
+					-- it is found to be the first potential collision on the
+					-- path lp.
+					let edt = x * dt
+					let p0' = ballIntersection
+					let v0' = plane3ReflectPointAmount (virtualPlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- v0g: Apply gravity for this path.
+					return $ (li, edt, p0', v0')
 
 				-- | Find all faces that intersect p0->p1.
 				--

@@ -597,8 +597,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 			ballRadius
 			gravityVector
 			(dt - maxPhysicsStepTime)
-			p0
-			v0
+			p1
+			v1
 	-- Now step the physics.
 	| otherwise =
 		case closestLumpIntersecting of  -- Find the next collision.

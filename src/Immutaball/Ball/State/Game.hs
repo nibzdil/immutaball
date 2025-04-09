@@ -746,8 +746,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				-- _away_ from the convex lump inside the level file.
 				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				facesIntersecting = facesIntersecting' False
-				facesIntersectingNoBounds :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				facesIntersectingNoBounds = facesIntersecting' True
+				_facesIntersectingNoBounds :: [(Int32, Double, Vec3 Double, Vec3 Double)]
+				_facesIntersectingNoBounds = facesIntersecting' True
 				-- | We use ignoreEdgeBounds when checking for edge and vertex
 				-- intersections.
 				facesIntersecting' :: Bool -> [(Int32, Double, Vec3 Double, Vec3 Double)]

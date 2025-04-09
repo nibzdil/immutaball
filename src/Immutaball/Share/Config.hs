@@ -22,7 +22,7 @@ module Immutaball.Share.Config
 			x'cfgCameraDistance, x'cfgCameraRaisedCircles, x'cfgMaxTilt,
 			x'cfgGravity, x'cfgBounceReturn, x'cfgMaxFrameCollisions,
 			x'cfgMaxFrameCollisionsDtThreshold,
-			x'cfgMaxFrameCollisionsRDistanceThreshold,
+			x'cfgMaxFrameCollisionsRDistanceThreshold, x'cfgMaxPhysicsStepTime,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -153,7 +153,16 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- resetting the collision counter.
 	_x'cfgMaxFrameCollisionsDtThreshold :: Double,
 	-- | If this much distance (in terms of ball radius) has passed, then also reset the collision counter.
-	_x'cfgMaxFrameCollisionsRDistanceThreshold :: Double
+	_x'cfgMaxFrameCollisionsRDistanceThreshold :: Double,
+	-- | How far in time to step the physics world at a time, at most.
+	-- We only need this because our simplistic physics doesn't properly model
+	-- the curves of gravity, but instead adds a sudden burst of gravity onto
+	-- the velocity each frame (or collision within a step within a frame),
+	-- since without it the line approximations can make the ball get too much
+	-- gravity at once, sending it flying.  Already the ball is bouncy even
+	-- with this, however, so TODO: improve the physics to fix the bouncy
+	-- elevator/gravity problem.
+	_x'cfgMaxPhysicsStepTime :: Maybe Double
 }
 makeLenses ''StaticConfig'
 
@@ -211,9 +220,10 @@ defaultStaticConfig = StaticConfig {
 
 	_x'cfgGravity = 9.8,
 	_x'cfgBounceReturn = 0.7,
-	_x'cfgMaxFrameCollisions = 1024,                   -- TODO: double check if you think this is a good value for this setting.
-	_x'cfgMaxFrameCollisionsDtThreshold = 0.001,       -- TODO: double check if you think this is a good value for this setting.
-	_x'cfgMaxFrameCollisionsRDistanceThreshold = 10.0  -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisions = 1024,                    -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisionsDtThreshold = 0.001,        -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisionsRDistanceThreshold = 10.0,  -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxPhysicsStepTime = Just 0.1
 }
 
 type Neverballrc = Config

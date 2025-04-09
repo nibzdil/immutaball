@@ -212,7 +212,7 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgGravity = 9.8,
 	_x'cfgBounceReturn = 0.7,
 	_x'cfgMaxFrameCollisions = 1024,                   -- TODO: double check if you think this is a good value for this setting.
-	_x'cfgMaxFrameCollisionsDtThreshold = 0.001        -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisionsDtThreshold = 0.001,       -- TODO: double check if you think this is a good value for this setting.
 	_x'cfgMaxFrameCollisionsRDistanceThreshold = 10.0  -- TODO: double check if you think this is a good value for this setting.
 }
 

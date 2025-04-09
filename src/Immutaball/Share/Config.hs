@@ -22,6 +22,7 @@ module Immutaball.Share.Config
 			x'cfgCameraDistance, x'cfgCameraRaisedCircles, x'cfgMaxTilt,
 			x'cfgGravity, x'cfgBounceReturn, x'cfgMaxFrameCollisions,
 			x'cfgMaxFrameCollisionsDtThreshold,
+			x'cfgMaxFrameCollisionsRDistanceThreshold,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -150,7 +151,9 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	_x'cfgMaxFrameCollisions :: Integer,
 	-- | For the squish physics mechanic, how much time has to pass before
 	-- resetting the collision counter.
-	_x'cfgMaxFrameCollisionsDtThreshold :: Double
+	_x'cfgMaxFrameCollisionsDtThreshold :: Double,
+	-- | If this much distance (in terms of ball radius) has passed, then also reset the collision counter.
+	_x'cfgMaxFrameCollisionsRDistanceThreshold :: Double
 }
 makeLenses ''StaticConfig'
 
@@ -208,8 +211,9 @@ defaultStaticConfig = StaticConfig {
 
 	_x'cfgGravity = 9.8,
 	_x'cfgBounceReturn = 0.7,
-	_x'cfgMaxFrameCollisions = 1024,             -- TODO: double check if you think this is a good value for this setting.
-	_x'cfgMaxFrameCollisionsDtThreshold = 0.001  -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisions = 1024,                   -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisionsDtThreshold = 0.001        -- TODO: double check if you think this is a good value for this setting.
+	_x'cfgMaxFrameCollisionsRDistanceThreshold = 10.0  -- TODO: double check if you think this is a good value for this setting.
 }
 
 type Neverballrc = Config

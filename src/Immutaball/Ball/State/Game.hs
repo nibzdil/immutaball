@@ -564,6 +564,7 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
+-- TODO: use x'cfgMaxFrameCollisionsRDistanceThreshold too.
 physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level spa ballRadius gravityVector dt p0 v0 =
 	case closestLumpIntersecting of  -- Find the next collision.

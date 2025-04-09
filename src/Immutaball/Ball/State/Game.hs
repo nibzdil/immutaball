@@ -565,7 +565,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 		Nothing ->  -- No more collisions this frame.
 			-- Gravity: apply gravity to the rest of the path.
 			let (p1, v1) = (p0 + (dt `sv3` v0), v0 + ((dt * gravityAcceleration) `sv3` gravityVector)) in (p1, v1)  -- Expend the rest of dt after the last collision.
-		Just (_lastLi', edt, p0', v0', gravityVector') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
+		Just (_lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
 			-- Gravity: only apply the gravity vector through to the next collision, later on when we produce what is v0' here.
 			physicsBallAdvanceBruteForceCompute
 				( if' (thresholdTimeRemaining <= 0) 0                                                 (numCollisions + 1)            )
@@ -574,7 +574,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				level
 				spa
 				ballRadius
-				gravityVector'
+				gravityVector
 				(dt - edt)
 				p0'
 				v0'
@@ -584,12 +584,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 		gravityAcceleration = x'cfg^.x'cfgGravity
 
 		-- | Find the closest lump intersecting the ball's path, for collisions.
-		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 		--closestLumpIntersectingRaw = safeHead . catMaybes . toList $ lumpsIntersecting
 		closestLumpIntersectingRaw = safeHead . catMaybes $ lumpsIntersecting
 
 		-- | Check cfgMaxFrameCollisions, and whether dt is already exhausted.
-		closestLumpIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)
+		closestLumpIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 		closestLumpIntersecting
 			| numCollisions >= (x'cfg^.x'cfgMaxFrameCollisions) = Nothing
 			| dt <= 0 || (dt - 0) `equivalentSmall` 0           = Nothing
@@ -597,23 +597,23 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 		-- | Map each lump into the closest collision, and get 1) the dt
 		-- needed to expend to advance the ball to this point of collision, 2)
-		-- the new ball pos and 3) ball vel, and 4) new gravity vector (see TODO).
+		-- the new ball pos and 3) ball vel.
 		--
 		-- Only the closest collision will be used for advancing the ball,
 		-- before checking for collision again afterwards.
 		--lumpsIntersecting :: Array Int32 (Maybe (Double, Vec3 Double, Vec3 Double))
 		--lumpsIntersecting = level^.solLv <&> \lump ->
-		lumpsIntersecting :: [Maybe (Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)]
+		lumpsIntersecting :: [Maybe (Int32, Double, Vec3 Double, Vec3 Double)]
 		lumpsIntersecting = flip fmap (zip [0..] (toList $ level^.solLv)) . uncurry $ \li lump ->
 			let
-				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)]
+				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				verticesIntersecting = catMaybes $ do
 					vi <- [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
 					let vertex = (level^.solVv) ! vi
 					-- TODO
 					return Nothing
 
-				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)]
+				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				edgesIntersecting = catMaybes $ do
 					ei <- [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
@@ -629,7 +629,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 				--
 				-- Note this requires that all sides have a normal pointing
 				-- _away_ from the convex lump inside the level file.
-				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)]
+				facesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
 				facesIntersecting = do
 					let errMsg = "Internal error: physicsBallAdvanceBruteForceCompute: sides data missing for lump with li " ++ (show li) ++ "."
 					let sidePlanes = flip M.lookup (spa^.spaLumpPlanes) li `morElse` error errMsg
@@ -729,15 +729,9 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 					-- with timed switches.)  TODO: improve.
 					let x'  = min 1 $ x  -- Make sure edt doesn't go negative if we disregard an extra gravity component.
 					let edt = x' * dt
-					--let edt = xg * dt
 					let p0' = ballIntersection
-					-- TODO: only apply gravity for the distance moved.
-					--let bounceReturn' = if' onBothPlaneCheck 0 bounceReturn
-					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) (v0g edt) (bounceReturn)
-					--let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) v0 (bounceReturn)
-					let gravityVector' = if' (not $ intersectsLpg && not intersectsLp) gravityVector (plane3ReflectPointAmount (sidePlane & dp3 .~ 0) gravityVector 0)  -- TODO: there might be a better and cleaner way to implement this physics than disabling gravity for the frame after a collision when gravity changes not-intersects to yes-intersects.  TODO: document.
-					--let gravityVector' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) gravityVector 0  -- TODO: there might be a better and cleaner way to implement this physics than disabling gravity for the frame after a collision.
-					return $ (li, edt, p0', v0', gravityVector')
+					let v0' = plane3ReflectPointAmount (sidePlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- Apply gravity for this path.
+					return $ (li, edt, p0', v0')
 
 					where
 						useDirectSol = False
@@ -754,7 +748,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 
 				sortedIntersecting = sortOn (^._2) $ allIntersecting
 
-				lumpComponentIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double, Vec3 Double)
+				lumpComponentIntersecting :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)
 				lumpComponentIntersecting = safeHead sortedIntersecting
 
 				-- Make sure the lump isn't the one we last used for collisions.

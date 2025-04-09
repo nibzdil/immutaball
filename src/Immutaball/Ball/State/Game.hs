@@ -63,6 +63,9 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+import Debug.Trace as D--------------------------------------------------------------------TODO
+import Text.Printf
+
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -666,7 +669,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				--checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				checkEdges = True
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				edgesIntersecting = if' (not checkEdges) [] $ do
+				--edgesIntersecting = if' (not checkEdges) [] $ do
+				edgesIntersecting = (\r -> if' (null r) r $ D.trace (printf "DEBUG0: edgesIntersecting!!!!: %s; map avg v: %s" (show r) ( show $ flip map r $ \x -> let li = (x^._1) in flip M.lookup (spa^.spaLumpAverageVertex) li )) r) $ if' (not checkEdges) [] $ do
 					-- For each edge,
 					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei

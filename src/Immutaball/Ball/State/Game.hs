@@ -712,6 +712,12 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- normal.
 					let virtualPlane = normalPlane3 (ballIntersection - edgePointBallIntersection) 0
 
+					-- Make sure the ball is going towards the edge, not away
+					-- from it, similar to the normal check for planes for
+					-- avoiding multiple collisions in a single step for me
+					-- thasme lump.
+					guard $ (lp^.a0l3) `d3` (virtualPlane^.abcp3) <= 0
+
 					-- Return the results of this collision, which is used if
 					-- it is found to be the first potential collision on the
 					-- path lp.
@@ -822,8 +828,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				allIntersecting = concat $
 					[
 						verticesIntersecting,
-						edgesIntersecting,
-						facesIntersecting
+						edgesIntersecting--,
+						--facesIntersecting
 					]
 
 				sortedIntersecting = sortOn (^._2) $ allIntersecting

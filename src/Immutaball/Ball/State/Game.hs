@@ -63,6 +63,9 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
+import Debug.Trace as D  -----------------------------------------------TODO
+import Text.Printf
+
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -664,7 +667,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				--checkVertices | (_:_:_) <- edgesIntersecting = True | otherwise = False
 				checkVertices = True
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				verticesIntersecting = if' (not checkVertices) [] $ do
+				--verticesIntersecting = if' (not checkVertices) [] $ do
+				verticesIntersecting = (\r -> if' (null r) r $ D.trace (printf "DEBUG0: verticesIntersecting!!!!: %s" (show r)) $ r) $ if' (not checkVertices) [] $ do
 					-- For each verte,
 					vi <- indirection <$> [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
 					let vertex = (level^.solVv) ! vi
@@ -706,6 +710,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					let edt = x * dt
 					let p0' = ballIntersection
 					let v0' = plane3ReflectPointAmount (virtualPlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- v0g: Apply gravity for this path.
+					D.trace (printf "DEBUG1: v, x, vd: %s, %s, %s" (show v) (show x) (show vd)) $ return ()
 					return $ (li, edt, p0', v0')
 
 				checkEdges :: Bool

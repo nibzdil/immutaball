@@ -533,7 +533,7 @@ physicsBallAdvanceGhostly x'cfg _level _spa _ballRadius gravityVector dt p0 v0 =
 -- | This version completely ignores the BSP.  It checks collisions with every
 -- lump every frame.
 physicsBallAdvanceBruteForce :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
+physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 0.0
 
 -- | Finish computing 'physicsBallAdvanceBruteFroce'.
 --
@@ -558,18 +558,28 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0
 -- thresholdTimeRemaining:
 -- 	Once this much dt has been expended, reset the 2 squish detection
 -- 	parameters (this and numCollisions).
--- TODO: use x'cfgMaxFrameCollisionsRDistanceThreshold too.
-physicsBallAdvanceBruteForceCompute :: Integer -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg level spa ballRadius gravityVector dt p0 v0 =
+-- thresholdRDistanceRemaining:
+-- 	Once the ball has traveled this much distance in terms of ball radiuses,
+-- 	reset the squish state in this condition too.  We don't want the ball the
+-- 	ghost through walls if the frame is slow and processing a lot of dt at
+-- 	once, simply because it made many collisions in a frame even though it
+-- 	traveled a long distance (e.g. spinning around in a cone if the system
+-- 	briefly pauses), so we have thresholdTimeRemaining; and we also have
+-- 	distance because otherwise the ball can always go fast enough so that it
+-- 	bounces enough times between lumps and ghosts through.
+physicsBallAdvanceBruteForceCompute :: Integer -> Double -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresholdRDistanceRemaining x'cfg level spa ballRadius gravityVector dt p0 v0 =
 	case closestLumpIntersecting of  -- Find the next collision.
 		Nothing ->  -- No more collisions this frame.
 			-- Gravity: apply gravity to the rest of the path.
 			let (p1, v1) = (p0 + (dt `sv3` v0), v0g dt) in (p1, v1)  -- Expend the rest of dt after the last collision.
 		Just (_lastLi', edt, p0', v0') ->  -- Found the next collision.  Expend ‘edt’ to advance the pall to p0'.
 			-- Gravity: only apply the gravity vector through to the next collision, later on when we produce what is v0' here.
+			let travelRDistance = (p0' - p0)^.r3 / ballRadius; trd = travelRDistance in
 			physicsBallAdvanceBruteForceCompute
-				( if' (thresholdTimeRemaining <= 0) 0                                                 (numCollisions + 1)            )
-				( if' (thresholdTimeRemaining <= 0) (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold - edt) (thresholdTimeRemaining - edt) )
+				( if' resetSquishState 0                                                        (numCollisions + 1)                 )
+				( if' resetSquishState (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold        - edt) (thresholdTimeRemaining      - edt) )
+				( if' resetSquishState (x'cfg^.x'cfgMaxFrameCollisionsRDistanceThreshold - edt) (thresholdRDistanceRemaining - trd) )
 				x'cfg
 				level
 				spa
@@ -582,6 +592,11 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining x'cfg l
 	where
 		bounceReturn = x'cfg^.x'cfgBounceReturn
 		gravityAcceleration = x'cfg^.x'cfgGravity
+
+		resetSquishState
+			| thresholdTimeRemaining      <= 0 = True
+			| thresholdRDistanceRemaining <= 0 = True
+			| otherwise                        = False
 
 		-- | Find the closest lump intersecting the ball's path, for collisions.
 		closestLumpIntersectingRaw :: Maybe (Int32, Double, Vec3 Double, Vec3 Double)

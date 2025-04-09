@@ -664,11 +664,49 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				--checkVertices | (_:_:_) <- edgesIntersecting = True | otherwise = False
 				checkVertices = True
 				verticesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				verticesIntersecting = if' (not checkVertices) [] . catMaybes $ do
+				verticesIntersecting = if' (not checkVertices) [] $ do
+					-- For each verte,
 					vi <- indirection <$> [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
 					let vertex = (level^.solVv) ! vi
-					-- TODO
-					return Nothing
+					let v = vertex^.vertP
+
+					-- Find the distance between the path (lp) and the vertex.
+					let vd = abs $ line3PointDistance lp v
+
+					-- Skip if the _infinite_ line extension from lp and
+					-- the vertex are too far away.  This allows an early check
+					-- and also to ensure the call to line3DistanceCoordFromPoint is valid.
+					guard $ vd <= ballRadius
+
+					-- Find the coord on lp where the distance is the ball's
+					-- radius.
+					let x = line3DistanceCoordFromPoint lp v ballRadius
+
+					-- Skip if x is not on lp.
+					guard $ 0 <= x + smallNum && x - smallNum <= 1
+
+					-- Find the ball intersection point.
+					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)
+
+					-- For the reflecting plane for the ball's velocity,
+					-- construct a virtual plane essentially with the vector
+					-- from the vertex to the ball's position at intersection
+					-- as normal.
+					let virtualPlane = normalPlane3 (v3normalize $ ballIntersection - v) 0
+
+					-- Make sure the ball is going towards the vertex, not away
+					-- from it, similar to the normal check for planes for
+					-- avoiding multiple collisions in a single step for me
+					-- thasme lump.
+					guard $ (lp^.a0l3) `d3` (virtualPlane^.abcp3) <= 0
+
+					-- Return the results of this collision, which is used if
+					-- it is found to be the first potential collision on the
+					-- path lp.
+					let edt = x * dt
+					let p0' = ballIntersection
+					let v0' = plane3ReflectPointAmount (virtualPlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- v0g: Apply gravity for this path.
+					return $ (li, edt, p0', v0')
 
 				checkEdges :: Bool
 				-- TODO FIXME: length >= 2 seems to cause edge collision detection

@@ -63,9 +63,6 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
-import Debug.Trace as D -------------------------------------------------------------- TODO
-import Text.Printf
-
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -669,10 +666,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				--checkEdges | (_:_:_) <- facesIntersectingNoBounds = True | otherwise = False
 				checkEdges = True
 				edgesIntersecting :: [(Int32, Double, Vec3 Double, Vec3 Double)]
-				--edgesIntersecting = if' (not checkEdges) [] $ do
-				edgesIntersecting = (\r -> if' (null r) r $ D.trace (printf "DEBUG: edgesIntersecting: %s" (show r)) r) . if' (not checkEdges) [] $ do
-					D.trace (printf "DEBUG-1: checking an edge") $ return ()
-
+				edgesIntersecting = if' (not checkEdges) [] $ do
 					-- For each edge,
 					ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 					let edge = (level^.solEv) ! ei
@@ -686,7 +680,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- the line segments may still be too far away even if the
 					-- infinite lines are not, so we'll filter lp coords in [0, 1].
 					guard $ ed <= ballRadius
-					D.trace (printf "DEBUG-0.5: lp, el, ed, linelinecloscoords lp el: %s, %s, %s, %s" (show lp) (show el) (show ed) (show $ line3Line3ClosestCoords lp el)) $ return ()
 
 					-- Find the closest point.
 					Just (lpx, elx) <- return $ line3Line3ClosestCoords lp el
@@ -724,7 +717,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					let edt = x * dt
 					let p0' = ballIntersection
 					let v0' = plane3ReflectPointAmount (virtualPlane & dp3 .~ 0) (v0g edt) (bounceReturn)  -- v0g: Apply gravity for this path.
-					D.trace (printf "DEBUG0: edge!!!!") $ return ()
 					return $ (li, edt, p0', v0')
 
 				-- | Find all faces that intersect p0->p1.

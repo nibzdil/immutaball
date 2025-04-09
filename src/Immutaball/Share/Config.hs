@@ -223,8 +223,7 @@ defaultStaticConfig = StaticConfig {
 	_x'cfgMaxFrameCollisions = 1024,                    -- TODO: double check if you think this is a good value for this setting.
 	_x'cfgMaxFrameCollisionsDtThreshold = 0.001,        -- TODO: double check if you think this is a good value for this setting.
 	_x'cfgMaxFrameCollisionsRDistanceThreshold = 10.0,  -- TODO: double check if you think this is a good value for this setting.
-	-- _x'cfgMaxPhysicsStepTime = Just 0.05
-	_x'cfgMaxPhysicsStepTime = Nothing  -- TODO: re-enable after debugging.
+	_x'cfgMaxPhysicsStepTime = Just 0.2
 }
 
 type Neverballrc = Config

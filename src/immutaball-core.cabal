@@ -21,6 +21,10 @@ copyright:    2024, Byron Johnson
 
 extra-source-files:
 	README.md
+extra-doc-files:
+	doc/legal/*.md
+	doc/legal/*.txt
+	doc/screenshots/*.png
 
 flag add-default-compiler-flags
 	description:

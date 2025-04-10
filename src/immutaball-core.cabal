@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name: immutaball-core
-version: 0.1.0.3
+version: 0.1.0.4-dev
 
 synopsis: Immutaball platformer game
 description:

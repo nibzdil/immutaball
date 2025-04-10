@@ -147,7 +147,7 @@ immutaballHelp = intercalate "\n" $
 	]
 
 immutaballVersion :: String
-immutaballVersion = "0.1.0.3"
+immutaballVersion = "0.1.0.4-dev"
 
 -- | Run immutaball.
 immutaballWithCLIConfig :: StaticConfig -> CLIConfig -> ImmutaballIO

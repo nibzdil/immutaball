@@ -21,6 +21,8 @@ like writing to a file (including concurrent evaluation).
 
 ![doc/screenshots/readme-screenshot0-v0.1.0.1.png]
 
+Demo video: <https://byronjohnson.net/immutaball/immutaball-v0.1.0.1-demo.html>
+
 ## Build notes
 
 ### wires 0.2.1

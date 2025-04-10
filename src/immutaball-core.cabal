@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name: immutaball-core
-version: 0.1.0.4
+version: 0.1.0.5-dev
 
 synopsis: Immutaball platformer game
 description:
@@ -30,10 +30,10 @@ source-repository head
 	type: git
 	location: https://github.com/nibzdil/immutaball
 
-source-repository this
-	type: git
-	location: https://github.com/nibzdil/immutaball
-	tag: v0.1.0.4
+--source-repository this
+--	type: git
+--	location: https://github.com/nibzdil/immutaball
+--	tag: v0.1.0.0-dev
 
 flag add-default-compiler-flags
 	description:

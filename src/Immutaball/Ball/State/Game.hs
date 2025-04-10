@@ -682,12 +682,21 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					-- and also to ensure the call to line3DistanceCoordFromPoint is valid.
 					guard $ vd <= ballRadius
 
-					-- Find the coord on lp where the distance is the ball's
-					-- radius.
-					let x = line3DistanceCoordFromPoint lp v ballRadius
+					-- Find the closest point coord on lp to the vertex.
+					let lpClosestX = line3PointCoord lp v
 
-					-- Skip if x is not on lp.
-					guard $ 0 <= x + smallNum && x - smallNum <= 1
+					-- Find how far away the candidates for x (where the ball
+					-- is exactly ballRadius away from the vertex) are from
+					-- closestX.
+					let lpCoordOffset = line3DistanceCoordFromPoint lp v ballRadius
+
+					-- Find the coord on lp where the distance is the ball's
+					-- radius.  Skip if we have nothing on lp.
+					let xCandidates = [lpClosestX - lpCoordOffset, lpClosestX + lpCoordOffset]
+					(x:_) <- return . sort . filter (\x -> 0 <= x + smallNum && x - smallNum <= 1) $ xCandidates
+
+					-- Skip if x is not on lp.  (Already done by the filter above.)
+					--guard $ 0 <= x + smallNum && x - smallNum <= 1
 
 					-- Find the ball intersection point.
 					let ballIntersection = line3Lerp lp x `v3orWith` (lp^.p0l3)

@@ -26,6 +26,15 @@ extra-doc-files:
 	doc/legal/*.txt
 	doc/screenshots/*.png
 
+source-repository head
+	type: git
+	location: https://github.com/nibzdil/immutaball
+
+--source-repository this
+--	type: git
+--	location: https://github.com/nibzdil/immutaball
+--	tag: v0.1.0.1
+
 flag add-default-compiler-flags
 	description:
 		Add default set of compiler flags.

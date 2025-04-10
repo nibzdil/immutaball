@@ -1,11 +1,14 @@
-# Work in progress
+# Prototype
 
-So far there is only basic functionality, although much of the skeleton is in
-place.  There is only a basic GUI, and the renderer has barely been started,
-and the gameplay has not been implemented, except for representations of game
-state.  Once the renderer has more full basic functionality, then it will be
-more convenient to implement at least basic gameplay functionality.  Audio has
-not been implemented yet.
+Currently this project only implements basic parts of the game: minimal GUI,
+basic physics, and a renderer.  Much of the game is currently unimplemented
+(audio, goals, moving bodies, gameplay mechanics, a more efficient physics
+implementation), but this project still serves as a useful example of a purely
+functional FRP application.
+
+Currently the physics does not apply BSP partitioning but brute force checks
+collisions with every body in the level each frame.  Larger levels can't handle
+this, but many of the levels in the first three level sets are playable.
 
 # Immutaball
 
@@ -96,4 +99,11 @@ profunctors >= 5.0 && < 5.7,
 semigroupoids >= 5.0 && < 6.1,
 these >= 0.7.0 && < 1.3,
 semialign >= 1.3.1 && < 1.4
+```
+
+## Usage example
+
+```
+(cd -- "${HOME}/git/neverball" && make -j7)  # build neverball
+cabal run --package-db="${HOME}/.local/state/cabal/store/ghc-9.13.20240927/package.db" immutaball -- -d ~/git/neverball/data
 ```

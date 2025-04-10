@@ -19,7 +19,7 @@ like writing to a file (including concurrent evaluation).
 
 # Screenshots and demo
 
-![doc/screenshots/readme-screenshot0-v0.1.0.1.png]
+![screenshot: readme-screenshot0-v0.1.0.1.png](doc/screenshots/readme-screenshot0-v0.1.0.1.png)
 
 Demo video: <https://byronjohnson.net/immutaball/immutaball-v0.1.0.1-demo.html>
 

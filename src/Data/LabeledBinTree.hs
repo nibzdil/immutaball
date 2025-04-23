@@ -24,6 +24,7 @@ module Data.LabeledBinTree
 		simplifyEmptiesLabeledBinTree,
 		normalizeLabeledBinTree,
 		forkinizeLeaves,
+		forkinizeLeavesDirect,
 		joinLabeledBinTree,
 		singletonLabeledBin,
 		repeatLabeledBinTree,
@@ -133,12 +134,20 @@ normalizeLabeledBinTree = simplifyLeavesLabeledBinTree
 
 -- | Replace all leaf nodes with a fork node with the given left and right
 -- branches.
+--
+-- Note: normalizing here doesn't change the result if we were to instead check
+-- for leaf equivalence manually ourselves.
 forkinizeLeaves :: LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a
-forkinizeLeaves ll base lr = deconsLabeledBinTree
+forkinizeLeaves ll base lr = forkinizeLeavesDirect ll (normalizeLabeledBinTree base) lr
+
+-- | Assuming the base tree is already normalized, replace all leaf nodes in
+-- the base tree with a fork node with the given left and right branches.
+forkinizeLeavesDirect :: LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a
+forkinizeLeavesDirect ll base lr = deconsLabeledBinTree
 	mkLabeledEmpty
 	(\a     -> mkLabeledFork ll a lr)
-	(\l a r -> mkLabeledFork (forkinizeLeaves ll l lr) a (forkinizeLeaves ll r lr))
-	(normalizeLabeledBinTree base)  -- (note: normalizing here doesn't change the result if we were to instead check for leaf equivalence manually ourselves.)
+	(\l a r -> mkLabeledFork (forkinizeLeavesDirect ll l lr) a (forkinizeLeavesDirect ll r lr))
+	base
 
 -- | Replace each of the root tree's inner leaf nodes with a fork node whose
 -- left branch is the likewise joined outer left tree and whose right branch is

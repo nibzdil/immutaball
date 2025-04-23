@@ -303,10 +303,10 @@ simplifyEmptiesLabeledBinTree = deconsLabeledBinTree
 	(\a     -> mkLabeledFork mkLabeledEmpty a mkLabeledEmpty)
 	(\l a r -> mkLabeledFork l              a r             )
 
--- | Normalize a LabeledBinTree with 'simplifyEmptiesLabeledBinTree',
--- replacing all leaves with forks of empties.
+--- | Normalize a LabeledBinTree with 'simplifyLeavesLabeledBinTree',
+--- replacing all forks of empty nodes with leaf nodes.
 normalizeLabeledBinTree :: LabeledBinTree a -> LabeledBinTree a
-normalizeLabeledBinTree = simplifyEmptiesLabeledBinTree
+normalizeLabeledBinTree = simplifyLeavesLabeledBinTree
 
 -- | Given normalized trees, replace each of the root tree's inner leaf nodes
 -- with a fork node whose left branch is the likewise joined left tree and

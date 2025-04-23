@@ -57,10 +57,17 @@ module Immutaball.Share.Utils
 		LabeledBinTree(..), labeledBinTree,
 		Tree,
 		deconsLabeledBinTree,
+		mkLabeledEmpty,
 		mkLabeledLeaf,
 		mkLabeledFork,
 		fmapLabeledBinTree,
-		foldrLabeledBinTree
+		foldrLabeledBinTree,
+		repeatLabeledBinTree,
+		pureLabeledBinTreeLossy,
+		appLabeledBinTreeLossy,
+		labeledBinTreeConcatRightmost,
+		pureLabeledBinTreeCombinatorial,
+		appLabeledBinTreeCombinatorial
 	) where
 
 import Prelude ()
@@ -225,8 +232,10 @@ instance Show (AssumeEOS a) where show _ = "(AssumeEOS)"
 -- | TODO: move our bintree code to a new module.
 type BinTree n l = Fixed (BinTreeF n l)
 data BinTreeF n l me =
+	-- | Empty node.
+	  EmptyBT
 	-- | Leaf node.
-	  LeafBT l
+	| LeafBT l
 	-- | Fork node.
 	| ForkBT me n me
 
@@ -237,9 +246,13 @@ makeLenses ''LabeledBinTree
 
 type Tree = LabeledBinTree
 
-deconsLabeledBinTree :: (a -> r) -> (LabeledBinTree a -> a -> LabeledBinTree a -> r) -> LabeledBinTree a -> r
-deconsLabeledBinTree withLeafBT _          (LabeledBinTree (Fixed (LeafBT a    ))) = withLeafBT a
-deconsLabeledBinTree _          withForkBT (LabeledBinTree (Fixed (ForkBT l a r))) = withForkBT (LabeledBinTree l) a (LabeledBinTree r)
+deconsLabeledBinTree :: r -> (a -> r) -> (LabeledBinTree a -> a -> LabeledBinTree a -> r) -> LabeledBinTree a -> r
+deconsLabeledBinTree withEmptyBT _          _          (LabeledBinTree (Fixed (EmptyBT     ))) = withEmptyBT
+deconsLabeledBinTree _           withLeafBT _          (LabeledBinTree (Fixed (LeafBT a    ))) = withLeafBT a
+deconsLabeledBinTree _           _          withForkBT (LabeledBinTree (Fixed (ForkBT l a r))) = withForkBT (LabeledBinTree l) a (LabeledBinTree r)
+
+mkLabeledEmpty :: LabeledBinTree a
+mkLabeledEmpty = LabeledBinTree . Fixed $ EmptyBT
 
 mkLabeledLeaf :: a -> LabeledBinTree a
 mkLabeledLeaf a = LabeledBinTree . Fixed $ LeafBT a
@@ -248,12 +261,63 @@ mkLabeledFork :: LabeledBinTree a -> a -> LabeledBinTree a -> LabeledBinTree a
 mkLabeledFork l a r = LabeledBinTree . Fixed $ ForkBT (_labeledBinTree l) a (_labeledBinTree r)
 
 fmapLabeledBinTree :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)
-fmapLabeledBinTree f = deconsLabeledBinTree (\a -> mkLabeledLeaf (f a)) (\l a r -> mkLabeledFork (fmapLabeledBinTree f l) (f a) (fmapLabeledBinTree f r))
+fmapLabeledBinTree f = deconsLabeledBinTree (mkLabeledEmpty) (\a -> mkLabeledLeaf (f a)) (\l a r -> mkLabeledFork (fmapLabeledBinTree f l) (f a) (fmapLabeledBinTree f r))
 
 foldrLabeledBinTree :: (a -> b -> b) -> b -> LabeledBinTree a -> b
 foldrLabeledBinTree f z = deconsLabeledBinTree
+	z
 	(\a     -> f a z)
 	(\l a r -> foldrLabeledBinTree f (f a (foldrLabeledBinTree f z r)) l)
+
+repeatLabeledBinTree :: a -> LabeledBinTree a
+repeatLabeledBinTree x = mkLabeledFork (repeatLabeledBinTree x) x (repeatLabeledBinTree x)
+
+pureLabeledBinTreeLossy :: a -> LabeledBinTree a
+pureLabeledBinTreeLossy x = repeatLabeledBinTree x
+
+-- | Zip-like lossy Applicative for LabeledBinTree: component-wise.
+appLabeledBinTreeLossy :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
+appLabeledBinTreeLossy mf ma = deconsLabeledBinTree
+	(mkLabeledEmpty)  -- Discard any remaining elements of ‘ma’.
+	(\f ->
+		deconsLabeledBinTree
+			(mkLabeledEmpty)  -- Discard the remaining elements of ‘mf’.
+			(\a     -> mkLabeledLeaf (f a))
+			(\_ a _ -> mkLabeledLeaf (f a))  -- Discard the remaining elements of ‘ma’.
+			ma
+	)
+	(\fl f fr ->
+		deconsLabeledBinTree
+			(mkLabeledEmpty)  -- Discard the remaining elements of ‘mf’.
+			(\a       -> mkLabeledLeaf (f a))  -- Discard the remaining elements of ‘mf’.
+			(\al a ar -> mkLabeledFork
+				(appLabeledBinTreeLossy fl al)
+				(f a)
+				(appLabeledBinTreeLossy fr ar)
+			)
+			ma
+	)
+	mf
+
+-- | Add another tree to the right-most leaf of this tree.
+--
+-- Keep following the right-most node until empty is found, and then replace it
+-- with the sub-tree.
+labeledBinTreeConcatRightmost :: LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a
+labeledBinTreeConcatRightmost base additional = deconsLabeledBinTree
+	additional
+	(\a     -> mkLabeledFork mkLabeledEmpty a additional)
+	(\l a r -> mkLabeledFork l              a (labeledBinTreeConcatRightmost r additional))
+	base
+
+pureLabeledBinTreeCombinatorial :: a -> LabeledBinTree a
+pureLabeledBinTreeCombinatorial x = mkLabeledLeaf x
+
+-- | List-like combinatorial Applicative for LabeledBinTree:
+--
+-- A nested bintree is unfolded (joined) _TODO.
+appLabeledBinTreeCombinatorial :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
+appLabeledBinTreeCombinatorial = _
 
 instance Functor LabeledBinTree where
 	fmap :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)
@@ -262,3 +326,10 @@ instance Functor LabeledBinTree where
 instance Foldable LabeledBinTree where
 	foldr :: (a -> b -> b) -> b -> LabeledBinTree a -> b
 	foldr = foldrLabeledBinTree
+
+-- | The default Applicative instance of LabeledBinTree is 'appLabeledBinTreeCombinatorial'.
+instance Applicative LabeledBinTree where
+	pure :: a -> LabeledBinTree a
+	pure = pureLabeledBinTreeCombinatorial
+	(<*>) :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
+	(<*>) = appLabeledBinTreeCombinatorial

@@ -113,6 +113,7 @@ common executable-components
 
 	other-modules:
 		Control.Monad.Trans.MaybeM
+		Data.LabeledBinTree
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Game
@@ -183,6 +184,7 @@ library
 
 	exposed-modules:
 		Control.Monad.Trans.MaybeM
+		Data.LabeledBinTree
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Game

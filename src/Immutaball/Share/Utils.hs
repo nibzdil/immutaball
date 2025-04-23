@@ -65,6 +65,7 @@ module Immutaball.Share.Utils
 		simplifyLeavesLabeledBinTree,
 		simplifyEmptiesLabeledBinTree,
 		normalizeLabeledBinTree,
+		forkinizeLeaves,
 		joinLabeledBinTree,
 		singletonLabeledBin,
 		repeatLabeledBinTree,
@@ -308,13 +309,25 @@ simplifyEmptiesLabeledBinTree = deconsLabeledBinTree
 normalizeLabeledBinTree :: LabeledBinTree a -> LabeledBinTree a
 normalizeLabeledBinTree = simplifyLeavesLabeledBinTree
 
--- | Given normalized trees, replace each of the root tree's inner leaf nodes
--- with a fork node whose left branch is the likewise joined left tree and
--- whose right branch is the likewise joined right tree.  This is perhaps like
--- a non-determinism of paths to leaves, perhaps somewhat like list monad
+-- | Replace all leaf nodes with a fork node with the given left and right
+-- branches.
+forkinizeLeaves :: LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a -> LabeledBinTree a
+forkinizeLeaves ll base lr = deconsLabeledBinTree
+	mkLabeledEmpty
+	(\a     -> mkLabeledFork ll a lr)
+	(\l a r -> mkLabeledFork (forkinizeLeaves ll l lr) a (forkinizeLeaves ll r lr))
+	(normalizeLabeledBinTree base)  -- (note: normalizing here doesn't change the result if we were to instead check for leaf equivalence manually ourselves.)
+
+-- | Replace each of the root tree's inner leaf nodes with a fork node whose
+-- left branch is the likewise joined outer left tree and whose right branch is
+-- the likewise joined outer right tree.  This is perhaps like a
+-- non-determinism of paths to leaves, perhaps somewhat like list monad
 -- non-determinism.
 joinLabeledBinTree :: LabeledBinTree (LabeledBinTree a) -> LabeledBinTree a
-joinLabeledBinTree = _
+joinLabeledBinTree = deconsLabeledBinTree
+	mkLabeledEmpty
+	(\a -> a)
+	(\l a r -> forkinizeLeaves (joinLabeledBinTree l) a (joinLabeledBinTree r))
 
 singletonLabeledBin :: a -> LabeledBinTree a
 singletonLabeledBin x = mkLabeledLeaf x

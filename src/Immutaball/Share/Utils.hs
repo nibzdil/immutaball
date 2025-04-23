@@ -62,6 +62,9 @@ module Immutaball.Share.Utils
 		mkLabeledFork,
 		fmapLabeledBinTree,
 		foldrLabeledBinTree,
+		simplifyLeavesLabeledBinTree,
+		normalizeLabeledBinTree,
+		singletonLabeledBin,
 		repeatLabeledBinTree,
 		pureLabeledBinTreeLossy,
 		appLabeledBinTreeLossy,
@@ -268,6 +271,34 @@ foldrLabeledBinTree f z = deconsLabeledBinTree
 	z
 	(\a     -> f a z)
 	(\l a r -> foldrLabeledBinTree f (f a (foldrLabeledBinTree f z r)) l)
+
+-- | Replace all forks of empty nodes with leaf nodes.
+--
+-- We can do this because 'LabeledBinTree' requires leaf and fork node
+-- element types to be qual.
+simplifyLeavesLabeledBinTree :: LabeledBinTree a -> LabeledBinTree a
+simplifyLeavesLabeledBinTree = deconsLabeledBinTree
+	mkLabeledEmpty
+	(\a     -> mkLabeledLeaf a)
+	(\l a r -> deconsLabeledBinTree
+		(deconsLabeledBinTree
+			(mkLabeledLeaf a)  -- Replacement: both original left and right trees are empty.
+			(\_ra         -> mkLabeledFork (simplifyLeavesLabeledBinTree l) a (simplifyLeavesLabeledBinTree r))
+			(\_rl _ra _rr -> mkLabeledFork (simplifyLeavesLabeledBinTree l) a (simplifyLeavesLabeledBinTree r))
+			r
+		)
+		(\_la         -> mkLabeledFork (simplifyLeavesLabeledBinTree l) a (simplifyLeavesLabeledBinTree r))
+		(\_ll _la _lr -> mkLabeledFork (simplifyLeavesLabeledBinTree l) a (simplifyLeavesLabeledBinTree r))
+		l
+	)
+
+-- | Normalize a LabeledBinTree with 'simplifyLeavesLabeledBinTree',
+-- replacing all forks of empty nodes with leaf nodes.
+normalizeLabeledBinTree :: LabeledBinTree a -> LabeledBinTree a
+normalizeLabeledBinTree = simplifyLeavesLabeledBinTree
+
+singletonLabeledBin :: a -> LabeledBinTree a
+singletonLabeledBin x = mkLabeledLeaf x
 
 repeatLabeledBinTree :: a -> LabeledBinTree a
 repeatLabeledBinTree x = mkLabeledFork (repeatLabeledBinTree x) x (repeatLabeledBinTree x)

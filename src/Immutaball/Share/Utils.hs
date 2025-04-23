@@ -63,7 +63,9 @@ module Immutaball.Share.Utils
 		fmapLabeledBinTree,
 		foldrLabeledBinTree,
 		simplifyLeavesLabeledBinTree,
+		simplifyEmptiesLabeledBinTree,
 		normalizeLabeledBinTree,
+		joinLabeledBinTree,
 		singletonLabeledBin,
 		repeatLabeledBinTree,
 		pureLabeledBinTreeLossy,
@@ -292,10 +294,27 @@ simplifyLeavesLabeledBinTree = deconsLabeledBinTree
 		l
 	)
 
--- | Normalize a LabeledBinTree with 'simplifyLeavesLabeledBinTree',
--- replacing all forks of empty nodes with leaf nodes.
+-- | Simplify a LabeledBinTree tree by removing all Leave constructs, replacing
+-- leaves with forks of empties.  The values of leaves is not lost; they are
+-- simply reframed as forks of empties (with the value still present).
+simplifyEmptiesLabeledBinTree :: LabeledBinTree a -> LabeledBinTree a
+simplifyEmptiesLabeledBinTree = deconsLabeledBinTree
+	mkLabeledEmpty
+	(\a     -> mkLabeledFork mkLabeledEmpty a mkLabeledEmpty)
+	(\l a r -> mkLabeledFork l              a r             )
+
+-- | Normalize a LabeledBinTree with 'simplifyEmptiesLabeledBinTree',
+-- replacing all leaves with forks of empties.
 normalizeLabeledBinTree :: LabeledBinTree a -> LabeledBinTree a
-normalizeLabeledBinTree = simplifyLeavesLabeledBinTree
+normalizeLabeledBinTree = simplifyEmptiesLabeledBinTree
+
+-- | Given normalized trees, replace each of the root tree's inner leaf nodes
+-- with a fork node whose left branch is the likewise joined left tree and
+-- whose right branch is the likewise joined right tree.  This is perhaps like
+-- a non-determinism of paths to leaves, perhaps somewhat like list monad
+-- non-determinism.
+joinLabeledBinTree :: LabeledBinTree (LabeledBinTree a) -> LabeledBinTree a
+joinLabeledBinTree = _
 
 singletonLabeledBin :: a -> LabeledBinTree a
 singletonLabeledBin x = mkLabeledLeaf x
@@ -346,7 +365,10 @@ pureLabeledBinTreeCombinatorial x = mkLabeledLeaf x
 
 -- | List-like combinatorial Applicative for LabeledBinTree:
 --
--- A nested bintree is unfolded (joined) _TODO.
+-- TODO:
+-- A nested bintree is unfolded (joined) as follows: given a (nested) tree at a
+-- node, the ou
+-- root to non-fork nodes
 appLabeledBinTreeCombinatorial :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
 appLabeledBinTreeCombinatorial = _
 

@@ -71,12 +71,13 @@ module Immutaball.Share.Utils
 		repeatLabeledBinTree,
 		pureLabeledBinTreeLossy,
 		appLabeledBinTreeLossy,
-		mapLeavesDirectLabeledBinTreeCombinatorial,
-		mapLeavesLabeledBinTreeCombinatorial,
-		mapNonleavesLabeledBinTreeCombinatorial,
 		labeledBinTreeConcatRightmost,
 		pureLabeledBinTreeCombinatorial,
-		appLabeledBinTreeCombinatorial
+		appLabeledBinTreeCombinatorial,
+		mapLeavesDirectLabeledBinTree,
+		mapLeavesLabeledBinTree,
+		mapNonleavesLabeledBinTree,
+		bindLabeledBinTree
 	) where
 
 import Prelude ()
@@ -449,6 +450,14 @@ mapNonleavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
 	mkLabeledEmpty
 	mkLabeledLeaf
 	(\l a r -> mkLabeledFork (mapNonleavesLabeledBinTreeCombinatorial f l) (f a) (mapNonleavesLabeledBinTreeCombinatorial f r))
+
+-- | For each element in the (left) tree, replace with the tree produced by
+-- applying the function to that element, where each leaf becomes a fork node
+-- with its left and right children having likewise binding.
+--
+-- See 'joinLabeledBinTree' for more information.
+bindLabeledBinTree :: LabeledBinTree a -> (a -> LabeledBinTree b) -> LabeledBinTree b
+bindLabeledBinTree ma f = joinLabeledBinTree (f <$> ma)
 
 instance Functor LabeledBinTree where
 	fmap :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)

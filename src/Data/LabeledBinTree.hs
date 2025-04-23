@@ -292,6 +292,13 @@ instance Applicative LabeledBinTree where
 	(<*>) :: LabeledBinTree (a -> b) -> LabeledBinTree a -> LabeledBinTree b
 	(<*>) = appLabeledBinTreeCombinatorial
 
+-- | The default Monad instance of LabeledBinTree uses 'joinLabeledBinTree'
+instance Monad LabeledBinTree where
+	return :: a -> LabeledBinTree a
+	return = pure
+	(>>=) :: LabeledBinTree a -> (a -> LabeledBinTree b) -> LabeledBinTree b
+	(>>=) = bindLabeledBinTree
+
 -- * Constructor aliases.
 
 -- | Shorter alias of 'mkLabeledEmpty'.

@@ -26,6 +26,7 @@ module Data.LabeledBinTree
 		forkinizeLeaves,
 		forkinizeLeavesDirect,
 		joinLabeledBinTree,
+		joinDirectLabeledBinTree,
 		singletonLabeledBin,
 		repeatLabeledBinTree,
 		pureLabeledBinTreeLossy,
@@ -159,10 +160,15 @@ forkinizeLeavesDirect ll base lr = deconsLabeledBinTree
 -- non-determinism of paths to leaves, perhaps somewhat like list monad
 -- non-determinism.
 joinLabeledBinTree :: LabeledBinTree (LabeledBinTree a) -> LabeledBinTree a
-joinLabeledBinTree = deconsLabeledBinTree
+joinLabeledBinTree = joinDirectLabeledBinTree . normalizeLabeledBinTree . (normalizeLabeledBinTree <$>)
+
+-- | 'joinLabeledBinTree' that assumes the tree and all nested trees have
+-- already been normalized.
+joinDirectLabeledBinTree :: LabeledBinTree (LabeledBinTree a) -> LabeledBinTree a
+joinDirectLabeledBinTree = deconsLabeledBinTree
 	mkLabeledEmpty
 	(\a -> a)
-	(\l a r -> forkinizeLeaves (joinLabeledBinTree l) a (joinLabeledBinTree r))
+	(\l a r -> forkinizeLeavesDirect (joinDirectLabeledBinTree l) a (joinDirectLabeledBinTree r))
 
 singletonLabeledBin :: a -> LabeledBinTree a
 singletonLabeledBin x = mkLabeledLeaf x

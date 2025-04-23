@@ -414,7 +414,7 @@ pureLabeledBinTreeCombinatorial x = mkLabeledLeaf x
 -- root unaop, then go left, go to a would-be leaf, then go left again, and
 -- then you start the tree for the unaop at the unaop tree's root's left's left
 -- node's function.
-appLabeledBinTreeCombinatorial :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
+appLabeledBinTreeCombinatorial :: LabeledBinTree (a -> b) -> LabeledBinTree a -> LabeledBinTree b
 appLabeledBinTreeCombinatorial mf ma = joinLabeledBinTree ((\f -> (\a -> f a) <$> ma) <$> mf)
 
 -- | Map leaf nodes, only checking directly for leaves.  Normalizing the tree
@@ -471,5 +471,5 @@ instance Foldable LabeledBinTree where
 instance Applicative LabeledBinTree where
 	pure :: a -> LabeledBinTree a
 	pure = pureLabeledBinTreeCombinatorial
-	(<*>) :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
+	(<*>) :: LabeledBinTree (a -> b) -> LabeledBinTree a -> LabeledBinTree b
 	(<*>) = appLabeledBinTreeCombinatorial

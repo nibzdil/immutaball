@@ -445,6 +445,7 @@ mapLeavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
 		l
 	)
 
+-- | Map each element, skipping leaves.
 mapNonleavesLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
 mapNonleavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
 	mkLabeledEmpty

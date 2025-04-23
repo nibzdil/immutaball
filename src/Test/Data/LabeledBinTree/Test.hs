@@ -30,6 +30,10 @@ import Test.Tasty.QuickCheck
 import Data.LabeledBinTree
 import Test.Data.LabeledBinTree.Orphans ()
 
+-- TODO: fix intermittent freeze in monadic associativity test of Tree (maybe it's evaluating something big?)
+--import Debug.Trace as D----------------------------------------------TODO
+--import Text.Printf
+
 main :: IO ()
 main = testsMain
 
@@ -45,6 +49,7 @@ tests = testGroup "Data.LabeledBinTree" $
 		testCase "simpleConstant == 3" $
 			simpleConstant @?= 3,
 
+		-- TODO: fix intermittent freeze in monadic associativity test of Tree (maybe it's evaluating something big?)
 		testGroup "testing monadic associativity of Tree" $
 			[
 				testProperty "monadic associativity test of Tree 0" $
@@ -55,6 +60,13 @@ tests = testGroup "Data.LabeledBinTree" $
 					let f = \y -> (\x -> x + y) <$> fints in
 					let g = \y -> (\x -> x + y) <$> gints in
 					let h = \y -> (\x -> x + y) <$> hints in
+					{-
+					D.trace (printf "DEBUG0: int: %s"   (show   int)) $
+					D.trace (printf "DEBUG1: fints: %s" (showFs fints)) $
+					D.trace (printf "DEBUG2: gints: %s" (showFs gints)) $
+					D.trace (printf "DEBUG3: hints: %s" (showFs hints)) $
+					D.trace (printf "DEBUG4: results: %s" (showFs (( f <=< (g <=< h) ) int))) $
+					-}
 					( (f <=< g) <=< h ) int `eqLBT` ( f <=< (g <=< h) ) int,
 
 				testProperty "monadic associativity test of Tree 0, but with strict equality" $
@@ -65,6 +77,13 @@ tests = testGroup "Data.LabeledBinTree" $
 					let f = \y -> (\x -> x + y) <$> fints in
 					let g = \y -> (\x -> x + y) <$> gints in
 					let h = \y -> (\x -> x + y) <$> hints in
+					{-
+					D.trace (printf "DEBUG00: int: %s"   (show   int)) $
+					D.trace (printf "DEBUG01: fints: %s" (showFs fints)) $
+					D.trace (printf "DEBUG02: gints: %s" (showFs gints)) $
+					D.trace (printf "DEBUG03: hints: %s" (showFs hints)) $
+					D.trace (printf "DEBUG04: results: %s" (showFs (( f <=< (g <=< h) ) int))) $
+					-}
 					( (f <=< g) <=< h ) int == ( f <=< (g <=< h) ) int
 			]
 	]

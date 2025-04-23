@@ -71,6 +71,9 @@ module Immutaball.Share.Utils
 		repeatLabeledBinTree,
 		pureLabeledBinTreeLossy,
 		appLabeledBinTreeLossy,
+		mapLeavesDirectLabeledBinTreeCombinatorial,
+		mapLeavesLabeledBinTreeCombinatorial,
+		mapNonleavesLabeledBinTreeCombinatorial,
 		labeledBinTreeConcatRightmost,
 		pureLabeledBinTreeCombinatorial,
 		appLabeledBinTreeCombinatorial
@@ -376,14 +379,76 @@ labeledBinTreeConcatRightmost base additional = deconsLabeledBinTree
 pureLabeledBinTreeCombinatorial :: a -> LabeledBinTree a
 pureLabeledBinTreeCombinatorial x = mkLabeledLeaf x
 
--- | List-like combinatorial Applicative for LabeledBinTree:
+-- | List-like combinatorial Applicative for LabeledBinTree, with a focus on
+-- leaves.
 --
--- TODO:
--- A nested bintree is unfolded (joined) as follows: given a (nested) tree at a
--- node, the ou
--- root to non-fork nodes
+-- Note: since ‘m >>= f = join (f <$> m)’
+-- and ‘m1 <*> m2 = m1 >>= (\x1 -> m2 >>= (\x2 -> return (x1 x2)))’,
+-- then applying a binary tree of integer unaops (e.g. plus 1, times 2, squared
+-- plus 3, etc.) to a binary tree of integers, would mean ‘m1 <*> m2’ is:
+-- map, for each binop: map, for each integer: singleton of the binop applied
+-- to the integer; then join; then join.  Before the first join, we have a
+-- binary tree of a binary tree of a binary tree: a binary tree of, for each of
+-- the unaops, a binary tree of the integers, except the integers are singleton
+-- applications of the function to the integer.  Joining a binary tree of
+-- singletons returns the same binary tree without the singleton wrappers (join
+-- composed with pure), so after the first, inner join, we then have: a binary
+-- tree of, for each of the unaops, a binary tree of the original integers each
+-- applied to that unaop.  (e.g. copy the integer tree for each node in the
+-- unaop tree, and apply that unop.)  We now have a binary tree of binary
+-- trees, where each node in the outer tree represents which unary operation /
+-- function we applied to the inner list to get the inner tree output for that
+-- unaop.
+--
+-- Finally, given this binary tree of outputs for each unaop, we perform
+-- another join: take the root binary tree, representing, say, the mapping of
+-- the ‘plus1’ root unaop to the input integers, and then for each leaf, turn
+-- it into a fork node where the left gets you a continued pattern for the
+-- root's left unaops tree, and likewise for right.
+--
+-- So the result is you start with the root node function applied to the
+-- argument tree, but once you reach any leaf, you can keep descending either
+-- left or right (possibly a branch can be Empty), and repeat the original
+-- argument/input tree except for different unaops.  e.g. go to a leaf for the
+-- root unaop, then go left, go to a would-be leaf, then go left again, and
+-- then you start the tree for the unaop at the unaop tree's root's left's left
+-- node's function.
 appLabeledBinTreeCombinatorial :: (LabeledBinTree (a -> b)) -> LabeledBinTree a -> LabeledBinTree b
-appLabeledBinTreeCombinatorial = _
+appLabeledBinTreeCombinatorial mf ma = joinLabeledBinTree ((\f -> (\a -> f a) <$> ma) <$> mf)
+
+-- | Map leaf nodes, only checking directly for leaves.  Normalizing the tree
+-- can yield different results.  To also map nodes that would be leaves when
+-- normalized, use 'mapLeavesLabeledBinTreeCombinatorial'.
+mapLeavesDirectLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
+mapLeavesDirectLabeledBinTreeCombinatorial f = deconsLabeledBinTree
+	mkLabeledEmpty
+	(\a -> mkLabeledLeaf (f a))
+	(\l a r -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+
+-- | 'mapLeavesDirectLabeledBinTreeCombinatorial' but treats forks of empty
+-- nodes as leaves.
+mapLeavesLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
+mapLeavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
+	mkLabeledEmpty
+	(\a -> mkLabeledLeaf (f a))
+	--(\l a r -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial l) a (mapLeavesDirectLabeledBinTreeCombinatorial r))
+	(\l a r -> deconsLabeledBinTree
+		(deconsLabeledBinTree
+			(                mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) (f a) (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+			(\_ra         -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a     (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+			(\_rl _ra _rr -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a     (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+			r
+		)
+		(\_la         -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+		(\_ll _la _lr -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+		l
+	)
+
+mapNonleavesLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
+mapNonleavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
+	mkLabeledEmpty
+	mkLabeledLeaf
+	(\l a r -> mkLabeledFork (mapNonleavesLabeledBinTreeCombinatorial f l) (f a) (mapNonleavesLabeledBinTreeCombinatorial f r))
 
 instance Functor LabeledBinTree where
 	fmap :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)

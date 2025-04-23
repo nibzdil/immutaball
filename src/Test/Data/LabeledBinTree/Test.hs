@@ -55,6 +55,16 @@ tests = testGroup "Data.LabeledBinTree" $
 					let f = \y -> (\x -> x + y) <$> fints in
 					let g = \y -> (\x -> x + y) <$> gints in
 					let h = \y -> (\x -> x + y) <$> hints in
-					( (f <=< g) <=< h ) int `eqLBT` ( f <=< (g <=< h) ) int
+					( (f <=< g) <=< h ) int `eqLBT` ( f <=< (g <=< h) ) int,
+
+				testProperty "monadic associativity test of Tree 0, but with strict equality" $
+					\(int  :: Integer) ->
+					\(fints :: LabeledBinTree Integer) ->
+					\(gints :: LabeledBinTree Integer) ->
+					\(hints :: LabeledBinTree Integer) ->
+					let f = \y -> (\x -> x + y) <$> fints in
+					let g = \y -> (\x -> x + y) <$> gints in
+					let h = \y -> (\x -> x + y) <$> hints in
+					( (f <=< g) <=< h ) int == ( f <=< (g <=< h) ) int
 			]
 	]

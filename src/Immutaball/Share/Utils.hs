@@ -419,38 +419,37 @@ appLabeledBinTreeCombinatorial mf ma = joinLabeledBinTree ((\f -> (\a -> f a) <$
 
 -- | Map leaf nodes, only checking directly for leaves.  Normalizing the tree
 -- can yield different results.  To also map nodes that would be leaves when
--- normalized, use 'mapLeavesLabeledBinTreeCombinatorial'.
-mapLeavesDirectLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
-mapLeavesDirectLabeledBinTreeCombinatorial f = deconsLabeledBinTree
+-- normalized, use 'mapLeavesLabeledBinTree'.
+mapLeavesDirectLabeledBinTree :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
+mapLeavesDirectLabeledBinTree f = deconsLabeledBinTree
 	mkLabeledEmpty
 	(\a -> mkLabeledLeaf (f a))
-	(\l a r -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+	(\l a r -> mkLabeledFork (mapLeavesDirectLabeledBinTree f l) a (mapLeavesDirectLabeledBinTree f r))
 
--- | 'mapLeavesDirectLabeledBinTreeCombinatorial' but treats forks of empty
--- nodes as leaves.
-mapLeavesLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
-mapLeavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
+-- | 'mapLeavesDirectLabeledBinTree' but treats forks of empty nodes as leaves.
+mapLeavesLabeledBinTree :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
+mapLeavesLabeledBinTree f = deconsLabeledBinTree
 	mkLabeledEmpty
 	(\a -> mkLabeledLeaf (f a))
-	--(\l a r -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial l) a (mapLeavesDirectLabeledBinTreeCombinatorial r))
+	--(\l a r -> mkLabeledFork (mapLeavesDirectLabeledBinTree l) a (mapLeavesDirectLabeledBinTree r))
 	(\l a r -> deconsLabeledBinTree
 		(deconsLabeledBinTree
-			(                mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) (f a) (mapLeavesDirectLabeledBinTreeCombinatorial f r))
-			(\_ra         -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a     (mapLeavesDirectLabeledBinTreeCombinatorial f r))
-			(\_rl _ra _rr -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a     (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+			(                mkLabeledFork (mapLeavesDirectLabeledBinTree f l) (f a) (mapLeavesDirectLabeledBinTree f r))
+			(\_ra         -> mkLabeledFork (mapLeavesDirectLabeledBinTree f l) a     (mapLeavesDirectLabeledBinTree f r))
+			(\_rl _ra _rr -> mkLabeledFork (mapLeavesDirectLabeledBinTree f l) a     (mapLeavesDirectLabeledBinTree f r))
 			r
 		)
-		(\_la         -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a (mapLeavesDirectLabeledBinTreeCombinatorial f r))
-		(\_ll _la _lr -> mkLabeledFork (mapLeavesDirectLabeledBinTreeCombinatorial f l) a (mapLeavesDirectLabeledBinTreeCombinatorial f r))
+		(\_la         -> mkLabeledFork (mapLeavesDirectLabeledBinTree f l) a (mapLeavesDirectLabeledBinTree f r))
+		(\_ll _la _lr -> mkLabeledFork (mapLeavesDirectLabeledBinTree f l) a (mapLeavesDirectLabeledBinTree f r))
 		l
 	)
 
 -- | Map each element, skipping leaves.
-mapNonleavesLabeledBinTreeCombinatorial :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
-mapNonleavesLabeledBinTreeCombinatorial f = deconsLabeledBinTree
+mapNonleavesLabeledBinTree :: (a -> a) -> LabeledBinTree a -> LabeledBinTree a
+mapNonleavesLabeledBinTree f = deconsLabeledBinTree
 	mkLabeledEmpty
 	mkLabeledLeaf
-	(\l a r -> mkLabeledFork (mapNonleavesLabeledBinTreeCombinatorial f l) (f a) (mapNonleavesLabeledBinTreeCombinatorial f r))
+	(\l a r -> mkLabeledFork (mapNonleavesLabeledBinTree f l) (f a) (mapNonleavesLabeledBinTree f r))
 
 -- | For each element in the (left) tree, replace with the tree produced by
 -- applying the function to that element, where each leaf becomes a fork node

@@ -55,10 +55,12 @@ module Immutaball.Share.Utils
 		BinTreeF(..),
 		BinTreeLabeled,
 		LabeledBinTree(..), labeledBinTree,
+		Tree,
 		deconsLabeledBinTree,
 		mkLabeledLeaf,
 		mkLabeledFork,
-		fmapLabeledBinTree
+		fmapLabeledBinTree,
+		foldrLabeledBinTree
 	) where
 
 import Prelude ()
@@ -233,6 +235,8 @@ type BinTreeLabeled a = BinTree a a
 newtype LabeledBinTree a = LabeledBinTree {_labeledBinTree :: BinTreeLabeled a}
 makeLenses ''LabeledBinTree
 
+type Tree = LabeledBinTree
+
 deconsLabeledBinTree :: (a -> r) -> (LabeledBinTree a -> a -> LabeledBinTree a -> r) -> LabeledBinTree a -> r
 deconsLabeledBinTree withLeafBT _          (LabeledBinTree (Fixed (LeafBT a    ))) = withLeafBT a
 deconsLabeledBinTree _          withForkBT (LabeledBinTree (Fixed (ForkBT l a r))) = withForkBT (LabeledBinTree l) a (LabeledBinTree r)
@@ -246,6 +250,15 @@ mkLabeledFork l a r = LabeledBinTree . Fixed $ ForkBT (_labeledBinTree l) a (_la
 fmapLabeledBinTree :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)
 fmapLabeledBinTree f = deconsLabeledBinTree (\a -> mkLabeledLeaf (f a)) (\l a r -> mkLabeledFork (fmapLabeledBinTree f l) (f a) (fmapLabeledBinTree f r))
 
+foldrLabeledBinTree :: (a -> b -> b) -> b -> LabeledBinTree a -> b
+foldrLabeledBinTree f z = deconsLabeledBinTree
+	(\a     -> f a z)
+	(\l a r -> foldrLabeledBinTree f (f a (foldrLabeledBinTree f z r)) l)
+
 instance Functor LabeledBinTree where
 	fmap :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)
 	fmap = fmapLabeledBinTree
+
+instance Foldable LabeledBinTree where
+	foldr :: (a -> b -> b) -> b -> LabeledBinTree a -> b
+	foldr = foldrLabeledBinTree

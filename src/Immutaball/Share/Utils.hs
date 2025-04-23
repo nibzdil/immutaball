@@ -6,6 +6,7 @@
 
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell, UndecidableInstances, DerivingVia #-}
+{-# LANGUAGE InstanceSigs #-}  -- BinTree language extensions (TODO: move to new module)
 
 module Immutaball.Share.Utils
 	(
@@ -46,9 +47,18 @@ module Immutaball.Share.Utils
 		falseAsIntegral,
 		deconsMaybe,
 
-		morElse
+		morElse,
 
 		--AssumeEOS,
+
+		BinTree,
+		BinTreeF(..),
+		BinTreeLabeled,
+		LabeledBinTree(..), labeledBinTree,
+		deconsLabeledBinTree,
+		mkLabeledLeaf,
+		mkLabeledFork,
+		fmapLabeledBinTree
 	) where
 
 import Prelude ()
@@ -209,3 +219,33 @@ instance Eq (AssumeEOS a) where _ == _ = True
 instance Ord (AssumeEOS a) where _ <= _ = True
 instance Show (AssumeEOS a) where show _ = "(AssumeEOS)"
 -}
+
+-- | TODO: move our bintree code to a new module.
+type BinTree n l = Fixed (BinTreeF n l)
+data BinTreeF n l me =
+	-- | Leaf node.
+	  LeafBT l
+	-- | Fork node.
+	| ForkBT me n me
+
+type BinTreeLabeled a = BinTree a a
+
+newtype LabeledBinTree a = LabeledBinTree {_labeledBinTree :: BinTreeLabeled a}
+makeLenses ''LabeledBinTree
+
+deconsLabeledBinTree :: (a -> r) -> (LabeledBinTree a -> a -> LabeledBinTree a -> r) -> LabeledBinTree a -> r
+deconsLabeledBinTree withLeafBT _          (LabeledBinTree (Fixed (LeafBT a    ))) = withLeafBT a
+deconsLabeledBinTree _          withForkBT (LabeledBinTree (Fixed (ForkBT l a r))) = withForkBT (LabeledBinTree l) a (LabeledBinTree r)
+
+mkLabeledLeaf :: a -> LabeledBinTree a
+mkLabeledLeaf a = LabeledBinTree . Fixed $ LeafBT a
+
+mkLabeledFork :: LabeledBinTree a -> a -> LabeledBinTree a -> LabeledBinTree a
+mkLabeledFork l a r = LabeledBinTree . Fixed $ ForkBT (_labeledBinTree l) a (_labeledBinTree r)
+
+fmapLabeledBinTree :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)
+fmapLabeledBinTree f = deconsLabeledBinTree (\a -> mkLabeledLeaf (f a)) (\l a r -> mkLabeledFork (fmapLabeledBinTree f l) (f a) (fmapLabeledBinTree f r))
+
+instance Functor LabeledBinTree where
+	fmap :: (a -> b) -> (LabeledBinTree a -> LabeledBinTree b)
+	fmap = fmapLabeledBinTree

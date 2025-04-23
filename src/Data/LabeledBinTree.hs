@@ -45,7 +45,11 @@ module Data.LabeledBinTree
 
 		-- * Equivalence relations.
 		eqLBT,
-		leqLBT
+		leqLBT,
+
+		-- * Utils
+		showFs,
+		showFs'
 	) where
 
 import Prelude ()
@@ -329,3 +333,20 @@ eqLBT = (==) `on` normalizeLabeledBinTree
 -- | Leq after normalization.
 leqLBT :: (Ord a) => LabeledBinTree a -> LabeledBinTree a -> Bool
 leqLBT = (<=) `on` normalizeLabeledBinTree
+
+-- | fs-style show.
+showFs :: (Show a) => LabeledBinTree a -> String
+showFs = showFs' show
+
+-- | fs-style show, with a custom Show instance of ‘a’; primitive but still
+-- more readable than default Show.
+--
+-- This implementation is currently relatively inefficient, since there is a
+-- lot of unneeded repeated concatenation.  Consider DLists if wanting to
+-- improve.
+showFs' :: (a -> String) -> LabeledBinTree a -> String
+showFs' showA tree = (\f -> f "" tree) . fix $ \withPrefix prefix subtree -> deconsLabeledBinTree
+	(prefix ++ "×\n")
+	(\a -> prefix ++ (showA a) ++ "\n")
+	(\l a r -> prefix ++ showA a ++ "\n" ++ withPrefix (prefix ++ "\t.") l ++ withPrefix (prefix ++ "\t·") r)
+	subtree

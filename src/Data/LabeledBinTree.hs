@@ -40,17 +40,17 @@ module Data.LabeledBinTree
 		-- * Constructor aliases.
 		emptyLBT,
 		leafLBT,
-		forkLBT
+		forkLBT,
+
+		-- * Equivalence relations.
+		eqLBT,
+		leqLBT
 	) where
 
 import Prelude ()
 import Immutaball.Prelude
 
---import Control.Arrow
---import Control.Monad.Fix
---import Data.Functor.Compose
---import Data.List
---import Data.Maybe
+import Data.Function hiding (id, (.))
 
 import Control.Lens
 
@@ -64,10 +64,12 @@ data BinTreeF n l me =
 	| LeafBT l
 	-- | Fork node.
 	| ForkBT me n me
+	deriving (Eq, Ord, Show)
 
 type BinTreeLabeled a = BinTree a a
 
 newtype LabeledBinTree a = LabeledBinTree {_labeledBinTree :: BinTreeLabeled a}
+	deriving (Eq, Ord, Show)
 makeLenses ''LabeledBinTree
 
 type Tree = LabeledBinTree
@@ -303,3 +305,11 @@ leafLBT = mkLabeledLeaf
 -- | Shorter alias of 'mkLabeledFork'.
 forkLBT :: LabeledBinTree a -> a -> LabeledBinTree a -> LabeledBinTree a
 forkLBT = mkLabeledFork
+
+-- | Equivalence after normalization.
+eqLBT :: (Eq a) => LabeledBinTree a -> LabeledBinTree a -> Bool
+eqLBT = (==) `on` normalizeLabeledBinTree
+
+-- | Leq after normalization.
+leqLBT :: (Ord a) => LabeledBinTree a -> LabeledBinTree a -> Bool
+leqLBT = (<=) `on` normalizeLabeledBinTree

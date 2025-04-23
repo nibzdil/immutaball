@@ -5,6 +5,7 @@
 -- Test.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Test.Data.LabeledBinTree.Test
 	(
@@ -19,11 +20,12 @@ module Test.Data.LabeledBinTree.Test
 --import Data.Functor.Identity
 
 --import Control.Lens
+import Control.Monad
 import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.HUnit hiding ((@?=), assertBool)
---import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck
 
 import Data.LabeledBinTree
 import Test.Data.LabeledBinTree.Orphans ()
@@ -41,5 +43,18 @@ tests :: TestTree
 tests = testGroup "Data.LabeledBinTree" $
 	[
 		testCase "simpleConstant == 3" $
-			simpleConstant @?= 3
+			simpleConstant @?= 3,
+
+		testGroup "testing monadic associativity of Tree" $
+			[
+				testProperty "monadic associativity test of Tree 0" $
+					\(int  :: Integer) ->
+					\(fints :: LabeledBinTree Integer) ->
+					\(gints :: LabeledBinTree Integer) ->
+					\(hints :: LabeledBinTree Integer) ->
+					let f = \y -> (\x -> x + y) <$> fints in
+					let g = \y -> (\x -> x + y) <$> gints in
+					let h = \y -> (\x -> x + y) <$> hints in
+					( (f <=< g) <=< h ) int `eqLBT` ( f <=< (g <=< h) ) int
+			]
 	]

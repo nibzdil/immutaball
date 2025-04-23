@@ -19,6 +19,7 @@ import Test.Tasty
 --import Test.Tasty.HUnit hiding ((@?=), assertBool)
 --import Test.Tasty.QuickCheck
 
+import qualified Test.Data.LabeledBinTree.Test
 import qualified Test.Immutaball.Share.Math.Test
 import qualified Test.Immutaball.Share.State.Test
 import qualified Test.Immutaball.Share.Wire.Test
@@ -32,6 +33,7 @@ testsMain = defaultMain (tests False)
 tests :: Bool -> TestTree
 tests headless = testGroup "Immutaball" $
 	[
+		Test.Data.LabeledBinTree.Test.tests,
 		Test.Immutaball.Share.Wire.Test.tests,
 		Test.Immutaball.Share.State.Test.tests headless,
 		Test.Immutaball.Share.Math.Test.tests

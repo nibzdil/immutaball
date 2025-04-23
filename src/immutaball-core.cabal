@@ -256,6 +256,8 @@ test-suite test-immutaball
 		QuickCheck       >= 2.15.0.1 && < 2.16
 
 	other-modules:
+		Test.Data.LabeledBinTree.Orphans
+		Test.Data.LabeledBinTree.Test
 		Test.Immutaball.Test
 		Test.Immutaball.Share.Math.Core.Orphans
 		Test.Immutaball.Share.Math.Core.Test

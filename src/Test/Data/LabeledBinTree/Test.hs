@@ -48,8 +48,9 @@ tests = testGroup "Data.LabeledBinTree" $
 		-- I think it grows exponentionally (although I haven't rigorously
 		-- worked out the tight big theta growth class for space if everything
 		-- were strictly evaluated), so when testing for associativity, we'll
-		-- want to limit tho size of trees.  e.g. I saw maxTreeSizeSum of 3*8
-		-- (average size of 8) result in a tree size of 443,621.
+		-- want to limit the size of trees, since we're not just taking a
+		-- single path or a select set of paths.  e.g. I saw maxTreeSizeSum of
+		-- 3*8 (average size of 8) result in a tree size of 443,621.
 		testGroup "testing monadic associativity of Tree" $
 			let maxTreeSizeSum = 3*6 in  -- See above; probably exponential growth, and we're not traversing a single path but the entire tree.
 			[

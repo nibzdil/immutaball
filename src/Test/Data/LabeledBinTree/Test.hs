@@ -63,6 +63,7 @@ tests = testGroup "Data.LabeledBinTree" $
 					-- {-
 					let s = numAnyDirectLBTI in
 					let result = (( f <=< (g <=< h) ) int) in
+					--(s fints + s gints + s hints <= 16) ==>
 					D.trace (printf "DEBUG0: int     : %s" (show       $ int)) $
 					D.trace (printf "DEBUG1: fints   : %s" (showFs     $ fints)) $
 					D.trace (printf "DEBUG1: fintsd  : %s" (show   . s $ fints)) $
@@ -86,6 +87,7 @@ tests = testGroup "Data.LabeledBinTree" $
 					-- {-
 					let s = numAnyDirectLBTI in
 					let result = (( f <=< (g <=< h) ) int) in
+					--(s fints + s gints + s hints <= 16) ==>
 					D.trace (printf "DEBUG0: int     : %s" (show       $ int)) $
 					D.trace (printf "DEBUG1: fints   : %s" (showFs     $ fints)) $
 					D.trace (printf "DEBUG1: fintsd  : %s" (show   . s $ fints)) $

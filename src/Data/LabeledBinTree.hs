@@ -38,6 +38,7 @@ module Data.LabeledBinTree
 		mapLeavesLabeledBinTree,
 		mapNonleavesLabeledBinTree,
 		bindLabeledBinTree,
+		traverseLBT,
 
 		-- * Sizes
 		numElemsLBT,
@@ -334,6 +335,16 @@ instance Monad LabeledBinTree where
 	return = pure
 	(>>=) :: LabeledBinTree a -> (a -> LabeledBinTree b) -> LabeledBinTree b
 	(>>=) = bindLabeledBinTree
+
+traverseLBT :: Applicative f => (a -> f b) -> LabeledBinTree a -> f (LabeledBinTree b)
+traverseLBT f = deconsLabeledBinTree
+	(          pure emptyLBT)
+	(\a     -> pure leafLBT <*> f a)
+	(\l a r -> pure forkLBT <*> traverseLBT f l <*> f a <*> traverseLBT f r)
+
+instance Traversable LabeledBinTree where
+	traverse :: Applicative f => (a -> f b) -> LabeledBinTree a -> f (LabeledBinTree b)
+	traverse = traverseLBT
 
 -- * Sizes
 

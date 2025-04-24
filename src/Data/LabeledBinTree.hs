@@ -39,12 +39,29 @@ module Data.LabeledBinTree
 		mapNonleavesLabeledBinTree,
 		bindLabeledBinTree,
 
-		-- * Constructor aliases.
+		-- * Sizes
+		numElemsLBT,
+		numNodesWeightedDirectLBT,
+		numNodesDirectLBT,
+		numEmptyDirectLBT,
+		numLeavesDirectLBT,
+		numForkDirectLBT,
+		numAnyDirectLBT,
+
+		numElemsLBTI,
+		numNodesWeightedDirectLBTI,
+		numNodesDirectLBTI,
+		numEmptyDirectLBTI,
+		numLeavesDirectLBTI,
+		numForkDirectLBTI,
+		numAnyDirectLBTI,
+
+		-- * Constructor aliases
 		emptyLBT,
 		leafLBT,
 		forkLBT,
 
-		-- * Equivalence relations.
+		-- * Equivalence relations
 		eqLBT,
 		leqLBT,
 
@@ -318,7 +335,74 @@ instance Monad LabeledBinTree where
 	(>>=) :: LabeledBinTree a -> (a -> LabeledBinTree b) -> LabeledBinTree b
 	(>>=) = bindLabeledBinTree
 
--- * Constructor aliases.
+-- * Sizes
+
+-- | The number of non-empty elements in an lbt.
+numElemsLBT :: (Num i) => LabeledBinTree a -> i
+numElemsLBT = foldr (\_x acc -> acc + 1) 0
+
+-- | The number of nodes, empty, leaf, or forking.
+--
+-- Provide the size of empty, leaf, and forking nodes (e.g. 0, 1, 1) and find
+-- the sum.
+numNodesWeightedDirectLBT :: (Num i) => i -> i -> i -> LabeledBinTree a -> i
+numNodesWeightedDirectLBT a b c tree0 = (\f -> f 0 [tree0]) . fix $ \count counter remaining -> case remaining of
+	[] -> counter
+	(tree:remaining') -> deconsLabeledBinTree
+		(           count (counter + a) $     remaining')
+		(\_a     -> count (counter + b) $     remaining')
+		(\l _a r -> count (counter + c) $ l:r:remaining')
+		tree
+
+-- | The number of nodes, empty, leaf, or forking.
+numNodesDirectLBT :: (Num i) => LabeledBinTree a -> i
+numNodesDirectLBT = numNodesWeightedDirectLBT 1 1 1
+
+-- | Count the number of empty nodes.
+numEmptyDirectLBT :: (Num i) => LabeledBinTree a -> i
+numEmptyDirectLBT = numNodesWeightedDirectLBT 1 0 0
+
+-- | Count the number of leaf nodes.
+numLeavesDirectLBT :: (Num i) => LabeledBinTree a -> i
+numLeavesDirectLBT = numNodesWeightedDirectLBT 0 1 0
+
+-- | Count the number of fork nodes (branching).
+numForkDirectLBT :: (Num i) => LabeledBinTree a -> i
+numForkDirectLBT = numNodesWeightedDirectLBT 0 0 1
+
+-- | Count the number of nodes in the tree of any of the 3 kinds.
+numAnyDirectLBT :: (Num i) => LabeledBinTree a -> i
+numAnyDirectLBT = numNodesWeightedDirectLBT 1 1 1
+
+-- | 'numElemsLBT' specialized to Integer.
+numElemsLBTI :: LabeledBinTree a -> Integer
+numElemsLBTI = numElemsLBT
+
+-- | 'numNodesWeightedDirectLBT' specialized to Integer.
+numNodesWeightedDirectLBTI :: Integer -> Integer -> Integer -> LabeledBinTree a -> Integer
+numNodesWeightedDirectLBTI = numNodesWeightedDirectLBT
+
+-- | 'numNodesDirectLBT' specialized to Integer.
+numNodesDirectLBTI :: LabeledBinTree a -> Integer
+numNodesDirectLBTI = numNodesDirectLBT
+
+-- | 'numEmptyDirectLBT' specialized to Integer.
+numEmptyDirectLBTI :: LabeledBinTree a -> Integer
+numEmptyDirectLBTI = numEmptyDirectLBT
+
+-- | 'numLeavesDirectLBT' specialized to Integer.
+numLeavesDirectLBTI :: LabeledBinTree a -> Integer
+numLeavesDirectLBTI = numLeavesDirectLBT
+
+-- | 'numForkDirectLBT' specialized to Integer.
+numForkDirectLBTI :: LabeledBinTree a -> Integer
+numForkDirectLBTI = numForkDirectLBT
+
+-- | 'numAnyDirectLBT' specialized to Integer.
+numAnyDirectLBTI :: LabeledBinTree a -> Integer
+numAnyDirectLBTI = numAnyDirectLBT
+
+-- * Constructor aliases
 
 -- | Shorter alias of 'mkLabeledEmpty'.
 emptyLBT :: LabeledBinTree a
@@ -331,6 +415,8 @@ leafLBT = mkLabeledLeaf
 -- | Shorter alias of 'mkLabeledFork'.
 forkLBT :: LabeledBinTree a -> a -> LabeledBinTree a -> LabeledBinTree a
 forkLBT = mkLabeledFork
+
+-- * Equivalence relations
 
 -- | Equivalence after normalization.
 eqLBT :: (Eq a) => LabeledBinTree a -> LabeledBinTree a -> Bool

@@ -330,6 +330,11 @@ instance Applicative LabeledBinTree where
 	(<*>) = appLabeledBinTreeCombinatorial
 
 -- | The default Monad instance of LabeledBinTree uses 'joinLabeledBinTree'
+--
+-- If my hand-wavy analysis is correct, joining trees strictly would have
+-- exponentially growing space costs, so it may rarely be useful to use this
+-- if evaluating the entire tree, rather than only down a specific or select
+-- set of paths through the tree.
 instance Monad LabeledBinTree where
 	return :: a -> LabeledBinTree a
 	return = pure

@@ -49,9 +49,13 @@ tests = testGroup "Data.LabeledBinTree" $
 		testCase "simpleConstant == 3" $
 			simpleConstant @?= 3,
 
-		-- TODO: fix intermittent freeze in monadic associativity test of Tree (maybe it's evaluating something big?)
+		-- I think it grows exponentionally (although I haven't rigorously
+		-- worked out the tight big theta growth class for space if everything
+		-- were strictly evaluated), so when testing for associativity, we'll
+		-- want to limit tho size of trees.  e.g. I saw maxTreeSizeSum of 3*8
+		-- (average size of 8) result in a tree size of 443,621.
 		testGroup "testing monadic associativity of Tree" $
-			let maxTreeSizeSum = 3*8 in  -- Even with this, I saw a result tree size of 60,623 and another of 443,621.  Perhaps something is wrong.
+			let maxTreeSizeSum = 3*6 in  -- See above; probably exponential growth, and we're not traversing a single path but the entire tree.
 			[
 				testProperty "monadic associativity test of Tree 0" $
 					\(int  :: Integer) ->

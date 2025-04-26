@@ -728,6 +728,7 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 			(\f -> (f :: LumpBSPPartition -> Tree LumpBSPPartition) firstPartition) . fix $ \makeTree ->
 			\parentPartition ->
 			if' (S.null (parentPartition^.lbsppAllLumps)) (leafLBT parentPartition) $
+			D.trace "DEBUG8" $  -- TODO
 			forkLBT
 				(makeTree . fix $ \partition -> LumpBSPPartition {
 					_lbsppPlane =

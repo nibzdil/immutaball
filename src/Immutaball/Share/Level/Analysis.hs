@@ -716,10 +716,18 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 					-- our plane, find the closest lump to the mean and use its
 					-- mean.
 					let allMean' = closestLumpMean allLumps allMean in
-					normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
-				_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
+					--undefined $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
+					--normalizePlane3 (Vec3 0 0 0) (refineNormal allLumps allMean' initialNormal),  -- More progress
+					--normalizePlane3 (allMean) (refineNormal allLumps allMean' initialNormal),  -- Freezes early; only 1 fork debug print?
+					--normalizePlane3 (lumpsAverageVertex (S.fromList bodyLumpIndices)) (refineNormal allLumps allMean' initialNormal),  -- Freezes early; only 1 fork debug print?
+					--normalizePlane3 (D.trace (printf "DEBUG88: %s" (show $ (S.fromList bodyLumpIndices))) $ lumpsAverageVertex (S.fromList bodyLumpIndices)) (refineNormal allLumps allMean' initialNormal),  -- Freezes early; only 1 fork debug print?
+					--normalizePlane3 (D.trace (printf "DEBUG88: %s" (show $ ())) $ lumpsAverageVertex (S.fromList bodyLumpIndices)) (refineNormal allLumps allMean' initialNormal),  -- Freezes early; only 1 fork debug print?
+					--D.trace (printf "DEBUG89: %s" (show $ (lumpsAverageVertex (S.fromList bodyLumpIndices), (refineNormal allLumps allMean' initialNormal)))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- debug does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show 3)) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- debug prints!!!  Something in the debug is freezing it.
+					D.trace (printf "DEBUG89: %s" (show 3)) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
+				_lbsppLumps = undefined $ S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
-				_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
+				_lbsppLumpsMeanVertex = undefined $ lumpsAverageVertex (partition^.lbsppLumps),
 
 				_lbsppAllLumps = S.fromList bodyLumpIndices,
 				_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
@@ -740,13 +748,14 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 						-- our plane, find the closest lump to the mean and use its
 						-- mean.
 						let allMean' = closestLumpMean allLumps allMean in
-						normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
-					_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
+						undefined $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
+					_lbsppLumps = undefined $ S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
-					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
+					_lbsppLumpsMeanVertex = undefined $ lumpsAverageVertex (partition^.lbsppLumps),
 
-					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
-					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
+					--_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumps = S.filter (\li -> D.trace "DEBUG10allLumps" $ lumpPlaneSide (parentPartition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumpsMeanVertex = undefined $ lumpsAverageVertex (partition^.lbsppAllLumps)
 				})
 				(parentPartition & lbsppLumps %~ assertNonNull)
 				(makeTree . fix $ \partition -> LumpBSPPartition {
@@ -759,13 +768,14 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 						-- our plane, find the closest lump to the mean and use its
 						-- mean.
 						let allMean' = closestLumpMean allLumps allMean in
-						normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
-					_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
+						undefined $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
+					_lbsppLumps = undefined $ S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
-					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
+					_lbsppLumpsMeanVertex = undefined $ lumpsAverageVertex (partition^.lbsppLumps),
 
-					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
-					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
+					--_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumps = S.filter (\li -> D.trace "DEBUG9allLumps" $ lumpPlaneSide (parentPartition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumpsMeanVertex = undefined $ lumpsAverageVertex (partition^.lbsppAllLumps)
 				})
 
 			where

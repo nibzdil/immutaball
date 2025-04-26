@@ -734,7 +734,7 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 
 					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
 
-					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (partition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
 					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
 				})
 				(parentPartition)
@@ -748,7 +748,7 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 
 					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
 
-					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (partition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
 					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
 				})
 			--newtype LumpBSP = LumpBSP {_lumpBSP :: Tree LumpBSPPartition}

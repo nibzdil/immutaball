@@ -767,7 +767,6 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
 					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
 				})
-			--newtype LumpBSP = LumpBSP {_lumpBSP :: Tree LumpBSPPartition}
 
 			where
 				lumpsAverageVertex :: S.Set Int32 -> Vec3 Double

@@ -747,7 +747,7 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (parentPartition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
 					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
 				})
-				(parentPartition)
+				(parentPartition & lbsppLumps %~ assertNonNull)
 				(makeTree . fix $ \partition -> LumpBSPPartition {
 					_lbsppPlane =
 						let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
@@ -850,3 +850,6 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 				closestLumpMean :: S.Set Int32 -> Vec3 Double -> Vec3 Double
 				closestLumpMean allLumps allMean = (safeHead . sortOn (\mean -> (mean - allMean)^.r3) . map liToMean . S.toList $ allLumps) `morElse` allMean
 					where liToMean li = flip M.lookup (spa^.spaLumpAverageVertex) li `morElse` error ("Internal error: mkSolPhysicsAnalysis closestLumpMean could not find mean vertex of lump ‘" ++ (show li) ++ "’.")
+
+				assertNonNull :: S.Set a -> S.Set a
+				assertNonNull s = if' (S.null s) (error "Internal error: mkSolPhysicsAnalysis bodyBSPs assertNonNull: each non-leaf partition should have at least 1 lump, but this partition didn't!") (s)

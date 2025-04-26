@@ -701,7 +701,7 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 			-- Return the planes.
 			(li, planesOriented)
 
-		-- | Make a BSP of each partition at runtime.
+		-- | Make a BSP of each body at runtime.
 		bodyBSPs :: SolPhysicsAnalysis -> M.Map Int32 LumpBSP
 		bodyBSPs spa = M.fromList . flip map [0..sol^.solBc - 1] $ \bi ->
 			let body = (sol^.solBv) ! bi in
@@ -711,7 +711,12 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 					let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
 					let allLumps = (partition^.lbsppAllLumps) in
 					let initialNormal = v3normalize . correctNormal $ (Vec3 1 0 0) in
-					normalizePlane3 allMean (refineNormal allLumps allMean initialNormal),
+					-- Make sure there is always at least 1 lump in a
+					-- partition: instead of using allMean for the point for
+					-- our plane, find the closest lump to the mean and use its
+					-- mean.
+					let allMean' = closestLumpMean allLumps allMean in
+					normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
 				_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
 				_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
@@ -729,7 +734,12 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 						let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
 						let allLumps = (partition^.lbsppAllLumps) in
 						let initialNormal = v3normalize . correctNormal $ (parentPartition^.lbsppPlane.abcp3) `vx3` ((partition^.lbsppAllLumpsMeanVertex) - (parentPartition^.lbsppAllLumpsMeanVertex)) in
-						normalizePlane3 allMean (refineNormal allLumps allMean initialNormal),
+						-- Make sure there is always at least 1 lump in a
+						-- partition: instead of using allMean for the point for
+						-- our plane, find the closest lump to the mean and use its
+						-- mean.
+						let allMean' = closestLumpMean allLumps allMean in
+						normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
 					_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
 					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
@@ -743,7 +753,12 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 						let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
 						let allLumps = (partition^.lbsppAllLumps) in
 						let initialNormal = v3normalize . correctNormal $ (parentPartition^.lbsppPlane.abcp3) `vx3` ((partition^.lbsppAllLumpsMeanVertex) - (parentPartition^.lbsppAllLumpsMeanVertex)) in
-						normalizePlane3 allMean (refineNormal allLumps allMean initialNormal),
+						-- Make sure there is always at least 1 lump in a
+						-- partition: instead of using allMean for the point for
+						-- our plane, find the closest lump to the mean and use its
+						-- mean.
+						let allMean' = closestLumpMean allLumps allMean in
+						normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
 					_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
 					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
@@ -829,3 +844,9 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 
 						setSize :: S.Set a -> Integer
 						setSize = fromIntegral .  S.size
+
+				-- | Given a set of lumps and a point, find the lump whose mean
+				-- is closest to that point, and return its mean.
+				closestLumpMean :: S.Set Int32 -> Vec3 Double -> Vec3 Double
+				closestLumpMean allLumps allMean = (safeHead . sortOn (\mean -> (mean - allMean)^.r3) . map liToMean . S.toList $ allLumps) `morElse` allMean
+					where liToMean li = flip M.lookup (spa^.spaLumpAverageVertex) li `morElse` error ("Internal error: mkSolPhysicsAnalysis closestLumpMean could not find mean vertex of lump ‘" ++ (show li) ++ "’.")

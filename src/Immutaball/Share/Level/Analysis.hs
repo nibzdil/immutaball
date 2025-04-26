@@ -75,6 +75,9 @@ import Immutaball.Share.Math
 import Immutaball.Share.Utils
 import Immutaball.Share.Video
 
+import Debug.Trace as D ------------------------------------------------------TODO
+import Text.Printf
+
 data SolWithAnalysis = SolWithAnalysis {
 	_swaSol  :: Sol,
 	_swaSa   :: SolAnalysis,
@@ -581,7 +584,8 @@ getSpaLumpGetVertexAdjacents :: SolPhysicsAnalysis -> (Int32 -> Int32 -> S.Set I
 getSpaLumpGetVertexAdjacents spa = \li vi -> (M.lookup li (spa^.spaLumpVertexAdjacents) >>= M.lookup vi) `morElse` S.empty
 
 mkSolPhysicsAnalysis :: IBContext' a -> Sol -> SolPhysicsAnalysis
-mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
+--mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
+mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" (show (r^.spaBodyBSPs))) $ r) . (\r -> D.trace (printf "DEBUG0: tot num: %s" (show (r^.spaBSPNumPartitions))) $ r) . fix $ \spa -> SolPhysicsAnalysis {
 	_spaLumpOutwardsSides                     = (^._1) <$> lumpSidesData spa,
 	_spaLumpOutwardsSidesNumNegatedNormals    = (^._2) <$> lumpSidesData spa,
 	_spaLumpOutwardsSidesNumNotNegatedNormals = (^._3) <$> lumpSidesData spa,

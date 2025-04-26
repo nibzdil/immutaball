@@ -567,6 +567,11 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 0.0
 -- 	briefly pauses), so we have thresholdTimeRemaining; and we also have
 -- 	distance because otherwise the ball can always go fast enough so that it
 -- 	bounces enough times between lumps and ghosts through.
+--
+-- TODO: I once observed a rare glitching through a wall on Medium 16.
+-- Probably make the planes and collisions handling a little more rigorous to
+-- fix it, but the brute force algorithm isn't designed to be the primary
+-- physics algorithm, so it probably isn't very important.
 physicsBallAdvanceBruteForceCompute :: Integer -> Double -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 --physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresholdRDistanceRemaining x'cfg level spa ballRadius gravityVector dt p0 v0 =
 physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresholdRDistanceRemaining x'cfg level spa ballRadius gravityVector dt p0 v0

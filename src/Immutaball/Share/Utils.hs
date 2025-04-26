@@ -46,9 +46,12 @@ module Immutaball.Share.Utils
 		falseAsIntegral,
 		deconsMaybe,
 
-		morElse
+		morElse,
 
 		--AssumeEOS,
+
+		setMapFilter,
+		steppingMean
 	) where
 
 import Prelude ()
@@ -59,6 +62,7 @@ import Control.Monad.Fix
 import Data.Functor.Compose
 import Data.List
 import Data.Maybe
+import qualified Data.Set as S
 
 import Control.Lens
 
@@ -209,3 +213,21 @@ instance Eq (AssumeEOS a) where _ == _ = True
 instance Ord (AssumeEOS a) where _ <= _ = True
 instance Show (AssumeEOS a) where show _ = "(AssumeEOS)"
 -}
+
+setMapFilter :: (Ord a, Ord b) => (a -> Maybe b) -> S.Set a -> S.Set b
+setMapFilter f s =
+	S.map (\x -> case x of
+		Nothing -> error "Internal error: setMapFilter found a Nothing after removing all Nothings."
+		Just a -> a) .
+	S.filter (\x -> case x of
+		Nothing -> False
+		Just _  -> True) .
+	S.map f $
+	s
+
+-- | Find the mean value.
+--
+-- 	  (lastLen*lastMean + x)/(lastLen + 1)
+-- 	= (lastLen/(lastLen + 1))*lastMean + x/(lastLen + 1)
+steppingMean :: (Foldable t, Num a, Fractional a) => t a -> a
+steppingMean = snd . foldr (\x (lastLen, lastMean) -> let lastLenP1 = lastLen + 1 in (lastLenP1, (lastLen/lastLenP1)*lastMean + x/lastLenP1)) (0, 0)

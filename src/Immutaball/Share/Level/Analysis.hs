@@ -32,10 +32,14 @@ module Immutaball.Share.Level.Analysis
 			sraGeomPassBis, sraGeomPassBisGPU, sraTexcoordsDoubleData,
 			sraTexcoordsDoubleDataGPU,
 		GeomPass(..), gpBi, gpMv, gpTextures, gpTexturesGPU, gpGis, gpGisGPU,
+		LumpBSP(..), lumpBSP,
+		LumpBSPPartition(..), lbsppPlane, lbsppLumps, lbsppLumpsMeanVertex,
+			lbsppAllLumps, lbsppAllLumpsMeanVertex,
 		SolPhysicsAnalysis(..), spaLumpOutwardsSides,
 			spaLumpOutwardsSidesNumNegatedNormals,
 			spaLumpOutwardsSidesNumNotNegatedNormals, spaLumpAverageVertex,
 			spaLumpVertexAdjacents, {-spaLumpGetVertexAdjacents, -}spaLumpPlanes,
+			spaBodyBSPs, spaBodyBSPNumPartitions, spaBSPNumPartitions,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
 		getSpaLumpGetVertexAdjacents,
@@ -51,15 +55,16 @@ import Data.Bits
 import Data.Foldable
 import Data.Function hiding (id, (.))
 import Data.Int
+import Data.List hiding (partition)
 import Data.Maybe
 
 import Control.Lens
 import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
-import Data.List
 import qualified Data.Map.Lazy as M
 import qualified Data.Set as S
 
+import Data.LabeledBinTree
 import Immutaball.Ball.LevelSets
 import Immutaball.Share.Config
 import Immutaball.Share.Context
@@ -231,6 +236,33 @@ data GeomPass = GeomPass {
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolRenderAnalysis
 
+newtype LumpBSP = LumpBSP {_lumpBSP :: Tree LumpBSPPartition}
+	deriving (Eq, Ord, Show)
+--makeLenses ''LumpBSP
+
+-- | A planar partition of the remaining lumps.
+data LumpBSPPartition = LumpBSPPartition {
+	-- | The plane making the partition of the remaining lumps.
+	_lbsppPlane :: Plane3 Double,
+	-- | All lumps that intersect this plane.  (Either not all vertices are on
+	-- the same side of the plane, or there is a vertex that intersects the plane.)
+	_lbsppLumps :: S.Set Int32,
+
+	-- For convenience, we also provide more data.
+
+	-- | The average vertex of lumps intersecting this plane.
+	_lbsppLumpsMeanVertex :: Vec3 Double,
+
+	-- | Optionally, we can also reference all remaining lumps: i.e. all lumps
+	-- on this plane, and all lumps on any child node.
+	_lbsppAllLumps :: S.Set Int32,
+	-- | The average vertex of all lumps remaining, both on this node and all
+	-- child nodes.
+	_lbsppAllLumpsMeanVertex :: Vec3 Double
+}
+	deriving (Eq, Ord, Show)
+--makeLenses ''LumpBSPPartition
+
 -- | Extra data of the sol useful for physics.
 data SolPhysicsAnalysis = SolPhysicsAnalysis {
 	-- | OLD: actually SOL file lump sides I found were not the actual planes
@@ -264,13 +296,26 @@ data SolPhysicsAnalysis = SolPhysicsAnalysis {
 
 	-- | For each lump, we build from the edges and vertices a set of planes
 	-- with normals pointing away from the convex lump.
-	_spaLumpPlanes :: M.Map Int32 [Plane3 Double]
+	_spaLumpPlanes :: M.Map Int32 [Plane3 Double],
+
+	-- | Map from body indices to BSPs of those bodies.  Bodies in a Sol are
+	-- sets of lumps that all follow the same translation and rotation path.
+	_spaBodyBSPs :: M.Map Int32 LumpBSP,
+
+	-- | For each body, how many partitions does it have?
+	_spaBodyBSPNumPartitions :: M.Map Int32 Integer,
+	-- | What is the total number of partitions for all bodies?
+	-- This is intended to be used with ‘par’ to parallelize an early
+	-- evaluation of all BSPs.
+	_spaBSPNumPartitions :: Integer
 }
 	deriving (Eq, Ord, Show)
 makeLenses ''SolWithAnalysis
 makeLenses ''SolAnalysis
 makeLenses ''SolMeta
 makeLenses ''SolRenderAnalysis
+makeLenses ''LumpBSP
+makeLenses ''LumpBSPPartition
 makeLenses ''GeomPass
 makeLenses ''SolPhysicsAnalysis
 
@@ -547,7 +592,12 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 	{-
 	_spaLumpGetVertexAdjacents = lumpGetVertexAdjacents spa,
 	-}
-	_spaLumpPlanes             = lumpPlanes spa
+	_spaLumpPlanes             = lumpPlanes spa,
+
+	_spaBodyBSPs = bodyBSPs spa,
+
+	_spaBodyBSPNumPartitions = (numElemsLBTI . (^.lumpBSP)) <$> (spa^.spaBodyBSPs),
+	_spaBSPNumPartitions = sum $ M.elems (spa^.spaBodyBSPNumPartitions)
 }
 	where
 		indirection :: Int32 -> Int32
@@ -646,3 +696,132 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {
 
 			-- Return the planes.
 			(li, planesOriented)
+
+		-- | Make a BSP of each partition at runtime.
+		bodyBSPs :: SolPhysicsAnalysis -> M.Map Int32 LumpBSP
+		bodyBSPs spa = M.fromList . flip map [0..sol^.solBc - 1] $ \bi ->
+			let body = (sol^.solBv) ! bi in
+			let bodyLumpIndices = [body^.bodyL0 .. body^.bodyL0 + body^.bodyLc - 1] in
+			let (firstPartition :: LumpBSPPartition) = fix $ \partition -> LumpBSPPartition {
+				_lbsppPlane =
+					let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
+					let allLumps = (partition^.lbsppAllLumps) in
+					let initialNormal = v3normalize . correctNormal $ (Vec3 1 0 0) in
+					normalizePlane3 allMean (refineNormal allLumps allMean initialNormal),
+				_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
+
+				_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
+
+				_lbsppAllLumps = S.fromList bodyLumpIndices,
+				_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
+			} in
+			(,) bi . LumpBSP . normalizeLabeledBinTree .
+			(\f -> (f :: LumpBSPPartition -> Tree LumpBSPPartition) firstPartition) . fix $ \makeTree ->
+			\parentPartition ->
+			if' (S.null (parentPartition^.lbsppAllLumps)) (leafLBT parentPartition) $
+			forkLBT
+				(makeTree . fix $ \partition -> LumpBSPPartition {
+					_lbsppPlane =
+						let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
+						let allLumps = (partition^.lbsppAllLumps) in
+						let initialNormal = v3normalize . correctNormal $ (parentPartition^.lbsppPlane.abcp3) `vx3` ((partition^.lbsppAllLumpsMeanVertex) - (parentPartition^.lbsppAllLumpsMeanVertex)) in
+						normalizePlane3 allMean (refineNormal allLumps allMean initialNormal),
+					_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
+
+					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
+
+					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (partition^.lbsppPlane) li == (-1)) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
+				})
+				(parentPartition)
+				(makeTree . fix $ \partition -> LumpBSPPartition {
+					_lbsppPlane =
+						let allMean  = (partition^.lbsppAllLumpsMeanVertex) in
+						let allLumps = (partition^.lbsppAllLumps) in
+						let initialNormal = v3normalize . correctNormal $ (parentPartition^.lbsppPlane.abcp3) `vx3` ((partition^.lbsppAllLumpsMeanVertex) - (parentPartition^.lbsppAllLumpsMeanVertex)) in
+						normalizePlane3 allMean (refineNormal allLumps allMean initialNormal),
+					_lbsppLumps = S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
+
+					_lbsppLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppLumps),
+
+					_lbsppAllLumps = S.filter (\li -> lumpPlaneSide (partition^.lbsppPlane) li == 1) (parentPartition^.lbsppAllLumps),
+					_lbsppAllLumpsMeanVertex = lumpsAverageVertex (partition^.lbsppAllLumps)
+				})
+			--newtype LumpBSP = LumpBSP {_lumpBSP :: Tree LumpBSPPartition}
+
+			where
+				lumpsAverageVertex :: S.Set Int32 -> Vec3 Double
+				lumpsAverageVertex lumps =
+					steppingMean .
+					--setMapFilter (\li -> flip M.lookup (spa^.spaLumpAverageVertex) li) $
+					S.map (\x -> x `morElse` error "Internal error: mkSolPhysicsAnalysis lumpsAverageVertex failed to find average vertex for a lump") .
+					S.map (\li -> flip M.lookup (spa^.spaLumpAverageVertex) li) $
+					lumps
+
+				lumpIntersectsPlane :: Plane3 Double -> Int32 -> Bool
+				{-
+				lumpIntersectsPlane plane li =
+					let lump = (sol^.solLv) ! li in
+					let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
+					let vs = (^.vertP) . ((sol^.solVv) !) <$> vis in
+					-- Which side is each vertex on?
+					let sides = map thresholdSignnum . map (plane3PointDistance plane) $ vs in
+					let anyVertOnPlane = any (== 0) sides in
+					let lumpCrossesPlane = length (nub sides) > 1 in
+					anyVertOnPlane || lumpCrossesPlane
+				-}
+				lumpIntersectsPlane plane li = lumpPlaneSide plane li == 0
+
+				-- | Does the lump intersect the plane?  Classify as 0.
+				-- Otherwise, classify by whether all lump vertices are behind (-1) or
+				-- in front of (1) the plane.
+				lumpPlaneSide :: Plane3 Double -> Int32 -> Integer
+				lumpPlaneSide plane li =
+					let lump = (sol^.solLv) ! li in
+					let vis = indirection <$> [lump^.lumpV0..lump^.lumpV0 + lump^.lumpVc - 1] in
+					let vs = (^.vertP) . ((sol^.solVv) !) <$> vis in
+					-- Which side of the plane is each vertex on?
+					let sides = map thresholdSignnumI . map (plane3PointDistance plane) $ vs in
+					let anyVertOnPlane = any (== 0) sides in
+					let lumpCrossesPlane = length (nub sides) > 1 in
+					if' (anyVertOnPlane || lumpCrossesPlane || null sides)  ( 0) .
+					if' (all (<= 0) sides)                                  (-1) $
+					id                                                      ( 1)
+
+				-- | If the normal is small, default to Vec3 1 0 0; otherwise, normalize it.
+				correctNormal :: Vec3 Double -> Vec3 Double
+				correctNormal v
+					| (v^.r3) - smallishNum <= threshold = v3normalize $ Vec3 1 0 0
+					| otherwise                          = v3normalize $ v
+					where threshold = 0.001
+
+				-- | Given a set of lumps, the mean mean vertex of those lumps,
+				-- and an initial normal, try to produce a better normal that
+				-- minimizes the difference in size between lumps in front of
+				-- and behind the plane ‘normalizePlane3 mean normal’.  i.e. we
+				-- made a guess as to a good partition of the lumps, and try to
+				-- refine the normal of the plane to equalize the number of
+				-- lumps of each side.
+				refineNormal :: S.Set Int32 -> Vec3 Double -> Vec3 Double -> Vec3 Double
+				refineNormal lis mean lastNormal0 =
+					(\f -> (f :: Integer -> Vec3 Double -> Vec3 Double) maxIterations lastNormal0) . fix $ \iterate_ iterationsRemaining lastNormal ->
+						if' (iterationsRemaining   <= 0)                   (lastNormal) .
+						if' (inequality lastNormal <= 1)                   (lastNormal) $
+						let tryNormal = lumpsAverageVertex . flip S.filter lis $ \li -> lumpPlaneSide (normalizePlane3 mean lastNormal) li == 1 in
+						if' (inequality tryNormal > inequality lastNormal) (lastNormal) $
+						iterate_ (iterationsRemaining - 1) tryNormal
+					where
+						maxIterations :: Integer
+						maxIterations = 8
+
+						-- | Given a normal, what is the difference in number
+						-- of lumps on each side?
+						inequality :: Vec3 Double -> Integer
+						inequality tryNormal =
+							let sidesNotOn = S.filter (/= 0) . S.map (lumpPlaneSide (normalizePlane3 mean tryNormal)) $ lis in
+							let numBehind = setSize . S.filter (<= 0) $ sidesNotOn in
+							let numAhead = setSize sidesNotOn - numBehind in
+							abs $ numAhead - numBehind
+
+						setSize :: S.Set a -> Integer
+						setSize = fromIntegral .  S.size

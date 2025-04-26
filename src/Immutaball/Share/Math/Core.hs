@@ -206,12 +206,12 @@ module Immutaball.Share.Math.Core
 		worldToGLSimple,
 		rescaleDepth,
 
-		-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
+		-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin
 
 		aimHoriz3DSimple,
 		aimVert3DSimple,
 
-		-- * More utils.
+		-- * More utils
 		v2z,
 		v2s,
 		v2nzElse,
@@ -225,7 +225,7 @@ module Immutaball.Share.Math.Core
 		v4nzElse,
 		v4nsElse,
 
-		-- * Subvectors.
+		-- * Subvectors
 		xy3,
 		xz3,
 		yz3,
@@ -240,7 +240,13 @@ module Immutaball.Share.Math.Core
 		xzw4,
 		yzw4,
 
-		sqx
+		sqx,
+
+		-- * Equivalence and sign utils
+		thresholdSignnum,
+		nearSignnum,
+		thresholdSignnumI,
+		nearSignnumI
 	) where
 
 import Prelude ()
@@ -282,6 +288,9 @@ instance (Num a) => Num (Vec2 a) where
 	abs = fmap abs
 	(*) = cm2
 	signum = fmap signum
+instance (Num a, Fractional a) => Fractional (Vec2 a) where
+	a / b = a * recip b
+	fromRational = rv2 . fromRational
 
 rv2 :: a -> Vec2 a
 rv2 z = Vec2 z z
@@ -372,6 +381,9 @@ instance (Num a) => Num (Vec3 a) where
 	abs = fmap abs
 	(*) = cm3
 	signum = fmap signum
+instance (Num a, Fractional a) => Fractional (Vec3 a) where
+	a / b = a * recip b
+	fromRational = rv3 . fromRational
 
 rv3 :: a -> Vec3 a
 rv3 z = Vec3 z z z
@@ -448,6 +460,9 @@ instance (Num a) => Num (Vec4 a) where
 	abs = fmap abs
 	(*) = cm4
 	signum = fmap signum
+instance (Num a, Fractional a) => Fractional (Vec4 a) where
+	a / b = a * recip b
+	fromRational = rv4 . fromRational
 
 rv4 :: a -> Vec4 a
 rv4 z = Vec4 z z z z
@@ -1867,7 +1882,7 @@ rescaleDepth depthTranslate depthScale = Mat4 $ Vec4
 	where
 		(do_, ds) = (depthTranslate, depthScale)
 
--- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin.
+-- * 3D vector aiming rotation utils in radians: horizontal and vertical aiming of a point relative to origin
 
 -- | The vector represents where the camera at the origin is pointing.  Rotate
 -- aim right by ‘radiansRight’ radians.
@@ -1913,7 +1928,7 @@ aimVert3DSimple mmaxRadius radiansUp target@(Vec3 tx ty _tz) = (`mv3` target) $
 			Nothing -> radiansUp
 			Just _ -> min maxRadiansUp . max minRadiansUp $ radiansUp
 
--- * More utils.
+-- * More utils
 
 -- | Is the vector zero?
 v2z :: (SmallNum a, Ord a, Num a, RealFloat a) => Vec2 a -> Bool
@@ -1963,7 +1978,7 @@ v4nzElse v else_ = if' (not $ v4z v) v else_
 v4nsElse :: (SmallishNum a, Ord a, Num a, RealFloat a) => Vec4 a -> Vec4 a -> Vec4 a
 v4nsElse v else_ = if' (not $ v4s v) v else_
 
--- * Subvectors.
+-- * Subvectors
 
 -- | Handle just the ‘xy’ vector in a Vec3.
 xy3 :: forall a. Lens' (Vec3 a) (Vec2 a)
@@ -2085,3 +2100,33 @@ yzw4 = lens getter (flip setter)
 -- | Convenient utility to square a number.
 sqx :: forall a. (Num a) => a -> a
 sqx x = x*x
+
+-- * Equivalence and sign utils
+
+-- | Determine if the number is zero, negative, or positive.
+thresholdSignnum :: forall a i. (SmallNum a, Num a, Ord a, Num i) => a -> i
+thresholdSignnum x
+	| x `equivalentSmall` 0 =  0
+	| x <=                0 = -1
+	| otherwise             =  1
+
+-- | 'nearSignum' specialized to Integer.
+nearSignnum :: forall a i. (SmallishNum a, Num a, Ord a, Num i) => a -> i
+nearSignnum x
+	| x `near`  0 =  0
+	| x <=      0 = -1
+	| otherwise   =  1
+
+-- | 'thresholdSignum' specialized to Integer.
+thresholdSignnumI :: forall a. (SmallNum a, Num a, Ord a) => a -> Integer
+thresholdSignnumI x
+	| x `equivalentSmall` 0 =  0
+	| x <=                0 = -1
+	| otherwise             =  1
+
+-- | 'nearSignum' specialized to Integer.
+nearSignnumI :: forall a. (SmallishNum a, Num a, Ord a) => a -> Integer
+nearSignnumI x
+	| x `near`  0 =  0
+	| x <=      0 = -1
+	| otherwise   =  1

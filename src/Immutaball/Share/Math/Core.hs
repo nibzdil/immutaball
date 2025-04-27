@@ -289,7 +289,7 @@ instance (Num a) => Num (Vec2 a) where
 	(*) = cm2
 	signum = fmap signum
 instance (Num a, Fractional a) => Fractional (Vec2 a) where
-	a / b = a * recip b
+	a / b = a * (recip <$> b)
 	fromRational = rv2 . fromRational
 
 rv2 :: a -> Vec2 a
@@ -382,7 +382,7 @@ instance (Num a) => Num (Vec3 a) where
 	(*) = cm3
 	signum = fmap signum
 instance (Num a, Fractional a) => Fractional (Vec3 a) where
-	a / b = a * recip b
+	a / b = a * (recip <$> b)
 	fromRational = rv3 . fromRational
 
 rv3 :: a -> Vec3 a
@@ -461,7 +461,7 @@ instance (Num a) => Num (Vec4 a) where
 	(*) = cm4
 	signum = fmap signum
 instance (Num a, Fractional a) => Fractional (Vec4 a) where
-	a / b = a * recip b
+	a / b = a * (recip <$> b)
 	fromRational = rv4 . fromRational
 
 rv4 :: a -> Vec4 a

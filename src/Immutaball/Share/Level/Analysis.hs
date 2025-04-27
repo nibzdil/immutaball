@@ -724,7 +724,18 @@ mkSolPhysicsAnalysis _cxt sol = (\r -> D.trace (printf "DEBUG1: bsp trees!: %s" 
 					--normalizePlane3 (D.trace (printf "DEBUG88: %s" (show $ ())) $ lumpsAverageVertex (S.fromList bodyLumpIndices)) (refineNormal allLumps allMean' initialNormal),  -- Freezes early; only 1 fork debug print?
 					--D.trace (printf "DEBUG89: %s" (show $ (lumpsAverageVertex (S.fromList bodyLumpIndices), (refineNormal allLumps allMean' initialNormal)))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- debug does NOT print.
 					--D.trace (printf "DEBUG89: %s" (show 3)) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- debug prints!!!  Something in the debug is freezing it.
-					D.trace (printf "DEBUG89: %s" (show 3)) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
+					--D.trace (printf "DEBUG89: %s" (show (refineNormal allLumps allMean' initialNormal))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show (allLumps, allMean', initialNormal))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show (allLumps, allMean'))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show (allLumps))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- prints.
+					--D.trace (printf "DEBUG89: %s" (show (allMean'))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show (allMean))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show (lumpsAverageVertex (S.fromList bodyLumpIndices)))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.
+					--D.trace (printf "DEBUG89: %s" (show (S.fromList bodyLumpIndices))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- prints.  Hmm, how come adding lumpsAverageVertex adds a freeze?
+					--D.trace (printf "DEBUG89: %s" (show (S.fromList bodyLumpIndices))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),
+					--D.trace (printf "DEBUG89: %s" (show (S.map (\li -> flip M.lookup (spa^.spaLumpAverageVertex) li) $ S.fromList bodyLumpIndices))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal), -- Prints.
+					--D.trace (printf "DEBUG89: %s" (show (S.map (\x -> x `morElse` error "Internal error: mkSolPhysicsAnalysis lumpsAverageVertex failed to find average vertex for a lump") . S.map (\li -> flip M.lookup (spa^.spaLumpAverageVertex) li) $ S.fromList bodyLumpIndices))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- prints.
+					D.trace (printf "DEBUG89: %s" (show (steppingMean . S.map (\x -> x `morElse` error "Internal error: mkSolPhysicsAnalysis lumpsAverageVertex failed to find average vertex for a lump") . S.map (\li -> flip M.lookup (spa^.spaLumpAverageVertex) li) $ S.fromList bodyLumpIndices))) $ normalizePlane3 allMean' (refineNormal allLumps allMean' initialNormal),  -- does NOT print.  Narrowed down to steppingMean.
 				_lbsppLumps = undefined $ S.filter (lumpIntersectsPlane (partition^.lbsppPlane)) (partition^.lbsppAllLumps),
 
 				_lbsppLumpsMeanVertex = undefined $ lumpsAverageVertex (partition^.lbsppLumps),

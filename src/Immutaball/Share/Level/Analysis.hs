@@ -819,10 +819,10 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 				refineNormal :: S.Set Int32 -> Vec3 Double -> Vec3 Double -> Vec3 Double
 				refineNormal lis mean lastNormal0 =
 					(\f -> (f :: Integer -> Vec3 Double -> Vec3 Double) maxIterations lastNormal0) . fix $ \iterate_ iterationsRemaining lastNormal ->
-						if' (iterationsRemaining   <= 0)                   (lastNormal) .
-						if' (inequality lastNormal <= 1)                   (lastNormal) $
+						if' (iterationsRemaining    <= 0)                    (lastNormal) .
+						if' (inequality' lastNormal <= 1)                    (lastNormal) $
 						let tryNormal = lumpsAverageVertex . flip S.filter lis $ \li -> lumpPlaneSide (normalizePlane3 mean lastNormal) li == 1 in
-						if' (inequality tryNormal > inequality lastNormal) (lastNormal) $
+						if' (inequality' tryNormal > inequality' lastNormal) (lastNormal) $
 						iterate_ (iterationsRemaining - 1) tryNormal
 					where
 						maxIterations :: Integer
@@ -830,8 +830,8 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 
 						-- | Given a normal, what is the difference in number
 						-- of lumps on each side?
-						inequality :: Vec3 Double -> Integer
-						inequality tryNormal =
+						_inequality :: Vec3 Double -> Integer
+						_inequality tryNormal =
 							let sidesNotOn = S.filter (/= 0) . S.map (lumpPlaneSide (normalizePlane3 mean tryNormal)) $ lis in
 							let numBehind = setSize . S.filter (<= 0) $ sidesNotOn in
 							let numAhead = setSize sidesNotOn - numBehind in
@@ -839,6 +839,18 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 
 						setSize :: S.Set a -> Integer
 						setSize = fromIntegral .  S.size
+
+						-- | Adjust inequality by adding a cost of having more
+						-- lumps (after the first) _on_ the plane, since these
+						-- always have to checked before descending in the tree for e.g.
+						-- collisions.
+						inequality' :: Vec3 Double -> Integer
+						inequality' tryNormal =
+							let sidesNotOn = S.filter (/= 0) . S.map (lumpPlaneSide (normalizePlane3 mean tryNormal)) $ lis in
+							let numBehind = setSize . S.filter (<= 0) $ sidesNotOn in
+							let numAhead = setSize sidesNotOn - numBehind in
+							let numOn = setSize lis - setSize sidesNotOn in
+							(abs $ numAhead - numBehind) + 2 * numOn
 
 				-- | Given a set of lumps and a point, find the lump whose mean
 				-- is closest to that point, and return its mean.

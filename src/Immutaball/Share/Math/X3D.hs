@@ -38,6 +38,7 @@ module Immutaball.Share.Math.X3D
 
 		line3Lerp,
 		line3CoordAtDistancePlane3,
+		line3PlaneIntersection,
 
 		line3PointCoord,
 		line3PointDistance,
@@ -346,6 +347,12 @@ line3CoordAtDistancePlane3 p l d
 
 		p0d = plane3PointDistance p (l^.p0l3)
 		p1d = plane3PointDistance p (l^.p1l3)
+
+-- | Find the point on the plane where an infinite line intersects.
+--
+-- This is better suited for lines with non-trivial length.
+line3PlaneIntersection :: forall a. (SmallNum a, Ord a, Num a, Fractional a) => Line3 a -> Plane3 a -> Maybe (Vec3 a)
+line3PlaneIntersection l p = line3Lerp l <$> line3CoordAtDistancePlane3 p l 0
 
 -- | Find the coord on the line to the closest point on that line to the given
 -- point in 3D space.

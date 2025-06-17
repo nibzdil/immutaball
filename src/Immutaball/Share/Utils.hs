@@ -6,6 +6,7 @@
 
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell, UndecidableInstances, DerivingVia #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}  -- For 'FakeEOS'.
 
 module Immutaball.Share.Utils
 	(
@@ -51,7 +52,9 @@ module Immutaball.Share.Utils
 		--AssumeEOS,
 
 		setMapFilter,
-		steppingMean
+		steppingMean,
+
+		FakeEOS(..), fakeEOS
 	) where
 
 import Prelude ()
@@ -231,3 +234,11 @@ setMapFilter f s =
 -- 	= (lastLen/(lastLen + 1))*lastMean + x/(lastLen + 1)
 steppingMean :: (Foldable t, Num a, Fractional a) => t a -> a
 steppingMean = snd . foldr (\x (lastLen, lastMean) -> let lastLenP1 = lastLen + 1 in (lastLenP1, (lastLen/lastLenP1)*lastMean + x/lastLenP1)) (0, 0)
+
+-- | Considers all functions equal.  Compiler record lookup obtains a different
+-- record for Eq, Ord, Show instance values.
+newtype FakeEOS a = FakeEOS { _fakeEOS :: a }
+makeLenses ''FakeEOS
+instance Eq (FakeEOS a) where _ == _ = True
+instance Ord (FakeEOS a) where _ <= _ = True
+instance Show (FakeEOS a) where show _ = "(FakeEOS)"

@@ -15,7 +15,7 @@
 module Immutaball.Share.Level.Analysis
 	(
 		SolWithAnalysis(..), swaSol, swaSa, swaMeta,
-		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis,
+		SolAnalysis(..), saRenderAnalysis, saPhysicsAnalysis, saOtherAnalysis,
 		SolMeta(..), smPath, smLevelSet,
 		sar, sap,
 		SolRenderAnalysis(..), sraVertexData, sraVertexDataGPU, sraGeomData,
@@ -40,10 +40,12 @@ module Immutaball.Share.Level.Analysis
 			spaLumpOutwardsSidesNumNotNegatedNormals, spaLumpAverageVertex,
 			spaLumpVertexAdjacents, {-spaLumpGetVertexAdjacents, -}spaLumpPlanes,
 			spaBodyBSPs, spaBodyBSPNumPartitions, spaBSPNumPartitions,
+		SolOtherAnalysis(..), soaPathAtTime, soaPathTransformationAtTime,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
 		getSpaLumpGetVertexAdjacents,
-		mkSolPhysicsAnalysis
+		mkSolPhysicsAnalysis,
+		mkSolOtherAnalysis
 	) where
 
 import Prelude ()
@@ -88,7 +90,10 @@ data SolAnalysis = SolAnalysis {
 	_saRenderAnalysis :: SolRenderAnalysis,
 
 	-- | Extra analysis of the sol useful for physics.
-	_saPhysicsAnalysis :: SolPhysicsAnalysis
+	_saPhysicsAnalysis :: SolPhysicsAnalysis,
+
+	-- | Analysis that can be used by either rendering or physics.
+	_saOtherAnalysis :: SolOtherAnalysis
 }
 	deriving (Eq, Ord, Show)
 --makeLenses ''SolAnalysis
@@ -310,6 +315,23 @@ data SolPhysicsAnalysis = SolPhysicsAnalysis {
 	_spaBSPNumPartitions :: Integer
 }
 	deriving (Eq, Ord, Show)
+--makeLenses ''SolPhysicsAnalysis
+
+-- | Other level analysis, e.g. body calculations for renderer or physics.
+data SolOtherAnalysis = SolOtherAnalysis {
+	-- | Given an origin path (by index), obtain a function from time elapsed
+	-- to the current path any attached body would be on, along with a value
+	-- from 0 to 1 representing how far along the path that body would be at
+	-- that time.
+	-- Currently only translations are supported.
+	_soaPathAtTime :: FakeEOS (M.Map Int32 (Double -> (Int32, Double))),
+	-- | Likewise, but obtain a transformation matrix for the base path,
+	-- without hierarchical paths.
+	_soaPathTransformationAtTime :: FakeEOS (M.Map Int32 (Double -> Mat4 Double))
+}
+	deriving (Eq, Ord, Show)  -- We'll use FakeEOS because we use functions here.
+--makeLenses ''SolOtherAnalysis
+
 makeLenses ''SolWithAnalysis
 makeLenses ''SolAnalysis
 makeLenses ''SolMeta
@@ -318,6 +340,7 @@ makeLenses ''LumpBSP
 makeLenses ''LumpBSPPartition
 makeLenses ''GeomPass
 makeLenses ''SolPhysicsAnalysis
+makeLenses ''SolOtherAnalysis
 
 sar :: Lens' SolAnalysis SolRenderAnalysis
 sar = saRenderAnalysis
@@ -328,7 +351,8 @@ sap = saPhysicsAnalysis
 mkSolAnalysis :: IBContext' a -> Sol -> SolAnalysis
 mkSolAnalysis cxt sol = fix $ \_sa -> SolAnalysis {
 	_saRenderAnalysis  = mkSolRenderAnalysis  cxt sol,
-	_saPhysicsAnalysis = mkSolPhysicsAnalysis cxt sol
+	_saPhysicsAnalysis = mkSolPhysicsAnalysis cxt sol,
+	_saOtherAnalysis   = mkSolOtherAnalysis   cxt sol
 }
 
 mkSolRenderAnalysis :: IBContext' a -> Sol -> SolRenderAnalysis
@@ -860,3 +884,18 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 
 				assertNonNull :: S.Set a -> S.Set a
 				assertNonNull s = if' (S.null s) (error "Internal error: mkSolPhysicsAnalysis bodyBSPs assertNonNull: each non-leaf partition should have at least 1 lump, but this partition didn't!") (s)
+
+-- | Given a sol, construct a 'SolOtherAnalysis' from it.
+-- TODO
+mkSolOtherAnalysis :: IBContext' a -> Sol -> SolOtherAnalysis
+mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
+	_soaPathAtTime = FakeEOS theSoaPathAtTime,
+	_soaPathTransformationAtTime = FakeEOS theSoaPathTransformationAtTime
+}
+	where
+		theSoaPathAtTime :: M.Map Int32 (Double -> (Int32, Double))
+		theSoaPathAtTime = error "TODO: unimplemented"  -- TODO
+
+		theSoaPathTransformationAtTime :: M.Map Int32 (Double -> Mat4 Double)
+		theSoaPathTransformationAtTime = error "TODO: unimplemented"  -- TODO
+		--TODO

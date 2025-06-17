@@ -26,7 +26,8 @@ module Immutaball.Ball.State.Game
 		physicsBallAdvanceStationary,
 		physicsBallAdvanceGhostly,
 		physicsBallAdvanceBruteForce,
-		physicsBallAdvanceBruteForceCompute
+		physicsBallAdvanceBruteForceCompute,
+		physicsBallAdvanceBSP
 
 		-- * Local utils.
 	) where
@@ -515,6 +516,7 @@ physicsBallAdvance x'cfg level spa ballRadius gravityVector dt ballPos ballVel =
 		--choice_ = physicsBallAdvanceStationary
 		--choice_ = physicsBallAdvanceGhostly
 		choice_ = physicsBallAdvanceBruteForce
+		--choice_ = physicsBallAdvanceBSP
 
 -- | For debugging or performance checking, keep the ball stationary.
 physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
@@ -918,5 +920,39 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 		indirection idx = (level^.solIv) ! idx
 
 		v0g edt = v0 + ((edt * gravityAcceleration) `sv3` gravityVector)  -- What velocity is if v0 has time added to gravity.
+
+-- | Advance the ball's position and velocity, using the level BSP to handle
+-- collisions and gravity.
+--
+-- Try expending the remaining dt, and detecting if any collisions are made
+-- with any lumps or BSP partitions (e.g. check if the side (-1,0,1) of a plane
+-- the position point is on would change).  If there's a collision, then p0->p1
+-- intersects, and this algorithm sorts all the detected intersections to only
+-- use the closest one, and then also checks among the remaining collisions the
+-- ones that are near by the closest ones, to make sure these possible
+-- collisions aren't skipped if advancing to the closest collision also changes
+-- e.g. which side of a plane the ball would be on if it is advanced to the
+-- closest collision.  We expend dt to advance the ball to the closest
+-- collision and also check immediate (or near) new collisions the same
+-- distance away from the closest collision.  Then we repeat the process anew
+-- with the remaining dt to expend on advancing the ball, until there are no
+-- more collisions, in which case we expend the remaining dt.
+--
+-- Also add a squish check mechanism: only so many collisions are permitted
+-- within a specific distance and for a specific amount of dt.  If a squish
+-- condition is detected, then instead of potentially looping forever (and
+-- hanging), just abort collisions and let the ball ‘wall-glitch’ through walls
+-- to move through them.
+physicsBallAdvanceBSP :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> Double -> Vec3 Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceBSP x'cfg level spa ballRadius gravityVector dt p0 v0 =
+	-- TODO: implementing bodies, etc., things I want done before BSP.
+	error "TODO: physicsBallAdvanceBSP not yet implemented"
+{-
+	nextBSPDescent
+
+	where
+		nextBSPDescent :: []
+		nextBSPDescent 
+-}
 
 -- * Local utils.

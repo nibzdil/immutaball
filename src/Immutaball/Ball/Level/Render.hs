@@ -33,6 +33,7 @@ import Graphics.GL.Compatibility45
 import Graphics.GL.Types
 
 import Immutaball.Ball.Game
+import Immutaball.Ball.State.Game  -- rendererTransformationMatrix
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
@@ -119,8 +120,8 @@ renderSetupNewLevel = proc (swa, cxtn) -> do
 renderScene :: Wire ImmutaballM ((MView, SolWithAnalysis, GameState), IBStateContext) IBStateContext
 renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	-- Set up the transformation matrix.
-	--let mat = transformationMatrix camera_
-	mat <- arr $ uncurry3 transformationMatrix -< (cxtn, gs, camera_)
+	--let mat = rendererTransformationMatrix camera_
+	mat <- arr $ uncurry3 rendererTransformationMatrix -< (cxtn, gs, camera_)
 	cxtnp1 <- setTransformation -< (mat, cxtn)
 
 	-- Render the scene.
@@ -145,24 +146,6 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	let cxt = cxtnp2
 
 	returnA -< cxt
-
-	where
-		-- Both renderBall and renderLevel include a transformation matrix set.
-		-- TODO: (DRY) factor out this copy into a base transformation matrix (likely in Game.State).
-		transformationMatrix :: IBStateContext -> GameState -> MView -> Mat4 Double
-		transformationMatrix cxt gs view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
-			where
-				x'cfg = cxt^.ibContext.ibStaticConfig
-				depthScale = x'cfg^.x'cfgDepthScale
-				viewCollapse = x'cfg^.x'cfgViewCollapse
-
-				-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
-				tilt =
-					translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
-					tilt3z (gsa^.gsaUpVec) <>         -- Tilt the world.
-					rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
-					translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
-				gsa = mkGameStateAnalysis cxt gs
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
 renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext

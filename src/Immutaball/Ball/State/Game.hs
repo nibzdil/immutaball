@@ -14,6 +14,7 @@ module Immutaball.Ball.State.Game
 		GameResponse(..), goGameEvents, goGameState, goIBStateContext, grGameEvents,
 		GameEvent(..), AsGameEvent(..),
 		stepGame,
+		rendererTransformationMatrix,
 		renderBall,
 		renderBallSetup,
 		stepGameInput,
@@ -119,6 +120,23 @@ stepGame = proc gr -> do
 		_goIBStateContext = cxt
 	}
 
+-- | Get a matrix that converts from world coordinates to OpenGL coordinates
+-- given the view.
+rendererTransformationMatrix :: IBStateContext -> GameState -> MView -> Mat4 Double
+rendererTransformationMatrix cxt gs view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
+	where
+		x'cfg = cxt^.ibContext.ibStaticConfig
+		depthScale = x'cfg^.x'cfgDepthScale
+		viewCollapse = x'cfg^.x'cfgViewCollapse
+
+		-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
+		tilt =
+			translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
+			tilt3z (gsa^.gsaUpVec) <>         -- Tilt the world.
+			rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
+			translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
+		gsa = mkGameStateAnalysis cxt gs
+
 renderBall :: Wire ImmutaballM ((MView, GameState), IBStateContext) IBStateContext
 renderBall = proc ((camera_, gs), cxtn) -> do
 	hasInit <- delay False -< returnA True
@@ -132,7 +150,7 @@ renderBall = proc ((camera_, gs), cxtn) -> do
 	let (ballElemVao, _ballElemVbo, _ballElemEbo) = ballElemVaoVboEbo
 
 	-- Set the transformation matrix for the ball.
-	mat <- arr $ uncurry3 transformationMatrix -< (cxtnp2, gs, camera_)
+	mat <- arr $ uncurry3 rendererTransformationMatrix -< (cxtnp2, gs, camera_)
 	cxtnp3 <- setTransformation -< (mat, cxtnp2)
 
 	let (renderBallDirect :: GLIOF ()) = do
@@ -203,23 +221,6 @@ renderBall = proc ((camera_, gs), cxtn) -> do
 
 	let cxt = cxtnp3
 	returnA -< cxt
-
-	where
-		-- Both renderBall and renderLevel include a transformation matrix set.
-		transformationMatrix :: IBStateContext -> GameState -> MView -> Mat4 Double
-		transformationMatrix cxt gs view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
-			where
-				x'cfg = cxt^.ibContext.ibStaticConfig
-				depthScale = x'cfg^.x'cfgDepthScale
-				viewCollapse = x'cfg^.x'cfgViewCollapse
-
-				-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
-				tilt =
-					translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
-					tilt3z (gsa^.gsaUpVec) <>         -- Tilt the world.
-					rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
-					translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
-				gsa = mkGameStateAnalysis cxt gs
 
 renderBallSetup :: Wire ImmutaballM (GameState, IBStateContext) IBStateContext
 renderBallSetup = proc (_gs0, cxtn) -> do

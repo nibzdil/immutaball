@@ -41,6 +41,7 @@ module Immutaball.Share.Level.Analysis
 			spaLumpVertexAdjacents, {-spaLumpGetVertexAdjacents, -}spaLumpPlanes,
 			spaBodyBSPs, spaBodyBSPNumPartitions, spaBSPNumPartitions,
 		SolOtherAnalysis(..), soaPathAtTime, soaPathTransformationAtTime,
+			soaPathAtTimeMap, soaPathAtTimeRMap, soaPathCycle,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
 		getSpaLumpGetVertexAdjacents,
@@ -327,7 +328,18 @@ data SolOtherAnalysis = SolOtherAnalysis {
 	_soaPathAtTime :: FakeEOS (M.Map Int32 (Double -> (Int32, Double))),
 	-- | Likewise, but obtain a transformation matrix for the base path,
 	-- without hierarchical paths.
-	_soaPathTransformationAtTime :: FakeEOS (M.Map Int32 (Double -> Mat4 Double))
+	_soaPathTransformationAtTime :: FakeEOS (M.Map Int32 (Double -> Mat4 Double)),
+
+	-- | Intermediate structure; soaPathAtTime abstracts this.
+	-- For each path, find the time elapsed (and node index) for each unique
+	-- node until the end or a cycle is detected.
+	_soaPathAtTimeMap :: M.Map Int32 (M.Map (Double, Integer) Int32),
+	_soaPathAtTimeRMap :: M.Map Int32 (M.Map Int32 (Double, Integer)),
+	-- | Is there a cycle in the path, ignoring last node self-reference?
+	-- If the last distinct node (‘from’) in the path returns to an earlier
+	-- node ‘to’, this is (to, cycle period, from), i.e. (cycle start, cycle
+	-- period, cycle last node).
+	_soaPathCycle :: M.Map Int32 (Maybe (Int32, Double, Int32))
 }
 	deriving (Eq, Ord, Show)  -- We'll use FakeEOS because we use functions here.
 --makeLenses ''SolOtherAnalysis
@@ -890,12 +902,114 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 mkSolOtherAnalysis :: IBContext' a -> Sol -> SolOtherAnalysis
 mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 	_soaPathAtTime = FakeEOS theSoaPathAtTime,
-	_soaPathTransformationAtTime = FakeEOS theSoaPathTransformationAtTime
+	_soaPathTransformationAtTime = FakeEOS theSoaPathTransformationAtTime,
+	_soaPathAtTimeMap = theSoaPathAtTimeMap,
+	_soaPathAtTimeRMap = theSoaPathAtTimeRMap,
+	_soaPathCycle = theSoaPathCycle
 }
 	where
 		theSoaPathAtTime :: M.Map Int32 (Double -> (Int32, Double))
-		theSoaPathAtTime = error "TODO: unimplemented"  -- TODO
+		theSoaPathAtTime = (`M.mapWithKey` (soa^.soaPathAtTimeMap)) $ \pi_ _atTimeMap -> \t ->
+			-- First check if ‘t’ has entered a cycle.
+			let (mcycleDuration :: Maybe Double) = do
+				pathCyclePi <- flip M.lookup (soa^.soaPathCycle) pi_
+				cycleDuration <- (^._2) <$> pathCyclePi
+				return cycleDuration in
+			let (mcycleStartAt :: Maybe Double) = do
+				pathCyclePi <- flip M.lookup (soa^.soaPathCycle) $ pi_
+				cycleStart <- (^._1) <$> pathCyclePi
+				atTimeR <- flip M.lookup (soa^.soaPathAtTimeRMap) $ pi_
+				(cycleStartAt, _cycleStartIndex) <- flip M.lookup atTimeR $ cycleStart
+				return cycleStartAt in
+			let (isCycle :: Bool) = (t >=) <$> mcycleStartAt == Just True in
+			-- If there's a cycle, just wrap t around the cycle period to loop back.
+			let (t' :: Double) = (`morElse` t) $ do
+				cycleDuration <- mcycleDuration
+				cycleStartAt <- mcycleStartAt
+				guard $ isCycle
+				let (timeOnCycle :: Double) = t - cycleStartAt
+				let (wrappedTimeOnCycle :: Double) = timeOnCycle `modfl` cycleDuration
+				return $ cycleStartAt + wrappedTimeOnCycle
+			-- Now find the node it's on, and turn it into a path and time elapsed.
+			(`morElse` (pi_, 0.0)) $ do
+				pathAtTimeMap <- flip M.lookup (soa^.soaPathAtTimeMap) pi_
+				(k, v) <- flip M.lookupGE pathAtTimeMap (t', -1) <|> flip M.lookupLE pathAtTimeMap (t', -1)
+				let (nodeStarts :: Double) = k^._1
+				let (node :: Int32) = v
+				let (timeOnNode :: Double) = t' - nodeStarts
+
+				guard . inRange (bounds $ sol^.solPv) $ node
+				let (path :: Path) = (sol^.solPv) ! node
+				let (pathTime :: Double) = path^.pathT
+				-- progressOnNode: from 0 to 1, for 0 at start, 1 at end.
+				let (progressOnNode :: Double) = ilerp 0.0 pathTime timeOnNode
+
+				return $ (node, progressOnNode)
 
 		theSoaPathTransformationAtTime :: M.Map Int32 (Double -> Mat4 Double)
-		theSoaPathTransformationAtTime = error "TODO: unimplemented"  -- TODO
-		--TODO
+		theSoaPathTransformationAtTime = (`M.mapWithKey` (soa^.soaPathAtTime)) $ \pi_ atTime -> \t ->
+			(`morElse` identity4) $ do
+				-- Get origin path.
+				guard . inRange (bounds $ sol^.solPv) $ pi_  -- Redundant.
+				let (originPath :: Path) = (sol^.solPv) ! pi_
+
+				-- Get the path that would be current at time t, relative to
+				-- the origin path.
+				let (onNode, (progressOnNode :: Double)) = atTime t
+				guard . inRange (bounds $ sol^.solPv) $ onNode  -- Redundant.
+				let (onPath :: Path) = (sol^.solPv) ! onNode
+
+				let nextNode = onPath^.pathPi
+				guard . inRange (bounds $ sol^.solPv) $ nextNode
+				let (nextPath :: Path) = (sol^.solPv) ! nextNode
+
+				let (originPos :: Vec3 Double) = originPath^.pathP
+				let (pathPos   :: Vec3 Double) = onPath^.pathP
+				let (nextPos   :: Vec3 Double) = nextPath^.pathP
+				let (lerpPos   :: Vec3 Double) = lerp pathPos nextPos progressOnNode
+
+				let (netPos :: Vec3 Double) = lerpPos - originPos
+
+				let (translate :: Mat4 Double) = translate3 netPos
+
+				return $ translate
+
+		-- | Traverse each path until the end is reached or there is a cycle.
+		-- Record how much total time elapsed would be required to start each
+		-- node in the path.
+		theSoaPathAtTimeMap :: M.Map Int32 (M.Map (Double, Integer) Int32)
+		theSoaPathAtTimeMap = M.fromList . flip map [0..(sol^.solPc)-1] $ \pi_ -> (,) pi_ .
+			M.fromList . flip fix (0.0, S.empty, pi_, 0) $ \me (elapsed, visited, pni, nodeIndex) ->
+				if' (pni `S.member` visited) [] .
+				if' (not . inRange (bounds $ sol^.solPv) $ pni) [] $
+				let pn = (sol^.solPv) ! pni in
+				let node = ((elapsed, nodeIndex), pni) in
+				node : me (elapsed + pn^.pathT, S.insert pni visited, pn^.pathPi, nodeIndex + 1)
+		theSoaPathAtTimeRMap :: M.Map Int32 (M.Map Int32 (Double, Integer))
+		theSoaPathAtTimeRMap = (M.fromList . fmap swap . M.toList) <$> (soa^.soPathAtTimeMap)
+
+		-- | For each path, check for a cycle: (to, cycle time elapsed, from).
+		theSoaPathCycle :: M.Map Int32 (Maybe (Int32, Double, Int32))
+		theSoaPathCycle = (`M.mapWithKey` (soa^.soaPathAtTimeMap)) $ \pi_ atTime -> do
+			timeAtPathMap <- flip M.lookup (soa^.soaPathAtTimeRMap) $ pi_
+			(lastNodeKey :: (Double, Integer)) <- S.lookupMax . M.keysSet $ soa^.soaPathAtTimeMap
+			(lastNode :: Int32) <- flip M.lookup atTime lastNodeKey
+			guard . inRange (bounds $ sol^.solPv) $ lastNode  -- Redundant; lastNode should be valid, but not necessarily lastNodeNext.
+			let lastPath = (sol^.solPv) ! lastNode
+			guard $ (lastPath^.pathPi) /= lastNode
+
+			let lastNodeNext = lastPath^.pathPi
+			guard . inRange (bounds $ sol^.solPv) $ lastNodeNext
+
+			(lastNodeNextKey :: (Double, Integer)) <- flip M.lookup atTime lastNodeNext
+
+			-- From start of earlier to start of last (to - from).
+			let (earlierToLastDuration :: Double) = (lastNodeKey^._1) - (lastNodeNextKey^._1)
+			-- Now just add the duration of the last node itself.
+			let (lastNodeDuration :: Double) = lastPath^.pathT
+			let (cycleDuration :: Double) = earlierToLastDuration + lastNodeDuration
+
+			-- (cycle start, cycle period, cycle last node)
+			let (to_, cyclePeriod, from) = (lastNodeNext, cycleDuration, lastNode)
+			let (cycleStart, cyclePeriod', cycleLastNode) = (to_, cyclePeriod, from)
+			return (cycleStart, cyclePeriod', cycleLastNode)

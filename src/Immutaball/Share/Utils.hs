@@ -54,7 +54,9 @@ module Immutaball.Share.Utils
 		setMapFilter,
 		steppingMean,
 
-		FakeEOS(..), fakeEOS
+		FakeEOS(..), fakeEOS,
+
+		modfl
 	) where
 
 import Prelude ()
@@ -242,3 +244,7 @@ makeLenses ''FakeEOS
 instance Eq (FakeEOS a) where _ == _ = True
 instance Ord (FakeEOS a) where _ <= _ = True
 instance Show (FakeEOS a) where show _ = "(FakeEOS)"
+
+-- | 'mod' generalized to Double and floats.
+modfl :: (RealFrac a) :: a -> a -> a
+modfl a b = a - b*(fromInteger . floor $ a/b)

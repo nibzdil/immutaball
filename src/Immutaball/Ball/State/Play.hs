@@ -78,7 +78,7 @@ mkPlayState mlevelSet levelPath level mkBack baseCxt0 = closeSecondI . switch . 
 		let (mview :: MView) = gameStateAnalysis^.gsaView
 		isPaint <- returnA -< ((const False) ||| (const True)) . matching (_Paint) $ request
 		cxtnp2 <- returnA ||| renderLevel -< if' (not isPaint) (Left cxtnp1) (Right $ ((mview, (gameState^.gsSwa), gameState), cxtnp1))
-		cxtnp3 <- returnA ||| renderBall -< if' (not isPaint) (Left cxtnp1) (Right $ (gameState, cxtnp2))
+		cxtnp3 <- returnA ||| renderBall -< if' (not isPaint) (Left cxtnp1) (Right $ ((mview, gameState), cxtnp2))
 
 		-- GUI.  Positioned after scene rendering.
 		--(_guiResponse, cxtnp4) <- mkGUI playGui -< (GUIDrive request, cxtnp3)

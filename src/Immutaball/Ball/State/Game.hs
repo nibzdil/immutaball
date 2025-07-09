@@ -119,8 +119,8 @@ stepGame = proc gr -> do
 		_goIBStateContext = cxt
 	}
 
-renderBall :: Wire ImmutaballM (GameState, IBStateContext) IBStateContext
-renderBall = proc (gs, cxtn) -> do
+renderBall :: Wire ImmutaballM ((MView, GameState), IBStateContext) IBStateContext
+renderBall = proc ((camera_, gs), cxtn) -> do
 	hasInit <- delay False -< returnA True
 	cxtnp1 <- arr snd ||| renderBallSetup -< if' hasInit Left Right (gs, cxtn)
 
@@ -131,10 +131,9 @@ renderBall = proc (gs, cxtn) -> do
 	let ballElemVaoVboEbo = fromMaybe (error "Internal error: renderBall expected elem vao and buf to be present, but it's missing!") mballElemVaoVboEbo
 	let (ballElemVao, _ballElemVbo, _ballElemEbo) = ballElemVaoVboEbo
 
-	-- TODO: set the transformation matrix explicitly.  For now we take
-	-- advantage of the fact that the transformation matrix hasn't been updated
-	-- since the scene was drawn (before the ball was), so just conveniently
-	-- implicitly re-use the transformation matrix in the meantime.
+	-- Set the transformation matrix for the ball.
+	mat <- arr $ uncurry3 transformationMatrix -< (cxtnp2, gs, camera_)
+	cxtnp3 <- setTransformation -< (mat, cxtnp2)
 
 	let (renderBallDirect :: GLIOF ()) = do
 		-- Tell the shaders to disable the scene data.
@@ -146,7 +145,7 @@ renderBall = proc (gs, cxtn) -> do
 		let (ballRadiusf :: GLfloat) = realToFrac $ gs^.gsBallRadius
 		GLUniform1f shaderBallRadiusLocation ballRadiusf ()
 		-- Tell the shaders the ball num triangles.
-		let (ballNumTriangles :: Integer) = cxtnp2^.ibContext.ibStaticConfig.x'cfgBallTriangles
+		let (ballNumTriangles :: Integer) = cxtnp3^.ibContext.ibStaticConfig.x'cfgBallTriangles
 		GLUniform1i shaderBallNumTrianglesLocation (fromIntegral ballNumTriangles) ()
 		-- Tell the shaders the ball position.
 		let (ballPosX :: GLfloat, ballPosY :: GLfloat, ballPosZ :: GLfloat) = (realToFrac $ gs^.gsBallPos.x3, realToFrac $ gs^.gsBallPos.y3, realToFrac $ gs^.gsBallPos.z3)
@@ -161,7 +160,7 @@ renderBall = proc (gs, cxtn) -> do
 		GLBindVertexArray ballElemVao ()
 
 		-- Use the vao to tell the shader to draw the geometry.
-		--let (ballNumTriangles :: Integer) = cxtnp2^.ibContext.ibStaticConfig.x'cfgBallTriangles
+		--let (ballNumTriangles :: Integer) = cxtnp3^.ibContext.ibStaticConfig.x'cfgBallTriangles
 		GLDrawArrays GL_TRIANGLES 0 (fromIntegral (3 * ballNumTriangles)) ()
 
 		-- Unbind the VAO.
@@ -202,8 +201,25 @@ renderBall = proc (gs, cxtn) -> do
 		alphaFinish
 	() <- monadic -< sdlGL1' doRenderBall
 
-	let cxt = cxtnp2
+	let cxt = cxtnp3
 	returnA -< cxt
+
+	where
+		-- Both renderBall and renderLevel include a transformation matrix set.
+		transformationMatrix :: IBStateContext -> GameState -> MView -> Mat4 Double
+		transformationMatrix cxt gs view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
+			where
+				x'cfg = cxt^.ibContext.ibStaticConfig
+				depthScale = x'cfg^.x'cfgDepthScale
+				viewCollapse = x'cfg^.x'cfgViewCollapse
+
+				-- Translate to the ball (negated actually), rotate by gsCameraAngle, tilt3z, and untranslate.
+				tilt =
+					translate3 (gs^.gsBallPos) <>     -- Finally, undo the first translation.
+					tilt3z (gsa^.gsaUpVec) <>         -- Tilt the world.
+					rotatexy (-gs^.gsCameraAngle) <>  -- Rotate camera.
+					translate3 (-gs^.gsBallPos)       -- First, go to ball (negated actually).
+				gsa = mkGameStateAnalysis cxt gs
 
 renderBallSetup :: Wire ImmutaballM (GameState, IBStateContext) IBStateContext
 renderBallSetup = proc (_gs0, cxtn) -> do

@@ -56,7 +56,9 @@ module Immutaball.Share.Utils
 
 		FakeEOS(..), fakeEOS,
 
-		modfl
+		modfl,
+
+		uncurry3
 	) where
 
 import Prelude ()
@@ -248,3 +250,7 @@ instance Show (FakeEOS a) where show _ = "(FakeEOS)"
 -- | 'mod' generalized to Double and floats.
 modfl :: (RealFrac a) => a -> a -> a
 modfl a b = a - b*(fromInteger . floor $ a/b)
+
+-- | 3-ary 'uncurry'.
+uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
+uncurry3 f (a, b, c) = f a b c

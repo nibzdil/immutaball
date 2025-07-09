@@ -149,9 +149,8 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	returnA -< cxt
 
 	where
-		uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
-		uncurry3 f (a, b, c) = f a b c
-
+		-- Both renderBall and renderLevel include a transformation matrix set.
+		-- TODO: (DRY) factor out this copy into a base transformation matrix (likely in Game.State).
 		transformationMatrix :: IBStateContext -> GameState -> MView -> Mat4 Double
 		transformationMatrix cxt gs view_ = worldToGL <> rescaleDepth depthScale 0 <> viewMat' viewCollapse view_ <> tilt
 			where

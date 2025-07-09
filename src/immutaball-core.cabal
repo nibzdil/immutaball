@@ -117,6 +117,8 @@ common executable-components
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Game
+		Immutaball.Ball.Level
+		Immutaball.Ball.Level.Render
 		Immutaball.Ball.LevelSets
 		Immutaball.Ball.Main
 		Immutaball.Ball.State.Game
@@ -150,7 +152,6 @@ common executable-components
 		Immutaball.Share.Level.Analysis.LowLevel
 		Immutaball.Share.Level.Attributes
 		Immutaball.Share.Level.Base
-		Immutaball.Share.Level.Render
 		Immutaball.Share.Level.Parser
 		Immutaball.Share.Level.Utils
 		Immutaball.Share.Math
@@ -188,6 +189,8 @@ library
 		Immutaball.Ball.CLI
 		Immutaball.Ball.CLI.Config
 		Immutaball.Ball.Game
+		Immutaball.Ball.Level
+		Immutaball.Ball.Level.Render
 		Immutaball.Ball.LevelSets
 		Immutaball.Ball.Main
 		Immutaball.Ball.State.Game
@@ -221,7 +224,6 @@ library
 		Immutaball.Share.Level.Analysis.LowLevel
 		Immutaball.Share.Level.Attributes
 		Immutaball.Share.Level.Base
-		Immutaball.Share.Level.Render
 		Immutaball.Share.Level.Parser
 		Immutaball.Share.Level.Utils
 		Immutaball.Share.Math

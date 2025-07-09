@@ -7,10 +7,8 @@
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE Arrows, ScopedTypeVariables #-}
 
--- | TODO: split shared render into shared and ball render.
---
--- Currently this uses ball game state.
-module Immutaball.Share.Level.Render
+-- | Level rendering.
+module Immutaball.Ball.Level.Render
 	(
 		renderLevel,
 		renderSetupNewLevel,

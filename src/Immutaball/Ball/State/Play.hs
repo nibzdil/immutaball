@@ -28,6 +28,7 @@ import Control.Monad
 import qualified SDL.Raw.Enum as Raw
 
 import Immutaball.Ball.Game
+import Immutaball.Ball.Level
 import Immutaball.Ball.LevelSets
 import Immutaball.Ball.State.Game
 import Immutaball.Share.Context

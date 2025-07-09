@@ -6,16 +6,12 @@
 
 {-# LANGUAGE Haskell2010 #-}
 
-module Immutaball.Share.Level
+module Immutaball.Ball.Level
 	(
-		module Immutaball.Share.Level.Base,
-		module Immutaball.Share.Level.Parser,
-		module Immutaball.Share.Level.Utils
+		module Immutaball.Ball.Level.Render
 	) where
 
 import Prelude ()
 --import Immutaball.Prelude
 
-import Immutaball.Share.Level.Base
-import Immutaball.Share.Level.Parser
-import Immutaball.Share.Level.Utils
+import Immutaball.Ball.Level.Render

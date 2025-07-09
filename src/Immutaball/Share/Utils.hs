@@ -246,5 +246,5 @@ instance Ord (FakeEOS a) where _ <= _ = True
 instance Show (FakeEOS a) where show _ = "(FakeEOS)"
 
 -- | 'mod' generalized to Double and floats.
-modfl :: (RealFrac a) :: a -> a -> a
+modfl :: (RealFrac a) => a -> a -> a
 modfl a b = a - b*(fromInteger . floor $ a/b)

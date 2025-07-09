@@ -52,6 +52,7 @@ module Immutaball.Share.Level.Analysis
 import Prelude ()
 import Immutaball.Prelude
 
+import Control.Applicative
 import Control.Arrow
 import Control.Monad
 import Data.Bits
@@ -901,15 +902,15 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 -- TODO
 mkSolOtherAnalysis :: IBContext' a -> Sol -> SolOtherAnalysis
 mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
-	_soaPathAtTime = FakeEOS theSoaPathAtTime,
-	_soaPathTransformationAtTime = FakeEOS theSoaPathTransformationAtTime,
-	_soaPathAtTimeMap = theSoaPathAtTimeMap,
-	_soaPathAtTimeRMap = theSoaPathAtTimeRMap,
-	_soaPathCycle = theSoaPathCycle
+	_soaPathAtTime = FakeEOS $ theSoaPathAtTime soa,
+	_soaPathTransformationAtTime = FakeEOS $ theSoaPathTransformationAtTime soa,
+	_soaPathAtTimeMap = theSoaPathAtTimeMap soa,
+	_soaPathAtTimeRMap = theSoaPathAtTimeRMap soa,
+	_soaPathCycle = theSoaPathCycle soa
 }
 	where
-		theSoaPathAtTime :: M.Map Int32 (Double -> (Int32, Double))
-		theSoaPathAtTime = (`M.mapWithKey` (soa^.soaPathAtTimeMap)) $ \pi_ _atTimeMap -> \t ->
+		theSoaPathAtTime :: SolOtherAnalysis -> M.Map Int32 (Double -> (Int32, Double))
+		theSoaPathAtTime soa = (`M.mapWithKey` (soa^.soaPathAtTimeMap)) $ \pi_ _atTimeMap -> \t ->
 			-- First check if ‘t’ has entered a cycle.
 			let (mcycleDuration :: Maybe Double) = do
 				pathCyclePi <- flip M.lookup (soa^.soaPathCycle) pi_
@@ -921,7 +922,7 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				atTimeR <- flip M.lookup (soa^.soaPathAtTimeRMap) $ pi_
 				(cycleStartAt, _cycleStartIndex) <- flip M.lookup atTimeR $ cycleStart
 				return cycleStartAt in
-			let (isCycle :: Bool) = (t >=) <$> mcycleStartAt == Just True in
+			let (isCycle :: Bool) = ((t >=) <$> mcycleStartAt) == Just True in
 			-- If there's a cycle, just wrap t around the cycle period to loop back.
 			let (t' :: Double) = (`morElse` t) $ do
 				cycleDuration <- mcycleDuration
@@ -929,7 +930,7 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				guard $ isCycle
 				let (timeOnCycle :: Double) = t - cycleStartAt
 				let (wrappedTimeOnCycle :: Double) = timeOnCycle `modfl` cycleDuration
-				return $ cycleStartAt + wrappedTimeOnCycle
+				return $ cycleStartAt + wrappedTimeOnCycle in
 			-- Now find the node it's on, and turn it into a path and time elapsed.
 			(`morElse` (pi_, 0.0)) $ do
 				pathAtTimeMap <- flip M.lookup (soa^.soaPathAtTimeMap) pi_
@@ -946,8 +947,8 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 
 				return $ (node, progressOnNode)
 
-		theSoaPathTransformationAtTime :: M.Map Int32 (Double -> Mat4 Double)
-		theSoaPathTransformationAtTime = (`M.mapWithKey` (soa^.soaPathAtTime)) $ \pi_ atTime -> \t ->
+		theSoaPathTransformationAtTime :: SolOtherAnalysis -> M.Map Int32 (Double -> Mat4 Double)
+		theSoaPathTransformationAtTime soa = (`M.mapWithKey` (soa^.soaPathAtTime.fakeEOS)) $ \pi_ atTime -> \t ->
 			(`morElse` identity4) $ do
 				-- Get origin path.
 				guard . inRange (bounds $ sol^.solPv) $ pi_  -- Redundant.
@@ -966,7 +967,7 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				let (originPos :: Vec3 Double) = originPath^.pathP
 				let (pathPos   :: Vec3 Double) = onPath^.pathP
 				let (nextPos   :: Vec3 Double) = nextPath^.pathP
-				let (lerpPos   :: Vec3 Double) = lerp pathPos nextPos progressOnNode
+				let (lerpPos   :: Vec3 Double) = lerpV3 pathPos nextPos progressOnNode
 
 				let (netPos :: Vec3 Double) = lerpPos - originPos
 
@@ -977,22 +978,22 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 		-- | Traverse each path until the end is reached or there is a cycle.
 		-- Record how much total time elapsed would be required to start each
 		-- node in the path.
-		theSoaPathAtTimeMap :: M.Map Int32 (M.Map (Double, Integer) Int32)
-		theSoaPathAtTimeMap = M.fromList . flip map [0..(sol^.solPc)-1] $ \pi_ -> (,) pi_ .
+		theSoaPathAtTimeMap :: SolOtherAnalysis -> M.Map Int32 (M.Map (Double, Integer) Int32)
+		theSoaPathAtTimeMap _soa = M.fromList . flip map [0..(sol^.solPc)-1] $ \pi_ -> (,) pi_ .
 			M.fromList . flip fix (0.0, S.empty, pi_, 0) $ \me (elapsed, visited, pni, nodeIndex) ->
 				if' (pni `S.member` visited) [] .
 				if' (not . inRange (bounds $ sol^.solPv) $ pni) [] $
 				let pn = (sol^.solPv) ! pni in
 				let node = ((elapsed, nodeIndex), pni) in
 				node : me (elapsed + pn^.pathT, S.insert pni visited, pn^.pathPi, nodeIndex + 1)
-		theSoaPathAtTimeRMap :: M.Map Int32 (M.Map Int32 (Double, Integer))
-		theSoaPathAtTimeRMap = (M.fromList . fmap swap . M.toList) <$> (soa^.soPathAtTimeMap)
+		theSoaPathAtTimeRMap :: SolOtherAnalysis -> M.Map Int32 (M.Map Int32 (Double, Integer))
+		theSoaPathAtTimeRMap soa = (M.fromList . fmap swap . M.toList) <$> (soa^.soaPathAtTimeMap)
 
 		-- | For each path, check for a cycle: (to, cycle time elapsed, from).
-		theSoaPathCycle :: M.Map Int32 (Maybe (Int32, Double, Int32))
-		theSoaPathCycle = (`M.mapWithKey` (soa^.soaPathAtTimeMap)) $ \pi_ atTime -> do
+		theSoaPathCycle :: SolOtherAnalysis -> M.Map Int32 (Maybe (Int32, Double, Int32))
+		theSoaPathCycle soa = (`M.mapWithKey` (soa^.soaPathAtTimeMap)) $ \pi_ atTime -> do
 			timeAtPathMap <- flip M.lookup (soa^.soaPathAtTimeRMap) $ pi_
-			(lastNodeKey :: (Double, Integer)) <- S.lookupMax . M.keysSet $ soa^.soaPathAtTimeMap
+			(lastNodeKey :: (Double, Integer)) <- S.lookupMax . M.keysSet $ atTime
 			(lastNode :: Int32) <- flip M.lookup atTime lastNodeKey
 			guard . inRange (bounds $ sol^.solPv) $ lastNode  -- Redundant; lastNode should be valid, but not necessarily lastNodeNext.
 			let lastPath = (sol^.solPv) ! lastNode
@@ -1001,7 +1002,7 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 			let lastNodeNext = lastPath^.pathPi
 			guard . inRange (bounds $ sol^.solPv) $ lastNodeNext
 
-			(lastNodeNextKey :: (Double, Integer)) <- flip M.lookup atTime lastNodeNext
+			(lastNodeNextKey :: (Double, Integer)) <- flip M.lookup timeAtPathMap lastNodeNext
 
 			-- From start of earlier to start of last (to - from).
 			let (earlierToLastDuration :: Double) = (lastNodeKey^._1) - (lastNodeNextKey^._1)
@@ -1010,6 +1011,6 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 			let (cycleDuration :: Double) = earlierToLastDuration + lastNodeDuration
 
 			-- (cycle start, cycle period, cycle last node)
-			let (to_, cyclePeriod, from) = (lastNodeNext, cycleDuration, lastNode)
-			let (cycleStart, cyclePeriod', cycleLastNode) = (to_, cyclePeriod, from)
+			let (to_, cyclePeriod, from_) = (lastNodeNext, cycleDuration, lastNode)
+			let (cycleStart, cyclePeriod', cycleLastNode) = (to_, cyclePeriod, from_)
 			return (cycleStart, cyclePeriod', cycleLastNode)

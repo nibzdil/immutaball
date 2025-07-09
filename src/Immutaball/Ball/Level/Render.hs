@@ -137,9 +137,9 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	let _unused = (sol)
 
 	let
-		ourFlatten :: (Int32, (SolWithAnalysis, GameState, Bool, GeomPass)) -> (Int32, SolWithAnalysis, GameState, Bool, GeomPass)
-		ourFlatten (a, (b, c, d, e)) = (a, b, c, d, e)
-	let geomPasses = map ourFlatten . zip [0..] $ map (\gp -> (swa, gs, False, gp)) (sra^.sraOpaqueGeoms) ++ map (\gp -> (swa, gs, True, gp)) (sra^.sraTransparentGeoms)
+		ourFlatten :: (Int32, (MView, SolWithAnalysis, GameState, Bool, GeomPass)) -> (Int32, MView, SolWithAnalysis, GameState, Bool, GeomPass)
+		ourFlatten (a, (b, c, d, e, f)) = (a, b, c, d, e, f)
+	let geomPasses = map ourFlatten . zip [0..] $ map (\gp -> (camera_, swa, gs, False, gp)) (sra^.sraOpaqueGeoms) ++ map (\gp -> (camera_, swa, gs, True, gp)) (sra^.sraTransparentGeoms)
 	cxtnp2 <- foldlA renderGeomPass -< (cxtnp1, geomPasses)
 
 	-- Return the state context.
@@ -148,17 +148,41 @@ renderScene = proc ((camera_, swa, gs), cxtn) -> do
 	returnA -< cxt
 
 -- | Render a partition of the level geometry, so that we can handle processing up to 16 textures at a time.
-renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext
-renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
+renderGeomPass :: Wire ImmutaballM (IBStateContext, (Int32, MView, SolWithAnalysis, GameState, Bool, GeomPass)) IBStateContext
+renderGeomPass = proc (cxtn, (geomPassIdx, camera_, swa, gs, isAlpha, gp)) -> do
 	-- Setup.
 	let sdlGL1'_ = sdlGL1 (cxtn^.ibContext.ibSDLManagerHandle)
 	let sdlGL1' = liftIBIO . sdlGL1'_
 
 	-- Render the geom pass.
 
+	-- First, if the body is on a path, update the transformation matrix to
+	-- reflect the translation on the path.  TODO: currently we only support
+	-- translations on paths here.
+	let bi = gp^.gpBi
+	let body = (swa^.swaSol.solBv) ! bi
+	let (moriginPath :: Maybe Int32) = do
+		let originPath = body^.bodyP0
+		guard . inRange (bounds $ swa^.swaSol.solPv) $ originPath
+		return $ originPath
+	let (pathTransformationAtTimeMap :: M.Map Int32 (Double -> Mat4 Double)) = swa^.swaSa.saOtherAnalysis.soaPathTransformationAtTime.fakeEOS
+	let (mpathTransformation :: Maybe (Mat4 Double)) = do
+		originNode <- moriginPath
+		transformationAtTime <- flip M.lookup pathTransformationAtTimeMap $ originNode
+		-- TODO: update pathsTimeElapsed, then invert the comments in the next 2 lines.
+		pathTimeElapsed <- return $ gs^.gsTimeElapsed
+		--pathTimeElapsed <- flip M.lookup (gs^.gsPathState.psPathsTimeElapsed) originNode
+		let transformation = transformationAtTime $ pathTimeElapsed
+		return transformation
+	mat <- arr $ uncurry3 rendererTransformationMatrix -< (cxtn, gs, camera_)
+	let (mnetBodyTransformation :: Maybe (Mat4 Double)) = do
+		pathTransformation <- mpathTransformation
+		return $ mat <> pathTransformation
+	cxtnp1 <- returnA ||| setTransformation -< deconsMaybe (Left cxtn) (\pathTransformation -> Right (pathTransformation, cxtn)) $ mnetBodyTransformation
+
 	-- Render all 16 mtrls in the geom pass.
-	(mtrlsMeta :: [((WidthHeightI, GLuint), MtrlMeta)], cxtnp1) <-
-		foldrA cachingRenderMtrlAccum -< (([], cxtn), map (\mi -> (swa^.swaSol, mi)) (elems (gp^.gpMv)))
+	(mtrlsMeta :: [((WidthHeightI, GLuint), MtrlMeta)], cxtnp2) <-
+		foldrA cachingRenderMtrlAccum -< (([], cxtnp1), map (\mi -> (swa^.swaSol, mi)) (elems (gp^.gpMv)))
 	let (mtrlsGlTextures :: [GLuint]) = map (fst >>> snd) mtrlsMeta
 	let (assignTextures :: GLIOF ()) = do
 		forM_ (zip [0..] mtrlsGlTextures) $ \(idx, glTexture) -> do
@@ -176,7 +200,7 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 					GLBindTexture GL_TEXTURE_2D glTexture ()
 
 	-- Render all geometry in this geom pass.
-	(melemVaoVboEbo, cxtnp2) <- getElemVaoVboEbo -< cxtnp1
+	(melemVaoVboEbo, cxtnp3) <- getElemVaoVboEbo -< cxtnp2
 	let elemVaoVboEbo = fromMaybe (error "Internal error: renderGeomPass expected elem vao and buf to be present, but it's missing!") melemVaoVboEbo
 	let (elemVao, _elemVbo, _elemEbo) = elemVaoVboEbo
 	let (renderGeomPassScene :: GLIOF ()) = do
@@ -232,7 +256,7 @@ renderGeomPass = proc (cxtn, (geomPassIdx, swa, _gs, isAlpha, gp)) -> do
 	() <- monadic -< sdlGL1' renderGeomPassGL
 
 	-- Return the state context.
-	let cxt = cxtnp2
+	let cxt = cxtnp3
 	returnA -< cxt
 
 	where

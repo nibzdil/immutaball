@@ -331,8 +331,12 @@ data SolOtherAnalysis = SolOtherAnalysis {
 	-- | Likewise, but obtain a transformation matrix for the base path,
 	-- without hierarchical paths.
 	_soaPathTransformationAtTime :: FakeEOS (M.Map Int32 (Double -> Mat4 Double)),
-	-- | Offset to apply to the vertices.
-	_soaPathTranslationAtTime :: FakeEOS (M.Map Int32 (Double -> Vec3 Double)),
+	-- | Offset to apply to the vertices.  Also takes number of derivatives to
+	-- obtain e.g. velocity and acceleration if desired; for position pass 0.
+	-- Note: beware if derivativeDegree is 1, and the path has travel time 0,
+	-- there could be an infinite / invalid result; consider 'v3Or', especially
+	-- in the physics implementation.
+	_soaPathTranslationAtTime :: FakeEOS (Integer -> M.Map Int32 (Double -> Vec3 Double)),
 
 	-- | Intermediate structure; soaPathAtTime abstracts this.
 	-- For each path, find the time elapsed (and node index) for each unique
@@ -952,15 +956,15 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				return $ (node, progressOnNode)
 
 		theSoaPathTransformationAtTime :: SolOtherAnalysis -> M.Map Int32 (Double -> Mat4 Double)
-		theSoaPathTransformationAtTime soa = (<$> (soa^.soaPathTranslationAtTime.fakeEOS)) $ \f -> \t ->
+		theSoaPathTransformationAtTime soa = (<$> (soa^.soaPathTranslationAtTime.fakeEOS) 0) $ \f -> \t ->
 			let (netPosCorrected :: Vec3 Double) = f t in
 
 			let (translate :: Mat4 Double) = translate3 netPosCorrected in
 
 			translate
 
-		theSoaPathTranslationAtTime :: SolOtherAnalysis -> M.Map Int32 (Double -> Vec3 Double)
-		theSoaPathTranslationAtTime soa = (`M.mapWithKey` (soa^.soaPathAtTime.fakeEOS)) $ \pi_ atTime -> \t ->
+		theSoaPathTranslationAtTime :: SolOtherAnalysis -> Integer -> M.Map Int32 (Double -> Vec3 Double)
+		theSoaPathTranslationAtTime soa = \derivativeDegree -> (`M.mapWithKey` (soa^.soaPathAtTime.fakeEOS)) $ \pi_ atTime -> \t ->
 			(`morElse` zv3) $ do
 				-- Get origin path.
 				guard . inRange (bounds $ sol^.solPv) $ pi_  -- Redundant.
@@ -979,8 +983,17 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				let (originPos :: Vec3 Double) = originPath^.pathP
 				let (pathPos   :: Vec3 Double) = onPath^.pathP
 				let (nextPos   :: Vec3 Double) = nextPath^.pathP
-				let (lerpPos   :: Vec3 Double) = lerpV3 pathPos nextPos progressOnNode
-				let (solErpPos :: Vec3 Double) = lerpV3 pathPos nextPos . solErp $ progressOnNode
+				let (lerpPos   :: Vec3 Double)
+					| derivativeDegree == 0 = lerpV3 pathPos nextPos progressOnNode
+					-- If derivativeDegre is 1, and the path has travel time0,
+					-- beware this could give us an infinite or invalid
+					-- velocity vector.
+					| derivativeDegree == 1 = (nextPos - pathPos)/(rv3$onPath^.pathT)
+					| otherwise             = zv3
+				let (solErpPos :: Vec3 Double)
+					| derivativeDegree == 0 = lerpV3 pathPos nextPos . solErp $ progressOnNode
+					| otherwise =
+						solErpdn derivativeDegree progressOnNode `sv3` ((nextPos - pathPos)/(rv3$onPath^.pathT))
 
 				let (selectLerpPos :: Vec3 Double) = if' (onPath^.pathS /= 0) solErpPos lerpPos
 

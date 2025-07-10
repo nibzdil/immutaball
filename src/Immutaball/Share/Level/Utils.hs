@@ -14,7 +14,8 @@ module Immutaball.Share.Level.Utils
 		restoreSolTransformation,
 		restoreSolTransformationSimple,
 		mapcSolTransformationSimple,
-		solErp
+		solErp,
+		solErpdn
 	) where
 
 import Prelude ()
@@ -78,3 +79,11 @@ mapcSolTransformationSimple = Mat3 $ Vec3
 -- the sol ‘erp’ interpolation formula, for smooth paths.
 solErp :: (Fractional a) => a -> a
 solErp t = -2.0*t*t*t + 3.0*t*t
+
+-- | Variant of 'solErp' that calculates derivatives an arbitrary number of times.
+solErpdn :: (Fractional a) => Integer -> a -> a
+solErpdn 0  t =  -2.0*t*t*t + 3.0*t*t  --  -2t^3 + 3t^2
+solErpdn 1  t =  -6.0*t*t   + 6.0*t    --  -6t^2 + 6t
+solErpdn 2  t = -12.0*t     + 6.0      -- -12t   + 6
+solErpdn 3 _t = -12.0                  -- -12
+solErpdn _ _t = 0

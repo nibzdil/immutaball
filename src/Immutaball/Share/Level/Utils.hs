@@ -13,7 +13,8 @@ module Immutaball.Share.Level.Utils
 		transformSol,
 		restoreSolTransformation,
 		restoreSolTransformationSimple,
-		mapcSolTransformationSimple
+		mapcSolTransformationSimple,
+		solErp
 	) where
 
 import Prelude ()
@@ -72,3 +73,8 @@ mapcSolTransformationSimple = Mat3 $ Vec3
 	(Vec3 1.0 0.0    0.0)
 	(Vec3 0.0 0.0    1.0)
 	(Vec3 0.0 (-1.0) 0.0)
+
+-- | Convert a linear parameter (e.g. from 0 to 1) to a parameter that reflects
+-- the sol ‘erp’ interpolation formula, for smooth paths.
+solErp :: (Fractional a) => a -> a
+solErp t = -2.0*t*t*t + 3.0*t*t

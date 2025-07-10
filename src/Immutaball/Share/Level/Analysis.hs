@@ -75,6 +75,7 @@ import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
 --import Immutaball.Share.Level.Analysis.LowLevel
 import Immutaball.Share.Level.Base
+import Immutaball.Share.Level.Utils
 import Immutaball.Share.Math
 import Immutaball.Share.Utils
 import Immutaball.Share.Video
@@ -979,8 +980,11 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				let (pathPos   :: Vec3 Double) = onPath^.pathP
 				let (nextPos   :: Vec3 Double) = nextPath^.pathP
 				let (lerpPos   :: Vec3 Double) = lerpV3 pathPos nextPos progressOnNode
+				let (solErpPos :: Vec3 Double) = lerpV3 pathPos nextPos . solErp $ progressOnNode
 
-				let (netPos :: Vec3 Double) = lerpPos - originPos
+				let (selectLerpPos :: Vec3 Double) = if' (onPath^.pathS /= 0) solErpPos lerpPos
+
+				let (netPos :: Vec3 Double) = selectLerpPos - originPos
 				let (netPosCorrected :: Vec3 Double) = netPos + originPos  -- SOL seems to require adding originPos to get the correct positioning.
 
 				return $ netPosCorrected

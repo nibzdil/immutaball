@@ -970,8 +970,9 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				let (lerpPos   :: Vec3 Double) = lerpV3 pathPos nextPos progressOnNode
 
 				let (netPos :: Vec3 Double) = lerpPos - originPos
+				let (netPosCorrected :: Vec3 Double) = netPos + originPos  -- SOL seems to require adding originPos to get the correct positioning.
 
-				let (translate :: Mat4 Double) = translate3 netPos
+				let (translate :: Mat4 Double) = translate3 netPosCorrected
 
 				return $ translate
 

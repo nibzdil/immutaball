@@ -23,6 +23,7 @@ module Immutaball.Share.Math.Core
 		r2,
 		t2,
 		Vec3(..), x3, y3, z3,
+		rv3,
 		pv3,
 		sv3,
 		minusv3,

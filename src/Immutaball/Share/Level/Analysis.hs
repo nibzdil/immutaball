@@ -41,7 +41,8 @@ module Immutaball.Share.Level.Analysis
 			spaLumpVertexAdjacents, {-spaLumpGetVertexAdjacents, -}spaLumpPlanes,
 			spaBodyBSPs, spaBodyBSPNumPartitions, spaBSPNumPartitions,
 		SolOtherAnalysis(..), soaPathAtTime, soaPathTransformationAtTime,
-			soaPathAtTimeMap, soaPathAtTimeRMap, soaPathCycle,
+			soaPathTranslationAtTime, soaPathAtTimeMap, soaPathAtTimeRMap,
+			soaPathCycle,
 		mkSolAnalysis,
 		mkSolRenderAnalysis,
 		getSpaLumpGetVertexAdjacents,
@@ -329,6 +330,8 @@ data SolOtherAnalysis = SolOtherAnalysis {
 	-- | Likewise, but obtain a transformation matrix for the base path,
 	-- without hierarchical paths.
 	_soaPathTransformationAtTime :: FakeEOS (M.Map Int32 (Double -> Mat4 Double)),
+	-- | Offset to apply to the vertices.
+	_soaPathTranslationAtTime :: FakeEOS (M.Map Int32 (Double -> Vec3 Double)),
 
 	-- | Intermediate structure; soaPathAtTime abstracts this.
 	-- For each path, find the time elapsed (and node index) for each unique
@@ -903,6 +906,7 @@ mkSolOtherAnalysis :: IBContext' a -> Sol -> SolOtherAnalysis
 mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 	_soaPathAtTime = FakeEOS $ theSoaPathAtTime soa,
 	_soaPathTransformationAtTime = FakeEOS $ theSoaPathTransformationAtTime soa,
+	_soaPathTranslationAtTime = FakeEOS $ theSoaPathTranslationAtTime soa,
 	_soaPathAtTimeMap = theSoaPathAtTimeMap soa,
 	_soaPathAtTimeRMap = theSoaPathAtTimeRMap soa,
 	_soaPathCycle = theSoaPathCycle soa
@@ -947,8 +951,16 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				return $ (node, progressOnNode)
 
 		theSoaPathTransformationAtTime :: SolOtherAnalysis -> M.Map Int32 (Double -> Mat4 Double)
-		theSoaPathTransformationAtTime soa = (`M.mapWithKey` (soa^.soaPathAtTime.fakeEOS)) $ \pi_ atTime -> \t ->
-			(`morElse` identity4) $ do
+		theSoaPathTransformationAtTime soa = (<$> (soa^.soaPathTranslationAtTime.fakeEOS)) $ \f -> \t ->
+			let (netPosCorrected :: Vec3 Double) = f t in
+
+			let (translate :: Mat4 Double) = translate3 netPosCorrected in
+
+			translate
+
+		theSoaPathTranslationAtTime :: SolOtherAnalysis -> M.Map Int32 (Double -> Vec3 Double)
+		theSoaPathTranslationAtTime soa = (`M.mapWithKey` (soa^.soaPathAtTime.fakeEOS)) $ \pi_ atTime -> \t ->
+			(`morElse` zv3) $ do
 				-- Get origin path.
 				guard . inRange (bounds $ sol^.solPv) $ pi_  -- Redundant.
 				let (originPath :: Path) = (sol^.solPv) ! pi_
@@ -971,9 +983,7 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 				let (netPos :: Vec3 Double) = lerpPos - originPos
 				let (netPosCorrected :: Vec3 Double) = netPos + originPos  -- SOL seems to require adding originPos to get the correct positioning.
 
-				let (translate :: Mat4 Double) = translate3 netPosCorrected
-
-				return $ translate
+				return $ netPosCorrected
 
 		-- | Traverse each path until the end is reached or there is a cycle.
 		-- Record how much total time elapsed would be required to start each

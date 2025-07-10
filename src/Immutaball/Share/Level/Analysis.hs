@@ -52,7 +52,6 @@ module Immutaball.Share.Level.Analysis
 import Prelude ()
 import Immutaball.Prelude
 
-import Control.Applicative
 import Control.Arrow
 import Control.Monad
 import Data.Bits
@@ -934,7 +933,7 @@ mkSolOtherAnalysis _cxt sol = fix $ \soa -> SolOtherAnalysis {
 			-- Now find the node it's on, and turn it into a path and time elapsed.
 			(`morElse` (pi_, 0.0)) $ do
 				pathAtTimeMap <- flip M.lookup (soa^.soaPathAtTimeMap) pi_
-				(k, v) <- flip M.lookupGE pathAtTimeMap (t', -1) <|> flip M.lookupLE pathAtTimeMap (t', -1)
+				(k, v) <- flip M.lookupLE pathAtTimeMap (t', -1)
 				let (nodeStarts :: Double) = k^._1
 				let (node :: Int32) = v
 				let (timeOnNode :: Double) = t' - nodeStarts

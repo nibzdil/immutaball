@@ -114,6 +114,10 @@ module Immutaball.Share.Math.Core
 		v2orWith,
 		v3or,
 		v3orWith,
+		v4or,
+		v4orWith,
+		flor,
+		florWith,
 		vx3,
 		v2perp,
 		v3perp,
@@ -1027,6 +1031,25 @@ v3orWith else_ v@(Vec3 x y z)
 	| isNaN y || isInfinite y = else_
 	| isNaN z || isInfinite z = else_
 	| otherwise = v
+
+v4or :: (RealFloat a) => Vec4 a -> Vec4 a
+v4or = v4orWith (Vec4 0.0 0.0 0.0 0.0)
+
+v4orWith :: (RealFloat a) => Vec4 a -> Vec4 a -> Vec4 a
+v4orWith else_ v@(Vec4 x y z w)
+	| isNaN x || isInfinite x = else_
+	| isNaN y || isInfinite y = else_
+	| isNaN z || isInfinite z = else_
+	| isNaN w || isInfinite w = else_
+	| otherwise = v
+
+flor :: (RealFloat a) => a -> a
+flor = florWith 0.0
+
+florWith :: (RealFloat a) => a -> a -> a
+florWith else_ x
+	| isNaN x || isInfinite x = else_
+	| otherwise = x
 
 -- | Cross product.
 --

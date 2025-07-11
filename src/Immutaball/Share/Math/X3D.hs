@@ -6,6 +6,7 @@
 
 {-# LANGUAGE Haskell2010 #-}
 {-# LANGUAGE TemplateHaskell, DerivingVia, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}  -- SmallishInfiniteLineThreshold
 
 -- | Dependent types might make for a funner linear algebra implementation, so
 -- I just stick with what's most applicable for our uses and goals here.
@@ -37,6 +38,9 @@ module Immutaball.Share.Math.X3D
 		line3AxisReflectPlane3,
 
 		line3Lerp,
+		smallishInfiniteLineThresholdd,
+		smallishInfiniteLineThresholdf,
+		SmallishInfiniteLineThreshold(..),
 		line3CoordAtDistancePlane3,
 		line3PlaneIntersection,
 
@@ -327,6 +331,17 @@ line3AxisReflectPlane3 l abc = l & a0l3 %~ plane3ReflectPoint (normalizePlane3 z
 line3Lerp :: forall a. (Num a) => Line3 a -> a -> Vec3 a
 line3Lerp l x = (l^.ol3) `pv3` (x `sv3` (l^.a0l3))
 
+smallishInfiniteLineThresholdd :: Double
+smallishInfiniteLineThresholdd = 0.001
+
+smallishInfiniteLineThresholdf :: Float
+smallishInfiniteLineThresholdf = 0.001
+
+class SmallishInfiniteLineThreshold a where smallishInfiniteLineThreshold :: a
+instance {-# OVERLAPPING  #-} SmallishInfiniteLineThreshold Double where smallishInfiniteLineThreshold = smallishInfiniteLineThresholdd
+instance {-# OVERLAPPING  #-} SmallishInfiniteLineThreshold Float where smallishInfiniteLineThreshold = smallishInfiniteLineThresholdf
+instance {-# OVERLAPPABLE #-} (Fractional a) => SmallishInfiniteLineThreshold a where smallishInfiniteLineThreshold = realToFrac $ smallishInfiniteLineThresholdf
+
 -- | Given a plane, find the 1D coord that projects onto the line, that finds
 -- the point at the given distance from the plane.  i.e. for a line and plane,
 -- find x such that p0 + p1*x gives a point equal to distance d from the plane
@@ -337,6 +352,8 @@ line3Lerp l x = (l^.ol3) `pv3` (x `sv3` (l^.a0l3))
 -- constant.
 --
 -- Beware the sign of the distance.
+--
+-- This is better suited for lines with non-trivial length.  See 'SmallishInfiniteLineThreshold'.
 line3CoordAtDistancePlane3 :: forall a. (SmallNum a, Ord a, Num a, Fractional a) => Plane3 a -> Line3 a -> a -> Maybe a
 line3CoordAtDistancePlane3 p l d
 	| dd_dx `equivalentSmall` 0 = Nothing
@@ -352,7 +369,7 @@ line3CoordAtDistancePlane3 p l d
 
 -- | Find the point on the plane where an infinite line intersects.
 --
--- This is better suited for lines with non-trivial length.
+-- This is better suited for lines with non-trivial length.  See 'SmallishInfiniteLineThreshold'.
 line3PlaneIntersection :: forall a. (SmallNum a, Ord a, Num a, Fractional a) => Line3 a -> Plane3 a -> Maybe (Vec3 a)
 line3PlaneIntersection l p = line3Lerp l <$> line3CoordAtDistancePlane3 p l 0
 

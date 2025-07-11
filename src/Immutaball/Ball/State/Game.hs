@@ -29,12 +29,13 @@ module Immutaball.Ball.State.Game
 		physicsBallAdvanceBruteForce,
 		physicsBallAdvanceBruteForceCompute,
 
-		NextCollision(..), ncClosestLumpi, ncCheckLumpsi, ncDistanceTo,
-			ncTimeTo,
+		NextCollision(..), ncClosestLump, ncCheckLumps, ncDistanceTo, ncTimeTo,
 		NextCollisionState(..), ncsNc, ncsBspsLeft,
 		LumpBSPPartitionParent(..), lbspppParent, lbspppIsRightBranch,
 		LumpLpPlaneIntersection(..), llpiPlaneIdx, llpiPlane, llpiDistance,
-			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiIntersection,
+			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiBodyTranslation,
+			llpiIntersection,
+		NextCollisionLump(..), nclLumpi, nclLpPlaneIntersections,
 		physicsBallAdvanceBSP,
 
 		-- * Utils.
@@ -961,13 +962,10 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 
 -- TODO export.
 data NextCollision = NextCollision {
-	_ncClosestLumpi :: Int32,
-	_ncCheckLumpsi  :: [Int32],
-	_ncDistanceTo   :: Double,
-	_ncTimeTo       :: Double
-
-	-- TODO: s/Int32/Int32, [LumpLpPlaneIntersection] or something.
-	--_ncLumpLpPlaneIntersections :: [LumpLpPlaneIntersection]
+	_ncClosestLump :: NextCollisionLump,
+	_ncCheckLumps  :: [NextCollisionLump],  -- ^ Not necessarily sorted.
+	_ncDistanceTo  :: Double,
+	_ncTimeTo      :: Double
 }
 --makeLenses ''NextCollision
 
@@ -987,6 +985,12 @@ data LumpBSPPartitionParent = LumpBSPPartitionParent {
 }
 --makeLenses ''LumpBSPPartitionParent
 
+data NextCollisionLump = NextCollisionLump {
+	_nclLumpi                :: Int32,
+	_nclLpPlaneIntersections :: [LumpLpPlaneIntersection]  -- Assumed to be non-empty and sorted.
+}
+--makeLenses ''NextCollisionLump
+
 -- | When considering an advancement of the ball, for a given lump, and for a
 -- given plane on that lump, a value of this type represents information about
 -- the intersection of the lp line for the ball and this plane.
@@ -994,7 +998,7 @@ data LumpBSPPartitionParent = LumpBSPPartitionParent {
 data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
 	-- | The lump plane index for the plane in question.
 	_llpiPlaneIdx :: Integer,
-	-- | The plane itself.
+	-- | The plane itself (relative body coords).
 	_llpiPlane    :: Plane3 Double,
 	-- | The distance along lp to the plane.
 	_llpiDistance :: Double,
@@ -1005,8 +1009,11 @@ data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
 	_llpiLi :: Int32,
 	-- | The body index.
 	_llpiBi :: Int32,
+	-- | For convenience, store the current body translation (where it is on
+	-- the path - you can add the base vertices to get the net world coords.)
+	_llpiBodyTranslation :: Vec3 Double,
 
-	-- | The lp in question.
+	-- | The lp in question (relative body coords; use 'ipb' to go back to world coords).
 	_llpiLp :: Line3 Double,
 	-- | The point of intersection, relative to body (use ‘ipb’ to go back).
 	_llpiIntersection :: Vec3 Double
@@ -1017,6 +1024,7 @@ makeLenses ''NextCollision
 makeLenses ''NextCollisionState
 makeLenses ''LumpBSPPartitionParent
 makeLenses ''LumpLpPlaneIntersection
+makeLenses ''NextCollisionLump
 
 -- | Advance the ball's position and velocity, using the level BSP to handle
 -- collisions and gravity.
@@ -1040,6 +1048,9 @@ makeLenses ''LumpLpPlaneIntersection
 -- condition is detected, then instead of potentially looping forever (and
 -- hanging), just abort collisions and let the ball ‘wall-glitch’ through walls
 -- to move through them.
+--
+-- TODO: support moving bodies, since this currently only checks current static
+-- position.
 physicsBallAdvanceBSP :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 	| Just maxPhysicsStepTime <- x'cfg^.x'cfgMaxPhysicsStepTime, dt > maxPhysicsStepTime =
@@ -1117,12 +1128,12 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 							-- BSP partition, including all lumps directly on
 							-- it, is entirely further away, we can skip it!
 							mcurrentBestDistance <- gets (((^.ncDistanceTo) <$>) . (^.ncsNc))
-							let smallInfiniteLineThreshold = 0.001
+							--let smallInfiniteLineThreshold = 0.001  -- TODO: move this constant somewhere better, more prominent.  Move it to X3D.  Perhaps make a class like SmallNum.
 							let mdistanceToParentPlane = do
 								bspParent <- mbspParent
 								let parentPlane = bspParent^.lbspppParent.lbsppPlane
 								currentBestDistance <- mcurrentBestDistance
-								if' ((lp'^.a0l3.r3) <= smallInfiniteLineThreshold)
+								if' ((lp'^.a0l3.r3) <= smallishInfiniteLineThreshold)
 									(return $ plane3PointDistance parentPlane p0')
 									$ do
 										distanceInFront <- (/ (lp'^.a0l3.r3)) <$> line3CoordAtDistancePlane3 parentPlane lp'   ballRadius
@@ -1171,31 +1182,121 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									-- take the closest.  We detect a collision
 									-- when lp' intersects with a lump's plane
 									-- at a point behind all the other planes.
+
+									-- | Assume sorted and non-empty lists
+									let unsafeHead xs = case xs of (x:_) -> x; _ -> error "Internal error: physicsBallAdvanceBSP: unsafeHead called on empty list."
+									let nclDist ncl = head (ncl^.nclLpPlaneIntersections) ^. llpiDistance
+									-- | Discard all collisions not close to the nearest.
+									let (filterChecks :: NextCollisionLump -> [NextCollisionLump] -> [NextCollisionLump]) = \best checks ->
+										flip filter checks $ \candidate ->
+											(nclDist candidate) - (nclDist best) <= smallishNum
+									-- | Get this lump's planes.
 									let (lumpPlanes :: [Plane3 Double]) = M.lookup lumpi (spa^.spaLumpPlanes) `morElse`
 										(error $ "Internal error: physicsBallAdvanceBSP: nextCollision: failed to find planes for lump " ++ show lumpi ++ ".")
-									let (lpIntersections :: [LumpLpPlaneIntersection]) = do
+									-- Query the current best and checks.
+									mnc <- gets (^.ncsNc)
+									let mncBest   = (^.ncClosestLump) <$> mnc
+									let mncChecks = (^.ncCheckLumps)  <$> mnc
+									let _mncFilterChecks = (pure filterChecks <*> mncBest) `morElse` id
+									-- | Get this lump's intersections with lp'.
+									let (lpIntersectionsRaw :: [LumpLpPlaneIntersection]) = do
+										-- Get each plane and a list of all
+										-- other planes for this lump.
 										(planeIdx, (plane, others)) <- zip [0..] $ listOthers lumpPlanes
-										return . fix $ \lpLumpX -> LumpLpPlaneIntersection {
-											-- TODO
+
+										{-
+										-- Make sure we only register a collision if the
+										-- ball is going towards this plane, not away from it: e.g.
+										-- you can only collide against a top face from above, not
+										-- from underneath.  This prevents the same lump causing
+										-- multiple collision events for what should be a single
+										-- collision.  We can do this by making sure the dot
+										-- product of the direction (axis) of ‘lp’ and the plane
+										-- normal is not positive.
+										guard $ (lp'^.a0l3) `d3` (plane^.abcp3) <= 0
+										-}
+
+										-- To register a collision, make sure
+										-- the advancement would bring the ball
+										-- behind the plane: either p0 is
+										-- outside (plane distance > 1) going
+										-- in (== 0 || == 1), or p0 is
+										-- strictly intersecting (== 0) going
+										-- in (== -1).
+										guard $ signum (plane3PointDistance plane p1 - ballRadius) < signum (plane3PointDistance plane p0 - ballRadius)
+
+										-- See if we need to use special logic
+										-- for very small steps.  If so, we'll
+										-- focus more on just p0' without p1'.
+										let approximatelyAPoint = (lp'^.a0l3.r3) <= smallishInfiniteLineThreshold
+
+										-- Find the coord on lp' at which we
+										-- find the intersection.
+										let intersectionCoord
+											| approximatelyAPoint = 0.0
+											| otherwise = line3CoordAtDistancePlane3 plane lp' ballRadius `morElse` 0.0
+										let intersectionPoint
+											| approximatelyAPoint = pointToPlane p0' plane
+											| otherwise = line3Lerp lp' intersectionCoord
+										-- Find the distance from p0' across lp'
+										-- (or shortest line) to the plane.
+										let distance
+											| approximatelyAPoint = plane3PointDistance plane p0'
+											| otherwise = (intersectionPoint - p0)^.r3
+										-- Find the time to reach intersectionCoord.
+										let timeTo = (intersectionCoord / (lp'^.a0l3.r3)) `florWith` 0.0
+
+										-- Now, make sure the intersection
+										-- point is on the lump, and not
+										-- outside the lump on some arbitrary
+										-- plane, since we have more data to
+										-- work with now.
+										let behindOthers =
+											[
+												r |
+												other <- others,
+												let d = plane3PointDistance other intersectionPoint,
+												let r = d <= 0
+											]
+										guard $ and behindOthers
+
+										-- Construct the result.
+										return . fix $ \_lpLumpX -> LumpLpPlaneIntersection {
+											_llpiPlaneIdx = planeIdx,
+											_llpiPlane    = plane,
+											_llpiDistance = distance,
+											_llpiTimeTo   = timeTo,
+
+											_llpiLi              = lumpi,
+											_llpiBi              = bi,
+											_llpiBodyTranslation = getBodyTranslation level soa gs bi 0,
+
+											_llpiLp           = lp',
+											_llpiIntersection = intersectionPoint
 										}
-									let lpIntersections' = sortOn (^.llpiDistance) lpIntersections
-									case lpIntersections' of
-										[] -> return ()
-										(bestX:candidatesX) -> do
-											moldNextCollision <- gets (^.ncsNc)
-											undefined  -- TODO also check old next collision, rather than overwriting it unconditionally!
+									let lpIntersections = sortOn (^.llpiDistance) lpIntersections
+									-- | If there are any intersections, see if
+									-- the best intersection is better than our
+									-- current best.  (Otherwise we're done
+									-- with this lump.)
+									if' (null lpIntersections) (return ()) $ do
 
-											let candidatesX' = flip filter candidatesX $ \candidate ->
-												(candidate^.llpiDistance) - (bestX^.llpiDistance) <= smallishNum
-											modify $ ncsNc .~ Just NextCollision {
-												_ncClosestLumpi = bestX^.llpiLi,
-												_ncCheckLumpsi  = undefined candidatesX', -- TODO
-												_ncDistanceTo   = bestX^.llpiDistance,
-												_ncTimeTo       = bestX^.llpiTimeTo
+									-- We found at least one intersection.
 
-												-- TODO:
-												--_ncLumpLpPlaneIntersections :: [LumpLpPlaneIntersection]
-											}
+									let (lumpNc :: NextCollisionLump) = NextCollisionLump lumpi lpIntersections
+									let (newBest, newChecksRaw)
+										| Just oldBest <- mncBest, Just oldChecks <- mncChecks =
+											if' (nclDist newBest < nclDist oldBest) (newBest, oldBest:oldChecks) (oldBest, newBest:oldChecks)
+										| otherwise = (newBest, [])
+									let newChecks = filterChecks newBest newChecksRaw
+
+									-- | Update the next collision state.
+									modify $ ncsNc .~ Just NextCollision {
+										_ncClosestLump = newBest,
+										_ncCheckLumps  = newChecks,
+										_ncDistanceTo  = nclDist newBest,
+										_ncTimeTo      = head (newBest^.nclLpPlaneIntersections) ^. llpiTimeTo
+									}
 
 				-- TODO: now handle nextCollision and check checkLumps.
 
@@ -1208,13 +1309,13 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 -- index), get the translation of the path you can add body vertices to to get
 -- the coords in world coords.
 getPathTranslation :: LevelIB -> SolOtherAnalysis -> GameState -> Int32 -> Integer -> Vec3 Double
-getPathTranslation _level soa gs pi derivativeDegree =
-	let translAtTime = M.lookup pi ((soa^.soaPathTranslationAtTime.fakeEOS) derivativeDegree) `morElse`
-		--(error $ "Error: getPathTranslation: failed to find translation map for path " ++ show pi ++ ".")
+getPathTranslation _level soa gs pi_ derivativeDegree =
+	let translAtTime = M.lookup pi_ ((soa^.soaPathTranslationAtTime.fakeEOS) derivativeDegree) `morElse`
+		--(error $ "Error: getPathTranslation: failed to find translation map for path " ++ show pi_ ++ ".")
 		const zv3 in
 	-- TODO: Implement updating pathsTimeElapsed when stepping, then invert the comments in the next 2 lines.
 	let pathTimeElapsed = gs^.gsTimeElapsed in
-	--let pathTimeElapsed = flip M.lookup (gs^.gsPathState.psPathsTimeElapsed) pi `morElse` 0.0 in
+	--let pathTimeElapsed = flip M.lookup (gs^.gsPathState.psPathsTimeElapsed) pi_ `morElse` 0.0 in
 	let bodyTranslation = translAtTime pathTimeElapsed in
 	bodyTranslation
 

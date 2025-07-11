@@ -58,7 +58,8 @@ module Immutaball.Share.Utils
 
 		modfl,
 
-		uncurry3
+		uncurry3,
+		listOthers
 	) where
 
 import Prelude ()
@@ -254,3 +255,8 @@ modfl a b = a - b*(fromInteger . floor $ a/b)
 -- | 3-ary 'uncurry'.
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 f (a, b, c) = f a b c
+
+-- | Given e.g. a list [1,2,3], return [(1,[2,3]), (2,[1,3]), (3,[1,2])].
+listOthers :: [a] -> [(a, [a])]
+listOthers []     = []
+listOthers (x:xs) = (x,xs) : fmap (second (x:)) (listOthers xs)

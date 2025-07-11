@@ -335,6 +335,8 @@ line3Lerp l x = (l^.ol3) `pv3` (x `sv3` (l^.a0l3))
 --
 -- Conveniently, the change in distance from the plane per change in x is
 -- constant.
+--
+-- Beware the sign of the distance.
 line3CoordAtDistancePlane3 :: forall a. (SmallNum a, Ord a, Num a, Fractional a) => Plane3 a -> Line3 a -> a -> Maybe a
 line3CoordAtDistancePlane3 p l d
 	| dd_dx `equivalentSmall` 0 = Nothing

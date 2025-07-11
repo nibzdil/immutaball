@@ -33,7 +33,7 @@ import Graphics.GL.Compatibility45
 import Graphics.GL.Types
 
 import Immutaball.Ball.Game
-import Immutaball.Ball.State.Game  -- rendererTransformationMatrix
+import Immutaball.Ball.State.Game  -- rendererTransformationMatrix, getPathTranslation
 import Immutaball.Share.Config
 import Immutaball.Share.Context
 import Immutaball.Share.ImmutaballIO.GLIO
@@ -168,11 +168,17 @@ renderGeomPass = proc (cxtn, (geomPassIdx, camera_, swa, gs, isAlpha, gp)) -> do
 	let (pathTransformationAtTimeMap :: M.Map Int32 (Double -> Mat4 Double)) = swa^.swaSa.saOtherAnalysis.soaPathTransformationAtTime.fakeEOS
 	let (mpathTransformation :: Maybe (Mat4 Double)) = do
 		originNode <- moriginPath
+		-- TODO remove this commented block after testing.
+		{-
 		transformationAtTime <- flip M.lookup pathTransformationAtTimeMap $ originNode
 		-- TODO: update pathsTimeElapsed, then invert the comments in the next 2 lines.
 		pathTimeElapsed <- return $ gs^.gsTimeElapsed
 		--pathTimeElapsed <- flip M.lookup (gs^.gsPathState.psPathsTimeElapsed) originNode
 		let transformation = transformationAtTime $ pathTimeElapsed
+		return transformation
+		-}
+		let bodyTranslation = getPathTranslation (swa^.swaSa.saOtherAnalysis) gs originNode 0
+		let transformation = translate3 bodyTranslation
 		return transformation
 	mat <- arr $ uncurry3 rendererTransformationMatrix -< (cxtn, gs, camera_)
 	let (mnetBodyTransformation :: Maybe (Mat4 Double)) = do

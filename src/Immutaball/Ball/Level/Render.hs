@@ -165,7 +165,7 @@ renderGeomPass = proc (cxtn, (geomPassIdx, camera_, swa, gs, isAlpha, gp)) -> do
 		let originPath = body^.bodyP0
 		guard . inRange (bounds $ swa^.swaSol.solPv) $ originPath
 		return $ originPath
-	let (pathTransformationAtTimeMap :: M.Map Int32 (Double -> Mat4 Double)) = swa^.swaSa.saOtherAnalysis.soaPathTransformationAtTime.fakeEOS
+	let (_pathTransformationAtTimeMap :: M.Map Int32 (Double -> Mat4 Double)) = swa^.swaSa.saOtherAnalysis.soaPathTransformationAtTime.fakeEOS
 	let (mpathTransformation :: Maybe (Mat4 Double)) = do
 		originNode <- moriginPath
 		-- TODO remove this commented block after testing.
@@ -177,7 +177,7 @@ renderGeomPass = proc (cxtn, (geomPassIdx, camera_, swa, gs, isAlpha, gp)) -> do
 		let transformation = transformationAtTime $ pathTimeElapsed
 		return transformation
 		-}
-		let bodyTranslation = getPathTranslation (swa^.swaSa.saOtherAnalysis) gs originNode 0
+		let bodyTranslation = getPathTranslation (swa^.swaSol) (swa^.swaSa.saOtherAnalysis) gs originNode 0
 		let transformation = translate3 bodyTranslation
 		return transformation
 	mat <- arr $ uncurry3 rendererTransformationMatrix -< (cxtn, gs, camera_)

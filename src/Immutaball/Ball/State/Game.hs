@@ -5,7 +5,7 @@
 -- Play.hs.
 
 {-# LANGUAGE Haskell2010 #-}
-{-# LANGUAGE TemplateHaskell, Arrows, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, Arrows, ScopedTypeVariables, NondecreasingIndentation #-}
 
 -- | Game state and immutaball state interface.
 module Immutaball.Ball.State.Game
@@ -28,6 +28,13 @@ module Immutaball.Ball.State.Game
 		physicsBallAdvanceGhostly,
 		physicsBallAdvanceBruteForce,
 		physicsBallAdvanceBruteForceCompute,
+
+		NextCollision(..), ncClosestLumpi, ncCheckLumpsi, ncDistanceTo,
+			ncTimeTo,
+		NextCollisionState(..), ncsNc, ncsBspsLeft,
+		LumpBSPPartitionParent(..), lbspppParent, lbspppIsRightBranch,
+		LumpLpPlaneIntersection(..), llpiPlaneIdx, llpiPlane, llpiDistance,
+			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiIntersection,
 		physicsBallAdvanceBSP,
 
 		-- * Utils.
@@ -43,6 +50,7 @@ import Immutaball.Prelude
 import Control.Monad
 import Data.Int
 import Data.Foldable
+import Data.Function hiding (id, (.))
 import Data.List
 import qualified Data.Map.Lazy as M
 import Data.Maybe
@@ -51,11 +59,13 @@ import Control.Arrow
 import Control.Lens
 import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
+import qualified Data.Set as S
 import Graphics.GL.Compatibility45
 --import Graphics.GL.Core45
 import Graphics.GL.Types
 import qualified SDL.Raw.Enum as Raw
 
+import Data.LabeledBinTree
 import Immutaball.Ball.Game
 import Immutaball.Share.Config
 import Immutaball.Share.Context
@@ -516,7 +526,7 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 	--
 	-- Expend dt to apply its velocity to the position, handling collisions by
 	-- applying reflections.
-	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsSolAnalysis.saPhysicsAnalysis) (gsnp1^.gsBallRadius) gravityVector gsnp1 dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
+	let (ballPos', ballVel') = physicsBallAdvance x'cfg (gsnp1^.gsSol) (gsnp1^.gsSolAnalysis.saPhysicsAnalysis) (gsnp1^.gsSolAnalysis.saOtherAnalysis) (gsnp1^.gsBallRadius) gravityVector gsnp1 dt (gsnp1^.gsBallPos) (gsnp1^.gsBallVel)
 	let updateBall =
 		(gsBallPos .~ ballPos') .
 		(gsBallVel .~ ballVel') .
@@ -598,7 +608,7 @@ physicsBallAdvanceBruteForce = physicsBallAdvanceBruteForceCompute 0 0.0 0.0
 -- physics algorithm, so it probably isn't very important.
 physicsBallAdvanceBruteForceCompute :: Integer -> Double -> Double -> StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 --physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresholdRDistanceRemaining x'cfg level spa _soa ballRadius gravityVector gs dt p0 v0 =
-physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresholdRDistanceRemaining x'cfg level spa _soa ballRadius gravityVector gs dt p0 v0
+physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresholdRDistanceRemaining x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 	-- Redundantly ensure dt is not zero or negative.
 	| dt <= 0 + smallNum = let (p1, v1) = (p0, v0) in (p1, v1)
 	-- Check the optional maxPhysicsStepTime config.
@@ -611,6 +621,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 				x'cfg
 				level
 				spa
+				soa
 				ballRadius
 				gravityVector
 				gs
@@ -624,6 +635,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 			x'cfg
 			level
 			spa
+			soa
 			ballRadius
 			gravityVector
 			gs
@@ -646,6 +658,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 					x'cfg
 					level
 					spa
+					soa
 					ballRadius
 					gravityVector
 					gs
@@ -1000,6 +1013,11 @@ data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
 }
 --makeLenses ''LumpLpPlaneIntersection
 
+makeLenses ''NextCollision
+makeLenses ''NextCollisionState
+makeLenses ''LumpBSPPartitionParent
+makeLenses ''LumpLpPlaneIntersection
+
 -- | Advance the ball's position and velocity, using the level BSP to handle
 -- collisions and gravity.
 --
@@ -1023,12 +1041,12 @@ data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
 -- hanging), just abort collisions and let the ball ‘wall-glitch’ through walls
 -- to move through them.
 physicsBallAdvanceBSP :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
+physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 	| Just maxPhysicsStepTime <- x'cfg^.x'cfgMaxPhysicsStepTime, dt > maxPhysicsStepTime =
-		let (p1, v1) = advance maxPhysicsStepTime p0 v0
-		in  (physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector) (dt - maxPhysicsStepTime) p1 v1
+		let (p1, v1) = advance 0 0.0 0.0 maxPhysicsStepTime p0 v0
+		in  (physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs) (dt - maxPhysicsStepTime) p1 v1
 	| otherwise =
-		advance dt p0 v0
+		advance 0 0.0 0.0 dt p0 v0
 
 	where
 		bounceReturn = x'cfg^.x'cfgBounceReturn
@@ -1041,11 +1059,11 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 		--
 		-- Repeat until all remaining dt is expended, or a squish condition is
 		-- detected.
-		advance :: Integer -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+		advance :: Integer -> Double -> Double -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 		advance numLocalCollisions localDtExpended localDistance dtn pn vn
-			| localDtExpended    >= (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold)        = advance 0 0 0 dtn pn vn
-			| localDistance      >= (x'cfg^.x'cfgMaxFrameCollisionsRDistanceThreshold) = advance 0 0 0 dtn pn vn
-			| numLocalCollisions >= x'cfgMaxFrameCollisions                            = (p1, v1)
+			| localDtExpended    >= (x'cfg^.x'cfgMaxFrameCollisionsDtThreshold)        = advance 0 0.0 0.0 dtn pn vn
+			| localDistance      >= (x'cfg^.x'cfgMaxFrameCollisionsRDistanceThreshold) = advance 0 0.0 0.0 dtn pn vn
+			| numLocalCollisions >= (x'cfg^.x'cfgMaxFrameCollisions)                   = (p1, v1)
 			| dt                 <= 0                                                  = (p1, v1)
 			| otherwise                                                                = result
 			where
@@ -1073,12 +1091,12 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 				-- with 'ipb' afterwards.
 				pb :: Vec3 Double -> Int32 -> Vec3 Double
 				pb p bi =
-					let bodyTranslation = getBodyTranslation soa gs bi 0 in
+					let bodyTranslation = getBodyTranslation level soa gs bi 0 in
 					p - bodyTranslation
 
 				ipb :: Vec3 Double -> Int32 -> Vec3 Double
 				ipb p bi =
-					let bodyTranslation = getBodyTranslation soa gs bi 0 in
+					let bodyTranslation = getBodyTranslation level soa gs bi 0 in
 					p + bodyTranslation
 
 				-- | Lump, collection of lumps to check, distance to closest,
@@ -1104,11 +1122,11 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 								bspParent <- mbspParent
 								let parentPlane = bspParent^.lbspppParent.lbsppPlane
 								currentBestDistance <- mcurrentBestDistance
-								if' (lp'^.r2 <= smallInfiniteLineThreshold)
+								if' ((lp'^.a0l3.r3) <= smallInfiniteLineThreshold)
 									(return $ plane3PointDistance parentPlane p0')
 									$ do
-										distanceInFront <- (/ (lp'^.r2)) <$> line3CoordAtDistancePlane3 parentPlane lp'   ballRadius
-										distanceBehind  <- (/ (lp'^.r2)) <$> line3CoordAtDistancePlane3 parentPlane lp' (-ballRadius)
+										distanceInFront <- (/ (lp'^.a0l3.r3)) <$> line3CoordAtDistancePlane3 parentPlane lp'   ballRadius
+										distanceBehind  <- (/ (lp'^.a0l3.r3)) <$> line3CoordAtDistancePlane3 parentPlane lp' (-ballRadius)
 										return $ min distanceInFront distanceBehind
 							let canSkipThisBSP = (== Just True) $ do
 								currentBestDistance <- mcurrentBestDistance
@@ -1127,11 +1145,11 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 								-- the partition, then queue them up for
 								-- processing.
 								let queueL =
-									(plane3PointDistance (bspPartition^.lbsppPartition) p0') <= 0 ||
-									(plane3PointDistance (bspPartition^.lbsppPartition) p1') <= 0
+									(plane3PointDistance (bspPartition^.lbsppPlane) p0') <= 0 ||
+									(plane3PointDistance (bspPartition^.lbsppPlane) p1') <= 0
 								let queueR =
-									(plane3PointDistance (bspPartition^.lbsppPartition) p0') >= 0 ||
-									(plane3PointDistance (bspPartition^.lbsppPartition) p1') >= 0
+									(plane3PointDistance (bspPartition^.lbsppPlane) p0') >= 0 ||
+									(plane3PointDistance (bspPartition^.lbsppPlane) p1') >= 0
 								let newParent isRightBranch = LumpBSPPartitionParent {
 									_lbspppParent        = bspPartition,
 									_lbspppIsRightBranch = isRightBranch
@@ -1154,7 +1172,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 									-- when lp' intersects with a lump's plane
 									-- at a point behind all the other planes.
 									let (lumpPlanes :: [Plane3 Double]) = M.lookup lumpi (spa^.spaLumpPlanes) `morElse`
-										error $ "Internal error: physicsBallAdvanceBSP: nextCollision: failed to find planes for lump " ++ show lumpi ++ "."
+										(error $ "Internal error: physicsBallAdvanceBSP: nextCollision: failed to find planes for lump " ++ show lumpi ++ ".")
 									let (lpIntersections :: [LumpLpPlaneIntersection]) = do
 										(planeIdx, (plane, others)) <- zip [0..] $ listOthers lumpPlanes
 										return . fix $ \lpLumpX -> LumpLpPlaneIntersection {
@@ -1163,7 +1181,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 									let lpIntersections' = sortOn (^.llpiDistance) lpIntersections
 									case lpIntersections' of
 										[] -> return ()
-										(bestX, candidatesX) -> do
+										(bestX:candidatesX) -> do
 											moldNextCollision <- gets (^.ncsNc)
 											undefined  -- TODO also check old next collision, rather than overwriting it unconditionally!
 
@@ -1171,7 +1189,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 												(candidate^.llpiDistance) - (bestX^.llpiDistance) <= smallishNum
 											modify $ ncsNc .~ Just NextCollision {
 												_ncClosestLumpi = bestX^.llpiLi,
-												_ncCheckLumpsi  = candidatesX',
+												_ncCheckLumpsi  = undefined candidatesX', -- TODO
 												_ncDistanceTo   = bestX^.llpiDistance,
 												_ncTimeTo       = bestX^.llpiTimeTo
 
@@ -1189,30 +1207,25 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0 =
 -- | Given the current game state, and the given _path_ by index (not body
 -- index), get the translation of the path you can add body vertices to to get
 -- the coords in world coords.
-getPathTranslation :: SolOtherAnalysis -> GameState -> Int32 -> Integer -> Vec3 Double
-getPathTranslation soa gs pi derivativeDegree =
-	let translAtTime = M.lookup pi (soa^.soaPathTranslationAtTime.fakeEOS $ derivativeDegree) `morElse`
-		--error $ "Error: getPathTranslation: failed to find translation map for path " ++ show pi ++ "."
-		zv3 in
+getPathTranslation :: LevelIB -> SolOtherAnalysis -> GameState -> Int32 -> Integer -> Vec3 Double
+getPathTranslation _level soa gs pi derivativeDegree =
+	let translAtTime = M.lookup pi ((soa^.soaPathTranslationAtTime.fakeEOS) derivativeDegree) `morElse`
+		--(error $ "Error: getPathTranslation: failed to find translation map for path " ++ show pi ++ ".")
+		const zv3 in
 	-- TODO: Implement updating pathsTimeElapsed when stepping, then invert the comments in the next 2 lines.
-	let pathTimeElapsed <- return $ gs^.gsTimeElapsed in
-	--let pathTimeElapsed <- flip M.lookup (gs^.gsPathState.psPathsTimeElapsed) pi in
+	let pathTimeElapsed = gs^.gsTimeElapsed in
+	--let pathTimeElapsed = flip M.lookup (gs^.gsPathState.psPathsTimeElapsed) pi `morElse` 0.0 in
 	let bodyTranslation = translAtTime pathTimeElapsed in
 	bodyTranslation
 
 -- | Given the current game state, and the given _body_ by index (not path
 -- index), get the translation of the path you can add body vertices to to get
 -- the coords in words coords.
-getBodyTranslation :: SolOtherAnalysis -> GameState -> Int32 -> Vec3 Double
-getBodyTranslation soa gs bi derivativeDegree =
+getBodyTranslation :: LevelIB -> SolOtherAnalysis -> GameState -> Int32 -> Integer -> Vec3 Double
+getBodyTranslation level soa gs bi derivativeDegree =
 	let body = (level^.solBv) ! bi in
 	let bodyPath = body^.bodyP0 in
-	let bodyTranslation = getPathTranslation soa gs bodyPath derivativeDegree in
+	let bodyTranslation = getPathTranslation level soa gs bodyPath derivativeDegree in
 	bodyTranslation
 
 -- * Local utils.
-
-makeLenses ''NextCollision
-makeLenses ''NextCollisionState
-makeLenses ''LumpBSPPartitionParent
-makeLenses ''LumpLpPlaneIntersection

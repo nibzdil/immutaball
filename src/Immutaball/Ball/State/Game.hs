@@ -620,10 +620,10 @@ physicsBallAdvance :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherA
 physicsBallAdvance x'cfg level spa soa ballRadius gravityVector gs dt ballPos ballVel = choice_ x'cfg level spa soa ballRadius gravityVector gs dt ballPos ballVel
 	where
 		choice_ :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-		choice_ = physicsBallAdvanceStationary
+		--choice_ = physicsBallAdvanceStationary
 		--choice_ = physicsBallAdvanceGhostly
 		--choice_ = physicsBallAdvanceBruteForce
-		--choice_ = physicsBallAdvanceBSP
+		choice_ = physicsBallAdvanceBSP
 
 -- | For debugging or performance checking, keep the ball stationary.
 physicsBallAdvanceStationary :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)

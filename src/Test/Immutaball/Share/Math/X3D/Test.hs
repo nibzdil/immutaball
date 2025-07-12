@@ -5,6 +5,7 @@
 -- Test.hs.
 
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Test.Immutaball.Share.Math.X3D.Test
 	(
@@ -15,7 +16,8 @@ module Test.Immutaball.Share.Math.X3D.Test
 		simpleConstant,
 		sampleLine0,
 		sampleLine1,
-		planeX1
+		planeX1,
+		planeZ2
 	) where
 
 --import Control.Arrow
@@ -26,9 +28,10 @@ import Test.HUnit
 --import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.HUnit hiding ((@?=), assertBool)
---import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck
 
 import Immutaball.Share.Math
+import Immutaball.Share.Utils
 import Test.Immutaball.Share.Math.Core.Orphans ()
 
 main :: IO ()
@@ -48,6 +51,9 @@ sampleLine1 = line3Points (Vec3 1 0 1) (Vec3 1 3 1)
 
 planeX1 :: Plane3 Double
 planeX1 = normalPlane3 (Vec3 1 0 0) 1
+
+planeZ2 :: Plane3 Double
+planeZ2 = normalPlane3 (Vec3 0 0 1) 2
 
 tests :: TestTree
 tests = testGroup "Immutaball.Share.Math.X3D" $
@@ -130,5 +136,41 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 					line3Line3Distance sampleLine0 sampleLine1 `equivalentSmall` 1 @?= True,
 				testCase "sample lines are distance 1 with second z-negated" $
 					line3Line3Distance sampleLine0 (sampleLine1 & ol3.z3 %~ negate) `equivalentSmall` 1 @?= True
+			],
+
+		testGroup "plane3 plane3 tests" $
+			[
+				testCase "planeX1 planeZ2 intersects at" $
+					let allowOtherDirection = False in
+					((pure nearLine3 <*> plane3Plane3 planeX1 planeZ2 <*> pure (line3Points (Vec3 1 0 2) (Vec3 1 (-1) 2))) == Just True) ||
+					((pure nearLine3 <*> plane3Plane3 planeX1 planeZ2 <*> pure (line3Points (Vec3 1 0 2) (Vec3 1 1    2))) == Just True && allowOtherDirection) @?= True,
+				testProperty "planes intersect with points on both planes" $
+					-- Get 2 random planes, pa and pb.
+					\(paabcRaw :: Vec3 Double) ->
+					\(pbabcRaw :: Vec3 Double) ->
+					\(pad      :: Double     ) ->
+					\(pbd      :: Double     ) ->
+					\(lx       :: Double     ) ->
+					let paabc = v3normalize paabcRaw & \v -> if' (not $ (v^.r3) `near` 1.0) (Vec3 1.0 0.0 0.0) $ v in
+					let pbabc = v3normalize pbabcRaw & \v -> if' (not $ (v^.r3) `near` 1.0) (Vec3 1.0 0.0 0.0) $ v in
+					let pa = normalPlane3 paabc pad in
+					let pb = normalPlane3 pbabc pbd in
+
+					-- Get their intersection.
+					let ml = plane3Plane3 pa pb in
+					case ml of
+						Nothing ->
+							-- They don't intersect; make sure the cross
+							-- product of the 2 normals are smallish.
+							let cross = (pa^.abcp3) `vx3` (pb^.abcp3) in
+							cross^.r3 <= smallishNum
+						Just l ->
+							-- Get a random point on the intersection line.
+							let p = line3Lerp l lx in
+
+							-- Make sure it's on pa.
+							plane3PointDistance pa p `near` 0 &&
+							-- Make sure it's on pb.
+							plane3PointDistance pb p `near` 0
 			]
 	]

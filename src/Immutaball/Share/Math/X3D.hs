@@ -60,6 +60,8 @@ module Immutaball.Share.Math.X3D
 		nearPlane3PointsOnly,
 		nearLine3PointsOnly,
 
+		plane3Plane3,
+
 		QCurve3(..), a2q3, a1q3, a0q3,
 		qcurve3,
 		qcurvePath3,
@@ -75,6 +77,7 @@ import Immutaball.Prelude
 import Control.Lens
 
 import Immutaball.Share.Math.Core
+import Immutaball.Share.Utils
 
 -- | Normal, distance.
 --
@@ -540,6 +543,28 @@ nearPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `n
 nearLine3PointsOnly :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a -> Bool
 nearLine3PointsOnly a b = let na' = na & (a0l3 %~ negate) in ( (na^.p0l3) `near3` (nb^.p0l3) && (na^.p1l3) `near3` (nb^.p1l3) ) || ( (na'^.p0l3) `near3` (nb^.p0l3) && (na'^.p1l3) `near3` (nb^.p1l3) )
 	where (na, nb) = let standardize = (a0l3 %~ v3normalize) . line3NormalizeDisplacement in (standardize a, standardize b)
+
+-- | Find the the line where 2 planes intersect, if they are not parallel.
+plane3Plane3 :: (Num a, RealFloat a, Floating a, Ord a, SmallNum a) => Plane3 a -> Plane3 a -> Maybe (Line3 a)
+plane3Plane3 pa pb = do
+	-- Get a0, the axis of the line, from the cross product of the 2 plane
+	-- normals.
+	let a0Dir = (pa^.abcp3) `vx3` (pb^.abcp3)
+	let a0DirUnit = v3or $ v3normalize a0Dir
+	a0 <- if' (min (a0Dir^.r3) (a0DirUnit^.r3) <= smallNum) Nothing $ Just a0DirUnit
+
+	-- To find any point where the planes intersect, take a point on pa, make a
+	-- line from it using pb's normal, and find where this line intersects pb.
+	-- Use this arbitrary origin as an arbitrary point on the line, and then
+	-- normalize the displacement so that it's a common form.
+	let pap = pointToPlane zv3 pa          -- Closest point on pa to the origin.
+	let lab = line3Axes pap (pb^.abcp3)    -- Line from pap with pb's normal as axis.
+	lp0 <- line3PlaneIntersection lab pb   -- An arbitrary point where pa intersects pb.
+
+	let lPrenormalized = line3Axes lp0 a0
+	let l              = line3NormalizeDisplacement lPrenormalized
+
+	return $ l
 
 -- | The curve represented by p = 1/2 (x^2) a2 + x a1 + a0
 -- (The 1/2 comes from integrating twice.)

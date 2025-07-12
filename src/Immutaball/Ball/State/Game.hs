@@ -34,7 +34,7 @@ module Immutaball.Ball.State.Game
 		LumpBSPPartitionParent(..), lbspppParent, lbspppIsRightBranch,
 		LumpLpPlaneIntersection(..), llpiPlaneIdx, llpiPlane, llpiDistance,
 			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiBodyTranslation,
-			llpiIntersection,
+			llpiIntersection, llpiIntersectionLx, llpiIntersectionBall,
 		NextCollisionLump(..), nclLumpi, nclLpPlaneIntersections,
 		physicsBallAdvanceBSP,
 
@@ -1015,8 +1015,13 @@ data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
 
 	-- | The lp in question (relative body coords; use 'ipb' to go back to world coords).
 	_llpiLp :: Line3 Double,
-	-- | The point of intersection, relative to body (use ‘ipb’ to go back).
-	_llpiIntersection :: Vec3 Double
+	-- | The point of intersection on the body, relative to body (use ‘ipb’ to go back).
+	_llpiIntersection :: Vec3 Double,
+
+	-- | Where on ‘lp’ the intersection happens (0.0 if lp is really small).
+	_llpiIntersectionLx :: Double,
+	-- | Where the ball would be positioned at the point of intersection; body coords.
+	_llpiIntersectionBall :: Vec3 Double
 }
 --makeLenses ''LumpLpPlaneIntersection
 
@@ -1087,13 +1092,14 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 				v1 = vng dtn
 
 				-- | What velocity is if vn has time added to gravity.
-				vng edt = vn + ((edt * gravityAcceleration) `sv3` gravityVector)
+				vng edt = vg vn edt
+				vg v edt = v + ((edt * gravityAcceleration) `sv3` gravityVector)
 
 				-- | Draw a line segment from the ball's position (center of
 				-- sphere) to the tentative end-point if all dt were to be
 				-- expended now using its current velocity.
-				lp :: Line3 Double
-				lp = line3Points p0 p1
+				_lp :: Line3 Double
+				_lp = line3Points p0 p1
 
 				-- | Take a position/point, and the given body by index, and
 				-- convert the position/coords to be in terms of the body frame
@@ -1132,7 +1138,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 							let mdistanceToParentPlane = do
 								bspParent <- mbspParent
 								let parentPlane = bspParent^.lbspppParent.lbsppPlane
-								currentBestDistance <- mcurrentBestDistance
+								_currentBestDistance <- mcurrentBestDistance
 								if' ((lp'^.a0l3.r3) <= smallishInfiniteLineThreshold)
 									(return $ plane3PointDistance parentPlane p0')
 									$ do
@@ -1146,7 +1152,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 							if' canSkipThisBSP me $ do
 
 							modify (ncsBspsLeft .~ bspsLeft')
-							let withEmpty then_ = do
+							let withEmpty _then = do
 								me
 							let withLeaf bspPartition then_ = do
 								then_ bspPartition
@@ -1185,7 +1191,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 
 									-- | Assume sorted and non-empty lists
 									let unsafeHead xs = case xs of (x:_) -> x; _ -> error "Internal error: physicsBallAdvanceBSP: unsafeHead called on empty list."
-									let nclDist ncl = head (ncl^.nclLpPlaneIntersections) ^. llpiDistance
+									let nclDist ncl = unsafeHead (ncl^.nclLpPlaneIntersections) ^. llpiDistance
 									-- | Discard all collisions not close to the nearest.
 									let (filterChecks :: NextCollisionLump -> [NextCollisionLump] -> [NextCollisionLump]) = \best checks ->
 										flip filter checks $ \candidate ->
@@ -1235,14 +1241,18 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 										let intersectionCoord
 											| approximatelyAPoint = 0.0
 											| otherwise = line3CoordAtDistancePlane3 plane lp' ballRadius `morElse` 0.0
+										let intersectionBallPoint = line3Lerp lp' intersectionCoord
 										let intersectionPoint
 											| approximatelyAPoint = pointToPlane p0' plane
-											| otherwise = line3Lerp lp' intersectionCoord
+											| otherwise = line3Lerp lp' $ intersectionCoord + ballRadius/(lp'^.a0l3.r3)
 										-- Find the distance from p0' across lp'
-										-- (or shortest line) to the plane.
+										-- (or shortest line) to the plane
+										-- (where with ballRadius there is an
+										-- intersection).  i.e. distance ball
+										-- would travel to reach the collision.
 										let distance
 											| approximatelyAPoint = plane3PointDistance plane p0'
-											| otherwise = (intersectionPoint - p0)^.r3
+											| otherwise = (intersectionBallPoint - p0')^.r3
 										-- Find the time to reach intersectionCoord.
 										let timeTo = (intersectionCoord / (lp'^.a0l3.r3)) `florWith` 0.0
 
@@ -1272,22 +1282,38 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											_llpiBodyTranslation = getBodyTranslation level soa gs bi 0,
 
 											_llpiLp           = lp',
-											_llpiIntersection = intersectionPoint
+											_llpiIntersection = intersectionPoint,
+
+											_llpiIntersectionLx   = intersectionCoord,
+											_llpiIntersectionBall = intersectionBallPoint
 										}
-									let lpIntersections = sortOn (^.llpiDistance) lpIntersections
+									let lpIntersectionsUnfiltered = sortOn (^.llpiDistance) lpIntersectionsRaw
+
 									-- | If there are any intersections, see if
 									-- the best intersection is better than our
 									-- current best.  (Otherwise we're done
 									-- with this lump.)
-									if' (null lpIntersections) (return ()) $ do
+									if' (null lpIntersectionsUnfiltered) (return ()) $ do
 
 									-- We found at least one intersection.
 
+									-- We'll only need the closest intersection on
+									-- this lump, and intersections close
+									-- enough within a smallishNum threshold to
+									-- test for edge and vertex collisions
+									-- later.
+									let lpIntersections = case lpIntersectionsUnfiltered of
+										[] -> []
+										(closest:rest) -> closest :
+											let closestDist = closest^.llpiDistance in
+											filter (\inters -> (inters^.llpiDistance) - closestDist <= smallishNum) rest
+
+									-- Get the new best and new checks.
 									let (lumpNc :: NextCollisionLump) = NextCollisionLump lumpi lpIntersections
 									let (newBest, newChecksRaw)
 										| Just oldBest <- mncBest, Just oldChecks <- mncChecks =
-											if' (nclDist newBest < nclDist oldBest) (newBest, oldBest:oldChecks) (oldBest, newBest:oldChecks)
-										| otherwise = (newBest, [])
+											if' (nclDist lumpNc < nclDist oldBest) (lumpNc, oldBest:oldChecks) (oldBest, lumpNc:oldChecks)
+										| otherwise = (lumpNc, [])
 									let newChecks = filterChecks newBest newChecksRaw
 
 									-- | Update the next collision state.
@@ -1295,13 +1321,66 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 										_ncClosestLump = newBest,
 										_ncCheckLumps  = newChecks,
 										_ncDistanceTo  = nclDist newBest,
-										_ncTimeTo      = head (newBest^.nclLpPlaneIntersections) ^. llpiTimeTo
+										_ncTimeTo      = unsafeHead (newBest^.nclLpPlaneIntersections) ^. llpiTimeTo
 									}
 
-				-- TODO: now handle nextCollision and check checkLumps.
+				-- Now handle nextCollision and check checkLumps.
 
-				-- | TODO
-				result = (p0, v0)
+				-- | After the next collision, find (pn, vn, edt), position,
+				-- velocity, and dt expended.  After we handle this
+				-- collision step, then we apply gravity based on the time
+				-- expended to travel this distance, and continue looping
+				-- through advance until we exhaust all collisions or reach a
+				-- squish condition.
+				afterNextCollision :: Maybe (Vec3 Double, Vec3 Double, Double)
+				afterNextCollision = (<$> nextCollision) $ \nc ->
+					let ourFlatten ((a, b), c) = (a, b, c) in
+					ourFlatten (foldl' step (pn, vn) $ (nc^.ncClosestLump) : (nc^.ncCheckLumps), nc^.ncTimeTo)
+						where
+							step :: (Vec3 Double, Vec3 Double) -> NextCollisionLump -> (Vec3 Double, Vec3 Double)
+							step (v, p) ncl
+							-- 3 possible collision types: vertex, edge, or
+							-- plane.  The type depends on how many
+							-- intersections there are within threshold
+							-- distance to the closest.  If there's only one
+							-- planar intersection, it's a plane; if 2, it's an
+							-- edge; if 3 or more, it's a vertex.
+								| [] <- ncl^.nclLpPlaneIntersections =
+									-- Redundant; internally should never happen.
+									(v, p)
+								| (px:[]) <- ncl^.nclLpPlaneIntersections =
+									-- Just a single planar intersection.  So
+									-- advance p, and mirror velocity about the
+									-- plane.
+									--
+									-- TODO: handle body velocity!  This for
+									-- now just assumes the body is stationary.
+									let plane = (px^.llpiPlane) in
+									let p'    = ipb (px^.llpiIntersectionBall) (px^.llpiBi) in
+									let v'    = plane3ReflectPointAmount (plane & dp3 .~ 0) v bounceReturn in
+									(p', v')
+								-- TODO: handle edges and vertices!
+								| otherwise = error "Internal error: TODO: unimplemented!  Edges and vertices."
+
+				-- | Now apply gravity after advancing to the next collision.
+				afterNextCollisionGravity :: Maybe (Vec3 Double, Vec3 Double, Double)
+				afterNextCollisionGravity = (<$> afterNextCollision) $ \(pn', vn', edt) ->
+					(pn', vg vn' $ edt, edt)
+
+				-- | The result of 'advance'.  Try checking for collisions
+				-- again if we found a collision, else we can finish.
+				result :: (Vec3 Double, Vec3 Double)
+				result
+					| Just (pn', vn', edt) <- afterNextCollisionGravity =
+						advance
+							(numLocalCollisions + 1)
+							(localDtExpended    + edt)
+							(localDistance      + (pn' - pn)^.r3)
+							(dtn                - edt)
+							pn'
+							vn'
+					| otherwise =
+						(p1, v1)
 
 -- * Utils.
 

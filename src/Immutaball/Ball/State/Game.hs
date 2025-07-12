@@ -1359,6 +1359,11 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									-- TODO: handle body velocity!  This for
 									-- now just assumes the body is stationary.
 									let plane = (px^.llpiPlane) in
+									-- If the velocity is going away from the
+									-- plane due to a previous collision update
+									-- in this step (i.e. we're on a check
+									-- lump, not the first step), then skip.
+									if' (not $ v `d3` (plane^.abcp3) <= 0) (p, v) $
 									let p'    = ipb (px^.llpiIntersectionBall) (px^.llpiBi) in
 									let v'    = plane3ReflectPointAmount (plane & dp3 .~ 0) v bounceReturn in
 									(p', v')

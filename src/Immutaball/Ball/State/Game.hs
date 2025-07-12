@@ -1306,11 +1306,12 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									-- enough within a smallishNum threshold to
 									-- test for edge and vertex collisions
 									-- later.
-									let lpIntersections = case lpIntersectionsUnfiltered of
+									let lpIntersectionsFiltered = case lpIntersectionsUnfiltered of
 										[] -> []
 										(closest:rest) -> closest :
 											let closestDist = closest^.llpiDistance in
 											filter (\inters -> (inters^.llpiDistance) - closestDist <= smallishNum) rest
+									let lpIntersections = lpIntersectionsFiltered
 
 									-- Get the new best and new checks.
 									let (lumpNc :: NextCollisionLump) = NextCollisionLump lumpi lpIntersections

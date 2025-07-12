@@ -1129,6 +1129,8 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 					case bspsLeft of
 						[] -> return ()
 						((bi, bsp, mbspParent):bspsLeft') -> do
+							modify (ncsBspsLeft .~ bspsLeft')
+
 							let p0' = pb p0 bi
 							let p1' = pb p1 bi
 							let lp' = line3Points p0' p1'
@@ -1154,7 +1156,6 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 								return $ distanceToParentPlane > currentBestDistance
 							if' canSkipThisBSP me $ do
 
-							modify (ncsBspsLeft .~ bspsLeft')
 							let withEmpty _then = do
 								me
 							let withLeaf bspPartition then_ = do

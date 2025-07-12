@@ -73,7 +73,16 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 		testGroup "pointToPlane" $
 			[
 				testCase "simple sample test" $
-					(Vec3 7 (-4) 88 `pointToPlane` planeX1) `eq3` Vec3 1 (-4) 88 @?= True
+					(Vec3 7 (-4) 88 `pointToPlane` planeX1) `eq3` Vec3 1 (-4) 88 @?= True,
+				testProperty "the closest point on a random plane to the origin matches its normal and distance" $
+					-- Get a random plane.
+					\(pabcRaw :: Vec3 Double) ->
+					\(pd      :: Double     ) ->
+					let pabc = v3normalize pabcRaw & \v -> if' (not $ (v^.r3) `near` 1.0) (Vec3 1.0 0.0 0.0) $ v in
+					let plane = normalPlane3 pabc pd in
+
+					let p = pointToPlane zv3 plane in
+					p `near3` ((plane^.dp3) `sv3` (plane^.abcp3))
 			],
 
 		testGroup "plane3ReflectPoint" $
@@ -172,7 +181,7 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 							-- Get a random point on the intersection line.
 							let p = line3Lerp l lx in
 							if' (plane3PointDistance pa p `near` 0 && plane3PointDistance pb p `near` 0) id
-								(D.trace (printf "DEBUG1: %s" (show (pa, pb, ml, p, (), plane3PointDistance pa p, plane3PointDistance pb p)))) $
+								(D.trace (printf "DEBUG1: %s" (show (pa, pb, lx, ml, p, (), plane3PointDistance pa p, plane3PointDistance pb p)))) $
 
 							-- Make sure it's on pa.
 							plane3PointDistance pa p `near` 0 &&

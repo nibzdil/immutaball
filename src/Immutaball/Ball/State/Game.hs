@@ -13,6 +13,15 @@ module Immutaball.Ball.State.Game
 		GameRequest(..), giRequest, giGameState, giIBStateContext, grRequest,
 		GameResponse(..), goGameEvents, goGameState, goIBStateContext, grGameEvents,
 		GameEvent(..), AsGameEvent(..),
+
+		NextCollision(..), ncClosestLump, ncCheckLumps, ncDistanceTo, ncTimeTo,
+		NextCollisionState(..), ncsNc, ncsBspsLeft,
+		LumpBSPPartitionParent(..), lbspppParent, lbspppIsRightBranch,
+		LumpLpPlaneIntersection(..), llpiPlaneIdx, llpiPlane, llpiDistance,
+			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiBodyTranslation,
+			llpiIntersection, llpiIntersectionLx, llpiIntersectionBall,
+		NextCollisionLump(..), nclLumpi, nclLpPlaneIntersections,
+
 		stepGame,
 		rendererTransformationMatrix,
 		renderBall,
@@ -23,19 +32,13 @@ module Immutaball.Ball.State.Game
 		stepGameClock,
 		stepGameClockDebugFreeCamera,
 		stepGameBallPhysics,
+
 		physicsBallAdvance,
 		physicsBallAdvanceStationary,
 		physicsBallAdvanceGhostly,
 		physicsBallAdvanceBruteForce,
 		physicsBallAdvanceBruteForceCompute,
 
-		NextCollision(..), ncClosestLump, ncCheckLumps, ncDistanceTo, ncTimeTo,
-		NextCollisionState(..), ncsNc, ncsBspsLeft,
-		LumpBSPPartitionParent(..), lbspppParent, lbspppIsRightBranch,
-		LumpLpPlaneIntersection(..), llpiPlaneIdx, llpiPlane, llpiDistance,
-			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiBodyTranslation,
-			llpiIntersection, llpiIntersectionLx, llpiIntersectionBall,
-		NextCollisionLump(..), nclLumpi, nclLpPlaneIntersections,
 		physicsBallAdvanceBSP,
 
 		-- * Utils.
@@ -107,6 +110,77 @@ makeClassyPrisms ''GameEvent
 
 grGameEvents :: Lens' GameResponse [GameEvent]
 grGameEvents = goGameEvents
+
+-- TODO export.
+data NextCollision = NextCollision {
+	_ncClosestLump :: NextCollisionLump,
+	_ncCheckLumps  :: [NextCollisionLump],  -- ^ Not necessarily sorted.
+	_ncDistanceTo  :: Double,
+	_ncTimeTo      :: Double
+}
+--makeLenses ''NextCollision
+
+-- TODO export.
+data NextCollisionState = NextCollisionState {
+	_ncsNc       :: Maybe NextCollision,
+	_ncsBspsLeft :: [(Int32, Tree LumpBSPPartition, Maybe LumpBSPPartitionParent)]
+}
+--makeLenses ''NextCollisionState
+
+-- TODO export.
+data LumpBSPPartitionParent = LumpBSPPartitionParent {
+	-- | The parent of this partition.
+	_lbspppParent        :: LumpBSPPartition,
+	-- | Are we a right branch of the parent, rather than left?
+	_lbspppIsRightBranch :: Bool
+}
+--makeLenses ''LumpBSPPartitionParent
+
+data NextCollisionLump = NextCollisionLump {
+	_nclLumpi                :: Int32,
+	_nclLpPlaneIntersections :: [LumpLpPlaneIntersection]  -- Assumed to be non-empty and sorted.
+}
+--makeLenses ''NextCollisionLump
+
+-- | When considering an advancement of the ball, for a given lump, and for a
+-- given plane on that lump, a value of this type represents information about
+-- the intersection of the lp line for the ball and this plane.
+-- TODO export.
+data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
+	-- | The lump plane index for the plane in question.
+	_llpiPlaneIdx :: Integer,
+	-- | The plane itself (relative body coords).
+	_llpiPlane    :: Plane3 Double,
+	-- | The distance along lp to the plane.
+	_llpiDistance :: Double,
+	-- | The dt that would be expended to reach this point of intersection.
+	_llpiTimeTo   :: Double,
+
+	-- | The lump index.
+	_llpiLi :: Int32,
+	-- | The body index.
+	_llpiBi :: Int32,
+	-- | For convenience, store the current body translation (where it is on
+	-- the path - you can add the base vertices to get the net world coords.)
+	_llpiBodyTranslation :: Vec3 Double,
+
+	-- | The lp in question (relative body coords; use 'ipb' to go back to world coords).
+	_llpiLp :: Line3 Double,
+	-- | The point of intersection on the body, relative to body (use ‘ipb’ to go back).
+	_llpiIntersection :: Vec3 Double,
+
+	-- | Where on ‘lp’ the intersection happens (0.0 if lp is really small).
+	_llpiIntersectionLx :: Double,
+	-- | Where the ball would be positioned at the point of intersection; body coords.
+	_llpiIntersectionBall :: Vec3 Double
+}
+--makeLenses ''LumpLpPlaneIntersection
+
+makeLenses ''NextCollision
+makeLenses ''NextCollisionState
+makeLenses ''LumpBSPPartitionParent
+makeLenses ''LumpLpPlaneIntersection
+makeLenses ''NextCollisionLump
 
 -- | Step the game.
 -- TODO: finish implementing.
@@ -959,77 +1033,6 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 		indirection idx = (level^.solIv) ! idx
 
 		v0g edt = v0 + ((edt * gravityAcceleration) `sv3` gravityVector)  -- What velocity is if v0 has time added to gravity.
-
--- TODO export.
-data NextCollision = NextCollision {
-	_ncClosestLump :: NextCollisionLump,
-	_ncCheckLumps  :: [NextCollisionLump],  -- ^ Not necessarily sorted.
-	_ncDistanceTo  :: Double,
-	_ncTimeTo      :: Double
-}
---makeLenses ''NextCollision
-
--- TODO export.
-data NextCollisionState = NextCollisionState {
-	_ncsNc       :: Maybe NextCollision,
-	_ncsBspsLeft :: [(Int32, Tree LumpBSPPartition, Maybe LumpBSPPartitionParent)]
-}
---makeLenses ''NextCollisionState
-
--- TODO export.
-data LumpBSPPartitionParent = LumpBSPPartitionParent {
-	-- | The parent of this partition.
-	_lbspppParent        :: LumpBSPPartition,
-	-- | Are we a right branch of the parent, rather than left?
-	_lbspppIsRightBranch :: Bool
-}
---makeLenses ''LumpBSPPartitionParent
-
-data NextCollisionLump = NextCollisionLump {
-	_nclLumpi                :: Int32,
-	_nclLpPlaneIntersections :: [LumpLpPlaneIntersection]  -- Assumed to be non-empty and sorted.
-}
---makeLenses ''NextCollisionLump
-
--- | When considering an advancement of the ball, for a given lump, and for a
--- given plane on that lump, a value of this type represents information about
--- the intersection of the lp line for the ball and this plane.
--- TODO export.
-data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
-	-- | The lump plane index for the plane in question.
-	_llpiPlaneIdx :: Integer,
-	-- | The plane itself (relative body coords).
-	_llpiPlane    :: Plane3 Double,
-	-- | The distance along lp to the plane.
-	_llpiDistance :: Double,
-	-- | The dt that would be expended to reach this point of intersection.
-	_llpiTimeTo   :: Double,
-
-	-- | The lump index.
-	_llpiLi :: Int32,
-	-- | The body index.
-	_llpiBi :: Int32,
-	-- | For convenience, store the current body translation (where it is on
-	-- the path - you can add the base vertices to get the net world coords.)
-	_llpiBodyTranslation :: Vec3 Double,
-
-	-- | The lp in question (relative body coords; use 'ipb' to go back to world coords).
-	_llpiLp :: Line3 Double,
-	-- | The point of intersection on the body, relative to body (use ‘ipb’ to go back).
-	_llpiIntersection :: Vec3 Double,
-
-	-- | Where on ‘lp’ the intersection happens (0.0 if lp is really small).
-	_llpiIntersectionLx :: Double,
-	-- | Where the ball would be positioned at the point of intersection; body coords.
-	_llpiIntersectionBall :: Vec3 Double
-}
---makeLenses ''LumpLpPlaneIntersection
-
-makeLenses ''NextCollision
-makeLenses ''NextCollisionState
-makeLenses ''LumpBSPPartitionParent
-makeLenses ''LumpLpPlaneIntersection
-makeLenses ''NextCollisionLump
 
 -- | Advance the ball's position and velocity, using the level BSP to handle
 -- collisions and gravity.

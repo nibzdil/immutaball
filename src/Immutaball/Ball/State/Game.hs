@@ -1341,7 +1341,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 					ourFlatten (foldl' step (pn, vn) $ (nc^.ncClosestLump) : (nc^.ncCheckLumps), nc^.ncTimeTo)
 						where
 							step :: (Vec3 Double, Vec3 Double) -> NextCollisionLump -> (Vec3 Double, Vec3 Double)
-							step (v, p) ncl
+							step (p, v) ncl
 							-- 3 possible collision types: vertex, edge, or
 							-- plane.  The type depends on how many
 							-- intersections there are within threshold
@@ -1350,7 +1350,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 							-- edge; if 3 or more, it's a vertex.
 								| [] <- ncl^.nclLpPlaneIntersections =
 									-- Redundant; internally should never happen.
-									(v, p)
+									(p, v)
 								| (px:[]) <- ncl^.nclLpPlaneIntersections =
 									-- Just a single planar intersection.  So
 									-- advance p, and mirror velocity about the

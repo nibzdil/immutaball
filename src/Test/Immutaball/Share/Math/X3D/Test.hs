@@ -85,6 +85,19 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 					p `near3` ((plane^.dp3) `sv3` (plane^.abcp3))
 			],
 
+		testGroup "line3PlaneIntersection" $
+			[
+				testProperty "a random plane's normal intersects the plane at the closest point on the plane to the origin" $
+					-- Get a random plane.
+					\(pabcRaw :: Vec3 Double) ->
+					\(pd      :: Double     ) ->
+					let pabc = v3normalize pabcRaw & \v -> if' (not $ (v^.r3) `near` 1.0) (Vec3 1.0 0.0 0.0) $ v in
+					let plane = normalPlane3 pabc pd in
+
+					let p = pointToPlane zv3 plane in
+					(pure near3 <*> line3PlaneIntersection (line3Axes zv3 (plane^.abcp3)) plane <*> pure p) == Just True
+			],
+
 		testGroup "plane3ReflectPoint" $
 			[
 				testCase "simple sample test" $

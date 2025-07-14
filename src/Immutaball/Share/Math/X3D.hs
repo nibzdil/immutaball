@@ -554,12 +554,12 @@ plane3Plane3 pa pb = do
 	a0 <- if' (min (a0Dir^.r3) (a0DirUnit^.r3) <= smallNum) Nothing $ Just a0DirUnit
 
 	-- To find any point where the planes intersect, take a point on pa, make a
-	-- line from it using pb's normal, and find where this line intersects pb.
-	-- Use this arbitrary origin as an arbitrary point on the line, and then
-	-- normalize the displacement so that it's a common form.
-	let pap = pointToPlane zv3 pa          -- Closest point on pa to the origin.
-	let lab = line3Axes pap (pb^.abcp3)    -- Line from pap with pb's normal as axis.
-	lp0 <- line3PlaneIntersection lab pb   -- An arbitrary point where pa intersects pb.
+	-- line from it using pa's normal cross a0, and find where this line
+	-- intersects pb.  Use this arbitrary origin as an arbitrary point on the
+	-- line, and then normalize the displacement so that it's a common form.
+	let pap = pointToPlane zv3 pa                   -- Closest point on pa to the origin.
+	let lab = line3Axes pap ((pa^.abcp3) `vx3` a0)  -- Line from pap to some point on the line.
+	lp0 <- line3PlaneIntersection lab pb            -- An arbitrary point where pa intersects pb.
 
 	let lPrenormalized = line3Axes lp0 a0
 	let l              = line3NormalizeDisplacement lPrenormalized

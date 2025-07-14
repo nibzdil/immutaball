@@ -34,9 +34,6 @@ import Immutaball.Share.Math
 import Immutaball.Share.Utils
 import Test.Immutaball.Share.Math.Core.Orphans ()
 
-import Debug.Trace as D  -- TODO------------------------
-import Text.Printf
-
 main :: IO ()
 main = testsMain
 
@@ -188,13 +185,10 @@ tests = testGroup "Immutaball.Share.Math.X3D" $
 							-- They don't intersect; make sure the cross
 							-- product of the 2 normals are smallish.
 							let cross = (pa^.abcp3) `vx3` (pb^.abcp3) in
-							if' (cross^.r3 <= smallishNum) id (D.trace (printf "DEBUG0 (Nothing!): %s" (show (pa, pb, ml, cross)))) $
 							cross^.r3 <= smallishNum
 						Just l ->
 							-- Get a random point on the intersection line.
 							let p = line3Lerp l lx in
-							if' (plane3PointDistance pa p `near` 0 && plane3PointDistance pb p `near` 0) id
-								(D.trace (printf "DEBUG1: %s" (show (pa, pb, lx, ml, p, (), plane3PointDistance pa p, plane3PointDistance pb p)))) $
 
 							-- Make sure it's on pa.
 							plane3PointDistance pa p `near` 0 &&

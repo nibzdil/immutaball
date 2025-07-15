@@ -59,7 +59,10 @@ module Immutaball.Share.Utils
 		modfl,
 
 		uncurry3,
-		listOthers
+		listOthers,
+
+		runListT,
+		liftList
 	) where
 
 import Prelude ()
@@ -73,6 +76,8 @@ import Data.Maybe
 import qualified Data.Set as S
 
 import Control.Lens
+import qualified Pipes as P
+import qualified Pipes.Prelude as P
 
 -- | See F-algebras and catamorphisms for the idiom.
 newtype Fixed f = Fixed {_fixed :: f (Fixed f)}
@@ -260,3 +265,15 @@ uncurry3 f (a, b, c) = f a b c
 listOthers :: [a] -> [(a, [a])]
 listOthers []     = []
 listOthers (x:xs) = (x,xs) : fmap (second (x:)) (listOthers xs)
+
+-- | Run a ListT monad.
+--
+-- ListT is provided by the ‘pipes’ package.
+runListT :: (Monad m) => P.ListT m a -> m [a]
+runListT (P.Select m) = P.toListM m
+
+-- | Lift a plain list to a ListT monad.
+--
+-- ListT is provided by the ‘pipes’ package.
+liftList :: (Functor m) => [a] -> P.ListT m a
+liftList = P.Select . P.each

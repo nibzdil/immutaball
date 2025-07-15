@@ -61,6 +61,7 @@ import Data.Maybe
 
 import Control.Arrow
 import Control.Lens
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Lazy
 import Data.Array.IArray
 import qualified Data.Set as S
@@ -1209,99 +1210,138 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									let mncChecks = (^.ncCheckLumps)  <$> mnc
 									let _mncFilterChecks = (pure filterChecks <*> mncBest) `morElse` id
 									-- | Get this lump's intersections with lp'.
-									let (lpIntersectionsRaw :: [LumpLpPlaneIntersection]) = do
-										-- Get each plane and a list of all
-										-- other planes for this lump.
-										(planeIdx, (plane, others)) <- zip [0..] $ listOthers lumpPlanes
+									-- Also add a state layer that performs a
+									-- simple preliminary test to see if we need
+									-- to check for edge and vertex collisions.
+									-- TODO: actually check.
+									let (lpIntersectionsRaw :: [LumpLpPlaneIntersection], needCheckEdgeVertCol :: Bool) =
+										flip runState False . runListT $ do
+											-- Get each plane and a list of all
+											-- other planes for this lump.
+											(planeIdx, (plane, others)) <- liftList $ zip [0..] $ listOthers lumpPlanes
 
-										{-
-										-- Make sure we only register a collision if the
-										-- ball is going towards this plane, not away from it: e.g.
-										-- you can only collide against a top face from above, not
-										-- from underneath.  This prevents the same lump causing
-										-- multiple collision events for what should be a single
-										-- collision.  We can do this by making sure the dot
-										-- product of the direction (axis) of ‘lp’ and the plane
-										-- normal is not positive.
-										guard $ (lp'^.a0l3) `d3` (plane^.abcp3) <= 0
-										-}
+											{-
+											-- Make sure we only register a collision if the
+											-- ball is going towards this plane, not away from it: e.g.
+											-- you can only collide against a top face from above, not
+											-- from underneath.  This prevents the same lump causing
+											-- multiple collision events for what should be a single
+											-- collision.  We can do this by making sure the dot
+											-- product of the direction (axis) of ‘lp’ and the plane
+											-- normal is not positive.
+											guard $ (lp'^.a0l3) `d3` (plane^.abcp3) <= 0
+											-}
 
-										-- To register a collision, make sure
-										-- the advancement would bring the ball
-										-- behind the plane: either p0 is
-										-- outside (plane distance > 1) going
-										-- in (== 0 || == 1), or p0 is
-										-- strictly intersecting (== 0) going
-										-- in (== -1).
-										-- Note: for edges and
-										-- vertices, there is more than 1 plane
-										-- attached to the edge, and in this
-										-- case lp' needs to be going
-										-- not-outside the plane for at least 1
-										-- of the attach planes, not all.  But
-										-- since we check each plane, for an
-										-- edge collision, there is still at
-										-- least 1 plane that will pass this
-										-- test, so we don't need to modify it for
-										-- edges and vertices.
-										guard $ signum (plane3PointDistance plane p1 - ballRadius) < signum (plane3PointDistance plane p0 - ballRadius)
+											-- To register a collision, make sure
+											-- the advancement would bring the ball
+											-- behind the plane: either p0 is
+											-- outside (plane distance > 1) going
+											-- in (== 0 || == 1), or p0 is
+											-- strictly intersecting (== 0) going
+											-- in (== -1).
+											-- Note: for edges and
+											-- vertices, there is more than 1 plane
+											-- attached to the edge, and in this
+											-- case lp' needs to be going
+											-- not-outside the plane for at least 1
+											-- of the attach planes, not all.  But
+											-- since we check each plane, for an
+											-- edge collision, there is still at
+											-- least 1 plane that will pass this
+											-- test, so we don't need to modify it for
+											-- edges and vertices.
+											guard $ signum (plane3PointDistance plane p1 - ballRadius) < signum (plane3PointDistance plane p0 - ballRadius)
 
-										-- See if we need to use special logic
-										-- for very small steps.  If so, we'll
-										-- focus more on just p0' without p1'.
-										let approximatelyAPoint = (lp'^.a0l3.r3) <= smallishInfiniteLineThreshold
+											-- See if we need to use special logic
+											-- for very small steps.  If so, we'll
+											-- focus more on just p0' without p1'.
+											let approximatelyAPoint = (lp'^.a0l3.r3) <= smallishInfiniteLineThreshold
 
-										-- Find the coord on lp' at which we
-										-- find the intersection.
-										let intersectionCoord
-											| approximatelyAPoint = 0.0
-											| otherwise = line3CoordAtDistancePlane3 plane lp' ballRadius `morElse` 0.0
-										let intersectionBallPoint = line3Lerp lp' intersectionCoord
-										let intersectionPoint
-											| approximatelyAPoint = pointToPlane p0' plane
-											| otherwise = line3Lerp lp' $ intersectionCoord + ballRadius/(lp'^.a0l3.r3)
-										-- Find the distance from p0' across lp'
-										-- (or shortest line) to the plane
-										-- (where with ballRadius there is an
-										-- intersection).  i.e. distance ball
-										-- would travel to reach the collision.
-										let distance
-											| approximatelyAPoint = plane3PointDistance plane p0'
-											| otherwise = (intersectionBallPoint - p0')^.r3
-										-- Find the time to reach intersectionCoord.
-										let timeTo = (intersectionCoord / (lp'^.a0l3.r3)) `florWith` 0.0
+											-- Find the coord on lp' at which we
+											-- find the intersection.
+											let intersectionCoord
+												| approximatelyAPoint = 0.0
+												| otherwise = line3CoordAtDistancePlane3 plane lp' ballRadius `morElse` 0.0
+											let intersectionBallPoint = line3Lerp lp' intersectionCoord
+											let intersectionPoint
+												| approximatelyAPoint = pointToPlane p0' plane
+												| otherwise = line3Lerp lp' $ intersectionCoord + ballRadius/(lp'^.a0l3.r3)
+											-- Find the distance from p0' across lp'
+											-- (or shortest line) to the plane
+											-- (where with ballRadius there is an
+											-- intersection).  i.e. distance ball
+											-- would travel to reach the collision.
+											let distance
+												| approximatelyAPoint = plane3PointDistance plane p0'
+												| otherwise = (intersectionBallPoint - p0')^.r3
+											-- Find the time to reach intersectionCoord.
+											let timeTo = (intersectionCoord / (lp'^.a0l3.r3)) `florWith` 0.0
 
-										-- Now, make sure the intersection
-										-- point is on the lump, and not
-										-- outside the lump on some arbitrary
-										-- plane, since we have more data to
-										-- work with now.
-										let behindOthers =
-											[
-												r |
-												other <- others,
-												let d = plane3PointDistance other intersectionPoint,
-												let r = d <= 0
-											]
-										guard $ and behindOthers
+											-- Now, make sure the intersection
+											-- point is on the lump, and not
+											-- outside the lump on some arbitrary
+											-- plane, since we have more data to
+											-- work with now.  Also we do our
+											-- preliminary check for edge and
+											-- vertex collision detection here.
+											let (behindOthers, needCheck) = split $
+												[
+													r |
+													other <- others,
+													let d = plane3PointDistance other intersectionPoint,
+													let behind = d <= 0,
+													-- Also do preliminary
+													-- check for vertex and edge
+													-- collision.
+													let medgeLine = plane3Plane3 plane other,
+													let
+														foundNeedCheck Nothing = False
+														foundNeedCheck (Just edgeLine)
+															| behind = False
+															| line3PointDistance edgeLine p0' <= ballRadius = True
+															| line3PointDistance edgeLine p1' <= ballRadius = True
+															-- Note: line3Line3Distance checks the _infinite_
+															-- line distance, so we still need to test more
+															-- precisely, but we at least shouldn't miss
+															-- edge or vert collisions.
+															| line3Line3Distance edgeLine lp' <= ballRadius = True
+															| otherwise = False,
+													let r = (behind, foundNeedCheck medgeLine)
+												]
+											-- See if we need to check for
+											-- edges and vertices.
+											let behindAllOthers = and behindOthers
+											when (not behindAllOthers) $ do
+												alreadyTested <- lift $ get
+												when (not alreadyTested) $ do
+													let anyFoundNeedCheck = or needCheck
+													when anyFoundNeedCheck $ do
+														lift $ put True
+											-- Now skip if we're not behind all others.
+											-- (We should skip on edge and
+											-- vertex collisions if I'm not
+											-- mistaken, but in such cases
+											-- we'll still check later for edge
+											-- and vertex collisions.
+											guard $ behindAllOthers
 
-										-- Construct the result.
-										return . fix $ \_lpLumpX -> LumpLpPlaneIntersection {
-											_llpiPlaneIdx = planeIdx,
-											_llpiPlane    = plane,
-											_llpiDistance = distance,
-											_llpiTimeTo   = timeTo,
+											-- Construct the result.
+											return . fix $ \_lpLumpX -> LumpLpPlaneIntersection {
+												_llpiPlaneIdx = planeIdx,
+												_llpiPlane    = plane,
+												_llpiDistance = distance,
+												_llpiTimeTo   = timeTo,
 
-											_llpiLi              = lumpi,
-											_llpiBi              = bi,
-											_llpiBodyTranslation = getBodyTranslation level soa gs bi 0,
+												_llpiLi              = lumpi,
+												_llpiBi              = bi,
+												_llpiBodyTranslation = getBodyTranslation level soa gs bi 0,
 
-											_llpiLp           = lp',
-											_llpiIntersection = intersectionPoint,
+												_llpiLp           = lp',
+												_llpiIntersection = intersectionPoint,
 
-											_llpiIntersectionLx   = intersectionCoord,
-											_llpiIntersectionBall = intersectionBallPoint
-										}
+												_llpiIntersectionLx   = intersectionCoord,
+												_llpiIntersectionBall = intersectionBallPoint
+											}
 									let lpIntersectionsUnfiltered = sortOn (^.llpiDistance) lpIntersectionsRaw
 
 									-- | If there are any intersections, see if

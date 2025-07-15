@@ -416,7 +416,8 @@ line3DistanceCoordFromPoint :: forall a. (Num a, Fractional a, RealFloat a) => L
 line3DistanceCoordFromPoint l v distance = (sqrt $ sqx distance - sqx (line3PointDistance l v)) / (l^.a0l3.r3)
 
 -- | Given lines la and lb, find coords ‘ax’ and ‘bx’ on la and on lb
--- representing the points at which the two lines are closest to each other.
+-- representing the points at which the two infinite lines are closest to each
+-- other.
 --
 -- (Paralleling the order, the first coord is on the first line, and the second
 -- coord is on the second line.)
@@ -507,7 +508,7 @@ line3Line3ClosestCoords la lb
 
 		bx = line3PointCoord lb $ line3Lerp la ax
 
--- | Find the (closest) distance between 2 lines.
+-- | Find the (closest) distance between 2 infinite lines.
 line3Line3Distance :: forall a. (Show a, SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> a
 line3Line3Distance la lb = case line3Line3ClosestCoords la lb of
 	Nothing          -> line3PointDistance la $ line3Lerp lb 0

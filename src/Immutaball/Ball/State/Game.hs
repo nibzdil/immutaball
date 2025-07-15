@@ -1233,6 +1233,17 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 										-- in (== 0 || == 1), or p0 is
 										-- strictly intersecting (== 0) going
 										-- in (== -1).
+										-- Note: for edges and
+										-- vertices, there is more than 1 plane
+										-- attached to the edge, and in this
+										-- case lp' needs to be going
+										-- not-outside the plane for at least 1
+										-- of the attach planes, not all.  But
+										-- since we check each plane, for an
+										-- edge collision, there is still at
+										-- least 1 plane that will pass this
+										-- test, so we don't need to modify it for
+										-- edges and vertices.
 										guard $ signum (plane3PointDistance plane p1 - ballRadius) < signum (plane3PointDistance plane p0 - ballRadius)
 
 										-- See if we need to use special logic

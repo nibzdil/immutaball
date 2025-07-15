@@ -48,6 +48,7 @@ module Immutaball.Share.Math.X3D
 		line3PointDistance,
 		line3DistanceCoordFromPoint,
 		line3Line3ClosestCoords,
+		line3Line3ClosestCoordsAny,
 		line3Line3Distance,
 
 		eqPlane3,
@@ -507,6 +508,22 @@ line3Line3ClosestCoords la lb
 		ax = -distanceAtAx 0 / ddist_dax
 
 		bx = line3PointCoord lb $ line3Lerp la ax
+
+-- | Like 'line3Line3ClosestCoords', but if the lines are parallel, such that
+-- there are infinitely many close points, pick as an arbitrary point la at
+-- coord ax=0, and lb at the closest point.
+line3Line3ClosestCoordsAny :: forall a. (Show a, SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> (a, a)
+line3Line3ClosestCoordsAny la lb
+	| Just (ax, bx) <- line3Line3ClosestCoords la lb
+	{-
+	, not (isNaN ax || isInfinite ax)
+	, not (isNaN bx || isInfinite bx) =
+	-} =
+		(ax, bx)
+	| otherwise =
+		let ax = 0.0 in
+		let bx = line3PointCoord lb $ line3Lerp la ax in
+		(ax, bx)
 
 -- | Find the (closest) distance between 2 infinite lines.
 line3Line3Distance :: forall a. (Show a, SmallNum a, Fractional a, RealFloat a) => Line3 a -> Line3 a -> a

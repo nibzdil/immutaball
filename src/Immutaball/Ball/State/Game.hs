@@ -17,11 +17,18 @@ module Immutaball.Ball.State.Game
 		NextCollision(..), ncClosestLump, ncCheckLumps, ncDistanceTo, ncTimeTo,
 		NextCollisionState(..), ncsNc, ncsBspsLeft,
 		LumpBSPPartitionParent(..), lbspppParent, lbspppIsRightBranch,
-		LumpLpPlaneIntersection(..), llpiPlaneIdx, llpiPlane, llpiDistance,
-			llpiTimeTo, llpiLi, llpiBi, llpiLp, llpiBodyTranslation,
-			llpiIntersection, llpiIntersectionLx, llpiIntersectionBall,
+		LumpLpPlaneIntersection(..), AsLumpLpPlaneIntersection(..),
+		LumpLpPlaneCommonIntersection(..), llpciPriority, llpciDistance,
+			llpciTimeTo, llpciLi, llpciBi, llpciBodyTranslation, llpciLp,
+			llpciIntersection, llpciIntersectionLx, llpciIntersectionBall,
+		LumpLpPlaneFaceIntersection(..), llpfiPlaneIdx, llpfiPlane, llpfiDistance,
+			llpfiTimeTo, llpfiLi, llpfiBi, llpfiLp, llpfiBodyTranslation,
+			llpfiIntersection, llpfiIntersectionLx, llpfiIntersectionBall,
 		NextCollisionLump(..), nclLumpi, nclLpPlaneIntersections,
 
+		lpxc,
+		lpxcomp,
+		nclcomp,
 		stepGame,
 		rendererTransformationMatrix,
 		renderBall,
@@ -143,45 +150,145 @@ data NextCollisionLump = NextCollisionLump {
 }
 --makeLenses ''NextCollisionLump
 
+-- | A face, edge, or vertex intersection.
+-- See 'LumpLpPlaneFaceIntersection' for more information.
+data LumpLpPlaneIntersection =
+	FaceIntersection LumpLpPlaneFaceIntersection
+--makeClassyPrisms ''LumpLpPlaneIntersection
+
+-- | Common fields for the 3 types of 'LumpLpPlaneInterection's.
+-- TODO: export.
+data LumpLpPlaneCommonIntersection = LumpLpPlaneCommonIntersection {
+	-- | The collision type priority: 1 for vertex, 2 for edge, 3 for plane.
+	-- Lowest priority should be sorted first if 2 intersection points are
+	-- within threshold distance; otherwise, they should be sorted be distance.
+	_llpciPriority :: Integer,
+	-- | The distance along lp to the plane.
+	_llpciDistance :: Double,
+	-- | The dt that would be expended to reach the point of intersection.
+	_llpciTimeTo   :: Double,
+
+	-- | The lump index.
+	_llpciLi :: Int32,
+	-- | The body index.
+	_llpciBi :: Int32,
+	-- | For convenience, store the current body translation (where it is on
+	-- the path - you can add the base vertices to get the net world coords.)
+	_llpciBodyTranslation :: Vec3 Double,
+
+	-- | The lp in question (relative body coords; use 'ipb' to go back to world coords).
+	_llpciLp :: Line3 Double,
+	-- | The point of intersection on the body, relative to body (use ‘ipb’ to go back).
+	_llpciIntersection :: Vec3 Double,
+
+	-- | Where on ‘lp’ the intersection happens (0.0 if lp is really small).
+	_llpciIntersectionLx :: Double,
+	-- | Where the ball would be positioned at the point of intersection; body coords.
+	_llpciIntersectionBall :: Vec3 Double
+}
+--makeLenses ''LumpLpPlaneCommonIntersection
+
 -- | When considering an advancement of the ball, for a given lump, and for a
 -- given plane on that lump, a value of this type represents information about
 -- the intersection of the lp line for the ball and this plane.
 -- TODO export.
-data LumpLpPlaneIntersection = LumpLpPlaneIntersection {
+data LumpLpPlaneFaceIntersection = LumpLpPlaneFaceIntersection {
 	-- | The lump plane index for the plane in question.
-	_llpiPlaneIdx :: Integer,
+	_llpfiPlaneIdx :: Integer,
 	-- | The plane itself (relative body coords).
-	_llpiPlane    :: Plane3 Double,
+	_llpfiPlane    :: Plane3 Double,
 	-- | The distance along lp to the plane.
-	_llpiDistance :: Double,
+	_llpfiDistance :: Double,
 	-- | The dt that would be expended to reach this point of intersection.
-	_llpiTimeTo   :: Double,
+	_llpfiTimeTo   :: Double,
 
 	-- | The lump index.
-	_llpiLi :: Int32,
+	_llpfiLi :: Int32,
 	-- | The body index.
-	_llpiBi :: Int32,
+	_llpfiBi :: Int32,
 	-- | For convenience, store the current body translation (where it is on
 	-- the path - you can add the base vertices to get the net world coords.)
-	_llpiBodyTranslation :: Vec3 Double,
+	_llpfiBodyTranslation :: Vec3 Double,
 
 	-- | The lp in question (relative body coords; use 'ipb' to go back to world coords).
-	_llpiLp :: Line3 Double,
+	_llpfiLp :: Line3 Double,
 	-- | The point of intersection on the body, relative to body (use ‘ipb’ to go back).
-	_llpiIntersection :: Vec3 Double,
+	_llpfiIntersection :: Vec3 Double,
 
 	-- | Where on ‘lp’ the intersection happens (0.0 if lp is really small).
-	_llpiIntersectionLx :: Double,
+	_llpfiIntersectionLx :: Double,
 	-- | Where the ball would be positioned at the point of intersection; body coords.
-	_llpiIntersectionBall :: Vec3 Double
+	_llpfiIntersectionBall :: Vec3 Double
 }
---makeLenses ''LumpLpPlaneIntersection
+--makeLenses ''LumpLpPlaneFaceIntersection
 
 makeLenses ''NextCollision
 makeLenses ''NextCollisionState
 makeLenses ''LumpBSPPartitionParent
-makeLenses ''LumpLpPlaneIntersection
+makeClassyPrisms ''LumpLpPlaneIntersection
+makeLenses ''LumpLpPlaneCommonIntersection
+makeLenses ''LumpLpPlaneFaceIntersection
 makeLenses ''NextCollisionLump
+
+-- | Access lump lp plane intersections through a common interface.
+--
+-- Pseudo-lens, since priority updates are ignored.
+lpxc :: Lens' LumpLpPlaneIntersection LumpLpPlaneCommonIntersection
+lpxc = lens getter (flip setter)
+	where
+		getter :: LumpLpPlaneIntersection -> LumpLpPlaneCommonIntersection
+		getter (FaceIntersection lpx) = LumpLpPlaneCommonIntersection {
+			_llpciPriority         = 1,
+			_llpciDistance         = lpx^.llpfiDistance,
+			_llpciTimeTo           = lpx^.llpfiTimeTo,
+
+			_llpciLi               = lpx^.llpfiLi,
+			_llpciBi               = lpx^.llpfiBi,
+			_llpciBodyTranslation  = lpx^.llpfiBodyTranslation,
+
+			_llpciLp               = lpx^.llpfiLp,
+			_llpciIntersection     = lpx^.llpfiIntersection,
+
+			_llpciIntersectionLx   = lpx^.llpfiIntersectionLx,
+			_llpciIntersectionBall = lpx^.llpfiIntersectionBall
+		}
+		setter :: LumpLpPlaneCommonIntersection -> LumpLpPlaneIntersection -> LumpLpPlaneIntersection
+		setter c (FaceIntersection lpx) = FaceIntersection $ lpx &
+			(llpfiDistance         .~ (c^.llpciDistance)        ) .
+			(llpfiTimeTo           .~ (c^.llpciTimeTo)          ) .
+
+			(llpfiLi               .~ (c^.llpciLi)              ) .
+			(llpfiBi               .~ (c^.llpciBi)              ) .
+			(llpfiBodyTranslation  .~ (c^.llpciBodyTranslation) ) .
+
+			(llpfiLp               .~ (c^.llpciLp)              ) .
+			(llpfiIntersection     .~ (c^.llpciIntersection)    ) .
+
+			(llpfiIntersectionLx   .~ (c^.llpciIntersectionLx)  ) .
+			(llpfiIntersectionBall .~ (c^.llpciIntersectionBall)) .
+
+			id
+
+-- | Compare two collisions mostly by distance (see priorities note in
+-- 'LumpLpPlaneCommonIntersection').
+lpxcomp :: LumpLpPlaneIntersection -> LumpLpPlaneIntersection -> Ordering
+lpxcomp a b
+	| (abs $ a'^.llpciDistance - b'^.llpciDistance) <= smallishNum =
+		(a'^.llpciPriority, a'^.llpciDistance) `compare` (b'^.llpciPriority, b'^.llpciDistance)
+	| otherwise =
+		(a'^.llpciDistance) `compare` (b'^.llpciDistance)
+	where
+		(a', b') = (a^.lpxc, b^.lpxc)
+
+-- | Convenience utility to to compare through 'lpxcomp' 2 valid
+-- 'NextCollisionLumps'.  (Since they're valid, the list must be sorted and
+-- non-empty.
+nclcomp :: NextCollisionLump -> NextCollisionLump -> Ordering
+nclcomp a b
+	| (alpx:_) <- a^.nclLpPlaneIntersections
+	, (blpx:_) <- b^.nclLpPlaneIntersections =
+		alpx `lpxcomp` blpx
+	| otherwise = error "Error: nclcomp: assumptions of non-empty lists are violated!"
 
 -- | Step the game.
 -- TODO: finish implementing.
@@ -1196,11 +1303,24 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 
 									-- | Assume sorted and non-empty lists
 									let unsafeHead xs = case xs of (x:_) -> x; _ -> error "Internal error: physicsBallAdvanceBSP: unsafeHead called on empty list."
-									let nclDist ncl = unsafeHead (ncl^.nclLpPlaneIntersections) ^. llpiDistance
+									let nclDist ncl = unsafeHead (ncl^.nclLpPlaneIntersections) ^. lpxc.llpciDistance
+									let nclPrio ncl = unsafeHead (ncl^.nclLpPlaneIntersections) ^. lpxc.llpciPriority
 									-- | Discard all collisions not close to the nearest.
+									-- Also discard all collisions that diminish
+									-- priority within the same lump.
 									let (filterChecks :: NextCollisionLump -> [NextCollisionLump] -> [NextCollisionLump]) = \best checks ->
 										flip filter checks $ \candidate ->
-											(nclDist candidate) - (nclDist best) <= smallishNum
+											-- Make sure it's close enough to best.
+											(nclDist candidate) - (nclDist best) <= smallishNum &&
+											-- Make sure it's not priority
+											-- diminishing (increasing) within the
+											-- same lump, unless the distance
+											-- is significantly better.
+											(not
+												((candidate^.nclLumpi) == (best^.nclLumpi)) &&
+												(nclPrio candidate > nclPrio best) &&
+												(nclDist candidate - smallishNum >= nclDist best)
+											)
 									-- | Get this lump's planes.
 									let (lumpPlanes :: [Plane3 Double]) = M.lookup lumpi (spa^.spaLumpPlanes) `morElse`
 										(error $ "Internal error: physicsBallAdvanceBSP: nextCollision: failed to find planes for lump " ++ show lumpi ++ ".")
@@ -1209,12 +1329,11 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									let mncBest   = (^.ncClosestLump) <$> mnc
 									let mncChecks = (^.ncCheckLumps)  <$> mnc
 									let _mncFilterChecks = (pure filterChecks <*> mncBest) `morElse` id
-									-- | Get this lump's intersections with lp'.
+									-- | Get this plane's face intersections with lp'.
 									-- Also add a state layer that performs a
 									-- simple preliminary test to see if we need
 									-- to check for edge and vertex collisions.
-									-- TODO: actually check.
-									let (lpIntersectionsRaw :: [LumpLpPlaneIntersection], needCheckEdgeVertCol :: Bool) =
+									let (lpFaceIntersectionsRaw :: [LumpLpPlaneFaceIntersection], needCheckEdgeVertCol :: Bool) =
 										flip runState False . runListT $ do
 											-- Get each plane and a list of all
 											-- other planes for this lump.
@@ -1326,23 +1445,40 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											guard $ behindAllOthers
 
 											-- Construct the result.
-											return . fix $ \_lpLumpX -> LumpLpPlaneIntersection {
-												_llpiPlaneIdx = planeIdx,
-												_llpiPlane    = plane,
-												_llpiDistance = distance,
-												_llpiTimeTo   = timeTo,
+											return . fix $ \_lpLumpX -> LumpLpPlaneFaceIntersection {
+												_llpfiPlaneIdx = planeIdx,
+												_llpfiPlane    = plane,
+												_llpfiDistance = distance,
+												_llpfiTimeTo   = timeTo,
 
-												_llpiLi              = lumpi,
-												_llpiBi              = bi,
-												_llpiBodyTranslation = getBodyTranslation level soa gs bi 0,
+												_llpfiLi              = lumpi,
+												_llpfiBi              = bi,
+												_llpfiBodyTranslation = getBodyTranslation level soa gs bi 0,
 
-												_llpiLp           = lp',
-												_llpiIntersection = intersectionPoint,
+												_llpfiLp           = lp',
+												_llpfiIntersection = intersectionPoint,
 
-												_llpiIntersectionLx   = intersectionCoord,
-												_llpiIntersectionBall = intersectionBallPoint
+												_llpfiIntersectionLx   = intersectionCoord,
+												_llpfiIntersectionBall = intersectionBallPoint
 											}
-									let lpIntersectionsUnfiltered = sortOn (^.llpiDistance) lpIntersectionsRaw
+									-- Quick test: skip if no face
+									-- intersections and no need to check for
+									-- edge or vertex collisions.
+									if' (null lpFaceIntersectionsRaw && not needCheckEdgeVertCol) (return ()) $ do
+
+									-- Check for edge and vertex collisions.
+									-- TODO:
+									let (lpEdgeVertIntersectionsRaw :: [LumpLpPlaneIntersection])
+										| not needCheckEdgeVertCol = []
+										| otherwise =
+											-- TODO
+											[]
+
+									-- Aggregate all collisions.
+									let lpIntersectionsRaw = fmap FaceIntersection lpFaceIntersectionsRaw ++ lpEdgeVertIntersectionsRaw
+
+									-- Sort all collisions.
+									let lpIntersectionsUnfiltered = sortBy lpxcomp lpIntersectionsRaw
 
 									-- | If there are any intersections, see if
 									-- the best intersection is better than our
@@ -1358,17 +1494,17 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									-- test for edge and vertex collisions
 									-- later.
 									let lpIntersectionsFiltered = case lpIntersectionsUnfiltered of
-										[] -> []
+										[] -> []  -- (Should never happen.)
 										(closest:rest) -> closest :
-											let closestDist = closest^.llpiDistance in
-											filter (\inters -> (inters^.llpiDistance) - closestDist <= smallishNum) rest
+											let closestDist = closest^.lpxc.llpciDistance in
+											filter (\inters -> (inters^.lpxc.llpciDistance) - closestDist <= smallishNum) rest
 									let lpIntersections = lpIntersectionsFiltered
 
 									-- Get the new best and new checks.
 									let (lumpNc :: NextCollisionLump) = NextCollisionLump lumpi lpIntersections
 									let (newBest, newChecksRaw)
 										| Just oldBest <- mncBest, Just oldChecks <- mncChecks =
-											if' (nclDist lumpNc < nclDist oldBest) (lumpNc, oldBest:oldChecks) (oldBest, lumpNc:oldChecks)
+											if' (lumpNc `nclcomp` oldBest == LT) (lumpNc, oldBest:oldChecks) (oldBest, lumpNc:oldChecks)
 										| otherwise = (lumpNc, [])
 									let newChecks = filterChecks newBest newChecksRaw
 
@@ -1377,7 +1513,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 										_ncClosestLump = newBest,
 										_ncCheckLumps  = newChecks,
 										_ncDistanceTo  = nclDist newBest,
-										_ncTimeTo      = unsafeHead (newBest^.nclLpPlaneIntersections) ^. llpiTimeTo
+										_ncTimeTo      = unsafeHead (newBest^.nclLpPlaneIntersections) ^. lpxc.llpciTimeTo
 									}
 
 				-- Now handle nextCollision and check checkLumps.
@@ -1404,20 +1540,21 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 								| [] <- ncl^.nclLpPlaneIntersections =
 									-- Redundant; internally should never happen.
 									(p, v)
-								| (px:[]) <- ncl^.nclLpPlaneIntersections =
+								-- | ((FaceIntersection px):[]) <- ncl^.nclLpPlaneIntersections =
+								| ((FaceIntersection px):_) <- ncl^.nclLpPlaneIntersections =
 									-- Just a single planar intersection.  So
 									-- advance p, and mirror velocity about the
 									-- plane.
 									--
 									-- TODO: handle body velocity!  This for
 									-- now just assumes the body is stationary.
-									let plane = (px^.llpiPlane) in
+									let plane = (px^.llpfiPlane) in
 									-- If the velocity is going away from the
 									-- plane due to a previous collision update
 									-- in this step (i.e. we're on a check
 									-- lump, not the first step), then skip.
 									if' (not $ v `d3` (plane^.abcp3) <= 0) (p, v) $
-									let p'    = ipb (px^.llpiIntersectionBall) (px^.llpiBi) in
+									let p'    = ipb (px^.llpfiIntersectionBall) (px^.llpfiBi) in
 									let v'    = plane3ReflectPointAmount (plane & dp3 .~ 0) v bounceReturn in
 									(p', v')
 								-- TODO: handle edges and vertices!

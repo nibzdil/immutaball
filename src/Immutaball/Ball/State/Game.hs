@@ -99,9 +99,6 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
-import Debug.Trace as D  ---------------------------TODO
-import Text.Printf
-
 -- TODO: implement.
 
 data GameRequest = GameRequest {
@@ -1454,11 +1451,6 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									-- when lp' intersects with a lump's plane
 									-- at a point behind all the other planes.
 
-									-- See if we need to use special logic
-									-- for very small steps.  If so, we'll
-									-- focus more on just p0' without p1'.
-									let approximatelyAPoint = (lp'^.a0l3.r3) <= smallishInfiniteLineThreshold
-
 									-- | Assume sorted and non-empty lists
 									let unsafeHead xs = case xs of (x:_) -> x; _ -> error "Internal error: physicsBallAdvanceBSP: unsafeHead called on empty list."
 									let nclDist ncl = unsafeHead (ncl^.nclLpPlaneIntersections) ^. lpxc.llpciDistance
@@ -1532,7 +1524,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											-- See if we need to use special logic
 											-- for very small steps.  If so, we'll
 											-- focus more on just p0' without p1'.
-											let _approximatelyAPointInner = (lp'^.a0l3.r3) <= smallishInfiniteLineThreshold
+											let approximatelyAPoint = (lp'^.a0l3.r3) <= smallishInfiniteLineThreshold
 
 											-- Find the coord on lp' at which we
 											-- find the intersection.
@@ -1630,8 +1622,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 										| not needCheckEdgeVertCol = []
 										| otherwise =
 											-- TODO
-											--let (edgeIntersections :: [LumpLpPlaneEdgeIntersection]) = do
-											let (edgeIntersections :: [LumpLpPlaneEdgeIntersection]) = D.trace "DEBUG1: checking!" $ do
+											let (edgeIntersections :: [LumpLpPlaneEdgeIntersection]) = do
 												-- For each edge on the lump,
 												ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
 												let edge = (level^.solEv) ! ei
@@ -1639,17 +1630,12 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 												let el = line3Points vi vj
 
 												-- Find the distance between the path (lp) and the edge.
-												let ed  = abs $ line3Line3Distance lp' el
-												let ed0 = abs $ line3PointDistance el  p0'
-												let ed1 = abs $ line3PointDistance el  p1'
+												let ed = abs $ line3Line3Distance lp' el
 
 												-- Skip if _the infinite lines_ are too far away.  However,
 												-- the line segments may still be too far away even if the
 												-- infinite lines are not, so we'll filter lp' coords in [0, 1].
-												--guard $ ed <= ballRadius
-												--guard $ any (<= ballRadius + smallishInfiniteLineThreshold) [ed, line3PointDistance el p0', line3PointDistance el p1']
-												D.trace (printf "DEBUG2: x %s" (show (ed, el, lp'))) . guard $ any (<= ballRadius + smallishInfiniteLineThreshold) [ed, line3PointDistance el p0', line3PointDistance el p1']
-												D.trace "DEBUG3: x" $ return ()
+												guard $ ed <= ballRadius
 
 												-- Find the closest point.
 												--Just (lpx, elx) <- return $ line3Line3ClosestCoords lp el
@@ -1664,15 +1650,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 												-- candidates pass, the line segment (the path) is too far
 												-- away from the edge, so we'll skip this edge.
 												let xCandidates = [lpx - lpCoordOffset, lpx + lpCoordOffset]
-												let appxPointCandidates = [r | (r, d) <- [(0.0, ed0), (1.0, ed1)], d <= ballRadius + smallishInfiniteLineThreshold]
-												--(x:_) <- return . (++ appxPointCandidates) . sort . filter (\x -> 0 <= x + smallNum && x - smallNum <= 1) $ xCandidates
-												-- TODO FIXME: in debug case, for
-												-- left edge after waiting for
-												-- fall to rest, I see:
-												-- DEBUG2: x (0.20150832582549258,Line3 {_p0l3 = Vec3 {_x3 = -1.0, _y3 = -1.0, _z3 = -2.25}, _p1l3 = Vec3 {_x3 = -1.0, _y3 = 3.0, _z3 = -2.25}},Line3 {_p0l3 = Vec3 {_x3 = -0.7883042298257108, _y3 = 1.530182683776099, _z3 = -1.997125314279592}, _p1l3 = Vec3 {_x3 = -0.8134280605554147, _y3 = 1.5273550605462856, _z3 = -2.002650035470375}})
-												-- along with
-												-- DEBUG3.5: xs: []; (0.3297888806310495,0.30982429462668143,0.20150832582549258,10.148666027174233,5.717659099665209).  So the lpx & lpCoordOffset combo isn't working.
-												(x:_) <- return . (\r -> flip D.trace r $ printf "DEBUG3.5: xs: %s; %s" (show r) (show (ed0, ed1, ed, lpx, lpCoordOffset))) . (++ appxPointCandidates) . sort . filter (\x -> 0 <= x + smallNum && x - smallNum <= 1) $ xCandidates
+												(x:_) <- return . sort . filter (\x -> 0 <= x + smallNum && x - smallNum <= 1) $ xCandidates
 
 												let ballIntersection = line3Lerp lp' x `v3orWith` (lp'^.p0l3)
 
@@ -1682,9 +1660,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 												-- edge _line segment_, not to leave it checking its
 												-- infinite line only!
 												let intersectionElx = line3PointCoord el edgePointBallIntersection
-												--guard $ 0 <= intersectionElx + smallNum && intersectionElx - smallNum <= 1
-												D.trace "DEBUG4: x" . guard $ 0 <= intersectionElx + smallNum && intersectionElx - smallNum <= 1
-												D.trace "DEBUG5: x" $ return ()
+												guard $ 0 <= intersectionElx + smallNum && intersectionElx - smallNum <= 1
 
 												-- For the reflecting plane for the ball's velocity,
 												-- construct a virtual plane essentially with the vector
@@ -1696,9 +1672,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 												-- from it, similar to the normal check for planes for
 												-- avoiding multiple collisions in a single step for the
 												-- same lump.
-												--guard $ (lp'^.a0l3) `d3` (virtualPlane^.abcp3) <= 0 || approximatelyAPoint
-												D.trace "DEBUG6: x" . guard $ (lp'^.a0l3) `d3` (virtualPlane^.abcp3) <= 0 || approximatelyAPoint
-												D.trace "DEBUG7: x" $ return ()
+												guard $ (lp'^.a0l3) `d3` (virtualPlane^.abcp3) <= 0
 
 												-- Obtain some preliminary
 												-- results of this collision,
@@ -1710,8 +1684,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 
 												-- Return the result of this
 												-- collision candidate.
-												--return $ LumpLpPlaneEdgeIntersection {
-												return . D.trace (printf "DEBUG0: edge intersection candidate!!") $ LumpLpPlaneEdgeIntersection {
+												return $ LumpLpPlaneEdgeIntersection {
 													_llpeiDistance = distance,
 													_llpeiTimeTo   = colEdt,
 
@@ -1788,7 +1761,6 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 					let ourFlatten ((a, b), c) = (a, b, c) in
 					ourFlatten (foldl' step (pn, vn) $ (nc^.ncClosestLump) : (nc^.ncCheckLumps), nc^.ncTimeTo)
 						where
-							-- TODO: in the right place, remove duplicate edge and vertex collisions!
 							step :: (Vec3 Double, Vec3 Double) -> NextCollisionLump -> (Vec3 Double, Vec3 Double)
 							step (p, v) ncl
 							-- 3 possible collision types: vertex, edge, or

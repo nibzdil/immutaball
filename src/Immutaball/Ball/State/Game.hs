@@ -1789,8 +1789,20 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									let p'    = ipb (px^.llpfiIntersectionBall) (px^.llpfiBi) in
 									let v'    = plane3ReflectPointAmount (plane & dp3 .~ 0) v bounceReturn in
 									(p', v')
-								-- TODO: handle edges and vertices!
-								| otherwise = error "Internal error: TODO: unimplemented!  Edges and vertices."
+								| ((EdgeIntersection px):_) <- ncl^.nclLpPlaneIntersections =
+									-- An edge intersection.
+									let plane = (px^.llpeiVirtualPlane) in
+									if' (not $ v `d3` (plane^.abcp3) <= 0) (p, v) $
+									let p'    = ipb (px^.llpeiIntersectionBall) (px^.llpeiBi) in
+									let v'    = plane3ReflectPointAmount (plane & dp3 .~ 0) v bounceReturn in
+									(p', v')
+								| ((VertIntersection px):_) <- ncl^.nclLpPlaneIntersections =
+									-- An edge intersection.
+									let plane = (px^.llpviVirtualPlane) in
+									if' (not $ v `d3` (plane^.abcp3) <= 0) (p, v) $
+									let p'    = ipb (px^.llpviIntersectionBall) (px^.llpviBi) in
+									let v'    = plane3ReflectPointAmount (plane & dp3 .~ 0) v bounceReturn in
+									(p', v')
 
 				-- | Now apply gravity after advancing to the next collision.
 				afterNextCollisionGravity :: Maybe (Vec3 Double, Vec3 Double, Double)

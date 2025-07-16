@@ -66,6 +66,7 @@ import Prelude ()
 import Immutaball.Prelude
 
 import Control.Monad
+import Data.Bits
 import Data.Int
 import Data.Foldable
 import Data.Function hiding (id, (.))
@@ -1478,6 +1479,12 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									-- take the closest.  We detect a collision
 									-- when lp' intersects with a lump's plane
 									-- at a point behind all the other planes.
+
+									-- Skip this lump if it's detail flag is
+									-- set, which indicates it's only for
+									-- rendering and not part of the physical
+									-- world.
+									if' (((lump^.lumpFl) .&. lumpFlagDetail) /= 0) (return ()) $ do
 
 									-- | Assume sorted and non-empty lists
 									let unsafeHead xs = case xs of (x:_) -> x; _ -> error "Internal error: physicsBallAdvanceBSP: unsafeHead called on empty list."

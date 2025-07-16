@@ -1339,10 +1339,8 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 -- 3) On Easy 3 (coins.sol), when the ball goes across an edge between the
 --    lumps it starts on and in front of it, it can freeze for a second or two,
 --    sometimes throwing the ball sort of randomly once it resumes.
--- 4) On Easy 3 (coins.sol), the ball goes right through left flat lump.
---    Perhaps debug print this lump's Analysis data to make sure its planes are
---    correctly constructed.  Perhaps it's something else
---    (physicsBallAdvanceBSP?  BSP construction?).
+-- 4) FIXED: ball no longer ghosts through certain lumps; the fix was the lump
+--    plane construction deduplication threshold was too tight.
 physicsBallAdvanceBSP :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 	| Just maxPhysicsStepTime <- x'cfg^.x'cfgMaxPhysicsStepTime, dt > maxPhysicsStepTime =

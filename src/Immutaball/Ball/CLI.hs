@@ -17,6 +17,7 @@ module Immutaball.Ball.CLI
 		immutaballOptions,
 		immutaballWithArgs,
 		immutaballHelp,
+		immutaballIntroText,
 		immutaballVersion,
 		immutaballWithCLIConfig,
 		cliIBDirs,
@@ -106,6 +107,11 @@ immutaballOptions =
 		Option [] ["headless"] (NoArg . b $ cliCfgHeadless .~ True)
 			"",
 		Option [] ["no-headless"] (NoArg . b $ cliCfgHeadless .~ False)
+			"",
+
+		Option ['Q'] ["skip-intro-text"] (NoArg . b $ cliCfgSkipIntroText .~ True)
+			"",
+		Option [] ["no-skip-intro-text"] (NoArg . b $ cliCfgSkipIntroText .~ False)
 			""
 	]
 	where b = CLIConfigBuilder
@@ -143,7 +149,15 @@ immutaballHelp = intercalate "\n" $
 		"\t--user-config-dir PATH:",
 		"\t\tSet user config directory path.",
 		"\t--headless:",
-		"\t\tDisable video and audio.  Useful for automated testing."
+		"\t\tDisable video and audio.  Useful for automated testing.",
+		"\t-Q, --skip-intro-text:",
+		"\t\tSilence the intro text on startup."
+	]
+
+immutaballIntroText :: String
+immutaballIntroText = intercalate "\n" $
+	[
+		-- TODO
 	]
 
 immutaballVersion :: String
@@ -158,11 +172,17 @@ immutaballWithCLIConfig x'cfg cliCfg =
 		showHelp = mkBIO . PutStrLn immutaballHelp $ mkBIO ExitSuccessBasicIOF
 		showVersion :: ImmutaballIO
 		showVersion = mkBIO . PutStrLn immutaballVersion $ mkBIO ExitSuccessBasicIOF
+		showIntroTextThen :: ImmutaballIO -> ImmutaballIO
+		showIntroTextThen
+			| null immutaballIntroText      = id
+			| (cliCfg^.cliCfgSkipIntroText) = id
+			| otherwise =
+				mkBIO . PutStrLn immutaballIntroText
 		result :: ImmutaballIO
 		result
 			| cliCfg^.cliCfgHelp    = showHelp
 			| cliCfg^.cliCfgVersion = showVersion
-			| otherwise             = immutaballWithCLIConfig' x'cfg cliCfg
+			| otherwise             = showIntroTextThen $ immutaballWithCLIConfig' x'cfg cliCfg
 
 cliIBDirs :: CLIConfig -> IBDirs -> IBDirs
 cliIBDirs cliCfg defaultIBDirs = IBDirs {

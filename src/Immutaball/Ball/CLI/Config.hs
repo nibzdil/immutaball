@@ -11,6 +11,7 @@ module Immutaball.Ball.CLI.Config
 	(
 		CLIConfig(..), cliCfgHelp, cliCfgVersion, cliCfgStaticDataDir,
 			cliCfgUserDataDir, cliCfgUserConfigDir, cliCfgHeadless,
+			cliCfgSkipIntroText,
 		defaultCLIConfig,
 		CLIConfigBuilder(..), modifyCLIConfig,
 		buildCLIConfig
@@ -27,7 +28,8 @@ data CLIConfig = CLIConfig {
 	_cliCfgStaticDataDir :: Maybe FilePath,
 	_cliCfgUserDataDir   :: Maybe FilePath,
 	_cliCfgUserConfigDir :: Maybe FilePath,
-	_cliCfgHeadless      :: Bool
+	_cliCfgHeadless      :: Bool,
+	_cliCfgSkipIntroText :: Bool
 }
 	deriving (Eq, Ord)
 makeLenses ''CLIConfig
@@ -39,7 +41,8 @@ defaultCLIConfig = CLIConfig {
 	_cliCfgStaticDataDir = Nothing,
 	_cliCfgUserDataDir   = Nothing,
 	_cliCfgUserConfigDir = Nothing,
-	_cliCfgHeadless      = False
+	_cliCfgHeadless      = False,
+	_cliCfgSkipIntroText = False
 }
 
 newtype CLIConfigBuilder = CLIConfigBuilder {_modifyCLIConfig :: CLIConfig -> CLIConfig}

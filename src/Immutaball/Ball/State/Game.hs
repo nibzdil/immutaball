@@ -1332,11 +1332,7 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 --    falls off an edge (but can handle it correctly if they ball falls from a
 --    distance onto the edge).  (See commit log for more notes on some debugging
 --    related to this.)
--- 2) The ball falls right through Easy 2 immediately upon start, even though
---    it's resting solidly on a whole lump, and doesn't start on an edge.  (I
---    thought adding a tolerance to the early plane-passthrough check (signum)
---    while re-enabling the preceding dot-product check might fix it, but it
---    didn't (see commit log).)
+-- 2) FIXED: don't forget ballRadius when discarding BSP children.
 -- 3) Also make sure that Easy 3 can be played without the physics / game
 --    freezing for a second or two when the ball reaches certain common places
 --    (are they edges?) (TODO: test this and make sure to double check it wasn't

@@ -1575,7 +1575,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 												| approximatelyAPoint = plane3PointDistance plane p0'
 												| otherwise = (intersectionBallPoint - p0')^.r3
 											-- Find the time to reach intersectionCoord.
-											let timeTo = (intersectionCoord / (lp'^.a0l3.r3)) `florWith` 0.0
+											let timeTo = (dtn * intersectionCoord) `florWith` 0.0
 
 											-- Now, make sure the intersection
 											-- point is on the lump, and not

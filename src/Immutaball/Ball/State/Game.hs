@@ -1502,6 +1502,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											-- other planes for this lump.
 											(planeIdx, (plane, others)) <- liftList $ zip [0..] $ listOthers lumpPlanes
 
+											{-
 											-- Make sure we only register a collision if the
 											-- ball is going towards this plane, not away from it: e.g.
 											-- you can only collide against a top face from above, not
@@ -1510,9 +1511,8 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											-- collision.  We can do this by making sure the dot
 											-- product of the direction (axis) of ‘lp’ and the plane
 											-- normal is not positive.
-											-- This check is enabled since we added a tolerance to the
-											-- passing-plane check next.
 											guard $ (lp'^.a0l3) `d3` (plane^.abcp3) <= 0
+											-}
 
 											-- To register a collision, make sure
 											-- the advancement would bring the ball
@@ -1532,7 +1532,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											-- least 1 plane that will pass this
 											-- test, so we don't need to modify it for
 											-- edges and vertices.
-											guard $ signum (plane3PointDistance plane p1' - ballRadius - smallishNum) < signum (plane3PointDistance plane p0' - ballRadius + smallishNum)
+											guard $ signum (plane3PointDistance plane p1' - ballRadius) < signum (plane3PointDistance plane p0' - ballRadius)
 
 											-- See if we need to use special logic
 											-- for very small steps.  If so, we'll
@@ -1571,7 +1571,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 													r |
 													other <- others,
 													let d = plane3PointDistance other intersectionPoint,
-													let behind = d + smallishNum <= 0,
+													let behind = d <= 0,
 													-- Also do preliminary
 													-- check for vertex and edge
 													-- collision.

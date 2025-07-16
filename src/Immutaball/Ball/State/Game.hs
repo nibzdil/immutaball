@@ -1331,12 +1331,18 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 -- 1) It misses some edge collisions especially if the ball is resting and
 --    falls off an edge (but can handle it correctly if they ball falls from a
 --    distance onto the edge).  (See commit log for more notes on some debugging
---    related to this.)
+--    related to this.)  To reproduce, make a simple single lump map with the
+--    ball falling down onto it.  Sometimes even falling it misses the edge
+--    collision, but it always seems to fall through too early if the ball
+--    rests first.
 -- 2) FIXED: don't forget ballRadius when discarding BSP children.
--- 3) Also make sure that Easy 3 can be played without the physics / game
---    freezing for a second or two when the ball reaches certain common places
---    (are they edges?) (TODO: test this and make sure to double check it wasn't
---    actually nothing when I tried).
+-- 3) On Easy 3 (coins.sol), when the ball goes across an edge between the
+--    lumps it starts on and in front of it, it can freeze for a second or two,
+--    sometimes throwing the ball sort of randomly once it resumes.
+-- 4) On Easy 3 (coins.sol), the ball goes right through left flat lump.
+--    Perhaps debug print this lump's Analysis data to make sure its planes are
+--    correctly constructed.  Perhaps it's something else
+--    (physicsBallAdvanceBSP?  BSP construction?).
 physicsBallAdvanceBSP :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 	| Just maxPhysicsStepTime <- x'cfg^.x'cfgMaxPhysicsStepTime, dt > maxPhysicsStepTime =

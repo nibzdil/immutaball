@@ -42,6 +42,16 @@ flag add-default-compiler-flags
 	default: True
 	manual: True
 
+flag internal-wires
+	description:
+		Instead of an external wires dependency, use an internal implementation
+		sufficient for this package.  Useful since as of now, the latest
+		version on Hackage is not up-to-date with the latest versions of its
+		dependencies, so it would not build with this project without a
+		manually modified local build of this external dependency.
+	default: False
+	manual: False
+
 common all-components
 	default-language: Haskell2010
 	other-extensions:
@@ -86,7 +96,7 @@ common all-components
 		--stm              >= 2.5.3.1  && < 2.6,
 		stm              >= 2.5.1.0  && < 2.6,
 		async            >= 2.2.5    && < 2.3,
-		wires            >  0.2.1    && < 0.3,
+		--wires            >  0.2.1    && < 0.3,
 		mtl              >= 2.2      && < 2.4,
 		--filepath         >= 1.5.3.0  && < 1.6,
 		filepath         >= 1.4.2.2  && < 1.6,
@@ -107,6 +117,16 @@ common all-components
 		curl             >= 1.3.8    && < 1.3.9,
 		i18n             >= 0.4.0.0  && < 0.5,
 		text             >= 2.1      && < 2.2
+
+	if !flag(internal-wires)
+		build-depends:
+			wires            >  0.2.1    && < 0.3
+	else
+		hs-source-dirs: . ./dependency-substitutions/wires
+		other-modules:
+			Control.Wire
+			Control.Wire.Controller
+			Control.Wire.Internal
 
 common executable-components
 	build-depends: immutaball-core

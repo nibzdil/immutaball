@@ -157,7 +157,34 @@ immutaballHelp = intercalate "\n" $
 immutaballIntroText :: String
 immutaballIntroText = intercalate "\n" $
 	[
-		-- TODO
+		"Welcome to Immutaball v" ++ immutaballVersion ++ "!",
+		"",
+		"WARNING: This prototype version currently only implements",
+		"         basic functionality; much of the game is yet unimplemented.",
+		"         A basic GUI, renderer, and physics is currently supported.",
+		"         Currently, the physics does not fully support moving bodies,",
+		"         and currently seems to have a few bugs.",
+		"",
+		"To use Immutaball, you'll need to build Neverball and call Immutaball",
+		"with the path to the data dir in the Neverball build:",
+		"\tcd ~/git",
+		"\tgit clone https://github.com/Neverball/neverball",
+		"\tcd ~/git/neverball",
+		"\t# git checkout 1.7.0-alpha.3  # Optionally check out the most recent version known to be supported if there are issues.",
+		"\tmake -j7",
+		"",
+		"\tcd ~/git",
+		"\tgit clone https://github.com/nibzdil/immutaball",
+		"\tcd ~/git/immutaball",
+		"\tcabal build --enable-tests",
+		"\tcabal run immutaball -- -d ~/git/neverball/data",
+		"",
+		"Alternatively, if there is a system-installed Neverball package",
+		"already built, you can also use its data path instead when passing",
+		"‘-d PATH’.",
+		"",
+		"Pass ‘--help’ for usage information.",
+		"Pass ‘-Q’ to silence this intro text."
 	]
 
 immutaballVersion :: String

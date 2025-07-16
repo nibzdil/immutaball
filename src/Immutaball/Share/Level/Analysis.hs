@@ -725,7 +725,7 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 				let r = plane
 				return $ r in
 			-- De-duplicate the planes.
-			let planesDedup = nubBy eqPlane3PointsOnly $ planesStart in
+			let planesDedup = nubBy nearPlane3PointsOnly $ planesStart in
 
 			-- Now orient the planes, so that the normal is pointing outwards
 			-- from the convex lump.  That is, negate the normal orientation of

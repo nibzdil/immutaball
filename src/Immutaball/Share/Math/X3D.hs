@@ -546,7 +546,8 @@ nearLine3 :: (SmallishNum a, Ord a, Num a, RealFloat a) => Line3 a -> Line3 a ->
 nearLine3 a b = (a^.p0l3) `near3` (b^.p0l3) && (a^.p1l3) `near3` (b^.p1l3)
 
 -- These equivalence variants check the points only; you can e.g. use
--- ‘negatePlaneOrientation’ and preserve equivalence.
+-- ‘negatePlaneOrientation’ and preserve equivalence.  (That is, flipping the
+-- plane normal doesn't necessarily change which points are on the plane.)
 
 eqPlane3PointsOnly :: (SmallNum a, Ord a, Num a, RealFloat a) => Plane3 a -> Plane3 a -> Bool
 eqPlane3PointsOnly a b = let a' = negatePlaneOrientation a in (a^.unPlane3) `eq4` (b^.unPlane3) || (a'^.unPlane3) `eq4` (b^.unPlane3)

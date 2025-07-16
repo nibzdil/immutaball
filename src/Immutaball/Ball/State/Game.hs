@@ -1617,11 +1617,9 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 									if' (null lpFaceIntersectionsRaw && not needCheckEdgeVertCol) (return ()) $ do
 
 									-- Check for edge and vertex collisions.
-									-- TODO:
 									let (lpEdgeVertIntersectionsRaw :: [LumpLpPlaneIntersection])
 										| not needCheckEdgeVertCol = []
 										| otherwise =
-											-- TODO
 											let (edgeIntersections :: [LumpLpPlaneEdgeIntersection]) = do
 												-- For each edge on the lump,
 												ei <- indirection <$> [lump^.lumpE0 .. lump^.lumpE0 + lump^.lumpEc - 1]
@@ -1701,9 +1699,73 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 													_llpeiVirtualPlane = virtualPlane
 												} in
 											let (vertIntersections :: [LumpLpPlaneVertIntersection]) = do
-												-- TODO
-												guard False
-												return undefined in
+												-- For each vertex,
+												vi <- indirection <$> [lump^.lumpV0 .. lump^.lumpV0 + lump^.lumpVc - 1]
+												let vertex = (level^.solVv) ! vi
+												let v = vertex^.vertP
+
+												-- Find the distance between the path (lp) and the vertex.
+												let vd = abs $ line3PointDistance lp' v
+
+												-- Skip if the _infinite_ line extension from lp and
+												-- the vertex are too far away.  This allows an early check
+												-- and also to ensure the call to line3DistanceCoordFromPoint is valid.
+												guard $ vd <= ballRadius
+
+												-- Find the closest point coord on lp to the vertex.
+												let lpClosestX = line3PointCoord lp' v
+
+												-- Find how far away the candidates for x (where the ball
+												-- is exactly ballRadius away from the vertex) are from
+												-- closestX.
+												let lpCoordOffset = line3DistanceCoordFromPoint lp' v ballRadius
+
+												-- Find the coord on lp where the distance is the ball's
+												-- radius.  Skip if we have nothing on lp.
+												let xCandidates = [lpClosestX - lpCoordOffset, lpClosestX + lpCoordOffset]
+												(x:_) <- return . sort . filter (\x -> 0 <= x + smallNum && x - smallNum <= 1) $ xCandidates
+
+												-- Skip if x is not on lp.  (Already done by the filter above.)
+												--guard $ 0 <= x + smallNum && x - smallNum <= 1
+
+												-- Find the ball intersection point.
+												let ballIntersection = line3Lerp lp' x `v3orWith` (lp'^.p0l3)
+
+												-- For the reflecting plane for the ball's velocity,
+												-- construct a virtual plane essentially with the vector
+												-- from the vertex to the ball's position at intersection
+												-- as normal.
+												let virtualPlane = normalPlane3 (v3normalize $ ballIntersection - v) 0
+
+												-- Make sure the ball is going towards the vertex, not away
+												-- from it, similar to the normal check for planes for
+												-- avoiding multiple collisions in a single step for me
+												-- thasme lump.
+												guard $ (lp'^.a0l3) `d3` (virtualPlane^.abcp3) <= 0
+
+												-- Obtain some preliminary results of this collision,
+												-- which is used if it is found to be the first potential
+												-- collision on the path lp'.
+												let colEdt = x * dt
+												let distance = (ballIntersection - p0')^.r3
+
+												-- Return the result of this collision candidate.
+												return $ LumpLpPlaneVertIntersection {
+													_llpviDistance = distance,
+													_llpviTimeTo   = colEdt,
+
+													_llpviLi = lumpi,
+													_llpviBi = bi,
+													_llpviBodyTranslation = getBodyTranslation level soa gs bi 0,
+
+													_llpviLp = lp',
+													_llpviIntersection = v,
+
+													_llpviIntersectionLx = x,
+													_llpviIntersectionBall = ballIntersection,
+
+													_llpviVirtualPlane = virtualPlane
+												} in
 											fmap VertIntersection vertIntersections ++ fmap EdgeIntersection edgeIntersections
 
 									-- Aggregate all collisions.

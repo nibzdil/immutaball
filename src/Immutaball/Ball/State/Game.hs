@@ -99,7 +99,7 @@ import Immutaball.Share.Utils
 import Immutaball.Share.Video
 import Immutaball.Share.Wire
 
--- TODO: implement.
+-- TODO: fully implement.
 
 data GameRequest = GameRequest {
 	_giRequest        :: Request,
@@ -126,7 +126,7 @@ makeClassyPrisms ''GameEvent
 grGameEvents :: Lens' GameResponse [GameEvent]
 grGameEvents = goGameEvents
 
--- TODO export.
+-- | Used by 'physicsBallAdvanceBSP'.
 data NextCollision = NextCollision {
 	_ncClosestLump :: NextCollisionLump,
 	_ncCheckLumps  :: [NextCollisionLump],  -- ^ Not necessarily sorted.
@@ -135,14 +135,14 @@ data NextCollision = NextCollision {
 }
 --makeLenses ''NextCollision
 
--- TODO export.
+-- | Used by 'physicsBallAdvanceBSP'.
 data NextCollisionState = NextCollisionState {
 	_ncsNc       :: Maybe NextCollision,
 	_ncsBspsLeft :: [(Int32, Tree LumpBSPPartition, Maybe LumpBSPPartitionParent)]
 }
 --makeLenses ''NextCollisionState
 
--- TODO export.
+-- | Used by 'physicsBallAdvanceBSP'.
 data LumpBSPPartitionParent = LumpBSPPartitionParent {
 	-- | The parent of this partition.
 	_lbspppParent        :: LumpBSPPartition,
@@ -151,6 +151,7 @@ data LumpBSPPartitionParent = LumpBSPPartitionParent {
 }
 --makeLenses ''LumpBSPPartitionParent
 
+-- | Used by 'physicsBallAdvanceBSP'.
 data NextCollisionLump = NextCollisionLump {
 	_nclLumpi                :: Int32,
 	_nclLpPlaneIntersections :: [LumpLpPlaneIntersection]  -- Assumed to be non-empty and sorted.
@@ -159,6 +160,8 @@ data NextCollisionLump = NextCollisionLump {
 
 -- | A face, edge, or vertex intersection.
 -- See 'LumpLpPlaneFaceIntersection' for more information.
+--
+-- Used by 'physicsBallAdvanceBSP'.
 data LumpLpPlaneIntersection =
 	  FaceIntersection LumpLpPlaneFaceIntersection
 	| EdgeIntersection LumpLpPlaneEdgeIntersection
@@ -166,6 +169,8 @@ data LumpLpPlaneIntersection =
 --makeClassyPrisms ''LumpLpPlaneIntersection
 
 -- | Common fields for the 3 types of 'LumpLpPlaneInterection's.
+--
+-- Used by 'physicsBallAdvanceBSP'.
 data LumpLpPlaneCommonIntersection = LumpLpPlaneCommonIntersection {
 	-- | The collision type priority: 1 for vertex, 2 for edge, 3 for plane.
 	-- Lowest priority should be sorted first if 2 intersection points are
@@ -202,7 +207,8 @@ data LumpLpPlaneCommonIntersection = LumpLpPlaneCommonIntersection {
 -- | When considering an advancement of the ball, for a given lump, and for a
 -- given plane on that lump, a value of this type represents information about
 -- the intersection of the lp line for the ball and this plane.
--- TODO export.
+--
+-- Used by 'physicsBallAdvanceBSP'.
 data LumpLpPlaneFaceIntersection = LumpLpPlaneFaceIntersection {
 	-- | The lump plane index for the plane in question.
 	_llpfiPlaneIdx :: Integer,
@@ -233,6 +239,7 @@ data LumpLpPlaneFaceIntersection = LumpLpPlaneFaceIntersection {
 }
 --makeLenses ''LumpLpPlaneFaceIntersection
 
+-- | Used by 'physicsBallAdvanceBSP'.
 data LumpLpPlaneEdgeIntersection = LumpLpPlaneEdgeIntersection {
 	-- | The distance along lp to the plane.
 	_llpeiDistance :: Double,
@@ -262,6 +269,7 @@ data LumpLpPlaneEdgeIntersection = LumpLpPlaneEdgeIntersection {
 }
 --makeLenses ''LumpLpPlaneEdgeIntersection
 
+-- | Used by 'physicsBallAdvanceBSP'.
 data LumpLpPlaneVertIntersection = LumpLpPlaneVertIntersection {
 	-- | The distance along lp to the plane.
 	_llpviDistance :: Double,
@@ -304,6 +312,8 @@ makeLenses ''NextCollisionLump
 -- | Access lump lp plane intersections through a common interface.
 --
 -- Pseudo-lens, since priority updates are ignored.
+--
+-- Used by 'physicsBallAdvanceBSP'.
 lpxc :: Lens' LumpLpPlaneIntersection LumpLpPlaneCommonIntersection
 lpxc = lens getter (flip setter)
 	where
@@ -414,6 +424,8 @@ lpxc = lens getter (flip setter)
 
 -- | Compare two collisions mostly by distance (see priorities note in
 -- 'LumpLpPlaneCommonIntersection').
+--
+-- Used by 'physicsBallAdvanceBSP'.
 lpxcomp :: LumpLpPlaneIntersection -> LumpLpPlaneIntersection -> Ordering
 lpxcomp a b
 	| (abs $ a'^.llpciDistance - b'^.llpciDistance) <= smallishNum =
@@ -426,6 +438,8 @@ lpxcomp a b
 -- | Convenience utility to to compare through 'lpxcomp' 2 valid
 -- 'NextCollisionLumps'.  (Since they're valid, the list must be sorted and
 -- non-empty.
+--
+-- Used by 'physicsBallAdvanceBSP'.
 nclcomp :: NextCollisionLump -> NextCollisionLump -> Ordering
 nclcomp a b
 	| (alpx:_) <- a^.nclLpPlaneIntersections
@@ -1396,7 +1410,6 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 							-- BSP partition, including all lumps directly on
 							-- it, is entirely further away, we can skip it!
 							mcurrentBestDistance <- gets (((^.ncDistanceTo) <$>) . (^.ncsNc))
-							--let smallInfiniteLineThreshold = 0.001  -- TODO: move this constant somewhere better, more prominent.  Move it to X3D.  Perhaps make a class like SmallNum.
 							let mdistanceToParentPlane = do
 								bspParent <- mbspParent
 								let parentPlane = bspParent^.lbspppParent.lbsppPlane

@@ -1452,11 +1452,11 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 								-- the partition, then queue them up for
 								-- processing.
 								let queueL =
-									(plane3PointDistance (bspPartition^.lbsppPlane) p0') <= 0 ||
-									(plane3PointDistance (bspPartition^.lbsppPlane) p1') <= 0
+									(plane3PointDistance (bspPartition^.lbsppPlane) p0') - ballRadius <= 0 ||
+									(plane3PointDistance (bspPartition^.lbsppPlane) p1') - ballRadius <= 0
 								let queueR =
-									(plane3PointDistance (bspPartition^.lbsppPlane) p0') >= 0 ||
-									(plane3PointDistance (bspPartition^.lbsppPlane) p1') >= 0
+									(plane3PointDistance (bspPartition^.lbsppPlane) p0') + ballRadius >= 0 ||
+									(plane3PointDistance (bspPartition^.lbsppPlane) p1') + ballRadius >= 0
 								let newParent isRightBranch = LumpBSPPartitionParent {
 									_lbspppParent        = bspPartition,
 									_lbspppIsRightBranch = isRightBranch

@@ -1325,6 +1325,21 @@ physicsBallAdvanceBruteForceCompute numCollisions thresholdTimeRemaining thresho
 --
 -- TODO: support moving bodies, since this currently only checks current static
 -- position.
+--
+-- TODO: this is complete for stationary bodies but currently has a few bugs:
+-- 1) It misses some edge collisions especially if the ball is resting and
+--    falls off an edge (but can handle it correctly if they ball falls from a
+--    distance onto the edge).  (See commit log for more notes on some debugging
+--    related to this.)
+-- 2) The ball falls right through Easy 2 immediately upon start, even though
+--    it's resting solidly on a whole lump, and doesn't start on an edge.  (I
+--    thought adding a tolerance to the early plane-passthrough check (signum)
+--    while re-enabling the preceding dot-product check might fix it, but it
+--    didn't (see commit log).)
+-- 3) Also make sure that Easy 3 can be played without the physics / game
+--    freezing for a second or two when the ball reaches certain common places
+--    (are they edges?) (TODO: test this and make sure to double check it wasn't
+--    actually nothing when I tried).
 physicsBallAdvanceBSP :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 	| Just maxPhysicsStepTime <- x'cfg^.x'cfgMaxPhysicsStepTime, dt > maxPhysicsStepTime =

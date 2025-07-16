@@ -1556,7 +1556,7 @@ physicsBallAdvanceBSP x'cfg level spa soa ballRadius gravityVector gs dt p0 v0
 											-- least 1 plane that will pass this
 											-- test, so we don't need to modify it for
 											-- edges and vertices.
-											guard $ signum (plane3PointDistance plane p1' - ballRadius) < signum (plane3PointDistance plane p0' - ballRadius)
+											guard $ signum (plane3PointDistance plane p1' - ballRadius - smallishNum) < signum (plane3PointDistance plane p0' - ballRadius + smallishNum)
 
 											-- See if we need to use special logic
 											-- for very small steps.  If so, we'll

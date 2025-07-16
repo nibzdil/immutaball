@@ -745,7 +745,9 @@ mkSolPhysicsAnalysis _cxt sol = fix $ \spa -> SolPhysicsAnalysis {  -- TODO
 		bodyBSPs :: SolPhysicsAnalysis -> M.Map Int32 LumpBSP
 		bodyBSPs spa = M.fromList . flip map [0..sol^.solBc - 1] $ \bi ->
 			let body = (sol^.solBv) ! bi in
-			let bodyLumpIndices = [body^.bodyL0 .. body^.bodyL0 + body^.bodyLc - 1] in
+			let bodyLumpIndicesRaw = [body^.bodyL0 .. body^.bodyL0 + body^.bodyLc - 1] in
+			-- Discard detail lumps.
+			let bodyLumpIndices = [li | li <- bodyLumpIndicesRaw, let lump = (sol^.solLv) ! li, ((lump^.lumpFl) .&. lumpFlagDetail) == 0] in
 			let (firstPartition :: LumpBSPPartition) = fix $ \partition -> LumpBSPPartition {
 				_lbsppPlane =
 					let allMean  = (partition^.lbsppAllLumpsMeanVertex) in

@@ -26,6 +26,7 @@ Demo video: <https://byronjohnson.net/immutaball/immutaball-v0.1.0.1-demo.html>
 ## Usage example
 
 ```
-(cd -- "${HOME}/git/neverball" && make -j7)  # build neverball
-cabal run --package-db="${HOME}/.local/state/cabal/store/ghc-9.13.20240927/package.db" immutaball -- -d ~/git/neverball/data
+(cd -- "${HOME}/git" && git clone https://github.com/Neverball/neverball)  # clone neverball
+(cd -- "${HOME}/git/neverball" && make -j7)      # build neverball
+cabal run immutaball -- -d ~/git/neverball/data  # run immutaball
 ```

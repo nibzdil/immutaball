@@ -21,7 +21,7 @@ import Control.Monad.Fix
 -- | A self-modifying function.
 --
 -- This is the central construct in the ‘wires’ FRP implementation.
-data Wire m a b = Wire { _wireStep :: a -> m (b, Wire m a b) }
+newtype Wire m a b = Wire { _wireStep :: a -> m (b, Wire m a b) }
 
 -- | Step a wire.  Obtain its result and the next version of itself.
 stepWire :: Wire m a b -> a -> m (b, Wire m a b)

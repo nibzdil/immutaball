@@ -17,6 +17,7 @@ module Immutaball.Ball.CLI
 		immutaballOptions,
 		immutaballWithArgs,
 		immutaballHelp,
+		immutaballHelp',
 		immutaballIntroText,
 		immutaballVersion,
 		immutaballWithCLIConfig,
@@ -112,6 +113,11 @@ immutaballOptions =
 		Option ['Q'] ["skip-intro-text"] (NoArg . b $ cliCfgSkipIntroText .~ True)
 			"",
 		Option [] ["no-skip-intro-text"] (NoArg . b $ cliCfgSkipIntroText .~ False)
+			"",
+
+		Option [] ["help-detailed"] (NoArg . b $ cliCfgHelpDetailed .~ True)
+			"",
+		Option [] ["no-help-detailed"] (NoArg . b $ cliCfgHelpDetailed .~ False)
 			""
 	]
 	where b = CLIConfigBuilder
@@ -135,7 +141,10 @@ immutaballWithArgs x'cfg args =
 			| otherwise            = immutaballWithCLIConfig x'cfg cliCfg
 
 immutaballHelp :: String
-immutaballHelp = intercalate "\n" $
+immutaballHelp = immutaballHelp' False
+
+immutaballHelp' :: Bool -> String
+immutaballHelp' detailed = intercalate "\n" $
 	[
 		"Usage: immutaball [options…]",
 		"",
@@ -151,7 +160,11 @@ immutaballHelp = intercalate "\n" $
 		"\t--headless:",
 		"\t\tDisable video and audio.  Useful for automated testing.",
 		"\t-Q, --skip-intro-text:",
-		"\t\tSilence the intro text on startup."
+		"\t\tSilence the intro text on startup.",
+		"\t--help-detailed:",
+		"\t\tShow additional usage and exit."
+	] ++ if' (not detailed) []
+	[
 	]
 
 immutaballIntroText :: String
@@ -197,6 +210,8 @@ immutaballWithCLIConfig x'cfg cliCfg =
 	where
 		showHelp :: ImmutaballIO
 		showHelp = mkBIO . PutStrLn immutaballHelp $ mkBIO ExitSuccessBasicIOF
+		showHelp' :: Bool -> ImmutaballIO
+		showHelp' detailed = mkBIO . PutStrLn (immutaballHelp' detailed) $ mkBIO ExitSuccessBasicIOF
 		showVersion :: ImmutaballIO
 		showVersion = mkBIO . PutStrLn immutaballVersion $ mkBIO ExitSuccessBasicIOF
 		showIntroTextThen :: ImmutaballIO -> ImmutaballIO
@@ -207,9 +222,10 @@ immutaballWithCLIConfig x'cfg cliCfg =
 				mkBIO . PutStrLn immutaballIntroText
 		result :: ImmutaballIO
 		result
-			| cliCfg^.cliCfgHelp    = showHelp
-			| cliCfg^.cliCfgVersion = showVersion
-			| otherwise             = showIntroTextThen $ immutaballWithCLIConfig' x'cfg cliCfg
+			| cliCfg^.cliCfgHelpDetailed = showHelp' True
+			| cliCfg^.cliCfgHelp         = showHelp
+			| cliCfg^.cliCfgVersion      = showVersion
+			| otherwise                  = showIntroTextThen $ immutaballWithCLIConfig' x'cfg cliCfg
 
 cliIBDirs :: CLIConfig -> IBDirs -> IBDirs
 cliIBDirs cliCfg defaultIBDirs = IBDirs {

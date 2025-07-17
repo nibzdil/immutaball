@@ -42,6 +42,7 @@ import Text.Printf
 
 -- external imports
 import Control.Lens
+import Control.Wire.Meta (isFallbackWire)
 import qualified Data.Text as T
 import System.FilePath
 
@@ -213,6 +214,19 @@ immutaballIntroText = intercalate "\n" $
 		"Alternatively, if there is a system-installed Neverball package",
 		"already built, you can also use its data path instead when passing",
 		"‘-d PATH’.",
+		""
+	] ++
+	(if' (not isFallbackWire)
+		[
+			"Using external dependency ‘wires’ (not fallback implementation)."
+		]
+		[
+			"Not using external package ‘wires’ for dependency",
+			"(perhaps it failed to build); using fallback implementation",
+			"(performance not necessarily optimized)."
+		]
+	) ++
+	[
 		"",
 		"Pass ‘--help’ for usage information.",
 		"Pass ‘-Q’ to silence this intro text."

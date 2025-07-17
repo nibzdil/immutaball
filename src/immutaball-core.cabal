@@ -123,8 +123,18 @@ common all-components
 	if !flag(internal-wires)
 		build-depends:
 			wires            >  0.2.1    && < 0.3
+		hs-source-dirs:
+			.
+			./dependency-substitutions/wires-nofallback-meta
+		other-modules:
+			Control.Wire.Meta
 	else
-		hs-source-dirs: . ./dependency-substitutions/wires
+		hs-source-dirs:
+			.
+			./dependency-substitutions/wires-fallback-meta
+			./dependency-substitutions/wires
+		other-modules:
+			Control.Wire.Meta
 		other-modules:
 			Control.Wire
 			Control.Wire.Controller

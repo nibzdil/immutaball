@@ -3,9 +3,10 @@ cabal-version: 3.0
 name: immutaball-core
 version: 0.1.0.5-dev
 
-synopsis: Immutaball platformer game
+synopsis: Immutaball platformer game (prototype version)
 description:
 	The Immutaball platformer game is a rewrite of Neverball in Haskell.
+	(Prototype version.)
 category:     Games
 homepage:     https://nibzdil.org/
 bug-reports:  https://nibzdil.org/

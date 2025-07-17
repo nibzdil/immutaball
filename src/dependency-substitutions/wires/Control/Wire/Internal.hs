@@ -24,29 +24,39 @@ import Control.Monad.Fix
 newtype Wire m a b = Wire { _wireStep :: a -> m (b, Wire m a b) }
 
 -- | Step a wire.  Obtain its result and the next version of itself.
+{-# INLINE stepWire #-}
 stepWire :: Wire m a b -> a -> m (b, Wire m a b)
 stepWire = _wireStep
 
 instance (Functor m) => Functor (Wire m a) where
+	{-# INLINE fmap #-}
 	fmap f (Wire w) = Wire $ \a -> (\(b, w') -> (f b, fmap f w')) <$> w a
 
 instance (Applicative m) => Applicative (Wire m i) where
+	{-# INLINE pure #-}
 	pure a = fix $ \me -> Wire $ \_i -> pure (a, me)
+	{-# INLINE (<*>) #-}
 	(Wire wf) <*> (Wire wa) = Wire $ \i -> pure (\(f, wf') (a, wa') -> (f a, wf' <*> wa')) <*> wf i <*> wa i
 
 instance (Monad m) => Category (Wire m) where
+	{-# INLINE id #-}
 	id = fix $ \me -> Wire $ \a -> return (a, me)
+	{-# INLINE (.) #-}
 	(Wire wc) . (Wire wb) = Wire $ \a -> wb a >>= \(b, wb') -> wc b >>= \(c, wc') -> return (c, wc' C.. wb')
 
 instance (Monad m) => Arrow (Wire m) where
+	{-# INLINE arr #-}
 	arr f = fix $ \me -> Wire $ \a -> pure (f a, me)
+	{-# INLINE first #-}
 	first (Wire w) = Wire $ \(a, d) -> (\(b, w') -> ((b, d), first w')) <$> w a
 
 instance (Monad m) => ArrowChoice (Wire m) where
 	-- (Tricky: in the Left case, don't use ‘me’ which would discard ‘w'’.)
+	{-# INLINE left #-}
 	left (Wire w) = fix $ \me -> Wire $ \bd -> either (\b -> (\(c, w') -> (Left c, left w')) <$> w b) (\d -> pure (Right d, me)) bd
 
 instance (MonadFix m) => ArrowLoop (Wire m) where
 	-- w :: (b, d) -> m ((c, d), Wire m (b, d) (c, d))
 	--  Make sure this is lazy enough, or it could hang!
+	{-# INLINE loop #-}
 	loop (Wire w) = Wire $ \b -> (\((c, _d), w') -> (c, loop w')) <$> (mfix $ \ ~(~(_c, d), _w') -> w (b, d))

@@ -17,7 +17,7 @@ license-file: LICENSE.md
 author:       Byron Johnson
 maintainer:   bjohnson@nibzdil.org
 build-type:   Simple
-copyright:    2024, Byron Johnson
+copyright:    2024-2025, Byron Johnson
 
 extra-source-files:
 	README.md

@@ -1,14 +1,10 @@
 # Prototype
 
 Currently this project only implements basic parts of the game: minimal GUI,
-basic physics, and a renderer.  Much of the game is currently unimplemented
-(audio, goals, moving bodies, gameplay mechanics, a more efficient physics
-implementation), but this project still serves as a useful example of a purely
-functional FRP application.
-
-Currently the physics does not apply BSP partitioning but brute force checks
-collisions with every body in the level each frame.  Larger levels can't handle
-this, but many of the levels in the first three level sets are playable.
+basic physics, and a basic renderer.  Much of the game is currently
+unimplemented (audio, goals, complete moving body physics, gameplay mechanics,
+etc.), but this project still serves as a useful example of a purely functional
+FRP application.  Currently the physics has a few bugs.
 
 # Immutaball
 
@@ -21,7 +17,8 @@ like writing to a file (including concurrent evaluation).
 
 ![screenshot: readme-screenshot0-v0.1.0.1.png](doc/screenshots/readme-screenshot0-v0.1.0.1.png)
 
-Demo video: <https://byronjohnson.net/immutaball/immutaball-v0.1.0.1-demo.html>
+Demo video: <https://byronjohnson.net/immutaball/immutaball-v0.1.0.1-demo.html>.
+(Demo recorded before BSP physics algorithm.)
 
 ## Usage example
 

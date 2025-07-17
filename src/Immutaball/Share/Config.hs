@@ -23,6 +23,7 @@ module Immutaball.Share.Config
 			x'cfgGravity, x'cfgBounceReturn, x'cfgMaxFrameCollisions,
 			x'cfgMaxFrameCollisionsDtThreshold,
 			x'cfgMaxFrameCollisionsRDistanceThreshold, x'cfgMaxPhysicsStepTime,
+			x'cfgRequestAlternativePhysics,
 		defaultStaticConfig,
 		Neverballrc,
 		Config(..), fullscreen, display, width, height, stereo, camera,
@@ -162,7 +163,10 @@ data StaticConfig' initialWireWithCxt = StaticConfig {
 	-- gravity at once, sending it flying.  Already the ball is bouncy even
 	-- with this, however, so TODO: improve the physics to fix the bouncy
 	-- elevator/gravity problem.
-	_x'cfgMaxPhysicsStepTime :: Maybe Double
+	_x'cfgMaxPhysicsStepTime :: Maybe Double,
+
+	-- | Allow runtime configuration of the choice of physics engine.
+	_x'cfgRequestAlternativePhysics :: Maybe String
 }
 makeLenses ''StaticConfig'
 
@@ -226,7 +230,9 @@ defaultStaticConfig = StaticConfig {
 	--_x'cfgMaxPhysicsStepTime = Just 0.01  -- Smooths out the gravity bounce issue, but larger levels can't handle it.
 	--_x'cfgMaxPhysicsStepTime = Just 0.2   -- More tolerant, but e.g. retour de force for me would only handle this (or even Nothing) if I
 	--                                      -- disabled edge and vertices by commenting out the 2 lines in the concat list.
-	_x'cfgMaxPhysicsStepTime = Just 0.02
+	_x'cfgMaxPhysicsStepTime = Just 0.02,
+
+	_x'cfgRequestAlternativePhysics = Nothing
 }
 
 type Neverballrc = Config

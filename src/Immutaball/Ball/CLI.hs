@@ -118,6 +118,11 @@ immutaballOptions =
 		Option [] ["help-detailed"] (NoArg . b $ cliCfgHelpDetailed .~ True)
 			"",
 		Option [] ["no-help-detailed"] (NoArg . b $ cliCfgHelpDetailed .~ False)
+			"",
+
+		Option [] ["request-override-physics"] (ReqArg (\str -> b $ cliCfgOverridePhysics .~ Just (Just str)) "")
+			"",
+		Option [] ["no-request-override-physics"] (NoArg . b $ cliCfgOverridePhysics .~ Nothing)
 			""
 	]
 	where b = CLIConfigBuilder
@@ -165,6 +170,19 @@ immutaballHelp' detailed = intercalate "\n" $
 		"\t\tShow additional usage and exit."
 	] ++ if' (not detailed) []
 	[
+		"",
+		"Additional options:",
+		"\t--request-override-physics=default:",
+		"\t\tFor debugging or development, select the default physics algorithm.",
+		"\t--request-override-physics=stationary:",
+		"\t\tFor debugging or development, select the stationary physics algorithm.",
+		"\t--request-override-physics=ghostly:",
+		"\t\tFor debugging or development, select the ghostly physics algorithm.",
+		"\t--request-override-physics=brute-force:",
+		"\t\tFor debugging or development, select the brute-force physics algorithm.",
+		"\t\tWARNING: does not perform well on large levels and may freeze!",
+		"\t--request-override-physics=bsp:",
+		"\t\tFor debugging or development, select the bsp physics algorithm."
 	]
 
 immutaballIntroText :: String
@@ -220,12 +238,17 @@ immutaballWithCLIConfig x'cfg cliCfg =
 			| (cliCfg^.cliCfgSkipIntroText) = id
 			| otherwise =
 				mkBIO . PutStrLn immutaballIntroText
+		-- Allow CLI options to update the static config.
+		x'cfg' :: StaticConfig
+		x'cfg'
+			| Just val <- cliCfg^.cliCfgOverridePhysics = x'cfg & x'cfgRequestAlternativePhysics .~ val
+			| otherwise = x'cfg
 		result :: ImmutaballIO
 		result
 			| cliCfg^.cliCfgHelpDetailed = showHelp' True
 			| cliCfg^.cliCfgHelp         = showHelp
 			| cliCfg^.cliCfgVersion      = showVersion
-			| otherwise                  = showIntroTextThen $ immutaballWithCLIConfig' x'cfg cliCfg
+			| otherwise                  = showIntroTextThen $ immutaballWithCLIConfig' x'cfg' cliCfg
 
 cliIBDirs :: CLIConfig -> IBDirs -> IBDirs
 cliIBDirs cliCfg defaultIBDirs = IBDirs {

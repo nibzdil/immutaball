@@ -48,6 +48,7 @@ module Immutaball.Ball.State.Game
 		stepGameBallPhysics,
 
 		physicsBallAdvance,
+		physicsBallAdvanceDefault,
 		physicsBallAdvanceStationary,
 		physicsBallAdvanceGhostly,
 		physicsBallAdvanceBruteForce,
@@ -883,7 +884,18 @@ stepGameBallPhysics = proc (gsn, dt, cxtn) -> do
 
 -- | Expend dt to step the ball through the physical world, handling collisions.
 physicsBallAdvance :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
-physicsBallAdvance x'cfg level spa soa ballRadius gravityVector gs dt ballPos ballVel = choice_ x'cfg level spa soa ballRadius gravityVector gs dt ballPos ballVel
+physicsBallAdvance = \x'cfg -> case (x'cfg^.x'cfgRequestAlternativePhysics) of
+	Nothing            -> physicsBallAdvanceDefault    x'cfg
+	Just "default"     -> physicsBallAdvanceDefault    x'cfg
+	Just "stationary"  -> physicsBallAdvanceStationary x'cfg
+	Just "ghostly"     -> physicsBallAdvanceGhostly    x'cfg
+	Just "brute-force" -> physicsBallAdvanceBruteForce x'cfg
+	Just "bsp"         -> physicsBallAdvanceBSP        x'cfg
+	_                  -> physicsBallAdvanceDefault    x'cfg
+
+-- | Expend dt to step the ball through the physical world, handling collisions.
+physicsBallAdvanceDefault :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
+physicsBallAdvanceDefault x'cfg level spa soa ballRadius gravityVector gs dt ballPos ballVel = choice_ x'cfg level spa soa ballRadius gravityVector gs dt ballPos ballVel
 	where
 		choice_ :: StaticConfig -> LevelIB -> SolPhysicsAnalysis -> SolOtherAnalysis -> Double -> Vec3 Double -> GameState -> Double -> Vec3 Double -> Vec3 Double -> (Vec3 Double, Vec3 Double)
 		--choice_ = physicsBallAdvanceStationary

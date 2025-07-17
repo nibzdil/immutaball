@@ -11,7 +11,7 @@ module Immutaball.Ball.CLI.Config
 	(
 		CLIConfig(..), cliCfgHelp, cliCfgVersion, cliCfgStaticDataDir,
 			cliCfgUserDataDir, cliCfgUserConfigDir, cliCfgHeadless,
-			cliCfgSkipIntroText, cliCfgHelpDetailed,
+			cliCfgSkipIntroText, cliCfgHelpDetailed, cliCfgOverridePhysics,
 		defaultCLIConfig,
 		CLIConfigBuilder(..), modifyCLIConfig,
 		buildCLIConfig
@@ -23,28 +23,30 @@ import Immutaball.Prelude
 import Control.Lens
 
 data CLIConfig = CLIConfig {
-	_cliCfgHelp          :: Bool,
-	_cliCfgVersion       :: Bool,
-	_cliCfgStaticDataDir :: Maybe FilePath,
-	_cliCfgUserDataDir   :: Maybe FilePath,
-	_cliCfgUserConfigDir :: Maybe FilePath,
-	_cliCfgHeadless      :: Bool,
-	_cliCfgSkipIntroText :: Bool,
-	_cliCfgHelpDetailed  :: Bool
+	_cliCfgHelp            :: Bool,
+	_cliCfgVersion         :: Bool,
+	_cliCfgStaticDataDir   :: Maybe FilePath,
+	_cliCfgUserDataDir     :: Maybe FilePath,
+	_cliCfgUserConfigDir   :: Maybe FilePath,
+	_cliCfgHeadless        :: Bool,
+	_cliCfgSkipIntroText   :: Bool,
+	_cliCfgHelpDetailed    :: Bool,
+	_cliCfgOverridePhysics :: Maybe (Maybe String)
 }
 	deriving (Eq, Ord)
 makeLenses ''CLIConfig
 
 defaultCLIConfig :: CLIConfig
 defaultCLIConfig = CLIConfig {
-	_cliCfgHelp          = False,
-	_cliCfgVersion       = False,
-	_cliCfgStaticDataDir = Nothing,
-	_cliCfgUserDataDir   = Nothing,
-	_cliCfgUserConfigDir = Nothing,
-	_cliCfgHeadless      = False,
-	_cliCfgSkipIntroText = False,
-	_cliCfgHelpDetailed  = False
+	_cliCfgHelp            = False,
+	_cliCfgVersion         = False,
+	_cliCfgStaticDataDir   = Nothing,
+	_cliCfgUserDataDir     = Nothing,
+	_cliCfgUserConfigDir   = Nothing,
+	_cliCfgHeadless        = False,
+	_cliCfgSkipIntroText   = False,
+	_cliCfgHelpDetailed    = False,
+	_cliCfgOverridePhysics = Nothing
 }
 
 newtype CLIConfigBuilder = CLIConfigBuilder {_modifyCLIConfig :: CLIConfig -> CLIConfig}

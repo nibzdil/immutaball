@@ -11,6 +11,7 @@ module Test.Immutaball.Share.State.Fixtures
 	(
 		withImmutaball,
 		withImmutaball',
+		withImmutaball'',
 		exclusively,
 		exclusivelyUnsafeMutex,
 		ImmutaballFixture(..), ibfSDLManager,
@@ -52,13 +53,16 @@ withImmutaball :: (TMVar a -> IBContext -> Immutaball) -> [String] -> IO a
 withImmutaball = withImmutaball' True
 
 withImmutaball' :: Bool -> (TMVar a -> IBContext -> Immutaball) -> [String] -> IO a
-withImmutaball' headless immutaball extraArgs = do
+withImmutaball' = withImmutaball'' ["-Q"]
+
+withImmutaball'' :: [String] -> Bool -> (TMVar a -> IBContext -> Immutaball) -> [String] -> IO a
+withImmutaball'' baseArgs headless immutaball extraArgs = do
 	mout <- atomically $ newEmptyTMVar
 	ibf <- immutaballFixture headless
 	let x'cfg = defaultStaticConfig &
 		x'cfgInitialWireWithCxt .~ Just (\cxt -> Just $ immutaball mout cxt) &
 		x'cfgUseExistingSDLManager .~ (ibf^.ibfSDLManager)
-	let args = if' headless ["--headless"] [] ++ extraArgs
+	let args = baseArgs ++ if' headless ["--headless"] [] ++ extraArgs
 	runImmutaballIO $ CLI.immutaballWithArgs x'cfg args
 	out <- atomically $ takeTMVar mout
 	return out

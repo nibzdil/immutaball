@@ -4,7 +4,9 @@ Currently this project only implements basic parts of the game: minimal GUI,
 basic physics, and a basic renderer.  Much of the game is currently
 unimplemented (audio, goals, complete moving body physics, gameplay mechanics,
 etc.), but this project still serves as a useful example of a purely functional
-FRP application.  Currently the physics has a few bugs.
+FRP application.  Currently the physics has a few bugs.  (AI assistance has not
+been used during the development of this project; this repository has no
+undisclosed AI/LLM development.)
 
 # Immutaball
 
